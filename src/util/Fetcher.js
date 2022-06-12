@@ -7,12 +7,8 @@ export const doFetch = (url, method, event, actions) => {
 
   const responseHandler = async response => {
     const handler = actions[response.status] || actions.default || defaultAction;
-    const data = await response.text();
-    if (data) {
-      handler(JSON.parse(data));
-    } else {
-      handler();
-    }
+    response.text()
+      .then(data => data ? handler(JSON.parse(data)) : handler());
   };
 
   fetch(url, {
