@@ -1,0 +1,35 @@
+* {
+    border-radius: 0 !important;
+}
+
+.container {
+  padding: 0;
+  margin: 0;
+}
+
+.App {
+  text-align: center;
+}
+
+a {
+  color: black;
+}
+
+img {
+    max-width: 100%;
+    border: 0;
+}
+
+h1, h2, h3 {
+    font-weight: normal;
+    font-size: 1.25em;
+    margin: 0.8em 0 0.3em 0;
+}
+
+.form-group {
+  padding: 15px;
+}
+
+.row {
+  margin: 0;
+}
