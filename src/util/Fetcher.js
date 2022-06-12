@@ -5,9 +5,14 @@ export const doFetch = (url, method, event, actions) => {
     actions = {};
   }
 
-  const responseHandler = response => {
+  const responseHandler = async response => {
     const handler = actions[response.status] || actions.default || defaultAction;
-    response.json().then(data => handler(data));
+    const data = await response.text();
+    if (data) {
+      handler(JSON.parse(data));
+    } else {
+      handler();
+    }
   };
 
   fetch(url, {
