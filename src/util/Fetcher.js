@@ -8,7 +8,8 @@ export const doFetch = (url, method, event, actions) => {
   const responseHandler = async response => {
     const handler = actions[response.status] || actions.default || defaultAction;
     response.text()
-      .then(data => data ? handler(JSON.parse(data)) : handler());
+      .then(data => data ? handler(JSON.parse(data)) : handler())
+      .catch(err => console.log("Load failed")); //TODO: add i18n
   };
 
   fetch(url, {
