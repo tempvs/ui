@@ -24,4 +24,4 @@ jobs:
               -d '{ "updates": [ { "type": "web", "docker_image": "'"$WEB_DOCKER_IMAGE_ID"'" }]}' \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }} "
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}"
