@@ -50,7 +50,7 @@ class LoginRegisterButton extends Component {
                 <div className="mt-3 d-grid gap-2">
                   <Button
                     as="a"
-                    href="http://localhost:3000/api/user/oauth2/authorization/google"
+                    href="/api/user/oauth2/authorization/google"
                     variant="outline-danger"
                   >
                     <FaGoogle className="me-2"/>
