@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { FaSignInAlt } from 'react-icons/fa';
+import { FaGoogle, FaSignInAlt } from 'react-icons/fa';
 import { Button, Modal, Tab, Tabs, OverlayTrigger }  from 'react-bootstrap';
 import { FormattedMessage } from "react-intl";
 import LoginForm from './LoginForm';
@@ -47,6 +47,16 @@ class LoginRegisterButton extends Component {
             <Tabs className="row">
               <Tab eventKey="login" title={<FormattedMessage id="login.tab" defaultMessage="Log in"/>}>
                 <LoginForm logIn={this.logIn} />
+                <div className="mt-3 d-grid gap-2">
+                  <Button
+                    as="a"
+                    href="http://localhost:3000/api/user/oauth2/authorization/google"
+                    variant="outline-danger"
+                  >
+                    <FaGoogle className="me-2"/>
+                    <FormattedMessage id="login.google.button" defaultMessage="Authenticate with Gmail"/>
+                  </Button>
+                </div>
               </Tab>
               <Tab eventKey="register" title={<FormattedMessage id="register.tab" defaultMessage="Register"/>}>
                 <RegistrationForm />

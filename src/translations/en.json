@@ -8,6 +8,7 @@
   "password.label": "Password",
   "login.popover": "Log in",
   "login.button": "Log in",
+  "login.google.button": "Authenticate with Gmail",
   "login.failed": "Wrong login or password",
   "logout.popover": "Log out",
   "logout.confirmation": "Are you sure you want to log out?",
