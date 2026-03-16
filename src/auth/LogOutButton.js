@@ -38,10 +38,21 @@ class LogOutButton extends Component {
 
   render() {
     const popover = (<HoverPopover text="logout.popover" default="Log out" />);
+    const avatar = this.props.avatarUrl
+      ? (
+        <span className="auth-avatar-badge">
+          <img className="auth-avatar-image" src={this.props.avatarUrl} alt="" referrerPolicy="no-referrer" />
+        </span>
+      )
+      : this.props.avatarText
+        ? <span className="auth-avatar-badge auth-avatar-text">{this.props.avatarText}</span>
+      : null;
+
     return (
       <>
         <OverlayTrigger trigger="hover" placement="bottom" overlay={popover}> 
-          <Button className="float-sm-right" variant="default" onClick={this.handleShow}>
+          <Button className="float-sm-right auth-control-button" variant="default" onClick={this.handleShow}>
+            {avatar}
             <FaSignOutAlt/>
           </Button>
         </OverlayTrigger>

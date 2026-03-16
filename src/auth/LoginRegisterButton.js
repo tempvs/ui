@@ -1,9 +1,7 @@
 import React, { Component } from 'react';
 import { FaGoogle, FaSignInAlt } from 'react-icons/fa';
-import { Button, Modal, Tab, Tabs, OverlayTrigger }  from 'react-bootstrap';
+import { Button, Modal, OverlayTrigger }  from 'react-bootstrap';
 import { FormattedMessage } from "react-intl";
-import LoginForm from './LoginForm';
-import RegistrationForm from './RegistrationForm';
 import HoverPopover from '../component/HoverPopover';
 
 class LoginRegisterButton extends Component {
@@ -15,7 +13,6 @@ class LoginRegisterButton extends Component {
 
     this.handleShow = this.handleShow.bind(this);
     this.handleClose = this.handleClose.bind(this);
-    this.logIn = this.logIn.bind(this);
   }
 
   handleShow() {
@@ -24,11 +21,6 @@ class LoginRegisterButton extends Component {
 
   handleClose() {
     this.setState({show: false});
-  }
-
-  logIn() {
-    this.handleClose();
-    this.props.logIn();
   }
 
   render() {
@@ -44,24 +36,16 @@ class LoginRegisterButton extends Component {
 
         <Modal show={this.state.show} onHide={this.handleClose}>
           <Modal.Body>
-            <Tabs className="row">
-              <Tab eventKey="login" title={<FormattedMessage id="login.tab" defaultMessage="Log in"/>}>
-                <LoginForm logIn={this.logIn} />
-                <div className="mt-3 d-grid gap-2">
-                  <Button
-                    as="a"
-                    href="/api/user/oauth2/authorization/google"
-                    variant="outline-danger"
-                  >
-                    <FaGoogle className="me-2"/>
-                    <FormattedMessage id="login.google.button" defaultMessage="Authenticate with Gmail"/>
-                  </Button>
-                </div>
-              </Tab>
-              <Tab eventKey="register" title={<FormattedMessage id="register.tab" defaultMessage="Register"/>}>
-                <RegistrationForm />
-              </Tab>
-            </Tabs>
+            <div className="d-grid gap-2">
+              <Button
+                as="a"
+                href="/api/user/oauth2/authorization/google"
+                variant="outline-danger"
+              >
+                <FaGoogle className="me-2"/>
+                <FormattedMessage id="login.google.button" defaultMessage="Authenticate with Gmail"/>
+              </Button>
+            </div>
           </Modal.Body>
         </Modal>
       </>
