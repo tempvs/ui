@@ -1,53 +1,103 @@
 import React, { Component } from 'react';
 
-import { Button, Container, Form, Row, Col } from 'react-bootstrap';
+import { Container, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import { FaCheck, FaHourglassHalf } from 'react-icons/fa';
 
 import { doFetch } from "../util/Fetcher.js";
 import ModalImage from "../component/ModalImage";
 import Spinner from "../component/Spinner";
 
+const periods = [
+  'ANCIENT',
+  'ANTIQUITY',
+  'EARLY_MIDDLE_AGES',
+  'HIGH_MIDDLE_AGES',
+  'LATE_MIDDLE_AGES',
+  'RENAISSANCE',
+  'MODERN',
+  'WWI',
+  'WWII',
+  'CONTEMPORARY',
+  'OTHER',
+];
+
 class ProfilePage extends Component {
+  autoSaveTimers = {};
+  statusResetTimers = {};
+
   constructor() {
     super();
-    this.state = {
-      avatarVisible: false,
-      avatarLoaded: false,
-      loaded: false,
-      notFound: false,
-      createMode: false,
-      firstName: '',
-      lastName: '',
-      message: null,
-    };
+    this.state = this.buildInitialState();
   }
 
   componentDidMount() {
+    this.loadCurrentUserInfo();
     this.fetchProfile(this.props.id);
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.id !== this.props.id) {
-      this.resetState();
-      this.fetchProfile(this.props.id);
+      this.clearAutoSaveTimers();
+      this.setState(this.buildInitialState(), () => {
+        this.loadCurrentUserInfo();
+        this.fetchProfile(this.props.id);
+      });
     }
   }
 
-  resetState() {
-    this.setState({
+  componentWillUnmount() {
+    this.clearAutoSaveTimers();
+    Object.values(this.statusResetTimers).forEach(timerId => clearTimeout(timerId));
+  }
+
+  buildInitialState() {
+    return {
       avatarVisible: false,
       avatarLoaded: false,
       loaded: false,
       notFound: false,
       createMode: false,
+      currentUserId: null,
+      oauthProfile: null,
+      profileId: null,
+      userId: null,
+      type: null,
       firstName: '',
       lastName: '',
+      nickName: '',
+      profileEmail: '',
+      location: '',
+      alias: '',
+      period: '',
       message: null,
+      fieldStatuses: {},
+    };
+  }
+
+  clearAutoSaveTimers() {
+    Object.values(this.autoSaveTimers).forEach(timerId => clearTimeout(timerId));
+    this.autoSaveTimers = {};
+  }
+
+  clearStatusResetTimer(fieldName) {
+    if (this.statusResetTimers[fieldName]) {
+      clearTimeout(this.statusResetTimers[fieldName]);
+      delete this.statusResetTimers[fieldName];
+    }
+  }
+
+  loadCurrentUserInfo() {
+    doFetch("/api/user/oauth/me", "GET", null, {
+      200: profile => this.setState({ currentUserId: profile?.userId || null, oauthProfile: profile || null }),
+      401: () => this.setState({ currentUserId: null, oauthProfile: null }),
+      404: () => this.setState({ currentUserId: null, oauthProfile: null }),
+      default: () => this.setState({ currentUserId: null, oauthProfile: null }),
     });
   }
 
   fetchAvatar(profileId) {
     const url = `/api/image/image/profile/${profileId}`;
-    const actions = {
+    doFetch(url, "GET", null, {
       200: avatars => {
         if (avatars?.length) {
           this.renderAvatar(avatars[0]);
@@ -59,19 +109,15 @@ class ProfilePage extends Component {
       500: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
       503: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
       default: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
-    };
-
-    doFetch(url, "GET", null, actions);
+    });
   }
 
   fetchProfile(id) {
     const url = id ? `/api/profile/profile/${id}` : '/api/profile/profile';
-    const actions = {
+    doFetch(url, "GET", null, {
       200: profile => this.renderProfile(profile),
       404: () => this.handleMissingProfile(id),
-    };
-
-    doFetch(url, "GET", null, actions);
+    });
   }
 
   handleMissingProfile(id) {
@@ -80,24 +126,21 @@ class ProfilePage extends Component {
       return;
     }
 
-    this.setState({ loaded: true, notFound: true, createMode: true });
-    this.prefillProfileFromOAuth();
+    this.setState({ loaded: true, notFound: true, createMode: true }, this.prefillProfileFromOAuth);
   }
 
-  prefillProfileFromOAuth() {
-    doFetch("/api/user/oauth/me", "GET", null, {
-      200: profile => {
-        const { firstName, lastName } = this.splitName(profile?.name, profile?.email);
-        this.setState({
-          firstName: this.state.firstName || firstName,
-          lastName: this.state.lastName || lastName,
-        });
-      },
-      401: () => {},
-      404: () => {},
-      default: () => {},
-    });
-  }
+  prefillProfileFromOAuth = () => {
+    const profile = this.state.oauthProfile;
+    if (!profile) {
+      return;
+    }
+
+    const { firstName, lastName } = this.splitName(profile?.name, profile?.email);
+    this.setState(prevState => ({
+      firstName: prevState.firstName || firstName,
+      lastName: prevState.lastName || lastName,
+    }));
+  };
 
   splitName(name, email) {
     const trimmedName = (name || '').trim();
@@ -117,38 +160,172 @@ class ProfilePage extends Component {
     };
   }
 
+  isEditableProfile() {
+    if (!this.state.profileId || this.state.createMode || this.state.notFound) {
+      return false;
+    }
+
+    if (!this.props.id) {
+      return true;
+    }
+
+    return this.state.currentUserId != null && this.state.currentUserId === this.state.userId;
+  }
+
   handleInputChange = (event) => {
     const { name, value } = event.target;
-    this.setState({ [name]: value });
+    this.setState({ [name]: value }, () => {
+      if (this.isEditableProfile()) {
+        this.scheduleAutoSave(name);
+      }
+    });
   };
+
+  handleFieldBlur = (fieldName) => {
+    if (!this.isEditableProfile()) {
+      return;
+    }
+
+    this.clearFieldTimer(fieldName);
+    this.saveField(fieldName);
+  };
+
+  clearFieldTimer(fieldName) {
+    if (this.autoSaveTimers[fieldName]) {
+      clearTimeout(this.autoSaveTimers[fieldName]);
+      delete this.autoSaveTimers[fieldName];
+    }
+  }
+
+  scheduleAutoSave(fieldName) {
+    this.clearFieldTimer(fieldName);
+    this.clearStatusResetTimer(fieldName);
+    this.setState(prevState => ({
+      fieldStatuses: {
+        ...prevState.fieldStatuses,
+        [fieldName]: 'pending',
+      },
+    }));
+
+    this.autoSaveTimers[fieldName] = setTimeout(() => {
+      this.saveField(fieldName);
+    }, 2000);
+  }
+
+  buildProfilePayload() {
+    return {
+      firstName: this.state.firstName,
+      lastName: this.state.lastName,
+      nickName: this.state.nickName || null,
+      profileEmail: this.state.profileEmail || null,
+      location: this.state.location || null,
+      alias: this.state.alias || null,
+      period: this.state.type === 'CLUB' ? (this.state.period || null) : null,
+    };
+  }
+
+  async saveField(fieldName) {
+    if (!this.isEditableProfile()) {
+      return;
+    }
+
+    this.clearFieldTimer(fieldName);
+    this.clearStatusResetTimer(fieldName);
+    this.setState(prevState => ({
+      fieldStatuses: {
+        ...prevState.fieldStatuses,
+        [fieldName]: 'saving',
+      },
+    }));
+
+    try {
+      const response = await fetch(`/api/profile/profile/${this.state.profileId}`, {
+        method: 'PUT',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(this.buildProfilePayload()),
+      });
+
+      if (response.status === 200) {
+        const profile = await response.json();
+        this.applyProfile(profile, false, fieldName);
+        this.statusResetTimers[fieldName] = setTimeout(() => {
+          this.setState(prevState => ({
+            fieldStatuses: {
+              ...prevState.fieldStatuses,
+              [fieldName]: null,
+            },
+          }));
+          delete this.statusResetTimers[fieldName];
+        }, 1000);
+        return;
+      }
+
+      this.setState(prevState => ({
+        fieldStatuses: {
+          ...prevState.fieldStatuses,
+          [fieldName]: 'error',
+        },
+      }));
+    } catch (error) {
+      this.setState(prevState => ({
+        fieldStatuses: {
+          ...prevState.fieldStatuses,
+          [fieldName]: 'error',
+        },
+      }));
+    }
+  }
 
   handleCreateProfile = (event) => {
     event.preventDefault();
     this.setState({ message: null });
 
-    const actions = {
+    doFetch('/api/profile/user-profile', 'POST', event, {
       200: profile => this.renderProfile(profile),
       400: () => this.setState({ message: 'Unable to create profile. Check the required fields.' }),
       401: () => this.setState({ message: 'You need to sign in before creating a profile.' }),
       409: () => this.setState({ message: 'User profile already exists.' }),
       default: () => this.setState({ message: 'Unable to create profile right now.' }),
-    };
-
-    doFetch('/api/profile/user-profile', 'POST', event, actions);
+    });
   };
 
-  renderProfile(profile) {
-    this.setState({
+  applyProfile(profile, refreshAvatar = true, savedField = null) {
+    this.setState(prevState => ({
       loaded: true,
       notFound: false,
       createMode: false,
-      avatarVisible: false,
-      avatarLoaded: false,
-      firstName: profile.firstName,
-      lastName: profile.lastName
-    });
-    window.history.pushState(null, null, `/profile/${profile.id}`);
-    this.fetchAvatar(profile.id);
+      profileId: profile.id,
+      userId: profile.userId,
+      type: profile.type,
+      firstName: profile.firstName || '',
+      lastName: profile.lastName || '',
+      nickName: profile.nickName || '',
+      profileEmail: profile.profileEmail || '',
+      location: profile.location || '',
+      alias: profile.alias || '',
+      period: profile.period || '',
+      fieldStatuses: savedField
+        ? {
+            ...prevState.fieldStatuses,
+            [savedField]: 'saved',
+          }
+        : prevState.fieldStatuses,
+    }));
+
+    if (window.location.pathname !== `/profile/${profile.id}`) {
+      window.history.replaceState(null, '', `/profile/${profile.id}`);
+    }
+
+    if (refreshAvatar) {
+      this.setState({ avatarVisible: false, avatarLoaded: false });
+      this.fetchAvatar(profile.id);
+    }
+  }
+
+  renderProfile(profile) {
+    this.applyProfile(profile, true);
   }
 
   renderAvatar(avatar) {
@@ -216,9 +393,9 @@ class ProfilePage extends Component {
                 />
               </Form.Group>
               {this.state.message && <div className="mb-3">{this.state.message}</div>}
-              <Button variant="secondary" type="submit">
+              <button className="btn btn-secondary" type="submit">
                 Create profile
-              </Button>
+              </button>
             </Form>
           </Col>
         </Row>
@@ -226,7 +403,66 @@ class ProfilePage extends Component {
     );
   }
 
+  renderEditableField(label, fieldName, type = 'text', required = false) {
+    const status = this.state.fieldStatuses[fieldName];
+
+    return (
+      <Form.Group controlId={fieldName} className="mb-3">
+        <Form.Label>{label}</Form.Label>
+        <InputGroup>
+          <Form.Control
+            name={fieldName}
+            type={type}
+            required={required}
+            value={this.state[fieldName] || ''}
+            onChange={this.handleInputChange}
+            onBlur={() => this.handleFieldBlur(fieldName)}
+          />
+          {(status === 'saving' || status === 'saved') && (
+            <InputGroup.Text>
+              {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
+              {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
+            </InputGroup.Text>
+          )}
+        </InputGroup>
+        {status === 'error' && <div className="mt-1 text-danger">Save failed</div>}
+      </Form.Group>
+    );
+  }
+
+  renderEditablePeriodField() {
+    const status = this.state.fieldStatuses.period;
+
+    return (
+      <Form.Group controlId="period" className="mb-3">
+        <Form.Label>Period *</Form.Label>
+        <InputGroup>
+          <Form.Select
+            name="period"
+            value={this.state.period}
+            onChange={this.handleInputChange}
+            onBlur={() => this.handleFieldBlur('period')}
+          >
+            <option value="">Choose a period</option>
+            {periods.map(period => (
+              <option key={period} value={period}>{period}</option>
+            ))}
+          </Form.Select>
+          {(status === 'saving' || status === 'saved') && (
+            <InputGroup.Text>
+              {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
+              {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
+            </InputGroup.Text>
+          )}
+        </InputGroup>
+        {status === 'error' && <div className="mt-1 text-danger">Save failed</div>}
+      </Form.Group>
+    );
+  }
+
   renderProfileView() {
+    const isEditable = this.isEditableProfile();
+
     return (
       <Container>
         <Row>
@@ -238,8 +474,27 @@ class ProfilePage extends Component {
                 : <Spinner />}
           </Col>
           <Col sm={4}>
-            First name: {this.state.firstName} <br/>
-            Last name: {this.state.lastName} <br/>
+            {isEditable ? (
+              <>
+                {this.renderEditableField('First name *', 'firstName', 'text', true)}
+                {this.renderEditableField('Last name *', 'lastName', 'text', true)}
+                {this.renderEditableField('Nick name', 'nickName')}
+                {this.renderEditableField('Profile email', 'profileEmail', 'email')}
+                {this.renderEditableField('Location', 'location')}
+                {this.renderEditableField('Alias', 'alias')}
+                {this.state.type === 'CLUB' && this.renderEditablePeriodField()}
+              </>
+            ) : (
+              <>
+                First name: {this.state.firstName} <br/>
+                Last name: {this.state.lastName} <br/>
+                Nick name: {this.state.nickName || '-'} <br/>
+                Profile email: {this.state.profileEmail || '-'} <br/>
+                Location: {this.state.location || '-'} <br/>
+                Alias: {this.state.alias || '-'} <br/>
+                {this.state.type === 'CLUB' && <>Period: {this.state.period || '-'} <br/></>}
+              </>
+            )}
           </Col>
           <Col sm={4}>
             Club profiles: <br/>
