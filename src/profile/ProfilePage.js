@@ -70,6 +70,7 @@ class ProfilePage extends Component {
       alias: '',
       period: '',
       message: null,
+      messageVariant: null,
       persistedProfile: null,
       fieldStatuses: {},
     };
@@ -140,6 +141,7 @@ class ProfilePage extends Component {
     this.setState(prevState => ({
       firstName: prevState.firstName || firstName,
       lastName: prevState.lastName || lastName,
+      profileEmail: prevState.profileEmail || profile?.email || '',
     }));
   };
 
@@ -327,16 +329,40 @@ class ProfilePage extends Component {
 
   handleCreateProfile = (event) => {
     event.preventDefault();
-    this.setState({ message: null });
+    this.setState({ message: null, messageVariant: null });
 
     doFetch('/api/profile/user-profile', 'POST', event, {
       200: profile => this.renderProfile(profile),
-      400: () => this.setState({ message: 'Unable to create profile. Check the required fields.' }),
-      401: () => this.setState({ message: 'You need to sign in before creating a profile.' }),
-      409: () => this.setState({ message: 'User profile already exists.' }),
-      default: () => this.setState({ message: 'Unable to create profile right now.' }),
+      400: error => this.setState({
+        message: this.extractCreateErrorMessage(error, 'Unable to create profile. Check the required fields.'),
+        messageVariant: 'error',
+      }),
+      401: () => this.setState({
+        message: 'You need to sign in before creating a profile.',
+        messageVariant: 'error',
+      }),
+      409: () => this.setState({
+        message: 'User profile already exists.',
+        messageVariant: 'error',
+      }),
+      default: error => this.setState({
+        message: this.extractCreateErrorMessage(error, 'Unable to create profile right now.'),
+        messageVariant: 'error',
+      }),
     });
   };
+
+  extractCreateErrorMessage(error, fallback) {
+    if (!error) {
+      return fallback;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    return fallback;
+  }
 
   applyProfile(profile, refreshAvatar = true, savedField = null) {
     this.setState(prevState => ({
@@ -410,6 +436,8 @@ class ProfilePage extends Component {
   }
 
   renderCreateProfile() {
+    const isErrorMessage = this.state.messageVariant === 'error';
+
     return (
       <Container>
         <Row>
@@ -441,10 +469,48 @@ class ProfilePage extends Component {
                   onChange={this.handleInputChange}
                 />
               </Form.Group>
-              {this.state.message && <div className="mb-3">{this.state.message}</div>}
-              <button className="btn btn-secondary" type="submit">
-                Create profile
-              </button>
+              <Form.Group controlId="nickName" className="mb-3">
+                <Form.Label>Nick name</Form.Label>
+                <Form.Control
+                  name="nickName"
+                  type="text"
+                  value={this.state.nickName}
+                  onChange={this.handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group controlId="profileEmail" className="mb-3">
+                <Form.Label>Profile email</Form.Label>
+                <Form.Control
+                  name="profileEmail"
+                  type="email"
+                  value={this.state.profileEmail}
+                  onChange={this.handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group controlId="location" className="mb-3">
+                <Form.Label>Location</Form.Label>
+                <Form.Control
+                  name="location"
+                  type="text"
+                  value={this.state.location}
+                  onChange={this.handleInputChange}
+                />
+              </Form.Group>
+              <Form.Group controlId="alias" className="mb-3">
+                <Form.Label>Alias</Form.Label>
+                <Form.Control
+                  name="alias"
+                  type="text"
+                  value={this.state.alias}
+                  onChange={this.handleInputChange}
+                />
+              </Form.Group>
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-secondary" type="submit">
+                  Create profile
+                </button>
+                {isErrorMessage && <FaTimes className="text-danger" title="Creation failed" />}
+              </div>
             </Form>
           </Col>
         </Row>

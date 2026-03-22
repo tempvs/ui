@@ -10,7 +10,16 @@ export const doFetch = (url, method, event, actions) => {
     try {
       if (typeof response.text === "function") {
         const data = await response.text();
-        handler(data ? JSON.parse(data) : undefined);
+        if (!data) {
+          handler();
+          return;
+        }
+
+        try {
+          handler(JSON.parse(data));
+        } catch (parseError) {
+          handler(data);
+        }
         return;
       }
 
@@ -21,7 +30,7 @@ export const doFetch = (url, method, event, actions) => {
 
       handler();
     } catch (err) {
-      console.log("Load failed");
+      handler();
     }
   };
 
