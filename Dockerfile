@@ -3,6 +3,7 @@ WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
 COPY package.json ./
 COPY package-lock.json ./
+COPY scripts ./scripts
 RUN npm ci --no-audit --no-fund
 COPY . ./
 RUN npm run build
