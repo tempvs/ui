@@ -9,7 +9,11 @@ import Spinner from "../component/Spinner";
 class ProfilePage extends Component {
   constructor() {
     super();
-    this.state = {avatarVisible: false};
+    this.state = {
+      avatarVisible: false,
+      loaded: false,
+      notFound: false,
+    };
   }
 
   componentDidMount() {
@@ -26,9 +30,10 @@ class ProfilePage extends Component {
   }
 
   fetchProfile(id) {
-    const url = `/api/profile/profile/${id || ''}`;
+    const url = id ? `/api/profile/profile/${id}` : '/api/profile/profile';
     const actions = {
-      200: profile => this.renderProfile(profile)
+      200: profile => this.renderProfile(profile),
+      404: () => this.setState({ loaded: true, notFound: true }),
     };
 
     doFetch(url, "GET", null, actions);
@@ -52,6 +57,18 @@ class ProfilePage extends Component {
   }
 
   render() {
+    if (this.state.notFound) {
+      return (
+        <Container>
+          <Row>
+            <Col sm={12}>
+              Profile not found.
+            </Col>
+          </Row>
+        </Container>
+      );
+    }
+
     return (
       <Container>
         <Row>
