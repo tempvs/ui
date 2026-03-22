@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 
 import { Container, Form, Row, Col, InputGroup } from 'react-bootstrap';
-import { FaCheck, FaHourglassHalf } from 'react-icons/fa';
+import { FaCheck, FaHourglassHalf, FaTimes } from 'react-icons/fa';
 
 import { doFetch } from "../util/Fetcher.js";
 import ModalImage from "../component/ModalImage";
@@ -70,6 +70,7 @@ class ProfilePage extends Component {
       alias: '',
       period: '',
       message: null,
+      persistedProfile: null,
       fieldStatuses: {},
     };
   }
@@ -224,8 +225,51 @@ class ProfilePage extends Component {
     };
   }
 
+  buildPersistedProfile(profile) {
+    return {
+      profileId: profile.id,
+      userId: profile.userId,
+      type: profile.type,
+      firstName: profile.firstName || '',
+      lastName: profile.lastName || '',
+      nickName: profile.nickName || '',
+      profileEmail: profile.profileEmail || '',
+      location: profile.location || '',
+      alias: profile.alias || '',
+      period: profile.period || '',
+    };
+  }
+
+  getCanonicalProfilePath(profile) {
+    return `/profile/${profile.alias || profile.id}`;
+  }
+
+  resetFieldStatus(fieldName, delay = 1000) {
+    this.clearStatusResetTimer(fieldName);
+    this.statusResetTimers[fieldName] = setTimeout(() => {
+      this.setState(prevState => ({
+        fieldStatuses: {
+          ...prevState.fieldStatuses,
+          [fieldName]: null,
+        },
+      }));
+      delete this.statusResetTimers[fieldName];
+    }, delay);
+  }
+
   async saveField(fieldName) {
     if (!this.isEditableProfile()) {
+      return;
+    }
+
+    const persistedValue = this.state.persistedProfile?.[fieldName] || '';
+    if ((this.state[fieldName] || '') === persistedValue) {
+      this.setState(prevState => ({
+        fieldStatuses: {
+          ...prevState.fieldStatuses,
+          [fieldName]: null,
+        },
+      }));
       return;
     }
 
@@ -250,32 +294,35 @@ class ProfilePage extends Component {
       if (response.status === 200) {
         const profile = await response.json();
         this.applyProfile(profile, false, fieldName);
-        this.statusResetTimers[fieldName] = setTimeout(() => {
-          this.setState(prevState => ({
-            fieldStatuses: {
-              ...prevState.fieldStatuses,
-              [fieldName]: null,
-            },
-          }));
-          delete this.statusResetTimers[fieldName];
-        }, 1000);
+        this.resetFieldStatus(fieldName);
         return;
       }
 
-      this.setState(prevState => ({
-        fieldStatuses: {
-          ...prevState.fieldStatuses,
-          [fieldName]: 'error',
-        },
-      }));
+      this.handleFailedFieldSave(fieldName);
     } catch (error) {
+      this.handleFailedFieldSave(fieldName);
+    }
+  }
+
+  handleFailedFieldSave(fieldName) {
+    this.setState(prevState => ({
+      fieldStatuses: {
+        ...prevState.fieldStatuses,
+        [fieldName]: 'error',
+      },
+    }));
+
+    this.clearStatusResetTimer(fieldName);
+    this.statusResetTimers[fieldName] = setTimeout(() => {
       this.setState(prevState => ({
+        [fieldName]: prevState.persistedProfile?.[fieldName] || '',
         fieldStatuses: {
           ...prevState.fieldStatuses,
-          [fieldName]: 'error',
+          [fieldName]: null,
         },
       }));
-    }
+      delete this.statusResetTimers[fieldName];
+    }, 1500);
   }
 
   handleCreateProfile = (event) => {
@@ -306,6 +353,7 @@ class ProfilePage extends Component {
       location: profile.location || '',
       alias: profile.alias || '',
       period: profile.period || '',
+      persistedProfile: this.buildPersistedProfile(profile),
       fieldStatuses: savedField
         ? {
             ...prevState.fieldStatuses,
@@ -314,8 +362,9 @@ class ProfilePage extends Component {
         : prevState.fieldStatuses,
     }));
 
-    if (window.location.pathname !== `/profile/${profile.id}`) {
-      window.history.replaceState(null, '', `/profile/${profile.id}`);
+    const canonicalPath = this.getCanonicalProfilePath(profile);
+    if (window.location.pathname !== canonicalPath) {
+      window.history.replaceState(null, '', canonicalPath);
     }
 
     if (refreshAvatar) {
@@ -418,14 +467,14 @@ class ProfilePage extends Component {
             onChange={this.handleInputChange}
             onBlur={() => this.handleFieldBlur(fieldName)}
           />
-          {(status === 'saving' || status === 'saved') && (
+          {(status === 'saving' || status === 'saved' || status === 'error') && (
             <InputGroup.Text>
               {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
               {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
+              {status === 'error' && <FaTimes className="text-danger" title="Save failed" />}
             </InputGroup.Text>
           )}
         </InputGroup>
-        {status === 'error' && <div className="mt-1 text-danger">Save failed</div>}
       </Form.Group>
     );
   }
@@ -448,14 +497,14 @@ class ProfilePage extends Component {
               <option key={period} value={period}>{period}</option>
             ))}
           </Form.Select>
-          {(status === 'saving' || status === 'saved') && (
+          {(status === 'saving' || status === 'saved' || status === 'error') && (
             <InputGroup.Text>
               {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
               {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
+              {status === 'error' && <FaTimes className="text-danger" title="Save failed" />}
             </InputGroup.Text>
           )}
         </InputGroup>
-        {status === 'error' && <div className="mt-1 text-danger">Save failed</div>}
       </Form.Group>
     );
   }
