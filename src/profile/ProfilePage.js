@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { Container, Form, Row, Col, InputGroup, Button, Dropdown } from 'react-bootstrap';
+import { Container, Form, Row, Col, InputGroup, Button, Dropdown, Modal } from 'react-bootstrap';
 import { FaCheck, FaHourglassHalf, FaTimes } from 'react-icons/fa';
 
 import { doFetch } from "../util/Fetcher.js";
@@ -78,6 +78,8 @@ class ProfilePage extends Component {
       ownerUserProfileLoaded: true,
       clubProfileCreateVisible: false,
       clubProfileCreateError: false,
+      clubProfileDeleteTarget: null,
+      clubProfileDeleteError: false,
       persistedProfile: null,
       fieldStatuses: {},
     };
@@ -418,8 +420,9 @@ class ProfilePage extends Component {
     this.renderProfile(clubProfile);
   };
 
-  handleDeleteClubProfile = async (clubProfile) => {
-    if (!window.confirm(`Delete ${clubProfile.firstName} ${clubProfile.lastName}?`)) {
+  handleDeleteClubProfile = async () => {
+    const clubProfile = this.state.clubProfileDeleteTarget;
+    if (!clubProfile) {
       return;
     }
 
@@ -429,6 +432,7 @@ class ProfilePage extends Component {
       });
 
       if (response.status !== 200) {
+        this.setState({ clubProfileDeleteError: true });
         return;
       }
 
@@ -437,6 +441,8 @@ class ProfilePage extends Component {
 
       this.setState(prevState => ({
         clubProfiles: prevState.clubProfiles.filter(profile => profile.id !== clubProfile.id),
+        clubProfileDeleteTarget: null,
+        clubProfileDeleteError: false,
       }));
 
       if (deletingCurrentProfile && ownerProfile) {
@@ -446,8 +452,22 @@ class ProfilePage extends Component {
 
       this.fetchClubProfiles(clubProfile.userId);
     } catch (error) {
-      // Keep the UI unchanged on failed delete; this path should become explicit only if needed.
+      this.setState({ clubProfileDeleteError: true });
     }
+  };
+
+  openDeleteClubProfileModal = (clubProfile) => {
+    this.setState({
+      clubProfileDeleteTarget: clubProfile,
+      clubProfileDeleteError: false,
+    });
+  };
+
+  closeDeleteClubProfileModal = () => {
+    this.setState({
+      clubProfileDeleteTarget: null,
+      clubProfileDeleteError: false,
+    });
   };
 
   extractCreateErrorMessage(error, fallback) {
@@ -624,50 +644,95 @@ class ProfilePage extends Component {
   }
 
   renderClubProfileCreateForm() {
-    if (!this.state.clubProfileCreateVisible) {
-      return null;
-    }
+    return (
+      <Modal
+        show={this.state.clubProfileCreateVisible}
+        onHide={() => this.setState({ clubProfileCreateVisible: false, clubProfileCreateError: false })}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Create club profile</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={this.handleCreateClubProfile}>
+            <Form.Group controlId="clubFirstName" className="mb-3">
+              <Form.Label>First name *</Form.Label>
+              <Form.Control name="firstName" type="text" required />
+            </Form.Group>
+            <Form.Group controlId="clubLastName" className="mb-3">
+              <Form.Label>Last name *</Form.Label>
+              <Form.Control name="lastName" type="text" required />
+            </Form.Group>
+            <Form.Group controlId="clubNickName" className="mb-3">
+              <Form.Label>Nick name</Form.Label>
+              <Form.Control name="nickName" type="text" />
+            </Form.Group>
+            <Form.Group controlId="clubProfileEmail" className="mb-3">
+              <Form.Label>Profile email</Form.Label>
+              <Form.Control name="profileEmail" type="email" />
+            </Form.Group>
+            <Form.Group controlId="clubLocation" className="mb-3">
+              <Form.Label>Location</Form.Label>
+              <Form.Control name="location" type="text" />
+            </Form.Group>
+            <Form.Group controlId="clubAlias" className="mb-3">
+              <Form.Label>Alias</Form.Label>
+              <Form.Control name="alias" type="text" />
+            </Form.Group>
+            <Form.Group controlId="clubPeriod" className="mb-3">
+              <Form.Label>Period *</Form.Label>
+              <Form.Select name="period" required defaultValue="">
+                <option value="">Choose a period</option>
+                {periods.map(period => (
+                  <option key={period} value={period}>{period}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <div className="d-flex align-items-center justify-content-end gap-2">
+              {this.state.clubProfileCreateError && <FaTimes className="text-danger" title="Creation failed" />}
+              <Button variant="secondary" type="submit">Create club profile</Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    );
+  }
+
+  renderDeleteClubProfileModal() {
+    const clubProfile = this.state.clubProfileDeleteTarget;
+    const clubProfileName = clubProfile
+      ? `${clubProfile.firstName} ${clubProfile.lastName}`.trim()
+      : '';
 
     return (
-      <Form onSubmit={this.handleCreateClubProfile} className="mt-3">
-        <Form.Group controlId="clubFirstName" className="mb-3">
-          <Form.Label>First name *</Form.Label>
-          <Form.Control name="firstName" type="text" required />
-        </Form.Group>
-        <Form.Group controlId="clubLastName" className="mb-3">
-          <Form.Label>Last name *</Form.Label>
-          <Form.Control name="lastName" type="text" required />
-        </Form.Group>
-        <Form.Group controlId="clubNickName" className="mb-3">
-          <Form.Label>Nick name</Form.Label>
-          <Form.Control name="nickName" type="text" />
-        </Form.Group>
-        <Form.Group controlId="clubProfileEmail" className="mb-3">
-          <Form.Label>Profile email</Form.Label>
-          <Form.Control name="profileEmail" type="email" />
-        </Form.Group>
-        <Form.Group controlId="clubLocation" className="mb-3">
-          <Form.Label>Location</Form.Label>
-          <Form.Control name="location" type="text" />
-        </Form.Group>
-        <Form.Group controlId="clubAlias" className="mb-3">
-          <Form.Label>Alias</Form.Label>
-          <Form.Control name="alias" type="text" />
-        </Form.Group>
-        <Form.Group controlId="clubPeriod" className="mb-3">
-          <Form.Label>Period *</Form.Label>
-          <Form.Select name="period" required defaultValue="">
-            <option value="">Choose a period</option>
-            {periods.map(period => (
-              <option key={period} value={period}>{period}</option>
-            ))}
-          </Form.Select>
-        </Form.Group>
-        <div className="d-flex align-items-center gap-2">
-          <Button variant="secondary" type="submit">Create club profile</Button>
-          {this.state.clubProfileCreateError && <FaTimes className="text-danger" title="Creation failed" />}
-        </div>
-      </Form>
+      <Modal
+        show={Boolean(clubProfile)}
+        onHide={this.closeDeleteClubProfileModal}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Delete club profile</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-2">
+            Delete <strong>{clubProfileName || 'this club profile'}</strong>?
+          </p>
+          {this.state.clubProfileDeleteError && (
+            <div className="mt-3 d-flex align-items-center gap-2 text-danger">
+              <FaTimes title="Deletion failed" />
+              <span>Deletion failed.</span>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={this.closeDeleteClubProfileModal}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={this.handleDeleteClubProfile}>
+            Delete club profile
+          </Button>
+        </Modal.Footer>
+      </Modal>
     );
   }
 
@@ -718,14 +783,14 @@ class ProfilePage extends Component {
         {canCreate && (
           <>
             <Button
-              variant={this.state.clubProfileCreateVisible ? 'outline-secondary' : 'secondary'}
+              variant="secondary"
               className="mt-3"
-              onClick={() => this.setState(prevState => ({
-                clubProfileCreateVisible: !prevState.clubProfileCreateVisible,
+              onClick={() => this.setState({
+                clubProfileCreateVisible: true,
                 clubProfileCreateError: false,
-              }))}
+              })}
             >
-              {this.state.clubProfileCreateVisible ? 'Cancel club profile' : 'Create club profile'}
+              Create club profile
             </Button>
             {this.renderClubProfileCreateForm()}
           </>
@@ -902,7 +967,7 @@ class ProfilePage extends Component {
             <Col sm={12} className="d-flex justify-content-end">
               <Button
                 variant="outline-danger"
-                onClick={() => this.handleDeleteClubProfile({
+                onClick={() => this.openDeleteClubProfileModal({
                   id: this.state.profileId,
                   firstName: this.state.firstName,
                   lastName: this.state.lastName,
@@ -914,6 +979,7 @@ class ProfilePage extends Component {
             </Col>
           </Row>
         )}
+        {this.renderDeleteClubProfileModal()}
       </Container>
     );
   }
