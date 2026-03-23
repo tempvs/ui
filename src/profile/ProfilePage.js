@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { Container, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import { Container, Form, Row, Col, InputGroup, Button, Dropdown } from 'react-bootstrap';
 import { FaCheck, FaHourglassHalf, FaTimes } from 'react-icons/fa';
 
 import { doFetch } from "../util/Fetcher.js";
@@ -71,6 +71,13 @@ class ProfilePage extends Component {
       period: '',
       message: null,
       messageVariant: null,
+      clubProfiles: [],
+      clubProfilesLoaded: false,
+      clubProfilesMessage: null,
+      ownerUserProfile: null,
+      ownerUserProfileLoaded: true,
+      clubProfileCreateVisible: false,
+      clubProfileCreateError: false,
       persistedProfile: null,
       fieldStatuses: {},
     };
@@ -119,6 +126,40 @@ class ProfilePage extends Component {
     doFetch(url, "GET", null, {
       200: profile => this.renderProfile(profile),
       404: () => this.handleMissingProfile(id),
+    });
+  }
+
+  fetchClubProfiles(userId) {
+    if (!userId) {
+      this.setState({ clubProfiles: [], clubProfilesLoaded: true, clubProfilesMessage: null });
+      return;
+    }
+
+    this.setState({ clubProfilesLoaded: false, clubProfilesMessage: null });
+    doFetch(`/api/profile/club-profile?userId=${userId}`, "GET", null, {
+      200: profiles => this.setState({
+        clubProfiles: Array.isArray(profiles) ? profiles : [],
+        clubProfilesLoaded: true,
+        clubProfilesMessage: null,
+      }),
+      default: () => this.setState({
+        clubProfiles: [],
+        clubProfilesLoaded: true,
+        clubProfilesMessage: 'Unable to load club profiles.',
+      }),
+    });
+  }
+
+  fetchOwnerUserProfile(userId) {
+    if (!userId) {
+      this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true });
+      return;
+    }
+
+    this.setState({ ownerUserProfileLoaded: false });
+    doFetch(`/api/profile/user-profile?userId=${userId}`, "GET", null, {
+      200: profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }),
+      default: () => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
     });
   }
 
@@ -352,6 +393,63 @@ class ProfilePage extends Component {
     });
   };
 
+  handleCreateClubProfile = (event) => {
+    event.preventDefault();
+    this.setState({ clubProfileCreateError: false });
+
+    doFetch('/api/profile/club-profile', 'POST', event, {
+      200: profile => this.renderProfile(profile),
+      400: () => this.setState({ clubProfileCreateError: true }),
+      401: () => this.setState({ clubProfileCreateError: true }),
+      409: () => this.setState({ clubProfileCreateError: true }),
+      default: () => this.setState({ clubProfileCreateError: true }),
+    });
+  };
+
+  handleOpenClubProfile = (clubProfile) => {
+    const canonicalPath = this.getCanonicalProfilePath(clubProfile);
+    if (window.location.pathname !== canonicalPath) {
+      window.history.pushState(null, '', canonicalPath);
+    }
+
+    this.clearAutoSaveTimers();
+    Object.values(this.statusResetTimers).forEach(timerId => clearTimeout(timerId));
+    this.statusResetTimers = {};
+    this.renderProfile(clubProfile);
+  };
+
+  handleDeleteClubProfile = async (clubProfile) => {
+    if (!window.confirm(`Delete ${clubProfile.firstName} ${clubProfile.lastName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/profile/profile/${clubProfile.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.status !== 200) {
+        return;
+      }
+
+      const deletingCurrentProfile = this.state.profileId === clubProfile.id;
+      const ownerProfile = this.state.ownerUserProfile;
+
+      this.setState(prevState => ({
+        clubProfiles: prevState.clubProfiles.filter(profile => profile.id !== clubProfile.id),
+      }));
+
+      if (deletingCurrentProfile && ownerProfile) {
+        this.renderProfile(ownerProfile);
+        return;
+      }
+
+      this.fetchClubProfiles(clubProfile.userId);
+    } catch (error) {
+      // Keep the UI unchanged on failed delete; this path should become explicit only if needed.
+    }
+  };
+
   extractCreateErrorMessage(error, fallback) {
     if (!error) {
       return fallback;
@@ -379,13 +477,17 @@ class ProfilePage extends Component {
       location: profile.location || '',
       alias: profile.alias || '',
       period: profile.period || '',
+      message: null,
+      messageVariant: null,
       persistedProfile: this.buildPersistedProfile(profile),
       fieldStatuses: savedField
         ? {
             ...prevState.fieldStatuses,
             [savedField]: 'saved',
           }
-        : prevState.fieldStatuses,
+        : {},
+      clubProfileCreateVisible: profile.type === 'USER' ? prevState.clubProfileCreateVisible : false,
+      clubProfileCreateError: false,
     }));
 
     const canonicalPath = this.getCanonicalProfilePath(profile);
@@ -397,6 +499,9 @@ class ProfilePage extends Component {
       this.setState({ avatarVisible: false, avatarLoaded: false });
       this.fetchAvatar(profile.id);
     }
+
+    this.fetchClubProfiles(profile.userId);
+    this.fetchOwnerUserProfile(profile.userId);
   }
 
   renderProfile(profile) {
@@ -518,6 +623,117 @@ class ProfilePage extends Component {
     );
   }
 
+  renderClubProfileCreateForm() {
+    if (!this.state.clubProfileCreateVisible) {
+      return null;
+    }
+
+    return (
+      <Form onSubmit={this.handleCreateClubProfile} className="mt-3">
+        <Form.Group controlId="clubFirstName" className="mb-3">
+          <Form.Label>First name *</Form.Label>
+          <Form.Control name="firstName" type="text" required />
+        </Form.Group>
+        <Form.Group controlId="clubLastName" className="mb-3">
+          <Form.Label>Last name *</Form.Label>
+          <Form.Control name="lastName" type="text" required />
+        </Form.Group>
+        <Form.Group controlId="clubNickName" className="mb-3">
+          <Form.Label>Nick name</Form.Label>
+          <Form.Control name="nickName" type="text" />
+        </Form.Group>
+        <Form.Group controlId="clubProfileEmail" className="mb-3">
+          <Form.Label>Profile email</Form.Label>
+          <Form.Control name="profileEmail" type="email" />
+        </Form.Group>
+        <Form.Group controlId="clubLocation" className="mb-3">
+          <Form.Label>Location</Form.Label>
+          <Form.Control name="location" type="text" />
+        </Form.Group>
+        <Form.Group controlId="clubAlias" className="mb-3">
+          <Form.Label>Alias</Form.Label>
+          <Form.Control name="alias" type="text" />
+        </Form.Group>
+        <Form.Group controlId="clubPeriod" className="mb-3">
+          <Form.Label>Period *</Form.Label>
+          <Form.Select name="period" required defaultValue="">
+            <option value="">Choose a period</option>
+            {periods.map(period => (
+              <option key={period} value={period}>{period}</option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+        <div className="d-flex align-items-center gap-2">
+          <Button variant="secondary" type="submit">Create club profile</Button>
+          {this.state.clubProfileCreateError && <FaTimes className="text-danger" title="Creation failed" />}
+        </div>
+      </Form>
+    );
+  }
+
+  renderClubProfilesSection() {
+    const isUserProfile = this.state.type === 'USER';
+    const canCreate = this.isEditableProfile();
+    const visibleClubProfiles = this.state.clubProfiles.filter(clubProfile => {
+      if (clubProfile.id === this.state.profileId && this.state.type === 'CLUB') {
+        return false;
+      }
+
+      return true;
+    });
+    const showEmptyMessage = isUserProfile && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
+
+    return (
+      <>
+        {!isUserProfile && this.state.ownerUserProfileLoaded && this.state.ownerUserProfile && (
+          <div className="mb-3">
+            <a href={this.getCanonicalProfilePath(this.state.ownerUserProfile)}>
+              Back to user profile
+            </a>
+          </div>
+        )}
+        <h4>Club profiles</h4>
+        {!this.state.clubProfilesLoaded && <Spinner />}
+        {this.state.clubProfilesLoaded && this.state.clubProfilesMessage && (
+          <div>{this.state.clubProfilesMessage}</div>
+        )}
+        {this.state.clubProfilesLoaded && showEmptyMessage && (
+          <div>No club profiles yet.</div>
+        )}
+        {this.state.clubProfilesLoaded && visibleClubProfiles.length > 0 && (
+          <div className="d-grid gap-2">
+            {visibleClubProfiles.map(clubProfile => (
+              <div key={clubProfile.id} className="d-flex gap-2">
+                <Button
+                  variant="outline-secondary"
+                  className="text-start flex-grow-1"
+                  onClick={() => this.handleOpenClubProfile(clubProfile)}
+                >
+                  {clubProfile.firstName} {clubProfile.lastName}{clubProfile.nickName ? ` ${clubProfile.nickName}` : ''}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        {canCreate && (
+          <>
+            <Button
+              variant={this.state.clubProfileCreateVisible ? 'outline-secondary' : 'secondary'}
+              className="mt-3"
+              onClick={() => this.setState(prevState => ({
+                clubProfileCreateVisible: !prevState.clubProfileCreateVisible,
+                clubProfileCreateError: false,
+              }))}
+            >
+              {this.state.clubProfileCreateVisible ? 'Cancel club profile' : 'Create club profile'}
+            </Button>
+            {this.renderClubProfileCreateForm()}
+          </>
+        )}
+      </>
+    );
+  }
+
   renderEditableField(label, fieldName, type = 'text', required = false) {
     const status = this.state.fieldStatuses[fieldName];
 
@@ -577,9 +793,75 @@ class ProfilePage extends Component {
 
   renderProfileView() {
     const isEditable = this.isEditableProfile();
+    const isClubProfile = this.state.type === 'CLUB';
+    const headerSubtitle = isClubProfile
+      ? `Club profile${this.state.period ? ` • ${this.state.period.replaceAll('_', ' ')}` : ''}`
+      : 'User profile';
+    const ownerLink = isClubProfile && this.state.ownerUserProfile
+      ? this.getCanonicalProfilePath(this.state.ownerUserProfile)
+      : null;
+    const ownerLabel = isClubProfile && this.state.ownerUserProfile
+      ? `${this.state.ownerUserProfile.firstName} ${this.state.ownerUserProfile.lastName}`.trim()
+      : null;
+    const siblingClubProfiles = this.state.clubProfiles.filter(clubProfile => clubProfile.id !== this.state.profileId);
+    const currentClubLabel = `${this.state.firstName} ${this.state.lastName}`.trim() || 'Club profile';
 
     return (
       <Container>
+        <Row>
+          <Col sm={12} className="mb-3">
+            <div
+              className="p-3 rounded border"
+              style={{
+                backgroundColor: isClubProfile ? '#f8f4ea' : '#eef5ff',
+                borderColor: isClubProfile ? '#d8c7a1' : '#bfd3f2'
+              }}
+            >
+              <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div className="text-uppercase small fw-bold mb-1">
+                    {headerSubtitle}
+                  </div>
+                </div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  {isClubProfile && ownerLink && (
+                    <div className="d-flex align-items-center gap-2 flex-wrap small">
+                      <a href={ownerLink}>{ownerLabel}</a>
+                      <span>{'>'}</span>
+                      <a href={this.getCanonicalProfilePath({
+                        id: this.state.profileId,
+                        alias: this.state.alias,
+                      })}>
+                        {currentClubLabel}
+                      </a>
+                      <Dropdown align="end">
+                        <Dropdown.Toggle
+                          variant="link"
+                          size="sm"
+                          className="p-0 text-decoration-none"
+                          id="club-profile-switcher"
+                        >
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                          {siblingClubProfiles.length ? siblingClubProfiles.map(clubProfile => (
+                            <Dropdown.Item
+                              key={clubProfile.id}
+                              href={this.getCanonicalProfilePath(clubProfile)}
+                            >
+                              {`${clubProfile.firstName} ${clubProfile.lastName}`.trim()}
+                            </Dropdown.Item>
+                          )) : (
+                            <Dropdown.Item disabled>No other club profiles</Dropdown.Item>
+                          )}
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Col>
+        </Row>
         <Row>
           <Col sm={4}>
             {this.state.avatarVisible
@@ -612,10 +894,26 @@ class ProfilePage extends Component {
             )}
           </Col>
           <Col sm={4}>
-            Club profiles: <br/>
-            TBD
+            {this.renderClubProfilesSection()}
           </Col>
         </Row>
+        {isClubProfile && isEditable && (
+          <Row className="mt-3">
+            <Col sm={12} className="d-flex justify-content-end">
+              <Button
+                variant="outline-danger"
+                onClick={() => this.handleDeleteClubProfile({
+                  id: this.state.profileId,
+                  firstName: this.state.firstName,
+                  lastName: this.state.lastName,
+                  userId: this.state.userId,
+                })}
+              >
+                Delete club profile
+              </Button>
+            </Col>
+          </Row>
+        )}
       </Container>
     );
   }
