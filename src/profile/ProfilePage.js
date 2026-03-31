@@ -1,9 +1,10 @@
 import React, { Component } from 'react';
 
-import { Container, Form, Row, Col, InputGroup, Button, Dropdown, Modal } from 'react-bootstrap';
-import { FaCheck, FaHourglassHalf, FaTimes } from 'react-icons/fa';
+import { Container, Form, Row, Col, Button, Dropdown, Modal } from 'react-bootstrap';
+import { FaHourglassHalf, FaTimes, FaTrashAlt, FaUpload } from 'react-icons/fa';
 
 import { doFetch } from "../util/Fetcher.js";
+import InlineEditableField from "../component/InlineEditableField";
 import ModalImage from "../component/ModalImage";
 import Spinner from "../component/Spinner";
 
@@ -80,6 +81,11 @@ class ProfilePage extends Component {
       clubProfileCreateError: false,
       clubProfileDeleteTarget: null,
       clubProfileDeleteError: false,
+      avatarUploadStatus: null,
+      avatarUploadMessage: null,
+      avatarDescriptionDraft: '',
+      avatarDescriptionStatus: null,
+      avatarDescriptionPersisted: '',
       persistedProfile: null,
       fieldStatuses: {},
     };
@@ -211,10 +217,6 @@ class ProfilePage extends Component {
       return false;
     }
 
-    if (!this.props.id) {
-      return true;
-    }
-
     return this.state.currentUserId != null && this.state.currentUserId === this.state.userId;
   }
 
@@ -292,12 +294,16 @@ class ProfilePage extends Component {
   resetFieldStatus(fieldName, delay = 1000) {
     this.clearStatusResetTimer(fieldName);
     this.statusResetTimers[fieldName] = setTimeout(() => {
-      this.setState(prevState => ({
-        fieldStatuses: {
-          ...prevState.fieldStatuses,
-          [fieldName]: null,
-        },
-      }));
+      if (fieldName === 'avatarDescription') {
+        this.setState({ avatarDescriptionStatus: null });
+      } else {
+        this.setState(prevState => ({
+          fieldStatuses: {
+            ...prevState.fieldStatuses,
+            [fieldName]: null,
+          },
+        }));
+      }
       delete this.statusResetTimers[fieldName];
     }, delay);
   }
@@ -533,9 +539,194 @@ class ProfilePage extends Component {
       avatarVisible: true,
       avatarLoaded: true,
       avatarImage: avatar.content,
-      avatarInfo: avatar.imageInfo
+      avatarUrl: avatar.url,
+      avatarInfo: avatar.description,
+      avatarDescriptionDraft: avatar.description || '',
+      avatarDescriptionPersisted: avatar.description || '',
+      avatarDescriptionStatus: null,
     });
   }
+
+  handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !this.state.profileId) {
+      return;
+    }
+
+    this.setState({
+      avatarUploadStatus: 'uploading',
+      avatarUploadMessage: null,
+    });
+
+    try {
+      const content = await this.readFileAsBase64(file);
+      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar`, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content,
+          fileName: file.name,
+          description: this.state.avatarDescriptionDraft || null,
+        }),
+      });
+
+      if (response.status !== 200) {
+        throw new Error('Upload failed');
+      }
+
+      this.setState({
+        avatarUploadStatus: 'success',
+        avatarUploadMessage: null,
+        avatarVisible: false,
+        avatarLoaded: false,
+        avatarDescriptionStatus: null,
+      });
+      this.fetchAvatar(this.state.profileId);
+    } catch (error) {
+      this.setState({
+        avatarUploadStatus: 'error',
+        avatarUploadMessage: 'Unable to upload profile picture.',
+      });
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        const base64Content = result.includes(',') ? result.split(',')[1] : result;
+        resolve(base64Content);
+      };
+      reader.onerror = () => reject(reader.error || new Error('Unable to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  renderAvatarControls() {
+    if (!this.isEditableProfile()) {
+      return null;
+    }
+
+    return (
+      <div className="mt-3">
+        <Form.Control
+          id="avatarUploadInput"
+          type="file"
+          accept="image/*"
+          onChange={this.handleAvatarUpload}
+          disabled={this.state.avatarUploadStatus === 'uploading'}
+          className="d-none"
+        />
+        {this.state.avatarUploadMessage && (
+          <div className={`${this.state.avatarUploadStatus === 'error' ? 'text-danger' : 'text-success'} small text-center`}>
+            {this.state.avatarUploadMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  handleAvatarDescriptionChange = (event) => {
+    const value = event.target.value;
+    this.setState({
+      avatarDescriptionDraft: value,
+      avatarDescriptionStatus: value === this.state.avatarDescriptionPersisted ? null : 'pending',
+    });
+    this.clearFieldTimer('avatarDescription');
+    this.clearStatusResetTimer('avatarDescription');
+    this.autoSaveTimers.avatarDescription = setTimeout(() => {
+      this.handleAvatarDescriptionSave();
+    }, 1800);
+  };
+
+  handleAvatarDescriptionBlur = () => {
+    this.clearFieldTimer('avatarDescription');
+    this.handleAvatarDescriptionSave();
+  };
+
+  handleAvatarDescriptionSave = async () => {
+    if (!this.isEditableProfile() || !this.state.avatarVisible || !this.state.profileId) {
+      return;
+    }
+
+    const draft = this.state.avatarDescriptionDraft || '';
+    const persisted = this.state.avatarDescriptionPersisted || '';
+    if (draft === persisted) {
+      this.setState({ avatarDescriptionStatus: null });
+      return;
+    }
+
+    this.setState({ avatarDescriptionStatus: 'saving' });
+
+    try {
+      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar/description`, {
+        method: 'PUT',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          description: this.state.avatarDescriptionDraft || null,
+        }),
+      });
+
+      if (response.status !== 200) {
+        throw new Error('Update failed');
+      }
+
+      this.setState({
+        avatarInfo: draft,
+        avatarDescriptionPersisted: draft,
+        avatarDescriptionStatus: 'saved',
+      });
+      this.resetFieldStatus('avatarDescription');
+    } catch (error) {
+      this.setState({
+        avatarDescriptionDraft: this.state.avatarDescriptionPersisted || '',
+        avatarDescriptionStatus: 'error',
+      });
+      this.resetFieldStatus('avatarDescription', 1500);
+    }
+  };
+
+  handleDeleteAvatar = async () => {
+    if (!this.isEditableProfile() || !this.state.profileId) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar`, {
+        method: 'DELETE',
+      });
+
+      if (response.status !== 200) {
+        throw new Error('Delete failed');
+      }
+
+      this.clearFieldTimer('avatarDescription');
+      this.setState({
+        avatarVisible: false,
+        avatarLoaded: true,
+        avatarUrl: null,
+        avatarImage: null,
+        avatarInfo: '',
+        avatarDescriptionDraft: '',
+        avatarDescriptionPersisted: '',
+        avatarDescriptionStatus: null,
+        avatarUploadMessage: null,
+        avatarUploadStatus: 'success',
+      });
+    } catch (error) {
+      this.setState({
+        avatarUploadMessage: 'Unable to delete profile picture.',
+        avatarUploadStatus: 'error',
+      });
+    }
+  };
 
   renderAvatarFallback() {
     const initials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
@@ -559,6 +750,52 @@ class ProfilePage extends Component {
       </div>
     );
   }
+
+  renderAvatarDescription() {
+    if (!this.state.avatarVisible) {
+      return null;
+    }
+
+    const status = this.state.avatarDescriptionStatus;
+    return (
+      <InlineEditableField
+        editable={this.isEditableProfile()}
+        controlId="avatarDescription"
+        status={status}
+        className="mt-2"
+        inputGroupClassName="mx-auto"
+        readOnlyClassName="text-muted small text-center mx-auto"
+        readOnlyValue={this.state.avatarInfo || 'No picture description.'}
+        renderControl={() => (
+          <Form.Control
+            type="text"
+            placeholder="Add a description"
+            value={this.state.avatarDescriptionDraft || ''}
+            onChange={this.handleAvatarDescriptionChange}
+            onBlur={this.handleAvatarDescriptionBlur}
+            className="text-center"
+            style={{ maxWidth: '30vw', minWidth: '12rem' }}
+          />
+        )}
+        renderReadOnly={() => (
+          <div className="text-muted small text-center mx-auto" style={{ maxWidth: '30vw', minWidth: '12rem' }}>
+            {this.state.avatarInfo || 'No picture description.'}
+          </div>
+        )}
+      />
+    );
+  }
+
+  openAvatarFilePicker = () => {
+    if (!this.isEditableProfile() || this.state.avatarUploadStatus === 'uploading') {
+      return;
+    }
+
+    const input = document.getElementById('avatarUploadInput');
+    if (input) {
+      input.click();
+    }
+  };
 
   renderCreateProfile() {
     const isErrorMessage = this.state.messageVariant === 'error';
@@ -799,13 +1036,27 @@ class ProfilePage extends Component {
     );
   }
 
-  renderEditableField(label, fieldName, type = 'text', required = false) {
-    const status = this.state.fieldStatuses[fieldName];
+  renderProfileField(label, fieldName, options = {}) {
+    const {
+      type = 'text',
+      required = false,
+      editable = this.isEditableProfile(),
+      readOnlyValue = this.state[fieldName] || '-',
+      renderControl,
+      renderReadOnly,
+    } = options;
 
     return (
-      <Form.Group controlId={fieldName} className="mb-3">
-        <Form.Label>{label}</Form.Label>
-        <InputGroup>
+      <InlineEditableField
+        editable={editable}
+        label={label}
+        controlId={fieldName}
+        status={this.state.fieldStatuses[fieldName]}
+        className="mb-3"
+        readOnlyClassName="small"
+        readOnlyValue={readOnlyValue}
+        renderReadOnly={renderReadOnly}
+        renderControl={renderControl || (() => (
           <Form.Control
             name={fieldName}
             type={type}
@@ -814,45 +1065,8 @@ class ProfilePage extends Component {
             onChange={this.handleInputChange}
             onBlur={() => this.handleFieldBlur(fieldName)}
           />
-          {(status === 'saving' || status === 'saved' || status === 'error') && (
-            <InputGroup.Text>
-              {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
-              {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
-              {status === 'error' && <FaTimes className="text-danger" title="Save failed" />}
-            </InputGroup.Text>
-          )}
-        </InputGroup>
-      </Form.Group>
-    );
-  }
-
-  renderEditablePeriodField() {
-    const status = this.state.fieldStatuses.period;
-
-    return (
-      <Form.Group controlId="period" className="mb-3">
-        <Form.Label>Period *</Form.Label>
-        <InputGroup>
-          <Form.Select
-            name="period"
-            value={this.state.period}
-            onChange={this.handleInputChange}
-            onBlur={() => this.handleFieldBlur('period')}
-          >
-            <option value="">Choose a period</option>
-            {periods.map(period => (
-              <option key={period} value={period}>{period}</option>
-            ))}
-          </Form.Select>
-          {(status === 'saving' || status === 'saved' || status === 'error') && (
-            <InputGroup.Text>
-              {status === 'saving' && <FaHourglassHalf className="text-muted" title="Saving" />}
-              {status === 'saved' && <FaCheck className="text-success" title="Saved" />}
-              {status === 'error' && <FaTimes className="text-danger" title="Save failed" />}
-            </InputGroup.Text>
-          )}
-        </InputGroup>
-      </Form.Group>
+        ))}
+      />
     );
   }
 
@@ -929,34 +1143,81 @@ class ProfilePage extends Component {
         </Row>
         <Row>
           <Col sm={4}>
-            {this.state.avatarVisible
-              ? <ModalImage src={this.state.avatarImage} alt={this.state.avatarInfo} />
-              : this.state.avatarLoaded
-                ? this.renderAvatarFallback()
-                : <Spinner />}
+            <div className="position-relative d-inline-block">
+              {this.state.avatarVisible
+                ? <ModalImage src={this.state.avatarImage} url={this.state.avatarUrl} alt={this.state.avatarInfo} />
+                : this.state.avatarLoaded
+                  ? this.renderAvatarFallback()
+                  : <Spinner />}
+              {isEditable && (
+                <button
+                  type="button"
+                  className="btn position-absolute top-0 start-0 m-2 d-flex align-items-center justify-content-center"
+                  style={{
+                    width: '1.75rem',
+                    height: '1.75rem',
+                    padding: 0,
+                    border: '1px solid #ddd',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    color: '#777',
+                    fontSize: '0.8rem'
+                  }}
+                  onClick={this.openAvatarFilePicker}
+                  title="Upload picture"
+                >
+                  {this.state.avatarUploadStatus === 'uploading'
+                    ? <FaHourglassHalf className="text-muted" />
+                    : <FaUpload />}
+                </button>
+              )}
+              {isEditable && this.state.avatarVisible && (
+                <button
+                  type="button"
+                  className="btn position-absolute top-0 end-0 m-2 d-flex align-items-center justify-content-center"
+                  style={{
+                    width: '1.75rem',
+                    height: '1.75rem',
+                    padding: 0,
+                    border: '1px solid #ddd',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    color: '#777',
+                    fontSize: '0.85rem'
+                  }}
+                  onClick={this.handleDeleteAvatar}
+                  title="Delete picture"
+                >
+                  <FaTrashAlt />
+                </button>
+              )}
+            </div>
+            {this.renderAvatarDescription()}
+            {this.renderAvatarControls()}
           </Col>
           <Col sm={4}>
-            {isEditable ? (
-              <>
-                {this.renderEditableField('First name *', 'firstName', 'text', true)}
-                {this.renderEditableField('Last name *', 'lastName', 'text', true)}
-                {this.renderEditableField('Nick name', 'nickName')}
-                {this.renderEditableField('Profile email', 'profileEmail', 'email')}
-                {this.renderEditableField('Location', 'location')}
-                {this.renderEditableField('Alias', 'alias')}
-                {this.state.type === 'CLUB' && this.renderEditablePeriodField()}
-              </>
-            ) : (
-              <>
-                First name: {this.state.firstName} <br/>
-                Last name: {this.state.lastName} <br/>
-                Nick name: {this.state.nickName || '-'} <br/>
-                Profile email: {this.state.profileEmail || '-'} <br/>
-                Location: {this.state.location || '-'} <br/>
-                Alias: {this.state.alias || '-'} <br/>
-                {this.state.type === 'CLUB' && <>Period: {this.state.period || '-'} <br/></>}
-              </>
-            )}
+            <>
+              {this.renderProfileField('First name *', 'firstName', { required: true, readOnlyValue: this.state.firstName })}
+              {this.renderProfileField('Last name *', 'lastName', { required: true, readOnlyValue: this.state.lastName })}
+              {this.renderProfileField('Nick name', 'nickName')}
+              {this.renderProfileField('Profile email', 'profileEmail', { type: 'email' })}
+              {this.renderProfileField('Location', 'location')}
+              {this.renderProfileField('Alias', 'alias')}
+              {this.state.type === 'CLUB' && this.renderProfileField('Period *', 'period', {
+                readOnlyValue: this.state.period || '-',
+                renderControl: () => (
+                  <Form.Select
+                    name="period"
+                    value={this.state.period}
+                    onChange={this.handleInputChange}
+                    onBlur={() => this.handleFieldBlur('period')}
+                  >
+                    <option value="">Choose a period</option>
+                    {periods.map(period => (
+                      <option key={period} value={period}>{period}</option>
+                    ))}
+                  </Form.Select>
+                ),
+              })}
+            </>
           </Col>
           <Col sm={4}>
             {this.renderClubProfilesSection()}
