@@ -9,7 +9,7 @@ class LibraryButton extends Component {
       <HoverPopover text="library.popover" default="Library" />
     );
     return (
-      <OverlayTrigger trigger="hover" placement="bottom" overlay={popover}> 
+      <OverlayTrigger trigger={['hover', 'focus']} placement="bottom" overlay={popover}> 
         <Button className="float-sm-right" variant="default">
           <FaBook/>
         </Button>

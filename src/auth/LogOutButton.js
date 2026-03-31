@@ -50,7 +50,7 @@ class LogOutButton extends Component {
 
     return (
       <>
-        <OverlayTrigger trigger="hover" placement="bottom" overlay={popover}> 
+        <OverlayTrigger trigger={['hover', 'focus']} placement="bottom" overlay={popover}> 
           <Button className="float-sm-right auth-control-button" variant="default" onClick={this.handleShow}>
             {avatar}
             <FaSignOutAlt/>

@@ -8,7 +8,7 @@ class ProfileButton extends Component {
     const popover = (<HoverPopover text="profile.popover" default="Profile" />);
     return (
       <>
-        <OverlayTrigger trigger="hover" placement="bottom" overlay={popover}> 
+        <OverlayTrigger trigger={['hover', 'focus']} placement="bottom" overlay={popover}> 
           <Button className="float-sm-right" variant="default">
             <FaUser/>
           </Button>
