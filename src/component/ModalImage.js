@@ -21,16 +21,32 @@ class ModalImage extends Component {
 
   render() {
     const imageSrc = this.props.url || `data:image/jpeg;base64, ${this.props.src}`;
+    const wrapperStyle = {
+      width: '100%',
+      maxWidth: '18rem',
+      ...this.props.wrapperStyle,
+    };
+    const imageStyle = {
+      width: '100%',
+      display: 'block',
+      cursor: 'pointer',
+      ...this.props.imageStyle,
+    };
 
     return (
       <>
-        <div style={{width: '30vw', border: '4px #eee groove'}}>
-          <Image alt={this.props.alt} src={imageSrc} onClick={this.handleShow} />
+        <div style={wrapperStyle}>
+          <Image alt={this.props.alt} src={imageSrc} onClick={this.handleShow} style={imageStyle} />
         </div>
 
-        <Modal show={this.state.show} onHide={this.handleClose}>
+        <Modal show={this.state.show} onHide={this.handleClose} centered>
           <Modal.Body>
-            <Image alt={this.props.alt} src={imageSrc} />
+            <Image alt={this.props.alt} src={imageSrc} fluid />
+            {this.props.description && (
+              <div className="text-muted small text-center mt-3">
+                {this.props.description}
+              </div>
+            )}
           </Modal.Body>
         </Modal>
       </>
