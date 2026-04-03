@@ -22,6 +22,10 @@ const periods = [
   'OTHER',
 ];
 
+const AVATAR_MAX_DIMENSION = 1600;
+const AVATAR_TARGET_BYTES = 900 * 1024;
+const AVATAR_MIN_QUALITY = 0.55;
+
 class ProfilePage extends Component {
   autoSaveTimers = {};
   statusResetTimers = {};
@@ -559,7 +563,8 @@ class ProfilePage extends Component {
     });
 
     try {
-      const content = await this.readFileAsBase64(file);
+      const preparedFile = await this.prepareAvatarFile(file);
+      const content = await this.readFileAsBase64(preparedFile);
       const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar`, {
         method: 'POST',
         headers: {
@@ -567,7 +572,7 @@ class ProfilePage extends Component {
         },
         body: JSON.stringify({
           content,
-          fileName: file.name,
+          fileName: preparedFile.name,
           description: this.state.avatarDescriptionDraft || null,
         }),
       });
@@ -587,12 +592,120 @@ class ProfilePage extends Component {
     } catch (error) {
       this.setState({
         avatarUploadStatus: 'error',
-        avatarUploadMessage: 'Unable to upload profile picture.',
+        avatarUploadMessage: error?.message || 'Unable to upload profile picture.',
       });
     } finally {
       event.target.value = '';
     }
   };
+
+  async prepareAvatarFile(file) {
+    if (!file.type.startsWith('image/')) {
+      return file;
+    }
+
+    if (file.size <= AVATAR_TARGET_BYTES) {
+      return file;
+    }
+
+    const image = await this.loadImage(file);
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return file;
+    }
+
+    let { width, height } = this.getScaledDimensions(image.width, image.height, AVATAR_MAX_DIMENSION);
+    let quality = 0.9;
+    let resizedFile = null;
+
+    while (true) {
+      canvas.width = width;
+      canvas.height = height;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      resizedFile = await this.canvasToFile(canvas, file.name, quality);
+      if (!resizedFile) {
+        return file;
+      }
+
+      if (resizedFile.size <= AVATAR_TARGET_BYTES) {
+        return resizedFile;
+      }
+
+      if (quality > AVATAR_MIN_QUALITY) {
+        quality = Math.max(quality - 0.1, AVATAR_MIN_QUALITY);
+        continue;
+      }
+
+      if (Math.max(width, height) <= 800) {
+        return resizedFile;
+      }
+
+      width = Math.max(Math.round(width * 0.85), 800);
+      height = Math.max(Math.round(height * 0.85), 800);
+      quality = 0.85;
+    }
+  }
+
+  loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const imageUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(imageUrl);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(imageUrl);
+        reject(new Error('Unable to process the selected image.'));
+      };
+      image.src = imageUrl;
+    });
+  }
+
+  getScaledDimensions(width, height, maxDimension) {
+    if (Math.max(width, height) <= maxDimension) {
+      return { width, height };
+    }
+
+    if (width >= height) {
+      return {
+        width: maxDimension,
+        height: Math.max(Math.round((height / width) * maxDimension), 1),
+      };
+    }
+
+    return {
+      width: Math.max(Math.round((width / height) * maxDimension), 1),
+      height: maxDimension,
+    };
+  }
+
+  canvasToFile(canvas, originalName, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) {
+          reject(new Error('Unable to resize the selected image.'));
+          return;
+        }
+
+        const fileName = this.replaceFileExtension(originalName, 'jpg');
+        resolve(new File([blob], fileName, { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    });
+  }
+
+  replaceFileExtension(fileName, extension) {
+    const normalizedName = fileName || 'avatar';
+    const lastDotIndex = normalizedName.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      return `${normalizedName}.${extension}`;
+    }
+
+    return `${normalizedName.slice(0, lastDotIndex)}.${extension}`;
+  }
 
   readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
