@@ -14,6 +14,18 @@ function ProfilePageWithParam() {
   return <ProfilePage id={id} />;
 }
 
+function LibraryPeriodPage() {
+  return <LibraryPage view="period" />;
+}
+
+function LibrarySourcePage() {
+  return <LibraryPage view="source" />;
+}
+
+function LibraryAdminPage() {
+  return <LibraryPage view="admin" />;
+}
+
 function App() {
   return (
     <div className="App">
@@ -24,6 +36,9 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:id" element={<ProfilePageWithParam />} />
           <Route path="/library" element={<LibraryPage />} />
+          <Route path="/library/admin" element={<LibraryAdminPage />} />
+          <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
+          <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
         </Routes>
       </BrowserRouter>
     </div>
