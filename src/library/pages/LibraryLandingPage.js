@@ -6,14 +6,10 @@ import { Link } from 'react-router-dom';
 import HoverPopover from '../../component/HoverPopover';
 import Spinner from '../../component/Spinner';
 import PeriodTile from '../PeriodTile';
+import { getWelcome, updateRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import {
-  fetchJson,
-  getPrimaryRole,
-  getRoleDescription,
-  getRoleLabel,
-  PERIODS,
-} from '../libraryShared';
+import { PERIODS } from '../libraryShared';
+import { getPrimaryRoleMeta } from '../libraryRoles';
 
 export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
@@ -26,7 +22,7 @@ export default function LibraryLandingPage() {
     setError(null);
 
     try {
-      const result = await fetchJson('/api/library/library');
+      const result = await getWelcome();
       if (!result.ok) {
         throw new Error('Unable to load the library welcome panel.');
       }
@@ -53,7 +49,7 @@ export default function LibraryLandingPage() {
     const method = welcome.roleRequestAvailable ? 'POST' : 'DELETE';
 
     try {
-      const result = await fetchJson(`/api/library/library/role/${welcome.role}`, { method });
+      const result = await updateRoleRequest(welcome.role, method);
       if (!result.ok) {
         throw new Error('Unable to update the role request.');
       }
@@ -69,8 +65,7 @@ export default function LibraryLandingPage() {
     () => PERIODS.map(period => period.toLowerCase()),
     []
   );
-  const roleLabel = getRoleLabel(getPrimaryRole(userInfo));
-  const roleDescription = getRoleDescription(getPrimaryRole(userInfo));
+  const roleMeta = getPrimaryRoleMeta(userInfo);
 
   const accessContent = loading ? (
     <div className="py-1">
@@ -78,14 +73,14 @@ export default function LibraryLandingPage() {
     </div>
   ) : (
     <div className="d-flex align-items-center justify-content-center gap-2 flex-wrap">
-      {roleLabel && roleDescription && (
+      {roleMeta && (
         <OverlayTrigger
           trigger={['hover', 'focus']}
           placement="bottom"
-          overlay={<HoverPopover text="" default={roleDescription} />}
+          overlay={<HoverPopover text="" default={roleMeta.description} />}
         >
           <span className="fw-semibold" style={{ fontSize: '0.95rem', cursor: 'default' }}>
-            {roleLabel}
+            {roleMeta.label}
           </span>
         </OverlayTrigger>
       )}

@@ -14,18 +14,24 @@ export default function LibrarySectionHeader({ title, subtitle, period, variant 
           borderColor: '#d9ccb0',
         }}
       >
-        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
-          <div className="me-auto" style={{ minWidth: '8rem' }}>
+        <div
+          className="align-items-start gap-3"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+          }}
+        >
+          <div className="d-flex justify-content-start" style={{ minWidth: 0 }}>
             <div className="text-uppercase small fw-bold mb-1">
               {title}
             </div>
           </div>
-          {middleContent && (
-            <div className="flex-grow-1 d-flex justify-content-center" style={{ minWidth: '16rem', maxWidth: '32rem' }}>
-              {middleContent}
-            </div>
-          )}
-          {resolvedRightContent}
+          <div className="d-flex justify-content-center" style={{ minWidth: 0 }}>
+            {middleContent}
+          </div>
+          <div className="d-flex justify-content-end">
+            {resolvedRightContent}
+          </div>
         </div>
       </div>
       {subtitle && (

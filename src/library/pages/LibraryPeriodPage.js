@@ -4,18 +4,17 @@ import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Spinner from '../../component/Spinner';
+import { createSource, findSources } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import SourceCard from '../components/SourceCard';
 import {
-  buildSearchQuery,
-  canContribute,
   CLASSIFICATIONS,
-  fetchJson,
   getPeriodLabel,
   PAGE_SIZE,
   TYPES,
 } from '../libraryShared';
+import { canContribute } from '../libraryRoles';
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -44,13 +43,14 @@ export default function LibraryPeriodPage() {
     setError(null);
 
     try {
-      const encodedQuery = buildSearchQuery(
+      const result = await findSources({
         query,
-        periodCode,
-        selectedClassifications,
-        selectedTypes
-      );
-      const result = await fetchJson(`/api/library/source/find?page=0&size=${PAGE_SIZE}&q=${encodedQuery}`);
+        period: periodCode,
+        classifications: selectedClassifications,
+        types: selectedTypes,
+        page: 0,
+        size: PAGE_SIZE,
+      });
 
       if (!result.ok) {
         throw new Error('Unable to load sources for this period.');
@@ -88,25 +88,16 @@ export default function LibraryPeriodPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/library/source', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...draftSource,
-          period: periodCode,
-        }),
+      const result = await createSource({
+        ...draftSource,
+        period: periodCode,
       });
 
-      const text = await response.text();
-      const data = text ? JSON.parse(text) : null;
-
-      if (!response.ok) {
-        throw new Error(data?.message || 'Unable to create the source.');
+      if (!result.ok) {
+        throw new Error(result.data?.message || 'Unable to create the source.');
       }
 
-      navigate(`/library/source/${data.id}`);
+      navigate(`/library/source/${result.data.id}`);
     } catch (fetchError) {
       setError(fetchError.message);
     } finally {

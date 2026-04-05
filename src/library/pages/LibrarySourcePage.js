@@ -4,14 +4,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import ModalImage from '../../component/ModalImage';
 import Spinner from '../../component/Spinner';
-import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import {
-  canContribute,
-  canDeleteSource,
-  canEditSource,
-  fetchJson,
-  PeriodBadge,
-} from '../libraryShared';
+  deleteSourceImage,
+  getSource,
+  getSourceImages,
+  patchSourceField,
+  removeSource,
+  uploadSourceImage,
+} from '../libraryApi';
+import LibrarySectionHeader from '../components/LibrarySectionHeader';
+import { PeriodBadge } from '../libraryShared';
+import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
 
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -46,12 +49,12 @@ export default function LibrarySourcePage() {
     setError(null);
 
     try {
-      const sourceResult = await fetchJson(`/api/library/source/${sourceId}`);
+      const sourceResult = await getSource(sourceId);
       if (!sourceResult.ok) {
         throw new Error('Unable to load the source.');
       }
 
-      const imageResult = await fetchJson(`/api/image/image/source/${sourceId}`);
+      const imageResult = await getSourceImages(sourceId);
       if (!imageResult.ok) {
         throw new Error('Unable to load source images.');
       }
@@ -77,15 +80,9 @@ export default function LibrarySourcePage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/library/source/${sourceId}/${field}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ [field]: value }),
-      });
+      const result = await patchSourceField(sourceId, field, value);
 
-      if (!response.ok) {
+      if (!result.ok) {
         throw new Error(`Unable to update source ${field}.`);
       }
 
@@ -103,8 +100,8 @@ export default function LibrarySourcePage() {
     }
 
     try {
-      const response = await fetch(`/api/library/source/${sourceId}`, { method: 'DELETE' });
-      if (!response.ok) {
+      const result = await removeSource(sourceId);
+      if (!result.ok) {
         throw new Error('Unable to delete the source.');
       }
 
@@ -128,19 +125,13 @@ export default function LibrarySourcePage() {
 
     try {
       const content = await readFileAsBase64(file);
-      const response = await fetch(`/api/library/source/${sourceId}/images`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content,
-          fileName: file.name,
-          description: imageDescription || null,
-        }),
+      const result = await uploadSourceImage(sourceId, {
+        content,
+        fileName: file.name,
+        description: imageDescription || null,
       });
 
-      if (!response.ok) {
+      if (!result.ok) {
         throw new Error('Unable to upload the image.');
       }
 
@@ -158,11 +149,9 @@ export default function LibrarySourcePage() {
 
   const handleDeleteImage = async (imageId) => {
     try {
-      const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}`, {
-        method: 'DELETE',
-      });
+      const result = await deleteSourceImage(sourceId, imageId);
 
-      if (!response.ok) {
+      if (!result.ok) {
         throw new Error('Unable to delete the image.');
       }
 

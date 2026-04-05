@@ -3,8 +3,9 @@ import { Alert, Button, Card } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import Spinner from '../../component/Spinner';
+import { getAdminRoleRequests, updateAdminRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import { fetchJson, PAGE_SIZE } from '../libraryShared';
+import { PAGE_SIZE } from '../libraryShared';
 
 export default function LibraryAdminPage() {
   const [loading, setLoading] = useState(true);
@@ -16,7 +17,7 @@ export default function LibraryAdminPage() {
     setError(null);
 
     try {
-      const result = await fetchJson(`/api/library/library/admin?page=0&size=${PAGE_SIZE}`);
+      const result = await getAdminRoleRequests({ page: 0, size: PAGE_SIZE });
       if (!result.ok) {
         throw new Error(result.status === 403 ? 'Admin access is required.' : 'Unable to load role requests.');
       }
@@ -37,7 +38,7 @@ export default function LibraryAdminPage() {
     setError(null);
 
     try {
-      const result = await fetchJson(`/api/library/library/${role}/${userId}`, { method });
+      const result = await updateAdminRoleRequest(role, userId, method);
       if (!result.ok) {
         throw new Error('Unable to update the role request.');
       }
