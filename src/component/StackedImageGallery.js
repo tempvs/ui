@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Badge, Carousel, Image, Modal } from 'react-bootstrap';
-import { FaTrashAlt, FaUpload } from 'react-icons/fa';
+import { FaUpload } from 'react-icons/fa';
 
+import ConfirmingTrashButton from './ConfirmingTrashButton';
 import EditableImageDescription from './EditableImageDescription';
 import ImageOverlayActionButton from './ImageOverlayActionButton';
-import IconActionButton from './IconActionButton';
 import ImageDescriptionBlock from './ImageDescriptionBlock';
 
 function getImageSrc(image) {
@@ -136,19 +136,21 @@ export default function StackedImageGallery({
                       onClick={() => onReplaceImage(image)}
                       title="Replace image"
                       popover="Replace this picture with a new one. This does not edit the current image."
+                      style={{ zIndex: 4 }}
                     >
                       <FaUpload />
                     </ImageOverlayActionButton>
                   )}
                   {editable && onDeleteImage && (
-                    <IconActionButton
+                    <ConfirmingTrashButton
                       className="position-absolute top-0 end-0 m-3"
                       fontSize="0.9rem"
-                      onClick={() => onDeleteImage(image.id)}
                       title="Delete image"
-                    >
-                      <FaTrashAlt />
-                    </IconActionButton>
+                      confirmTitle="Delete image"
+                      confirmMessage="Delete this image?"
+                      onConfirm={() => onDeleteImage(image.id)}
+                      style={{ zIndex: 4 }}
+                    />
                   )}
                   <Image
                     alt={image.fileName || `${title} ${index + 1}`}

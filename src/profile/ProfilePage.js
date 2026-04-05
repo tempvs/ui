@@ -930,10 +930,10 @@ class ProfilePage extends Component {
             <ClubProfilesSection
               isUserProfile={this.state.type === 'USER'}
               canCreate={isEditable}
-              visibleClubProfiles={visibleClubProfiles}
-              showEmptyMessage={showEmptyClubProfiles}
+              visibleClubProfiles={this.state.type === 'USER' ? visibleClubProfiles : []}
+              showEmptyMessage={this.state.type === 'USER' ? showEmptyClubProfiles : false}
               clubProfilesLoaded={this.state.clubProfilesLoaded}
-              clubProfilesMessage={this.state.clubProfilesMessage}
+              clubProfilesMessage={this.state.type === 'USER' ? this.state.clubProfilesMessage : null}
               clubProfileCreateVisible={this.state.clubProfileCreateVisible}
               clubProfileCreateError={this.state.clubProfileCreateError}
               clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}

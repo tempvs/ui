@@ -5,6 +5,7 @@ export default function IconActionButton({
   children,
   title,
   onClick,
+  stopPropagation = true,
   variant = 'light',
   size = '1.75rem',
   fontSize = '0.8rem',
@@ -15,12 +16,28 @@ export default function IconActionButton({
   style = {},
   ...props
 }) {
+  const handleClick = event => {
+    if (stopPropagation) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    onClick?.(event);
+  };
+
+  const handleMouseDown = event => {
+    if (stopPropagation) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
   return (
     <Button
       type="button"
       variant={variant}
       className={`p-0 d-inline-flex align-items-center justify-content-center text-decoration-none ${className}`.trim()}
-      onClick={onClick}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
       title={title}
       aria-label={title}
       style={{

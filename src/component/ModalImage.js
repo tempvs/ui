@@ -26,8 +26,16 @@ function ModalImage(props) {
       <Modal show={show} onHide={() => setShow(false)} centered size={props.modalSize}>
         <Modal.Body>
           <div className="position-relative">
-            {props.modalTopLeftAction}
-            {props.modalTopRightAction}
+            {props.modalTopLeftAction ? (
+              <div className="position-absolute top-0 start-0 m-3" style={{ zIndex: 4 }}>
+                {props.modalTopLeftAction}
+              </div>
+            ) : null}
+            {props.modalTopRightAction ? (
+              <div className="position-absolute top-0 end-0 m-3" style={{ zIndex: 4 }}>
+                {props.modalTopRightAction}
+              </div>
+            ) : null}
             <Image alt={props.alt} src={imageSrc} fluid />
           </div>
           {props.modalDescriptionContent || (

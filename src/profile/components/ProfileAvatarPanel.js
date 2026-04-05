@@ -1,7 +1,8 @@
 import React from 'react';
 import { Form } from 'react-bootstrap';
-import { FaHourglassHalf, FaTrashAlt, FaUpload } from 'react-icons/fa';
+import { FaHourglassHalf, FaUpload } from 'react-icons/fa';
 
+import ConfirmingTrashButton from '../../component/ConfirmingTrashButton';
 import EditableImageDescription from '../../component/EditableImageDescription';
 import ImageOverlayActionButton from '../../component/ImageOverlayActionButton';
 import ModalImage from '../../component/ModalImage';
@@ -59,15 +60,15 @@ export default function ProfileAvatarPanel({
                   </ImageOverlayActionButton>
                 ) : null}
                 modalTopRightAction={isEditable ? (
-                  <ImageOverlayActionButton
-                    className="position-absolute top-0 end-0 m-3"
+                  <ConfirmingTrashButton
                     fontSize="0.85rem"
-                    onClick={onDelete}
                     title="Delete"
-                    popover="Delete"
-                  >
-                    <FaTrashAlt />
-                  </ImageOverlayActionButton>
+                    confirmTitle={t('profile.avatar.deleteTitle', 'Delete image')}
+                    confirmMessage={t('profile.avatar.deleteConfirm', 'Delete this image?')}
+                    confirmLabel={t('profile.action.delete', 'Delete')}
+                    cancelLabel={t('profile.action.cancel', 'Cancel')}
+                    onConfirm={onDelete}
+                  />
                 ) : null}
                 modalDescriptionContent={(
                   <EditableImageDescription
@@ -128,15 +129,16 @@ export default function ProfileAvatarPanel({
           </ImageOverlayActionButton>
         )}
         {isEditable && avatarVisible && (
-          <ImageOverlayActionButton
+          <ConfirmingTrashButton
             className="position-absolute top-0 end-0 m-2"
             fontSize="0.85rem"
-            onClick={onDelete}
             title="Delete"
-            popover="Delete"
-          >
-            <FaTrashAlt />
-          </ImageOverlayActionButton>
+            confirmTitle={t('profile.avatar.deleteTitle', 'Delete image')}
+            confirmMessage={t('profile.avatar.deleteConfirm', 'Delete this image?')}
+            confirmLabel={t('profile.action.delete', 'Delete')}
+            cancelLabel={t('profile.action.cancel', 'Cancel')}
+            onConfirm={onDelete}
+          />
         )}
       </div>
       {isEditable && (
