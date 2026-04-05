@@ -7,6 +7,7 @@ import { injectIntl } from 'react-intl';
 import { doFetch } from "../util/Fetcher.js";
 import ModalImage from "../component/ModalImage";
 import Spinner from "../component/Spinner";
+import StashPanel from "./StashPanel";
 
 const periods = [
   'ANCIENT',
@@ -1446,6 +1447,24 @@ class ProfilePage extends Component {
               </div>
             )}
             {this.renderClubProfilesSection()}
+          </Col>
+        </Row>
+        <Row>
+          <Col sm={12}>
+            <StashPanel
+              profile={{
+                id: this.state.profileId,
+                userId: this.state.userId,
+                firstName: this.state.firstName,
+                lastName: this.state.lastName,
+                alias: this.state.alias,
+                period: this.state.period,
+                type: this.state.type,
+              }}
+              isEditable={isEditable}
+              t={this.t.bind(this)}
+              getPeriodLabel={this.getPeriodLabel.bind(this)}
+            />
           </Col>
         </Row>
         {this.renderDeleteClubProfileModal()}
