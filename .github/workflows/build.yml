@@ -48,5 +48,5 @@ jobs:
     steps:
       - name: Trigger Render deploy
         run: >-
-          curl -X POST
-          "${{ secrets.RENDER_DEPLOY_HOOK }}?imgURL=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}"
+          curl -G "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          --data-urlencode "imgURL=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}"
