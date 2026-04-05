@@ -1,6 +1,7 @@
 import React from 'react';
 
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
+import { buildClubProfileLabel } from '../profileLabels';
 
 function buildProfilePath(getCanonicalProfilePath, profile) {
   return getCanonicalProfilePath(profile);
@@ -9,15 +10,17 @@ function buildProfilePath(getCanonicalProfilePath, profile) {
 export default function ProfileHeaderBreadcrumb({
   ownerLink,
   ownerLabel,
-  currentLabel,
   currentProfile,
   siblingClubProfiles,
   getCanonicalProfilePath,
+  getPeriodLabel,
   emptyLabel,
 }) {
   if (!ownerLink) {
     return null;
   }
+
+  const currentLabel = buildClubProfileLabel(currentProfile, getPeriodLabel);
 
   return (
     <SectionBreadcrumb
@@ -30,7 +33,7 @@ export default function ProfileHeaderBreadcrumb({
         emptyLabel,
         items: siblingClubProfiles.map(clubProfile => ({
           key: clubProfile.id,
-          label: `${clubProfile.firstName} ${clubProfile.lastName}`.trim(),
+          label: buildClubProfileLabel(clubProfile, getPeriodLabel),
           to: buildProfilePath(getCanonicalProfilePath, clubProfile),
         })),
       }}

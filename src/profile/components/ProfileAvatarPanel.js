@@ -3,7 +3,7 @@ import { Form } from 'react-bootstrap';
 import { FaHourglassHalf, FaTrashAlt, FaUpload } from 'react-icons/fa';
 
 import EditableImageDescription from '../../component/EditableImageDescription';
-import IconActionButton from '../../component/IconActionButton';
+import ImageOverlayActionButton from '../../component/ImageOverlayActionButton';
 import ModalImage from '../../component/ModalImage';
 import Spinner from '../../component/Spinner';
 
@@ -48,6 +48,41 @@ export default function ProfileAvatarPanel({
                 alt={avatarInfo}
                 description={avatarInfo}
                 wrapperStyle={{ maxWidth: '100%' }}
+                modalTopLeftAction={isEditable ? (
+                  <ImageOverlayActionButton
+                    className="position-absolute top-0 start-0 m-3"
+                    onClick={onOpenFilePicker}
+                    title="Replace"
+                    popover="Replace"
+                  >
+                    {avatarUploadStatus === 'uploading' ? <FaHourglassHalf className="text-muted" /> : <FaUpload />}
+                  </ImageOverlayActionButton>
+                ) : null}
+                modalTopRightAction={isEditable ? (
+                  <ImageOverlayActionButton
+                    className="position-absolute top-0 end-0 m-3"
+                    fontSize="0.85rem"
+                    onClick={onDelete}
+                    title="Delete"
+                    popover="Delete"
+                  >
+                    <FaTrashAlt />
+                  </ImageOverlayActionButton>
+                ) : null}
+                modalDescriptionContent={(
+                  <EditableImageDescription
+                    editable={isEditable}
+                    value={isEditable ? avatarDescriptionDraft : avatarInfo}
+                    status={avatarDescriptionStatus}
+                    placeholder={t('profile.avatar.description.placeholder', 'Add a description')}
+                    onChange={onDescriptionChange}
+                    onBlur={onDescriptionBlur}
+                    savingTitle={t('profile.status.saving', 'Saving')}
+                    errorTitle={t('profile.status.saveFailed', 'Save failed')}
+                    className="mt-3"
+                    bordered={false}
+                  />
+                )}
               />
             ) : avatarLoaded ? (
               <div
@@ -83,23 +118,25 @@ export default function ProfileAvatarPanel({
           )}
         </div>
         {isEditable && (
-          <IconActionButton
+          <ImageOverlayActionButton
             className="position-absolute top-0 start-0 m-2"
             onClick={onOpenFilePicker}
-            title={t('profile.avatar.uploadTitle', 'Upload picture')}
+            title="Replace"
+            popover="Replace"
           >
             {avatarUploadStatus === 'uploading' ? <FaHourglassHalf className="text-muted" /> : <FaUpload />}
-          </IconActionButton>
+          </ImageOverlayActionButton>
         )}
         {isEditable && avatarVisible && (
-          <IconActionButton
+          <ImageOverlayActionButton
             className="position-absolute top-0 end-0 m-2"
             fontSize="0.85rem"
             onClick={onDelete}
-            title={t('profile.avatar.deleteTitle', 'Delete picture')}
+            title="Delete"
+            popover="Delete"
           >
             <FaTrashAlt />
-          </IconActionButton>
+          </ImageOverlayActionButton>
         )}
       </div>
       {isEditable && (

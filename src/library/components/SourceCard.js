@@ -1,27 +1,39 @@
 import React from 'react';
-import { Badge, Button, Card } from 'react-bootstrap';
+import { Badge, Card } from 'react-bootstrap';
+import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 
-import { PeriodBadge } from '../libraryShared';
+import { getClassificationLabel, getTypeLabel, PeriodBadge } from '../libraryShared';
 
 export default function SourceCard({ source }) {
+  const intl = useIntl();
+
   return (
-    <Card className="h-100 border-0 shadow-sm">
+    <Card
+      className="h-100 shadow-sm"
+      style={{
+        borderColor: '#d6d0b8',
+      }}
+    >
       <Card.Body className="d-flex flex-column">
         <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
-          <Card.Title className="mb-0 fs-5">{source.name}</Card.Title>
+          <Card.Title className="mb-0 fs-5">
+            <Link
+              to={`/library/source/${source.id}`}
+              className="link-dark text-decoration-underline"
+            >
+              {source.name}
+            </Link>
+          </Card.Title>
           <PeriodBadge period={source.period} />
         </div>
         <Card.Text className="text-muted flex-grow-1">
           {source.description || 'No description yet.'}
         </Card.Text>
         <div className="d-flex gap-2 flex-wrap mb-3">
-          <Badge bg="secondary">{source.classification}</Badge>
-          <Badge bg="info">{source.type}</Badge>
+          <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>
+          <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
         </div>
-        <Button as={Link} to={`/library/source/${source.id}`} variant="outline-dark">
-          Open source
-        </Button>
       </Card.Body>
     </Card>
   );

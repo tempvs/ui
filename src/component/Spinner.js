@@ -1,18 +1,36 @@
-import React, { Component } from 'react';
+import React from 'react';
+import { FormattedMessage } from 'react-intl';
 
-import { Image }  from 'react-bootstrap';
-
-import { FormattedMessage } from "react-intl";
-
-class Spinner extends Component {
-  render() {
-    const src = `${window.location.origin}/spinner.gif`;
-    return (
-      <FormattedMessage id="loading" defaultMessage="Loading">
-        {(alt) => ( <Image alt={alt} src={src} />)}
-      </FormattedMessage>
-    );
-  }
+export default function Spinner({ size = '2.5rem' }) {
+  return (
+    <FormattedMessage id="loading" defaultMessage="Loading">
+      {label => (
+        <div className="d-inline-flex align-items-center justify-content-center" aria-label={label} title={label}>
+          <span
+            role="img"
+            aria-hidden="true"
+            style={{
+              display: 'inline-block',
+              fontSize: size,
+              lineHeight: 1,
+              animation: 'tempvs-hourglass-flip 1.4s ease-in-out infinite',
+              transformOrigin: '50% 50%',
+            }}
+          >
+            ⏳
+          </span>
+          <style>
+            {`
+              @keyframes tempvs-hourglass-flip {
+                0% { transform: rotate(0deg); }
+                45% { transform: rotate(0deg); }
+                55% { transform: rotate(180deg); }
+                100% { transform: rotate(180deg); }
+              }
+            `}
+          </style>
+        </div>
+      )}
+    </FormattedMessage>
+  );
 }
-
-export default Spinner;

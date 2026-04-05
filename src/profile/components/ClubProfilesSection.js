@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
-import { FaPlus, FaTimes } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 
-import IconActionButton from '../../component/IconActionButton';
+import PlusActionButton from '../../component/PlusActionButton';
 import Spinner from '../../component/Spinner';
 
 export default function ClubProfilesSection({
@@ -37,20 +37,10 @@ export default function ClubProfilesSection({
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h4 className="mb-0">{t('profile.clubProfiles.title', 'Club profiles')}</h4>
           {canCreate && (
-            <IconActionButton
+            <PlusActionButton
               onClick={onShowCreate}
               title={t('profile.clubProfile.create.title', 'Create club profile')}
-              size="1.6rem"
-              borderColor="#000"
-              color="#000"
-              backgroundColor="#fff"
-              style={{
-                width: '1.6rem',
-                height: '1.6rem',
-              }}
-            >
-              <FaPlus />
-            </IconActionButton>
+            />
           )}
         </div>
       )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Card } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
 import Spinner from '../../component/Spinner';
@@ -50,7 +51,7 @@ export default function LibraryAdminPage() {
   };
 
   return (
-    <div className="px-4 px-xl-5 py-4">
+    <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
         title="LIBRARY"
         subtitle="Review contributor, scribe, and archivarius requests."

@@ -3,10 +3,12 @@ import React, { Component } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { injectIntl } from 'react-intl';
+import { Link } from 'react-router-dom';
 
 import IconActionButton from "../component/IconActionButton";
 import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
+import { readFileAsBase64 } from "../util/fileUtils";
 import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
 import CreateProfileForm from "./components/CreateProfileForm";
@@ -27,7 +29,6 @@ import {
   updateProfile,
   uploadAvatar,
 } from "./profileApi";
-import StashPanel from "./StashPanel";
 
 const AVATAR_MAX_DIMENSION = 1600;
 const AVATAR_TARGET_BYTES = 900 * 1024;
@@ -556,7 +557,7 @@ class ProfilePage extends Component {
 
     try {
       const preparedFile = await this.prepareAvatarFile(file);
-      const content = await this.readFileAsBase64(preparedFile);
+      const content = await readFileAsBase64(preparedFile);
       const response = await uploadAvatar(this.state.profileId, {
         content,
         fileName: preparedFile.name,
@@ -693,19 +694,6 @@ class ProfilePage extends Component {
     return `${normalizedName.slice(0, lastDotIndex)}.${extension}`;
   }
 
-  readFileAsBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === 'string' ? reader.result : '';
-        const base64Content = result.includes(',') ? result.split(',')[1] : result;
-        resolve(base64Content);
-      };
-      reader.onerror = () => reject(reader.error || new Error(this.t('profile.avatar.readFailed', 'Unable to read file')));
-      reader.readAsDataURL(file);
-    });
-  }
-
   handleAvatarDescriptionChange = (event) => {
     const value = event.target.value;
     this.setState({
@@ -834,7 +822,6 @@ class ProfilePage extends Component {
       ? `${this.state.ownerUserProfile.firstName} ${this.state.ownerUserProfile.lastName}`.trim()
       : null;
     const siblingClubProfiles = this.state.clubProfiles.filter(clubProfile => clubProfile.id !== this.state.profileId);
-    const currentClubLabel = `${this.state.firstName} ${this.state.lastName}`.trim() || 'Club profile';
     const visibleClubProfiles = this.state.clubProfiles.filter(clubProfile => {
       if (clubProfile.id === this.state.profileId && this.state.type === 'CLUB') {
         return false;
@@ -855,10 +842,16 @@ class ProfilePage extends Component {
                 <ProfileHeaderBreadcrumb
                   ownerLink={ownerLink}
                   ownerLabel={ownerLabel}
-                  currentLabel={currentClubLabel}
-                  currentProfile={{ id: this.state.profileId, alias: this.state.alias }}
+                  currentProfile={{
+                    id: this.state.profileId,
+                    alias: this.state.alias,
+                    firstName: this.state.firstName,
+                    lastName: this.state.lastName,
+                    period: this.state.period,
+                  }}
                   siblingClubProfiles={siblingClubProfiles}
                   getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
+                  getPeriodLabel={this.getPeriodLabel.bind(this)}
                   emptyLabel={this.t('profile.clubProfiles.noneOther', 'No other club profiles')}
                 />
               )}
@@ -903,21 +896,35 @@ class ProfilePage extends Component {
             />
           </Col>
           <Col lg={4} md={12}>
-            {isClubProfile && isEditable && (
-              <div className="d-flex justify-content-end mb-3">
-                <IconActionButton
-                  size="1.9rem"
-                  fontSize="0.9rem"
-                  onClick={() => this.openDeleteClubProfileModal({
-                    id: this.state.profileId,
-                    firstName: this.state.firstName,
-                    lastName: this.state.lastName,
-                    userId: this.state.userId,
-                  })}
-                  title={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
-                >
-                  <FaTrashAlt />
-                </IconActionButton>
+            {isClubProfile && (
+              <div className="mb-3">
+                {isEditable && (
+                  <div className="d-flex justify-content-end mb-2">
+                    <IconActionButton
+                      size="1.9rem"
+                      fontSize="0.9rem"
+                      onClick={() => this.openDeleteClubProfileModal({
+                        id: this.state.profileId,
+                        firstName: this.state.firstName,
+                        lastName: this.state.lastName,
+                        userId: this.state.userId,
+                      })}
+                      title={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
+                    >
+                      <FaTrashAlt />
+                    </IconActionButton>
+                  </div>
+                )}
+                <div className="d-flex justify-content-start">
+                  <Button
+                    as={Link}
+                    to={`/stash/${this.state.alias || this.state.profileId}`}
+                    variant="outline-secondary"
+                    style={{ minWidth: '9.5rem' }}
+                  >
+                    {this.t('profile.stash.button', 'Stash')}
+                  </Button>
+                </div>
               </div>
             )}
             <ClubProfilesSection
@@ -941,24 +948,6 @@ class ProfilePage extends Component {
               onOpenDelete={this.openDeleteClubProfileModal}
               onHideDelete={this.closeDeleteClubProfileModal}
               onDelete={this.handleDeleteClubProfile}
-            />
-          </Col>
-        </Row>
-        <Row>
-          <Col sm={12}>
-            <StashPanel
-              profile={{
-                id: this.state.profileId,
-                userId: this.state.userId,
-                firstName: this.state.firstName,
-                lastName: this.state.lastName,
-                alias: this.state.alias,
-                period: this.state.period,
-                type: this.state.type,
-              }}
-              isEditable={isEditable}
-              t={this.t.bind(this)}
-              getPeriodLabel={this.getPeriodLabel.bind(this)}
             />
           </Col>
         </Row>

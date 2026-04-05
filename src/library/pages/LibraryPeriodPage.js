@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Row } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import PlusActionButton from '../../component/PlusActionButton';
+import SearchActionButton from '../../component/SearchActionButton';
 import Spinner from '../../component/Spinner';
 import { createSource, findSources } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
@@ -10,7 +12,9 @@ import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import SourceCard from '../components/SourceCard';
 import {
   CLASSIFICATIONS,
+  getClassificationLabel,
   getPeriodLabel,
+  getTypeLabel,
   PAGE_SIZE,
   TYPES,
 } from '../libraryShared';
@@ -23,6 +27,7 @@ export default function LibraryPeriodPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [sources, setSources] = useState([]);
   const [error, setError] = useState(null);
@@ -97,6 +102,7 @@ export default function LibraryPeriodPage() {
         throw new Error(result.data?.message || 'Unable to create the source.');
       }
 
+      setShowCreateModal(false);
       navigate(`/library/source/${result.data.id}`);
     } catch (fetchError) {
       setError(fetchError.message);
@@ -106,7 +112,7 @@ export default function LibraryPeriodPage() {
   };
 
   return (
-    <div className="px-4 px-xl-5 py-4">
+    <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
         title="LIBRARY"
         subtitle={null}
@@ -131,11 +137,21 @@ export default function LibraryPeriodPage() {
               <Form onSubmit={handleSearchSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label>Search text</Form.Label>
-                  <Form.Control
-                    value={query}
-                    onChange={event => setQuery(event.target.value)}
-                    placeholder="Name or description"
-                  />
+                  <div className="input-group">
+                    <Form.Control
+                      value={query}
+                      onChange={event => setQuery(event.target.value)}
+                      placeholder="Name or description"
+                    />
+                    <SearchActionButton
+                      title="Search sources"
+                      type="submit"
+                      className="rounded-0 rounded-end"
+                      borderColor="#ced4da"
+                      color="#495057"
+                      size="2.375rem"
+                    />
+                  </div>
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Classification</Form.Label>
@@ -145,7 +161,7 @@ export default function LibraryPeriodPage() {
                         key={classification}
                         type="checkbox"
                         id={`classification-${classification}`}
-                        label={classification}
+                        label={getClassificationLabel(intl, classification)}
                         checked={selectedClassifications.includes(classification)}
                         onChange={() => handleToggle(classification, selectedClassifications, setSelectedClassifications)}
                       />
@@ -160,73 +176,17 @@ export default function LibraryPeriodPage() {
                         key={type}
                         type="checkbox"
                         id={`type-${type}`}
-                        label={type}
+                        label={getTypeLabel(intl, type)}
                         checked={selectedTypes.includes(type)}
                         onChange={() => handleToggle(type, selectedTypes, setSelectedTypes)}
                       />
                     ))}
                   </div>
                 </Form.Group>
-                <Button type="submit" variant="dark">Search</Button>
               </Form>
             </Card.Body>
           </Card>
 
-          {canContribute(userInfo) && (
-            <Card className="border-0 shadow-sm">
-              <Card.Body>
-                <Card.Title>Create source</Card.Title>
-                <Form onSubmit={handleCreateSource}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Name</Form.Label>
-                    <Form.Control
-                      required
-                      value={draftSource.name}
-                      onChange={event => setDraftSource(prev => ({ ...prev, name: event.target.value }))}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Description</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={draftSource.description}
-                      onChange={event => setDraftSource(prev => ({ ...prev, description: event.target.value }))}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Classification</Form.Label>
-                    <Form.Select
-                      required
-                      value={draftSource.classification}
-                      onChange={event => setDraftSource(prev => ({ ...prev, classification: event.target.value }))}
-                    >
-                      <option value="">Choose classification</option>
-                      {CLASSIFICATIONS.map(classification => (
-                        <option key={classification} value={classification}>{classification}</option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Type</Form.Label>
-                    <Form.Select
-                      required
-                      value={draftSource.type}
-                      onChange={event => setDraftSource(prev => ({ ...prev, type: event.target.value }))}
-                    >
-                      <option value="">Choose type</option>
-                      {TYPES.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                  <Button type="submit" variant="outline-dark" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Create source'}
-                  </Button>
-                </Form>
-              </Card.Body>
-            </Card>
-          )}
         </Col>
         <Col lg={8}>
           {loading && <Spinner />}
@@ -234,7 +194,24 @@ export default function LibraryPeriodPage() {
             <>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <h2 className="mb-0 fs-4">Sources</h2>
-                <div className="text-muted small">{sources.length} result(s)</div>
+                <div className="d-flex align-items-center gap-2">
+                  <div className="text-muted small">{sources.length} result(s)</div>
+                  {canContribute(userInfo) && (
+                    <PlusActionButton
+                      title="Create source"
+                      onClick={() => {
+                        setError(null);
+                        setDraftSource({
+                          name: '',
+                          description: '',
+                          classification: '',
+                          type: '',
+                        });
+                        setShowCreateModal(true);
+                      }}
+                    />
+                  )}
+                </div>
               </div>
               {sources.length === 0 && (
                 <Alert variant="light" className="border">No sources matched the current filters.</Alert>
@@ -250,6 +227,82 @@ export default function LibraryPeriodPage() {
           )}
         </Col>
       </Row>
+
+      {canContribute(userInfo) && (
+        <Modal
+          show={showCreateModal}
+          onHide={() => {
+            if (!submitting) {
+              setShowCreateModal(false);
+            }
+          }}
+          centered
+        >
+          <Modal.Header closeButton={!submitting}>
+            <Modal.Title>Create source</Modal.Title>
+          </Modal.Header>
+          <Form onSubmit={handleCreateSource}>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label>Name</Form.Label>
+                <Form.Control
+                  required
+                  value={draftSource.name}
+                  onChange={event => setDraftSource(prev => ({ ...prev, name: event.target.value }))}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={draftSource.description}
+                  onChange={event => setDraftSource(prev => ({ ...prev, description: event.target.value }))}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Classification</Form.Label>
+                <Form.Select
+                  required
+                  value={draftSource.classification}
+                  onChange={event => setDraftSource(prev => ({ ...prev, classification: event.target.value }))}
+                >
+                  <option value="">Choose classification</option>
+                  {CLASSIFICATIONS.map(classification => (
+                    <option key={classification} value={classification}>{getClassificationLabel(intl, classification)}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Type</Form.Label>
+                <Form.Select
+                  required
+                  value={draftSource.type}
+                  onChange={event => setDraftSource(prev => ({ ...prev, type: event.target.value }))}
+                >
+                  <option value="">Choose type</option>
+                  {TYPES.map(type => (
+                    <option key={type} value={type}>{getTypeLabel(intl, type)}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                type="button"
+                variant="outline-secondary"
+                onClick={() => setShowCreateModal(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="dark" disabled={submitting}>
+                {submitting ? 'Creating...' : 'Create source'}
+              </Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
+      )}
     </div>
   );
 }

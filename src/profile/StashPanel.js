@@ -1,22 +1,34 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
+import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
-import { FaLink, FaPlus, FaSearch, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+import { FaLink, FaPlus, FaTrashAlt, FaUnlink } from 'react-icons/fa';
 
+import DisclosureCard from '../component/DisclosureCard';
 import EditableTextFieldRow from '../component/EditableTextFieldRow';
 import EditableTextareaFieldRow from '../component/EditableTextareaFieldRow';
+import IconActionButton from '../component/IconActionButton';
+import PlusActionButton from '../component/PlusActionButton';
+import SearchActionButton from '../component/SearchActionButton';
+import StackedImageGallery from '../component/StackedImageGallery';
+import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
+import { readFileAsBase64 } from '../util/fileUtils';
 import {
   createStashGroup,
   createStashItem,
+  deleteStashItemImage,
   deleteStashItem,
   getGroupItems,
+  getStashItemImages,
   getLibrarySourcesByIds,
   getProfileStash,
   linkStashItemSource,
   searchLibrarySources,
   unlinkStashItemSource,
+  updateStashItemImageDescription,
   updateStashGroupDescription,
   updateStashGroupName,
+  uploadStashItemImage,
   updateStashItemDescription,
   updateStashItemName,
 } from './stashApi';
@@ -31,10 +43,6 @@ const emptyItemForm = classification => ({
   classification: classification || 'OTHER',
 });
 
-function buildProfileLabel(profile) {
-  return `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || 'Club profile';
-}
-
 function buildSourceLookupMap(sources) {
   return sources.reduce((accumulator, source) => ({
     ...accumulator,
@@ -42,7 +50,8 @@ function buildSourceLookupMap(sources) {
   }), {});
 }
 
-export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
+export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }) {
+  const intl = useIntl();
   const [stash, setStash] = useState(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -50,25 +59,40 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
   const [groupSubmitting, setGroupSubmitting] = useState(false);
   const [groupDrafts, setGroupDrafts] = useState({});
   const [groupStatuses, setGroupStatuses] = useState({});
+  const [groupExpanded, setGroupExpanded] = useState({});
   const [itemDrafts, setItemDrafts] = useState({});
   const [itemStatuses, setItemStatuses] = useState({});
+  const [groupCreateVisible, setGroupCreateVisible] = useState(false);
   const [itemsByGroup, setItemsByGroup] = useState({});
   const [itemsLoading, setItemsLoading] = useState({});
   const [itemCreateTarget, setItemCreateTarget] = useState(null);
   const [itemCreateForm, setItemCreateForm] = useState(emptyItemForm(profile?.period));
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
+  const [itemExpanded, setItemExpanded] = useState({});
   const [sourceDetails, setSourceDetails] = useState({});
   const [sourceSearch, setSourceSearch] = useState({});
+  const [itemImagesByItem, setItemImagesByItem] = useState({});
+  const [itemImagesLoading, setItemImagesLoading] = useState({});
+  const [itemImageDrafts, setItemImageDrafts] = useState({});
+  const [itemImageStatuses, setItemImageStatuses] = useState({});
+  const [itemImageUploadTarget, setItemImageUploadTarget] = useState(null);
+  const [itemImageDescription, setItemImageDescription] = useState('');
+  const [itemImageUploading, setItemImageUploading] = useState(false);
   const groupSaveTimersRef = React.useRef({});
   const itemSaveTimersRef = React.useRef({});
+  const itemImageSaveTimersRef = React.useRef({});
+  const itemImageInputRef = useRef(null);
+  const replaceItemImageInputRef = useRef(null);
+  const replacingItemImageRef = useRef(null);
 
   const isClubProfile = profile?.type === 'CLUB';
-  const profileLabel = useMemo(() => buildProfileLabel(profile), [profile]);
-
   useEffect(() => {
     setGroupForm(emptyGroupForm);
+    setGroupCreateVisible(false);
     setItemCreateTarget(null);
     setItemCreateForm(emptyItemForm(profile?.period));
+    setItemImageUploadTarget(null);
+    setItemImageDescription('');
     setSourceSearch({});
   }, [profile?.id, profile?.period]);
 
@@ -85,6 +109,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
   useEffect(() => () => {
     Object.values(groupSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
     Object.values(itemSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
+    Object.values(itemImageSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
   }, []);
 
   async function loadStash() {
@@ -100,6 +125,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
         description: group.description || '',
       }])));
       setGroupStatuses({});
+      setGroupExpanded(prevState => ({
+        ...prevState,
+        ...Object.fromEntries(groups.map(group => [group.id, prevState[group.id] || false])),
+      }));
       await Promise.all(groups.map(group => loadItems(group.id)));
     } catch (error) {
       setStash(null);
@@ -132,11 +161,45 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
           description: null,
         }])),
       }));
+      setItemExpanded(prevState => ({
+        ...prevState,
+        ...Object.fromEntries((items || []).map(item => [item.id, prevState[item.id] || false])),
+      }));
       await hydrateSources(items || []);
     } catch (error) {
       setItemsByGroup(prevState => ({ ...prevState, [groupId]: [] }));
     } finally {
       setItemsLoading(prevState => ({ ...prevState, [groupId]: false }));
+    }
+  }
+
+  async function ensureItemImagesLoaded(itemId) {
+    if (Object.prototype.hasOwnProperty.call(itemImagesByItem, itemId) || itemImagesLoading[itemId]) {
+      return;
+    }
+
+    await loadItemImages(itemId);
+  }
+
+  async function loadItemImages(itemId) {
+    setItemImagesLoading(prevState => ({ ...prevState, [itemId]: true }));
+
+    try {
+      const images = await getStashItemImages(itemId);
+      const imageArray = Array.isArray(images) ? images : [];
+      setItemImagesByItem(prevState => ({ ...prevState, [itemId]: imageArray }));
+      setItemImageDrafts(prevState => ({
+        ...prevState,
+        ...Object.fromEntries(imageArray.map(image => [image.id, image.description || ''])),
+      }));
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        ...Object.fromEntries(imageArray.map(image => [image.id, null])),
+      }));
+    } catch (error) {
+      setItemImagesByItem(prevState => ({ ...prevState, [itemId]: [] }));
+    } finally {
+      setItemImagesLoading(prevState => ({ ...prevState, [itemId]: false }));
     }
   }
 
@@ -167,6 +230,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     try {
       await createStashGroup(profile.id, groupForm);
       setGroupForm(emptyGroupForm);
+      setGroupCreateVisible(false);
       await loadStash();
       setFeedback({
         variant: 'success',
@@ -422,6 +486,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
   async function handleDeleteItem(item) {
     try {
       await deleteStashItem(item.id);
+      setItemExpanded(prevState => {
+        const nextState = { ...prevState };
+        delete nextState[item.id];
+        return nextState;
+      });
       await loadItems(item.itemGroup.id);
       setFeedback({
         variant: 'success',
@@ -433,6 +502,185 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
         text: t('profile.stash.itemDeleteFailed', 'Unable to delete this item.'),
       });
     }
+  }
+
+  async function handleUploadItemImage(event) {
+    event.preventDefault();
+    const file = itemImageInputRef.current?.files?.[0];
+
+    if (!file || !itemImageUploadTarget) {
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.itemImageChooseFile', 'Choose an image to upload.'),
+      });
+      return;
+    }
+
+    setItemImageUploading(true);
+    setFeedback(null);
+
+    try {
+      const content = await readFileAsBase64(file);
+      await uploadStashItemImage(itemImageUploadTarget.id, {
+        content,
+        fileName: file.name,
+        description: itemImageDescription || null,
+      });
+      if (itemImageInputRef.current) {
+        itemImageInputRef.current.value = '';
+      }
+      setItemImageDescription('');
+      setItemImageUploadTarget(null);
+      await loadItemImages(itemImageUploadTarget.id);
+    } catch (error) {
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.itemImageUploadFailed', 'Unable to upload this image.'),
+      });
+    } finally {
+      setItemImageUploading(false);
+    }
+  }
+
+  function handleOpenReplaceItemImagePicker(item, image) {
+    replacingItemImageRef.current = { itemId: item.id, image };
+    if (replaceItemImageInputRef.current) {
+      replaceItemImageInputRef.current.value = '';
+      replaceItemImageInputRef.current.click();
+    }
+  }
+
+  async function handleReplaceItemImage(event) {
+    const file = event.target.files?.[0];
+    const target = replacingItemImageRef.current;
+
+    if (!file || !target) {
+      return;
+    }
+
+    setItemImageUploading(true);
+    setFeedback(null);
+
+    try {
+      const content = await readFileAsBase64(file);
+      await uploadStashItemImage(target.itemId, {
+        content,
+        fileName: file.name,
+        description: itemImageDrafts[target.image.id] ?? target.image.description ?? null,
+      });
+      await deleteStashItemImage(target.itemId, target.image.id);
+      await loadItemImages(target.itemId);
+      setFeedback({
+        variant: 'success',
+        text: t('profile.stash.itemImageReplaceSuccess', 'Image replaced.'),
+      });
+    } catch (error) {
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.itemImageReplaceFailed', 'Unable to replace this image.'),
+      });
+    } finally {
+      setItemImageUploading(false);
+      replacingItemImageRef.current = null;
+      event.target.value = '';
+    }
+  }
+
+  function clearItemImageSaveTimer(imageId) {
+    if (itemImageSaveTimersRef.current[imageId]) {
+      clearTimeout(itemImageSaveTimersRef.current[imageId]);
+      delete itemImageSaveTimersRef.current[imageId];
+    }
+  }
+
+  const resetItemImageStatusLater = (imageId, delay = 1000) => {
+    window.setTimeout(() => {
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        [imageId]: null,
+      }));
+    }, delay);
+  };
+
+  async function handleDeleteItemImage(itemId, imageId) {
+    try {
+      await deleteStashItemImage(itemId, imageId);
+      clearItemImageSaveTimer(imageId);
+      await loadItemImages(itemId);
+      setFeedback({
+        variant: 'success',
+        text: t('profile.stash.itemImageDeleteSuccess', 'Image deleted.'),
+      });
+    } catch (error) {
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.itemImageDeleteFailed', 'Unable to delete this image.'),
+      });
+    }
+  }
+
+  async function handleUpdateItemImageDescription(itemId, imageId, nextValue = itemImageDrafts[imageId] || '') {
+    const persistedValue = (itemImagesByItem[itemId] || []).find(image => image.id === imageId)?.description || '';
+    if ((nextValue || '') === persistedValue) {
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        [imageId]: null,
+      }));
+      return;
+    }
+
+    try {
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        [imageId]: 'saving',
+      }));
+      await updateStashItemImageDescription(itemId, imageId, nextValue);
+      setItemImagesByItem(prevState => ({
+        ...prevState,
+        [itemId]: (prevState[itemId] || []).map(image => (
+          image.id === imageId ? { ...image, description: nextValue } : image
+        )),
+      }));
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        [imageId]: 'saved',
+      }));
+      resetItemImageStatusLater(imageId);
+    } catch (error) {
+      setItemImageDrafts(prevState => ({
+        ...prevState,
+        [imageId]: persistedValue,
+      }));
+      setItemImageStatuses(prevState => ({
+        ...prevState,
+        [imageId]: 'error',
+      }));
+      resetItemImageStatusLater(imageId, 1500);
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.itemImageDescriptionFailed', 'Unable to save image description.'),
+      });
+    }
+  }
+
+  function handleItemImageDescriptionChange(itemId, imageId, value) {
+    setItemImageDrafts(prevState => ({
+      ...prevState,
+      [imageId]: value,
+    }));
+    setItemImageStatuses(prevState => ({
+      ...prevState,
+      [imageId]: value === ((itemImagesByItem[itemId] || []).find(image => image.id === imageId)?.description || '') ? null : 'pending',
+    }));
+    clearItemImageSaveTimer(imageId);
+    itemImageSaveTimersRef.current[imageId] = window.setTimeout(() => {
+      handleUpdateItemImageDescription(itemId, imageId, value);
+    }, 1800);
+  }
+
+  function handleItemImageDescriptionBlur(itemId, imageId) {
+    clearItemImageSaveTimer(imageId);
+    handleUpdateItemImageDescription(itemId, imageId);
   }
 
   async function handleSearchSources(item) {
@@ -507,61 +755,49 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     }
   }
 
+  function toggleItemExpanded(itemId) {
+    const nextExpanded = !itemExpanded[itemId];
+    if (nextExpanded) {
+      ensureItemImagesLoaded(itemId);
+    }
+    setItemExpanded(prevState => ({
+      ...prevState,
+      [itemId]: nextExpanded,
+    }));
+  }
+
   if (!isClubProfile) {
     return null;
   }
 
   return (
-    <div className="mt-4 pt-2">
+    <div className={embedded ? 'mt-4 pt-2' : ''}>
       <div className="p-3 p-lg-4 rounded border" style={{ backgroundColor: '#f7f4ee', borderColor: '#d9ccb8' }}>
-        <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-          <div>
-            <div className="text-uppercase small fw-bold text-secondary">
-              {t('profile.stash.eyebrow', 'Club stash')}
-            </div>
-            <h4 className="mb-1">{t('profile.stash.title', 'Belongings and kit')}</h4>
-            <div className="small text-muted">
-              {t('profile.stash.subtitle', 'Structured belongings for this club profile, supported by linked library sources.')}
-            </div>
-          </div>
-          <div className="small text-muted">
-            {profileLabel}
-            {profile?.period ? ` • ${getPeriodLabel(profile.period)}` : ''}
-          </div>
-        </div>
 
         {feedback && <Alert variant={feedback.variant} className="py-2">{feedback.text}</Alert>}
         {loading && <Spinner animation="border" size="sm" />}
 
-        {!loading && isEditable && (
-          <Form onSubmit={handleCreateGroup} className="mb-4">
-            <Row className="g-2 align-items-end">
-              <Col md={4}>
-                <Form.Label className="small mb-1">{t('profile.stash.groupName', 'Collection name')}</Form.Label>
-                <Form.Control
-                  size="sm"
-                  value={groupForm.name}
-                  onChange={event => setGroupForm(prevState => ({ ...prevState, name: event.target.value }))}
-                  placeholder={t('profile.stash.groupNamePlaceholder', 'Helmet, camp, wardrobe...')}
-                />
-              </Col>
-              <Col md={5}>
-                <Form.Label className="small mb-1">{t('profile.stash.groupDescription', 'Collection note')}</Form.Label>
-                <Form.Control
-                  size="sm"
-                  value={groupForm.description}
-                  onChange={event => setGroupForm(prevState => ({ ...prevState, description: event.target.value }))}
-                  placeholder={t('profile.stash.groupDescriptionPlaceholder', 'What this collection covers')}
-                />
-              </Col>
-              <Col md={3}>
-                <Button type="submit" size="sm" variant="secondary" disabled={groupSubmitting || !groupForm.name.trim()}>
-                  <FaPlus className="me-2" />
-                  {t('profile.stash.groupCreate', 'Create collection')}
-                </Button>
-              </Col>
-            </Row>
-          </Form>
+        {!loading && (
+          <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
+            <div>
+              <div className="small text-uppercase text-muted fw-bold">
+                {t('profile.stash.collectionsTitle', 'Collections')}
+              </div>
+              <div className="small text-muted">
+                {(stash?.groups || []).length} {t('profile.stash.collectionsCount', 'collection(s)')}
+              </div>
+            </div>
+            {isEditable && (
+              <PlusActionButton
+                title={t('profile.stash.groupCreate', 'Create collection')}
+                onClick={() => {
+                  setFeedback(null);
+                  setGroupForm(emptyGroupForm);
+                  setGroupCreateVisible(true);
+                }}
+              />
+            )}
+          </div>
         )}
 
         {!loading && !stash?.groups?.length && (
@@ -574,62 +810,89 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
           {(stash?.groups || []).map(group => {
             const items = itemsByGroup[group.id] || [];
             const searchStateByItem = sourceSearch;
+            const isGroupExpanded = Boolean(groupExpanded[group.id]);
+            const loadedGroupImageCount = items.reduce(
+              (count, item) => count + ((itemImagesByItem[item.id] || []).length),
+              0
+            );
+            const hasLoadedGroupImages = items.some(item => Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id));
 
             return (
-              <div key={group.id} className="rounded border bg-white p-3" style={{ borderColor: '#e3d8c6' }}>
-                <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                  <div className="flex-grow-1">
-                    {isEditable ? (
-                      <Row className="g-2">
-                        <Col md={4}>
-                          <EditableTextFieldRow
-                            label=""
-                            editable
-                            value={groupDrafts[group.id]?.name || ''}
-                            readOnlyValue={group.name}
-                            onChange={event => setGroupField(group.id, 'name', event.target.value)}
-                            onBlur={() => handleSaveGroupField(group, 'name')}
-                            status={groupStatuses[group.id]?.name}
-                            className=""
-                            fieldMaxWidth="100%"
-                          />
-                        </Col>
-                        <Col md={6}>
-                          <EditableTextFieldRow
-                            label=""
-                            editable
-                            value={groupDrafts[group.id]?.description || ''}
-                            readOnlyValue={group.description || '-'}
-                            onChange={event => setGroupField(group.id, 'description', event.target.value)}
-                            onBlur={() => handleSaveGroupField(group, 'description')}
-                            status={groupStatuses[group.id]?.description}
-                            className=""
-                            fieldMaxWidth="100%"
-                          />
-                        </Col>
-                      </Row>
-                    ) : (
-                      <>
-                        <div className="fw-semibold">{group.name}</div>
-                        {group.description && <div className="small text-muted">{group.description}</div>}
-                      </>
+              <DisclosureCard
+                key={group.id}
+                className="bg-white"
+                expanded={isGroupExpanded}
+                onToggle={() => setGroupExpanded(prevState => ({
+                  ...prevState,
+                  [group.id]: !prevState[group.id],
+                }))}
+                style={{
+                  borderColor: '#e3d8c6',
+                }}
+                summary={(
+                  <>
+                    <div className="fw-semibold">{groupDrafts[group.id]?.name || group.name}</div>
+                    {(groupDrafts[group.id]?.description || group.description) && (
+                      <div className="small text-muted mt-1">
+                        {groupDrafts[group.id]?.description || group.description}
+                      </div>
                     )}
-                  </div>
-                  <div className="small text-muted">
-                    {group.profile?.period ? getPeriodLabel(group.profile.period) : getPeriodLabel(profile.period)}
-                  </div>
-                </div>
-
+                    <div className="d-flex gap-2 flex-wrap mt-2">
+                      <Badge bg="light" text="dark">
+                        {group.profile?.period ? getPeriodLabel(group.profile.period) : getPeriodLabel(profile.period)}
+                      </Badge>
+                      <Badge bg="light" text="dark">
+                        {items.length} {t('profile.stash.itemsCount', 'item(s)')}
+                      </Badge>
+                      {hasLoadedGroupImages && (
+                        <Badge bg="light" text="dark">
+                          {loadedGroupImageCount} {t('profile.stash.imagesCount', 'image(s)')}
+                        </Badge>
+                      )}
+                    </div>
+                  </>
+                )}
+              >
                 <div className="mt-3">
+                  {isEditable && (
+                    <Row className="g-2 mb-3">
+                      <Col md={4}>
+                        <EditableTextFieldRow
+                          label=""
+                          editable
+                          value={groupDrafts[group.id]?.name || ''}
+                          readOnlyValue={group.name}
+                          onChange={event => setGroupField(group.id, 'name', event.target.value)}
+                          onBlur={() => handleSaveGroupField(group, 'name')}
+                          status={groupStatuses[group.id]?.name}
+                          className=""
+                          fieldMaxWidth="100%"
+                        />
+                      </Col>
+                      <Col md={6}>
+                        <EditableTextFieldRow
+                          label=""
+                          editable
+                          value={groupDrafts[group.id]?.description || ''}
+                          readOnlyValue={group.description || '-'}
+                          onChange={event => setGroupField(group.id, 'description', event.target.value)}
+                          onBlur={() => handleSaveGroupField(group, 'description')}
+                          status={groupStatuses[group.id]?.description}
+                          className=""
+                          fieldMaxWidth="100%"
+                        />
+                      </Col>
+                    </Row>
+                  )}
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <div className="small text-uppercase text-muted fw-bold">
                       {t('profile.stash.itemsTitle', 'Items')}
                     </div>
                     {isEditable && (
-                      <Button size="sm" variant="outline-secondary" onClick={() => openCreateItem(group)}>
-                        <FaPlus className="me-2" />
-                        {t('profile.stash.itemCreate', 'Add item')}
-                      </Button>
+                      <PlusActionButton
+                        title={t('profile.stash.itemCreate', 'Add item')}
+                        onClick={() => openCreateItem(group)}
+                      />
                     )}
                   </div>
 
@@ -643,139 +906,221 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
                   <div className="d-grid gap-3">
                     {items.map(item => {
                       const sourceState = searchStateByItem[item.id] || {};
+                      const isExpanded = Boolean(itemExpanded[item.id]);
+                      const hasLoadedImages = Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id);
                       return (
-                        <div key={item.id} className="rounded border p-3" style={{ borderColor: '#ebe4d8', backgroundColor: '#fcfbf8' }}>
-                          <Row className="g-3">
-                            <Col lg={6}>
-                              {isEditable ? (
-                                <>
-                                  <EditableTextFieldRow
-                                    label=""
-                                    editable
-                                    value={itemDrafts[item.id]?.name || ''}
-                                    readOnlyValue={item.name}
-                                    onChange={event => setItemField(item, 'name', event.target.value)}
-                                    onBlur={() => handleSaveItemField(item, 'name')}
-                                    status={itemStatuses[item.id]?.name}
-                                    className="mb-2"
-                                    fieldMaxWidth="100%"
-                                  />
-                                  <EditableTextareaFieldRow
-                                    label=""
-                                    editable
-                                    value={itemDrafts[item.id]?.description || ''}
-                                    readOnlyValue={item.description || '-'}
-                                    onChange={event => setItemField(item, 'description', event.target.value)}
-                                    onBlur={() => handleSaveItemField(item, 'description')}
-                                    status={itemStatuses[item.id]?.description}
-                                    rows={2}
-                                    className=""
-                                    fieldMaxWidth="100%"
-                                  />
-                                  <div className="d-flex gap-2 mt-2">
-                                    <Button size="sm" variant="outline-danger" onClick={() => handleDeleteItem(item)}>
-                                      <FaTrashAlt className="me-2" />
-                                      {t('profile.stash.delete', 'Delete')}
-                                    </Button>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="fw-semibold">{item.name}</div>
-                                  {item.description && <div className="small text-muted">{item.description}</div>}
-                                </>
+                        <DisclosureCard
+                          key={item.id}
+                          expanded={isExpanded}
+                          onToggle={() => toggleItemExpanded(item.id)}
+                          topRightAction={isEditable ? (
+                            <div className="position-absolute top-0 end-0 mt-3 me-3">
+                              <IconActionButton
+                                title={t('profile.stash.delete', 'Delete')}
+                                onClick={() => handleDeleteItem(item)}
+                                borderColor="#c77d7d"
+                                color="#8e2323"
+                                backgroundColor="#fff"
+                                size="1.9rem"
+                                fontSize="0.9rem"
+                              >
+                                <FaTrashAlt />
+                              </IconActionButton>
+                            </div>
+                          ) : null}
+                          style={{
+                            borderColor: '#ebe4d8',
+                            backgroundColor: '#fcfbf8',
+                          }}
+                          summary={(
+                            <>
+                              <div className="fw-semibold">{item.name}</div>
+                              {item.description && (
+                                <div className="small text-muted mt-1">
+                                  {item.description}
+                                </div>
                               )}
-                            </Col>
-                            <Col lg={6}>
-                              <div className="d-flex gap-2 flex-wrap mb-2">
-                                <Badge bg="secondary">{item.classification}</Badge>
+                              <div className="d-flex gap-2 flex-wrap mt-2">
+                                <Badge bg="secondary">{getClassificationLabel(intl, item.classification)}</Badge>
                                 <Badge bg="light" text="dark">{getPeriodLabel(item.period)}</Badge>
+                                <Badge bg="light" text="dark">
+                                  {(item.sources || []).length} {t('profile.stash.sourcesCount', 'source(s)')}
+                                </Badge>
+                                {hasLoadedImages && (
+                                  <Badge bg="light" text="dark">
+                                    {(itemImagesByItem[item.id] || []).length} {t('profile.stash.imagesCount', 'image(s)')}
+                                  </Badge>
+                                )}
                               </div>
-
-                              <div className="small text-uppercase text-muted fw-bold mb-2">
-                                {t('profile.stash.sourcesTitle', 'Linked sources')}
-                              </div>
-
-                              {(item.sources || []).length === 0 && (
-                                <div className="small text-muted mb-2">
-                                  {t('profile.stash.sourcesEmpty', 'No supporting sources linked yet.')}
-                                </div>
-                              )}
-
-                              <div className="d-grid gap-2">
-                                {(item.sources || []).map(sourceId => {
-                                  const source = sourceDetails[sourceId];
-                                  return (
-                                    <div key={sourceId} className="d-flex align-items-center justify-content-between gap-2">
-                                      {source ? (
-                                        <Link to={`/library/source/${sourceId}`} className="small text-decoration-none">
-                                          {source.name}
-                                        </Link>
-                                      ) : (
-                                        <span className="small text-muted">#{sourceId}</span>
-                                      )}
-                                      {isEditable && (
-                                        <Button size="sm" variant="outline-secondary" onClick={() => handleUnlinkSource(item, sourceId)}>
-                                          <FaUnlink />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {isEditable && (
-                                <div className="mt-3 pt-2 border-top">
-                                  <div className="input-group input-group-sm mb-2">
-                                    <Form.Control
-                                      value={sourceState.query || ''}
-                                      onChange={event => setSourceSearch(prevState => ({
-                                        ...prevState,
-                                        [item.id]: {
-                                          ...(prevState[item.id] || {}),
-                                          query: event.target.value,
-                                        },
-                                      }))}
-                                      placeholder={t('profile.stash.sourceSearchPlaceholder', 'Find matching library sources')}
+                            </>
+                          )}
+                        >
+                          <Row className="g-3 mt-1">
+                              <Col lg={6}>
+                                {isEditable ? (
+                                  <>
+                                    <EditableTextFieldRow
+                                      label=""
+                                      editable
+                                      value={itemDrafts[item.id]?.name || ''}
+                                      readOnlyValue={item.name}
+                                      onChange={event => setItemField(item, 'name', event.target.value)}
+                                      onBlur={() => handleSaveItemField(item, 'name')}
+                                      status={itemStatuses[item.id]?.name}
+                                      className="mb-2"
+                                      fieldMaxWidth="100%"
                                     />
-                                    <Button variant="outline-secondary" onClick={() => handleSearchSources(item)}>
-                                      <FaSearch className="me-2" />
-                                      {t('profile.stash.search', 'Search')}
-                                    </Button>
-                                  </div>
-                                  {sourceState.error && <div className="small text-danger mb-2">{sourceState.error}</div>}
-                                  {sourceState.loading && <Spinner animation="border" size="sm" />}
-                                  {(sourceState.results || []).length > 0 && (
-                                    <div className="d-grid gap-2">
-                                      {sourceState.results.map(source => (
-                                        <div key={source.id} className="d-flex align-items-center justify-content-between gap-2">
-                                          <div className="small">
-                                            <div className="fw-semibold">{source.name}</div>
-                                            <div className="text-muted">{source.type}</div>
-                                          </div>
-                                          <Button
-                                            size="sm"
-                                            variant="outline-secondary"
-                                            disabled={(item.sources || []).includes(source.id)}
-                                            onClick={() => handleLinkSource(item, source.id)}
-                                          >
-                                            <FaLink className="me-2" />
-                                            {t('profile.stash.link', 'Link')}
-                                          </Button>
+                                    <EditableTextareaFieldRow
+                                      label=""
+                                      editable
+                                      value={itemDrafts[item.id]?.description || ''}
+                                      readOnlyValue={item.description || '-'}
+                                      onChange={event => setItemField(item, 'description', event.target.value)}
+                                      onBlur={() => handleSaveItemField(item, 'description')}
+                                      status={itemStatuses[item.id]?.description}
+                                      rows={2}
+                                      className=""
+                                      fieldMaxWidth="100%"
+                                    />
+                                    <div className="mt-3 pt-3 border-top">
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <div className="small text-uppercase text-muted fw-bold">
+                                          {t('profile.stash.imagesTitle', 'Images')}
                                         </div>
-                                      ))}
+                                        <PlusActionButton
+                                          title={t('profile.stash.itemImageUpload', 'Upload image')}
+                                          onClick={() => {
+                                            setFeedback(null);
+                                            setItemImageDescription('');
+                                            setItemImageUploadTarget(item);
+                                          }}
+                                        />
+                                      </div>
+                                      {itemImagesLoading[item.id] && <Spinner animation="border" size="sm" />}
+                                      {!itemImagesLoading[item.id] && (
+                                        <StackedImageGallery
+                                          images={itemImagesByItem[item.id] || []}
+                                          title={item.name}
+                                          emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
+                                          editable={isEditable}
+                                          onDeleteImage={imageId => handleDeleteItemImage(item.id, imageId)}
+                                          onReplaceImage={image => handleOpenReplaceItemImagePicker(item, image)}
+                                          imageDrafts={itemImageDrafts}
+                                          imageStatuses={itemImageStatuses}
+                                          onDescriptionChange={(imageId, value) => handleItemImageDescriptionChange(item.id, imageId, value)}
+                                          onDescriptionBlur={imageId => handleItemImageDescriptionBlur(item.id, imageId)}
+                                        />
+                                      )}
                                     </div>
-                                  )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="fw-semibold">{item.name}</div>
+                                    {item.description && <div className="small text-muted">{item.description}</div>}
+                                    <div className="mt-3 pt-3 border-top">
+                                      <div className="small text-uppercase text-muted fw-bold mb-2">
+                                        {t('profile.stash.imagesTitle', 'Images')}
+                                      </div>
+                                      {itemImagesLoading[item.id] && <Spinner animation="border" size="sm" />}
+                                      {!itemImagesLoading[item.id] && hasLoadedImages && (
+                                        <StackedImageGallery
+                                          images={itemImagesByItem[item.id] || []}
+                                          title={item.name}
+                                          emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
+                                        />
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </Col>
+                              <Col lg={6}>
+                                <div className="small text-uppercase text-muted fw-bold mb-2">
+                                  {t('profile.stash.sourcesTitle', 'Linked sources')}
                                 </div>
-                              )}
-                            </Col>
-                          </Row>
-                        </div>
+
+                                {(item.sources || []).length === 0 && (
+                                  <div className="small text-muted mb-2">
+                                    {t('profile.stash.sourcesEmpty', 'No supporting sources linked yet.')}
+                                  </div>
+                                )}
+
+                                <div className="d-grid gap-2">
+                                  {(item.sources || []).map(sourceId => {
+                                    const source = sourceDetails[sourceId];
+                                    return (
+                                      <div key={sourceId} className="d-flex align-items-center justify-content-between gap-2">
+                                        {source ? (
+                                          <Link to={`/library/source/${sourceId}`} className="small text-decoration-none">
+                                            {source.name}
+                                          </Link>
+                                        ) : (
+                                          <span className="small text-muted">#{sourceId}</span>
+                                        )}
+                                        {isEditable && (
+                                          <Button size="sm" variant="outline-secondary" onClick={() => handleUnlinkSource(item, sourceId)}>
+                                            <FaUnlink />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {isEditable && (
+                                  <div className="mt-3 pt-2 border-top">
+                                    <div className="input-group input-group-sm mb-2">
+                                      <Form.Control
+                                        value={sourceState.query || ''}
+                                        onChange={event => setSourceSearch(prevState => ({
+                                          ...prevState,
+                                          [item.id]: {
+                                            ...(prevState[item.id] || {}),
+                                            query: event.target.value,
+                                          },
+                                        }))}
+                                        placeholder={t('profile.stash.sourceSearchPlaceholder', 'Find matching library sources')}
+                                      />
+                                      <SearchActionButton
+                                        title={t('profile.stash.search', 'Search')}
+                                        onClick={() => handleSearchSources(item)}
+                                        className="rounded-0 rounded-end"
+                                        borderColor="#ced4da"
+                                        color="#495057"
+                                      />
+                                    </div>
+                                    {sourceState.error && <div className="small text-danger mb-2">{sourceState.error}</div>}
+                                    {sourceState.loading && <Spinner animation="border" size="sm" />}
+                                    {(sourceState.results || []).length > 0 && (
+                                      <div className="d-grid gap-2">
+                                        {sourceState.results.map(source => (
+                                          <div key={source.id} className="d-flex align-items-center justify-content-between gap-2">
+                                            <div className="small">
+                                              <div className="fw-semibold">{source.name}</div>
+                                              <div className="text-muted">{getTypeLabel(intl, source.type)}</div>
+                                            </div>
+                                            <Button
+                                              size="sm"
+                                              variant="outline-secondary"
+                                              disabled={(item.sources || []).includes(source.id)}
+                                              onClick={() => handleLinkSource(item, source.id)}
+                                            >
+                                              <FaLink className="me-2" />
+                                              {t('profile.stash.link', 'Link')}
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Col>
+                            </Row>
+                        </DisclosureCard>
                       );
                     })}
                   </div>
                 </div>
-              </div>
+              </DisclosureCard>
             );
           })}
         </div>
@@ -828,6 +1173,111 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
           </Modal.Footer>
         </Form>
       </Modal>
+
+      {isEditable && (
+        <>
+          <Form.Control
+            ref={replaceItemImageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleReplaceItemImage}
+            className="d-none"
+          />
+          <Modal
+            show={Boolean(itemImageUploadTarget)}
+            onHide={() => {
+              if (!itemImageUploading) {
+                setItemImageUploadTarget(null);
+              }
+            }}
+            centered
+          >
+            <Modal.Header closeButton={!itemImageUploading}>
+              <Modal.Title>{t('profile.stash.itemImageUpload', 'Upload image')}</Modal.Title>
+            </Modal.Header>
+            <Form onSubmit={handleUploadItemImage}>
+              <Modal.Body>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
+                  <Form.Control ref={itemImageInputRef} type="file" accept="image/*" />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>{t('profile.stash.itemImageDescription', 'Description')}</Form.Label>
+                  <Form.Control
+                    value={itemImageDescription}
+                    onChange={event => setItemImageDescription(event.target.value)}
+                    placeholder={t('profile.stash.itemImageDescriptionPlaceholder', 'Optional description')}
+                  />
+                </Form.Group>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button
+                  type="button"
+                  variant="outline-secondary"
+                  onClick={() => setItemImageUploadTarget(null)}
+                  disabled={itemImageUploading}
+                >
+                  {t('profile.action.cancel', 'Cancel')}
+                </Button>
+                <Button type="submit" variant="secondary" disabled={itemImageUploading}>
+                  {itemImageUploading ? t('profile.stash.itemImageUploading', 'Uploading...') : t('profile.stash.itemImageUpload', 'Upload image')}
+                </Button>
+              </Modal.Footer>
+            </Form>
+          </Modal>
+        </>
+      )}
+
+      <Modal
+        show={groupCreateVisible}
+        onHide={() => {
+          if (!groupSubmitting) {
+            setGroupCreateVisible(false);
+          }
+        }}
+        centered
+      >
+        <Modal.Header closeButton={!groupSubmitting}>
+          <Modal.Title>{t('profile.stash.groupCreate', 'Create collection')}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateGroup}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>{t('profile.stash.groupName', 'Collection name')}</Form.Label>
+              <Form.Control
+                value={groupForm.name}
+                onChange={event => setGroupForm(prevState => ({ ...prevState, name: event.target.value }))}
+                placeholder={t('profile.stash.groupNamePlaceholder', 'Helmet, camp, wardrobe...')}
+              />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>{t('profile.stash.groupDescription', 'Collection note')}</Form.Label>
+              <Form.Control
+                value={groupForm.description}
+                onChange={event => setGroupForm(prevState => ({ ...prevState, description: event.target.value }))}
+                placeholder={t('profile.stash.groupDescriptionPlaceholder', 'What this collection covers')}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              type="button"
+              variant="outline-secondary"
+              onClick={() => setGroupCreateVisible(false)}
+              disabled={groupSubmitting}
+            >
+              {t('profile.action.cancel', 'Cancel')}
+            </Button>
+            <Button type="submit" variant="secondary" disabled={groupSubmitting || !groupForm.name.trim()}>
+              {groupSubmitting ? t('profile.stash.groupCreating', 'Creating...') : t('profile.stash.groupCreate', 'Create collection')}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 }
+
+
+
+

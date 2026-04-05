@@ -74,6 +74,30 @@ export function updateStashItemDescription(itemId, description) {
   });
 }
 
+export function getStashItemImages(itemId) {
+  return requestJson(`/api/image/image/item/${itemId}`);
+}
+
+export function uploadStashItemImage(itemId, payload) {
+  return requestJson(`/api/stash/item/${itemId}/images`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStashItemImage(itemId, imageId) {
+  return requestJson(`/api/stash/item/${itemId}/images/${imageId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function updateStashItemImageDescription(itemId, imageId, description) {
+  return requestJson(`/api/stash/item/${itemId}/images/${imageId}/description`, {
+    method: 'PATCH',
+    body: JSON.stringify({ description }),
+  });
+}
+
 export function deleteStashItem(itemId) {
   return requestJson(`/api/stash/item/${itemId}`, { method: 'DELETE' });
 }

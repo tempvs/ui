@@ -1,54 +1,42 @@
-import React, { Component } from 'react';
-
+import React, { useState } from 'react';
 import { Modal, Image }  from 'react-bootstrap';
 import ImageDescriptionBlock from './ImageDescriptionBlock';
 
-class ModalImage extends Component {
-  constructor() {
-    super();
-    this.state = {show: false};
+function ModalImage(props) {
+  const [show, setShow] = useState(false);
+  const imageSrc = props.url || `data:image/jpeg;base64, ${props.src}`;
+  const wrapperStyle = {
+    width: '100%',
+    maxWidth: '18rem',
+    ...props.wrapperStyle,
+  };
+  const imageStyle = {
+    width: '100%',
+    display: 'block',
+    cursor: 'pointer',
+    ...props.imageStyle,
+  };
 
-    this.handleShow = this.handleShow.bind(this);
-    this.handleClose = this.handleClose.bind(this);
-  }
+  return (
+    <>
+      <div style={wrapperStyle}>
+        <Image alt={props.alt} src={imageSrc} onClick={() => setShow(true)} style={imageStyle} />
+      </div>
 
-  handleShow() {
-    this.setState({show: true});
-  }
-
-  handleClose() {
-    this.setState({show: false});
-  }
-
-  render() {
-    const imageSrc = this.props.url || `data:image/jpeg;base64, ${this.props.src}`;
-    const wrapperStyle = {
-      width: '100%',
-      maxWidth: '18rem',
-      ...this.props.wrapperStyle,
-    };
-    const imageStyle = {
-      width: '100%',
-      display: 'block',
-      cursor: 'pointer',
-      ...this.props.imageStyle,
-    };
-
-    return (
-      <>
-        <div style={wrapperStyle}>
-          <Image alt={this.props.alt} src={imageSrc} onClick={this.handleShow} style={imageStyle} />
-        </div>
-
-        <Modal show={this.state.show} onHide={this.handleClose} centered>
-          <Modal.Body>
-            <Image alt={this.props.alt} src={imageSrc} fluid />
-            <ImageDescriptionBlock description={this.props.description} className="mt-3" />
-          </Modal.Body>
-        </Modal>
-      </>
-    );
-  }
+      <Modal show={show} onHide={() => setShow(false)} centered size={props.modalSize}>
+        <Modal.Body>
+          <div className="position-relative">
+            {props.modalTopLeftAction}
+            {props.modalTopRightAction}
+            <Image alt={props.alt} src={imageSrc} fluid />
+          </div>
+          {props.modalDescriptionContent || (
+            <ImageDescriptionBlock description={props.description} className="mt-3" />
+          )}
+        </Modal.Body>
+      </Modal>
+    </>
+  );
 }
 
 export default ModalImage;
