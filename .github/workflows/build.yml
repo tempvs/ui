@@ -41,7 +41,14 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}
+  deploy-render:
+    needs: [build-image]
+    if: ${{ github.ref_name == 'master' }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger Render deploy
+        env:
+          IMAGE_URL: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}
         run: >-
           curl -X POST
-          "${{ secrets.RENDER_DEPLOY_HOOK }}?imgURL=${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}"
+          "${{ secrets.RENDER_DEPLOY_HOOK }}?imgURL=$(python -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ[\"IMAGE_URL\"], safe=\"\"))')"
