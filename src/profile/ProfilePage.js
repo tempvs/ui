@@ -1,41 +1,33 @@
 import React, { Component } from 'react';
 
-import { Container, Form, Row, Col, Button, Dropdown, Modal } from 'react-bootstrap';
-import { FaHourglassHalf, FaPlus, FaTimes, FaTrashAlt, FaUpload } from 'react-icons/fa';
+import { Container, Row, Col, Button } from 'react-bootstrap';
+import { FaTrashAlt } from 'react-icons/fa';
 import { injectIntl } from 'react-intl';
 
-import { doFetch } from "../util/Fetcher.js";
-import ModalImage from "../component/ModalImage";
+import IconActionButton from "../component/IconActionButton";
+import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
+import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
+import ClubProfilesSection from "./components/ClubProfilesSection";
+import CreateProfileForm from "./components/CreateProfileForm";
+import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
+import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
+import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
+import {
+  createClubProfile,
+  createUserProfile,
+  deleteAvatar,
+  deleteProfile,
+  fetchAvatar,
+  fetchClubProfiles,
+  fetchCurrentUserInfo,
+  fetchOwnerUserProfile,
+  fetchProfileById,
+  updateAvatarDescription,
+  updateProfile,
+  uploadAvatar,
+} from "./profileApi";
 import StashPanel from "./StashPanel";
-
-const periods = [
-  'ANCIENT',
-  'ANTIQUITY',
-  'EARLY_MIDDLE_AGES',
-  'HIGH_MIDDLE_AGES',
-  'LATE_MIDDLE_AGES',
-  'RENAISSANCE',
-  'MODERN',
-  'WWI',
-  'WWII',
-  'CONTEMPORARY',
-  'OTHER',
-];
-
-const periodLabelIds = {
-  ANCIENT: 'period.ancient.heading',
-  ANTIQUITY: 'period.antiquity.heading',
-  EARLY_MIDDLE_AGES: 'period.early_middle_ages.heading',
-  HIGH_MIDDLE_AGES: 'period.high_middle_ages.heading',
-  LATE_MIDDLE_AGES: 'period.late_middle_ages.heading',
-  RENAISSANCE: 'period.renaissance.heading',
-  MODERN: 'period.modern.heading',
-  WWI: 'period.wwi.heading',
-  WWII: 'period.wwii.heading',
-  CONTEMPORARY: 'period.contemporary.heading',
-  OTHER: 'period.other.heading',
-};
 
 const AVATAR_MAX_DIMENSION = 1600;
 const AVATAR_TARGET_BYTES = 900 * 1024;
@@ -124,36 +116,20 @@ class ProfilePage extends Component {
   }
 
   loadCurrentUserInfo() {
-    doFetch("/api/user/oauth/me", "GET", null, {
-      200: profile => this.setState({ currentUserId: profile?.userId || null, oauthProfile: profile || null }),
-      401: () => this.setState({ currentUserId: null, oauthProfile: null }),
-      404: () => this.setState({ currentUserId: null, oauthProfile: null }),
-      default: () => this.setState({ currentUserId: null, oauthProfile: null }),
-    });
+    fetchCurrentUserInfo(result => this.setState(result));
   }
 
   fetchAvatar(profileId) {
-    const url = `/api/image/image/profile/${profileId}`;
-    doFetch(url, "GET", null, {
-      200: avatars => {
-        if (avatars?.length) {
-          this.renderAvatar(avatars[0]);
-          return;
-        }
-        this.setState({ avatarVisible: false, avatarLoaded: true });
-      },
-      404: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
-      500: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
-      503: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
-      default: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
+    fetchAvatar(profileId, {
+      onSuccess: avatar => this.renderAvatar(avatar),
+      onEmpty: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
     });
   }
 
   fetchProfile(id) {
-    const url = id ? `/api/profile/profile/${id}` : '/api/profile/profile';
-    doFetch(url, "GET", null, {
-      200: profile => this.renderProfile(profile),
-      404: () => this.handleMissingProfile(id),
+    fetchProfileById(id, {
+      onSuccess: profile => this.renderProfile(profile),
+      onMissing: () => this.handleMissingProfile(id),
     });
   }
 
@@ -164,13 +140,13 @@ class ProfilePage extends Component {
     }
 
     this.setState({ clubProfilesLoaded: false, clubProfilesMessage: null });
-    doFetch(`/api/profile/club-profile?userId=${userId}`, "GET", null, {
-      200: profiles => this.setState({
+    fetchClubProfiles(userId, {
+      onSuccess: profiles => this.setState({
         clubProfiles: Array.isArray(profiles) ? profiles : [],
         clubProfilesLoaded: true,
         clubProfilesMessage: null,
       }),
-      default: () => this.setState({
+      onError: () => this.setState({
         clubProfiles: [],
         clubProfilesLoaded: true,
         clubProfilesMessage: this.t('profile.clubProfiles.loadFailed', 'Unable to load club profiles.'),
@@ -185,9 +161,9 @@ class ProfilePage extends Component {
     }
 
     this.setState({ ownerUserProfileLoaded: false });
-    doFetch(`/api/profile/user-profile?userId=${userId}`, "GET", null, {
-      200: profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }),
-      default: () => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
+    fetchOwnerUserProfile(userId, {
+      onSuccess: profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }),
+      onError: () => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
     });
   }
 
@@ -316,11 +292,7 @@ class ProfilePage extends Component {
   }
 
   getPeriodLabel(period) {
-    if (!period) {
-      return '';
-    }
-
-    return this.t(periodLabelIds[period], period);
+    return getSharedPeriodLabel(this.props.intl, period);
   }
 
   resetFieldStatus(fieldName, delay = 1000) {
@@ -366,13 +338,7 @@ class ProfilePage extends Component {
     }));
 
     try {
-      const response = await fetch(`/api/profile/profile/${this.state.profileId}`, {
-        method: 'PUT',
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(this.buildProfilePayload()),
-      });
+      const response = await updateProfile(this.state.profileId, this.buildProfilePayload());
 
       if (response.status === 200) {
         const profile = await response.json();
@@ -412,7 +378,7 @@ class ProfilePage extends Component {
     event.preventDefault();
     this.setState({ message: null, messageVariant: null });
 
-    doFetch('/api/profile/user-profile', 'POST', event, {
+    createUserProfile(event, {
       200: profile => this.renderProfile(profile),
       400: error => this.setState({
         message: this.extractCreateErrorMessage(error, this.t('profile.create.invalid', 'Unable to create profile. Check the required fields.')),
@@ -437,7 +403,7 @@ class ProfilePage extends Component {
     event.preventDefault();
     this.setState({ clubProfileCreateError: false });
 
-    doFetch('/api/profile/club-profile', 'POST', event, {
+    createClubProfile(event, {
       200: profile => this.renderProfile(profile),
       400: () => this.setState({ clubProfileCreateError: true }),
       401: () => this.setState({ clubProfileCreateError: true }),
@@ -465,9 +431,7 @@ class ProfilePage extends Component {
     }
 
     try {
-      const response = await fetch(`/api/profile/profile/${clubProfile.id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteProfile(clubProfile.id);
 
       if (response.status !== 200) {
         this.setState({ clubProfileDeleteError: true });
@@ -593,16 +557,10 @@ class ProfilePage extends Component {
     try {
       const preparedFile = await this.prepareAvatarFile(file);
       const content = await this.readFileAsBase64(preparedFile);
-      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          content,
-          fileName: preparedFile.name,
-          description: this.state.avatarDescriptionDraft || null,
-        }),
+      const response = await uploadAvatar(this.state.profileId, {
+        content,
+        fileName: preparedFile.name,
+        description: this.state.avatarDescriptionDraft || null,
       });
 
       if (response.status !== 200) {
@@ -748,30 +706,6 @@ class ProfilePage extends Component {
     });
   }
 
-  renderAvatarControls() {
-    if (!this.isEditableProfile()) {
-      return null;
-    }
-
-    return (
-      <div className="mt-3">
-        <Form.Control
-          id="avatarUploadInput"
-          type="file"
-          accept="image/*"
-          onChange={this.handleAvatarUpload}
-          disabled={this.state.avatarUploadStatus === 'uploading'}
-          className="d-none"
-        />
-        {this.state.avatarUploadMessage && (
-          <div className={`${this.state.avatarUploadStatus === 'error' ? 'text-danger' : 'text-success'} small text-center`}>
-            {this.state.avatarUploadMessage}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   handleAvatarDescriptionChange = (event) => {
     const value = event.target.value;
     this.setState({
@@ -805,15 +739,7 @@ class ProfilePage extends Component {
     this.setState({ avatarDescriptionStatus: 'saving' });
 
     try {
-      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar/description`, {
-        method: 'PUT',
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          description: this.state.avatarDescriptionDraft || null,
-        }),
-      });
+      const response = await updateAvatarDescription(this.state.profileId, this.state.avatarDescriptionDraft || null);
 
       if (response.status !== 200) {
         throw new Error('Update failed');
@@ -840,9 +766,7 @@ class ProfilePage extends Component {
     }
 
     try {
-      const response = await fetch(`/api/profile/profile/${this.state.profileId}/avatar`, {
-        method: 'DELETE',
-      });
+      const response = await deleteAvatar(this.state.profileId);
 
       if (response.status !== 200) {
         throw new Error('Delete failed');
@@ -869,100 +793,6 @@ class ProfilePage extends Component {
     }
   };
 
-  renderAvatarFallback() {
-    const initials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
-
-    return (
-      <div
-        style={{
-          width: '100%',
-          aspectRatio: '1 / 1',
-          minHeight: '12rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '3rem',
-          fontWeight: 'bold',
-          color: '#666',
-          backgroundColor: '#f8f9fa'
-        }}
-      >
-        {initials}
-      </div>
-    );
-  }
-
-  renderAvatarDescription() {
-    const isOwner = this.isEditableProfile();
-    const hasDescription = Boolean((this.state.avatarInfo || '').trim());
-    if (!this.state.avatarVisible || (!isOwner && !hasDescription)) {
-      return null;
-    }
-
-    if (isOwner) {
-      return (
-        <div className="p-2 border-top">
-          <div className="position-relative d-flex align-items-center justify-content-center">
-            <Form.Control
-              type="text"
-              placeholder={this.t('profile.avatar.description.placeholder', 'Add a description')}
-              value={this.state.avatarDescriptionDraft || ''}
-              onChange={this.handleAvatarDescriptionChange}
-              onBlur={this.handleAvatarDescriptionBlur}
-              className="border-0 px-4 bg-transparent text-center"
-              size="sm"
-              style={{ width: '100%' }}
-            />
-            {(this.state.avatarDescriptionStatus === 'saving' || this.state.avatarDescriptionStatus === 'saved' || this.state.avatarDescriptionStatus === 'error') && (
-              <div
-                className="position-absolute end-0 d-flex align-items-center pe-1"
-                style={{ top: '50%', transform: 'translateY(-50%)' }}
-              >
-                {this.state.avatarDescriptionStatus === 'saving' && <FaHourglassHalf className="text-muted" title={this.t('profile.status.saving', 'Saving')} />}
-                {this.state.avatarDescriptionStatus === 'saved' && <span className="text-success">&#10003;</span>}
-                {this.state.avatarDescriptionStatus === 'error' && <FaTimes className="text-danger" title={this.t('profile.status.saveFailed', 'Save failed')} />}
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-2 border-top">
-        <div className="text-muted small text-center">
-          {this.state.avatarInfo}
-        </div>
-      </div>
-    );
-  }
-
-  renderAvatarPanel() {
-    return (
-      <div
-        style={{
-          width: '100%',
-          maxWidth: AVATAR_PANEL_WIDTH,
-          border: '4px #eee groove',
-          backgroundColor: '#fff',
-        }}
-      >
-        {this.state.avatarVisible
-          ? <ModalImage
-              src={this.state.avatarImage}
-              url={this.state.avatarUrl}
-              alt={this.state.avatarInfo}
-              description={this.state.avatarInfo}
-              wrapperStyle={{ maxWidth: '100%' }}
-            />
-          : this.state.avatarLoaded
-            ? this.renderAvatarFallback()
-            : <div className="p-4 text-center"><Spinner /></div>}
-        {this.renderAvatarDescription()}
-      </div>
-    );
-  }
-
   openAvatarFilePicker = () => {
     if (!this.isEditableProfile() || this.state.avatarUploadStatus === 'uploading') {
       return;
@@ -975,301 +805,20 @@ class ProfilePage extends Component {
   };
 
   renderCreateProfile() {
-    const isErrorMessage = this.state.messageVariant === 'error';
-
     return (
-      <Container>
-        <Row>
-          <Col sm={12}>
-            <h2>{this.t('profile.create.title', 'Create your profile')}</h2>
-            <p>{this.t('profile.create.subtitle', 'Your user profile does not exist yet. Complete the required fields to continue.')}</p>
-          </Col>
-        </Row>
-        <Row>
-          <Col sm={6}>
-            <Form onSubmit={this.handleCreateProfile}>
-              <Form.Group controlId="firstName" className="mb-3">
-                <Form.Label>{this.t('profile.field.firstName', 'First name')} *</Form.Label>
-                <Form.Control
-                  name="firstName"
-                  type="text"
-                  required
-                  value={this.state.firstName}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group controlId="lastName" className="mb-3">
-                <Form.Label>{this.t('profile.field.lastName', 'Last name')} *</Form.Label>
-                <Form.Control
-                  name="lastName"
-                  type="text"
-                  required
-                  value={this.state.lastName}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group controlId="nickName" className="mb-3">
-                <Form.Label>{this.t('profile.field.nickName', 'Nick name')}</Form.Label>
-                <Form.Control
-                  name="nickName"
-                  type="text"
-                  value={this.state.nickName}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group controlId="profileEmail" className="mb-3">
-                <Form.Label>{this.t('profile.field.email', 'Profile email')}</Form.Label>
-                <Form.Control
-                  name="profileEmail"
-                  type="email"
-                  value={this.state.profileEmail}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group controlId="location" className="mb-3">
-                <Form.Label>{this.t('profile.field.location', 'Location')}</Form.Label>
-                <Form.Control
-                  name="location"
-                  type="text"
-                  value={this.state.location}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <Form.Group controlId="alias" className="mb-3">
-                <Form.Label>{this.t('profile.field.alias', 'Alias')}</Form.Label>
-                <Form.Control
-                  name="alias"
-                  type="text"
-                  value={this.state.alias}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Group>
-              <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-secondary" type="submit">
-                  {this.t('profile.create.submit', 'Create profile')}
-                </button>
-                {isErrorMessage && <FaTimes className="text-danger" title={this.t('profile.create.failedShort', 'Creation failed')} />}
-              </div>
-            </Form>
-          </Col>
-        </Row>
-      </Container>
+      <CreateProfileForm
+        firstName={this.state.firstName}
+        lastName={this.state.lastName}
+        nickName={this.state.nickName}
+        profileEmail={this.state.profileEmail}
+        location={this.state.location}
+        alias={this.state.alias}
+        isErrorMessage={this.state.messageVariant === 'error'}
+        t={this.t.bind(this)}
+        onChange={this.handleInputChange}
+        onSubmit={this.handleCreateProfile}
+      />
     );
-  }
-
-  renderClubProfileCreateForm() {
-    return (
-      <Modal
-        show={this.state.clubProfileCreateVisible}
-        onHide={() => this.setState({ clubProfileCreateVisible: false, clubProfileCreateError: false })}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{this.t('profile.clubProfile.create.title', 'Create club profile')}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={this.handleCreateClubProfile}>
-            <Form.Group controlId="clubFirstName" className="mb-3">
-              <Form.Label>{this.t('profile.field.firstName', 'First name')} *</Form.Label>
-              <Form.Control name="firstName" type="text" required />
-            </Form.Group>
-            <Form.Group controlId="clubLastName" className="mb-3">
-              <Form.Label>{this.t('profile.field.lastName', 'Last name')} *</Form.Label>
-              <Form.Control name="lastName" type="text" required />
-            </Form.Group>
-            <Form.Group controlId="clubNickName" className="mb-3">
-              <Form.Label>{this.t('profile.field.nickName', 'Nick name')}</Form.Label>
-              <Form.Control name="nickName" type="text" />
-            </Form.Group>
-            <Form.Group controlId="clubProfileEmail" className="mb-3">
-              <Form.Label>{this.t('profile.field.email', 'Profile email')}</Form.Label>
-              <Form.Control name="profileEmail" type="email" />
-            </Form.Group>
-            <Form.Group controlId="clubLocation" className="mb-3">
-              <Form.Label>{this.t('profile.field.location', 'Location')}</Form.Label>
-              <Form.Control name="location" type="text" />
-            </Form.Group>
-            <Form.Group controlId="clubAlias" className="mb-3">
-              <Form.Label>{this.t('profile.field.alias', 'Alias')}</Form.Label>
-              <Form.Control name="alias" type="text" />
-            </Form.Group>
-            <Form.Group controlId="clubPeriod" className="mb-3">
-              <Form.Label>{this.t('profile.field.period', 'Period')} *</Form.Label>
-              <Form.Select name="period" required defaultValue="">
-                <option value="">{this.t('profile.period.choose', 'Choose a period')}</option>
-                {periods.map(period => (
-                  <option key={period} value={period}>{this.getPeriodLabel(period)}</option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            <div className="d-flex align-items-center justify-content-end gap-2">
-              {this.state.clubProfileCreateError && <FaTimes className="text-danger" title={this.t('profile.create.failedShort', 'Creation failed')} />}
-              <Button variant="secondary" type="submit">{this.t('profile.clubProfile.create.submit', 'Create club profile')}</Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-    );
-  }
-
-  renderDeleteClubProfileModal() {
-    const clubProfile = this.state.clubProfileDeleteTarget;
-    const clubProfileName = clubProfile
-      ? `${clubProfile.firstName} ${clubProfile.lastName}`.trim()
-      : '';
-
-    return (
-      <Modal
-        show={Boolean(clubProfile)}
-        onHide={this.closeDeleteClubProfileModal}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{this.t('profile.clubProfile.delete.title', 'Delete club profile')}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="mb-2">
-            {this.t('profile.clubProfile.delete.confirm', 'Delete {name}?', {
-              name: clubProfileName || this.t('profile.clubProfile.delete.fallbackName', 'this club profile'),
-            })}
-          </p>
-          {this.state.clubProfileDeleteError && (
-            <div className="mt-3 d-flex align-items-center gap-2 text-danger">
-              <FaTimes title={this.t('profile.clubProfile.delete.failedShort', 'Deletion failed')} />
-              <span>{this.t('profile.clubProfile.delete.failed', 'Deletion failed.')}</span>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={this.closeDeleteClubProfileModal}>
-            {this.t('profile.action.cancel', 'Cancel')}
-          </Button>
-          <Button variant="danger" onClick={this.handleDeleteClubProfile}>
-            {this.t('profile.clubProfile.delete.submit', 'Delete club profile')}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    );
-  }
-
-  renderClubProfilesSection() {
-    const isUserProfile = this.state.type === 'USER';
-    const canCreate = this.isEditableProfile();
-    const visibleClubProfiles = this.state.clubProfiles.filter(clubProfile => {
-      if (clubProfile.id === this.state.profileId && this.state.type === 'CLUB') {
-        return false;
-      }
-
-      return true;
-    });
-    const showEmptyMessage = isUserProfile && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
-
-    return (
-      <>
-        {isUserProfile && (
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <h4 className="mb-0">{this.t('profile.clubProfiles.title', 'Club profiles')}</h4>
-            {canCreate && (
-              <Button
-                type="button"
-                variant="light"
-                className="p-0 d-inline-flex align-items-center justify-content-center text-decoration-none"
-                onClick={() => this.setState({
-                  clubProfileCreateVisible: true,
-                  clubProfileCreateError: false,
-                })}
-                title={this.t('profile.clubProfile.create.title', 'Create club profile')}
-                aria-label={this.t('profile.clubProfile.create.title', 'Create club profile')}
-                style={{
-                  width: '1.6rem',
-                  height: '1.6rem',
-                  border: '1px solid #000',
-                  color: '#000',
-                  lineHeight: 1,
-                }}
-              >
-                <FaPlus />
-              </Button>
-            )}
-          </div>
-        )}
-        {!this.state.clubProfilesLoaded && <Spinner />}
-        {this.state.clubProfilesLoaded && this.state.clubProfilesMessage && (
-          <div>{this.state.clubProfilesMessage}</div>
-        )}
-        {this.state.clubProfilesLoaded && showEmptyMessage && (
-          <div>{this.t('profile.clubProfiles.empty', 'No club profiles yet.')}</div>
-        )}
-        {this.state.clubProfilesLoaded && visibleClubProfiles.length > 0 && (
-          <div className="d-grid gap-2">
-            {visibleClubProfiles.map(clubProfile => (
-              <div key={clubProfile.id} className="d-flex gap-2">
-                <Button
-                  variant="outline-secondary"
-                  className="text-start flex-grow-1"
-                  onClick={() => this.handleOpenClubProfile(clubProfile)}
-                >
-                  {clubProfile.firstName} {clubProfile.lastName}{clubProfile.nickName ? ` ${clubProfile.nickName}` : ''}
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-        {this.renderClubProfileCreateForm()}
-      </>
-    );
-  }
-
-  renderProfileFieldRow(label, fieldContent, readOnlyValue, status = null, editable = this.isEditableProfile()) {
-    return (
-      <div className="d-flex align-items-center gap-3 mb-2">
-        <div className="text-start small fw-semibold" style={{ width: '7rem' }}>
-          {label}
-        </div>
-        <div style={{ width: '100%', maxWidth: '16rem' }}>
-          {editable ? (
-            <div className="input-group input-group-sm">
-              {fieldContent}
-              {(status === 'saving' || status === 'saved' || status === 'error') && (
-                <span className="input-group-text">
-                  {status === 'saving' && <FaHourglassHalf className="text-muted" title={this.t('profile.status.saving', 'Saving')} />}
-                  {status === 'saved' && <span className="text-success">&#10003;</span>}
-                  {status === 'error' && <FaTimes className="text-danger" title={this.t('profile.status.saveFailed', 'Save failed')} />}
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="small text-start px-1 py-1">{readOnlyValue}</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  renderProfileField(label, fieldName, options = {}) {
-    const {
-      type = 'text',
-      required = false,
-      editable = this.isEditableProfile(),
-      readOnlyValue = this.state[fieldName] || '-',
-      renderControl,
-    } = options;
-
-    const control = renderControl
-      ? renderControl()
-      : (
-        <Form.Control
-          name={fieldName}
-          type={type}
-          required={required}
-          size="sm"
-          value={this.state[fieldName] || ''}
-          onChange={this.handleInputChange}
-          onBlur={() => this.handleFieldBlur(fieldName)}
-        />
-      );
-
-    return this.renderProfileFieldRow(label, control, readOnlyValue, this.state.fieldStatuses[fieldName], editable);
   }
 
   renderProfileView() {
@@ -1286,153 +835,79 @@ class ProfilePage extends Component {
       : null;
     const siblingClubProfiles = this.state.clubProfiles.filter(clubProfile => clubProfile.id !== this.state.profileId);
     const currentClubLabel = `${this.state.firstName} ${this.state.lastName}`.trim() || 'Club profile';
+    const visibleClubProfiles = this.state.clubProfiles.filter(clubProfile => {
+      if (clubProfile.id === this.state.profileId && this.state.type === 'CLUB') {
+        return false;
+      }
+
+      return true;
+    });
+    const showEmptyClubProfiles = this.state.type === 'USER' && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
+    const profileInitials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
 
     return (
       <Container fluid className="px-4 px-xl-5">
         <Row>
           <Col sm={12} className="mb-3">
-            <div
-              className="p-3 rounded border"
-              style={{
-                backgroundColor: isClubProfile ? '#f8f4ea' : '#eef5ff',
-                borderColor: isClubProfile ? '#d8c7a1' : '#bfd3f2'
-              }}
-            >
-              <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div>
-                  <div className="text-uppercase small fw-bold mb-1">
-                    {headerSubtitleDisplay}
-                  </div>
-                </div>
-                <div className="d-flex align-items-center gap-2 flex-wrap">
-                  {isClubProfile && ownerLink && (
-                    <div className="d-flex align-items-center gap-2 flex-wrap small">
-                      <a href={ownerLink}>{ownerLabel}</a>
-                      <span>{'>'}</span>
-                      <a href={this.getCanonicalProfilePath({
-                        id: this.state.profileId,
-                        alias: this.state.alias,
-                      })}>
-                        {currentClubLabel}
-                      </a>
-                      <Dropdown align="end">
-                        <Dropdown.Toggle
-                          variant="link"
-                          size="sm"
-                          className="p-0 text-decoration-none"
-                          style={{ color: '#000' }}
-                          id="club-profile-switcher"
-                        >
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu>
-                          {siblingClubProfiles.length ? siblingClubProfiles.map(clubProfile => (
-                            <Dropdown.Item
-                              key={clubProfile.id}
-                              href={this.getCanonicalProfilePath(clubProfile)}
-                            >
-                              {`${clubProfile.firstName} ${clubProfile.lastName}`.trim()}
-                            </Dropdown.Item>
-                          )) : (
-                            <Dropdown.Item disabled>{this.t('profile.clubProfiles.noneOther', 'No other club profiles')}</Dropdown.Item>
-                          )}
-                        </Dropdown.Menu>
-                      </Dropdown>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <SectionHeaderBar
+              title={headerSubtitleDisplay}
+              rightContent={(
+                <ProfileHeaderBreadcrumb
+                  ownerLink={ownerLink}
+                  ownerLabel={ownerLabel}
+                  currentLabel={currentClubLabel}
+                  currentProfile={{ id: this.state.profileId, alias: this.state.alias }}
+                  siblingClubProfiles={siblingClubProfiles}
+                  getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
+                  emptyLabel={this.t('profile.clubProfiles.noneOther', 'No other club profiles')}
+                />
+              )}
+              backgroundColor={isClubProfile ? '#f8f4ea' : '#eef5ff'}
+              borderColor={isClubProfile ? '#d8c7a1' : '#bfd3f2'}
+            />
           </Col>
         </Row>
         <Row className="g-4 align-items-start">
           <Col lg={3} md={4}>
-            <div className="position-relative d-inline-block w-100" style={{ maxWidth: AVATAR_PANEL_WIDTH }}>
-              {this.renderAvatarPanel()}
-              {isEditable && (
-                <button
-                  type="button"
-                  className="btn position-absolute top-0 start-0 m-2 d-flex align-items-center justify-content-center"
-                  style={{
-                    width: '1.75rem',
-                    height: '1.75rem',
-                    padding: 0,
-                    border: '1px solid #ddd',
-                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                    color: '#777',
-                    fontSize: '0.8rem'
-                  }}
-                  onClick={this.openAvatarFilePicker}
-                  title={this.t('profile.avatar.uploadTitle', 'Upload picture')}
-                >
-                  {this.state.avatarUploadStatus === 'uploading'
-                    ? <FaHourglassHalf className="text-muted" />
-                    : <FaUpload />}
-                </button>
-              )}
-              {isEditable && this.state.avatarVisible && (
-                <button
-                  type="button"
-                  className="btn position-absolute top-0 end-0 m-2 d-flex align-items-center justify-content-center"
-                  style={{
-                    width: '1.75rem',
-                    height: '1.75rem',
-                    padding: 0,
-                    border: '1px solid #ddd',
-                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                    color: '#777',
-                    fontSize: '0.85rem'
-                  }}
-                  onClick={this.handleDeleteAvatar}
-                  title={this.t('profile.avatar.deleteTitle', 'Delete picture')}
-                >
-                  <FaTrashAlt />
-                </button>
-              )}
-            </div>
-            {this.renderAvatarControls()}
+            <ProfileAvatarPanel
+              avatarPanelWidth={AVATAR_PANEL_WIDTH}
+              avatarVisible={this.state.avatarVisible}
+              avatarLoaded={this.state.avatarLoaded}
+              avatarImage={this.state.avatarImage}
+              avatarUrl={this.state.avatarUrl}
+              avatarInfo={this.state.avatarInfo}
+              avatarUploadStatus={this.state.avatarUploadStatus}
+              avatarUploadMessage={this.state.avatarUploadMessage}
+              avatarDescriptionDraft={this.state.avatarDescriptionDraft}
+              avatarDescriptionStatus={this.state.avatarDescriptionStatus}
+              isEditable={isEditable}
+              initials={profileInitials}
+              t={this.t.bind(this)}
+              onUploadChange={this.handleAvatarUpload}
+              onOpenFilePicker={this.openAvatarFilePicker}
+              onDelete={this.handleDeleteAvatar}
+              onDescriptionChange={this.handleAvatarDescriptionChange}
+              onDescriptionBlur={this.handleAvatarDescriptionBlur}
+            />
           </Col>
           <Col lg={5} md={8}>
-            <>
-              {this.renderProfileField(this.t('profile.field.firstNameRequired', 'First name *'), 'firstName', { required: true, readOnlyValue: this.state.firstName })}
-              {this.renderProfileField(this.t('profile.field.lastNameRequired', 'Last name *'), 'lastName', { required: true, readOnlyValue: this.state.lastName })}
-              {this.renderProfileField(this.t('profile.field.nickName', 'Nick name'), 'nickName')}
-              {this.renderProfileField(this.t('profile.field.email', 'Profile email'), 'profileEmail', { type: 'email' })}
-              {this.renderProfileField(this.t('profile.field.location', 'Location'), 'location')}
-              {this.renderProfileField(this.t('profile.field.alias', 'Alias'), 'alias')}
-              {this.state.type === 'CLUB' && this.renderProfileField(this.t('profile.field.periodRequired', 'Period *'), 'period', {
-                readOnlyValue: this.getPeriodLabel(this.state.period) || '-',
-                renderControl: () => (
-                  <Form.Select
-                    size="sm"
-                    name="period"
-                    value={this.state.period}
-                    onChange={this.handleInputChange}
-                    onBlur={() => this.handleFieldBlur('period')}
-                  >
-                    <option value="">{this.t('profile.period.choose', 'Choose a period')}</option>
-                    {periods.map(period => (
-                      <option key={period} value={period}>{this.getPeriodLabel(period)}</option>
-                    ))}
-                  </Form.Select>
-                ),
-              })}
-            </>
+            <ProfileFieldsPanel
+              type={this.state.type}
+              state={this.state}
+              periods={PERIODS}
+              t={this.t.bind(this)}
+              getPeriodLabel={this.getPeriodLabel.bind(this)}
+              editable={isEditable}
+              onInputChange={this.handleInputChange}
+              onFieldBlur={this.handleFieldBlur}
+            />
           </Col>
           <Col lg={4} md={12}>
             {isClubProfile && isEditable && (
               <div className="d-flex justify-content-end mb-3">
-                <button
-                  type="button"
-                  className="btn d-flex align-items-center justify-content-center"
-                  style={{
-                    width: '1.9rem',
-                    height: '1.9rem',
-                    padding: 0,
-                    border: '1px solid #ddd',
-                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-                    color: '#777',
-                    fontSize: '0.9rem'
-                  }}
+                <IconActionButton
+                  size="1.9rem"
+                  fontSize="0.9rem"
                   onClick={() => this.openDeleteClubProfileModal({
                     id: this.state.profileId,
                     firstName: this.state.firstName,
@@ -1440,13 +915,33 @@ class ProfilePage extends Component {
                     userId: this.state.userId,
                   })}
                   title={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
-                  aria-label={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
                 >
                   <FaTrashAlt />
-                </button>
+                </IconActionButton>
               </div>
             )}
-            {this.renderClubProfilesSection()}
+            <ClubProfilesSection
+              isUserProfile={this.state.type === 'USER'}
+              canCreate={isEditable}
+              visibleClubProfiles={visibleClubProfiles}
+              showEmptyMessage={showEmptyClubProfiles}
+              clubProfilesLoaded={this.state.clubProfilesLoaded}
+              clubProfilesMessage={this.state.clubProfilesMessage}
+              clubProfileCreateVisible={this.state.clubProfileCreateVisible}
+              clubProfileCreateError={this.state.clubProfileCreateError}
+              clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
+              clubProfileDeleteError={this.state.clubProfileDeleteError}
+              periods={PERIODS}
+              getPeriodLabel={this.getPeriodLabel.bind(this)}
+              t={this.t.bind(this)}
+              onShowCreate={() => this.setState({ clubProfileCreateVisible: true, clubProfileCreateError: false })}
+              onHideCreate={() => this.setState({ clubProfileCreateVisible: false, clubProfileCreateError: false })}
+              onCreate={this.handleCreateClubProfile}
+              onOpenProfile={this.handleOpenClubProfile}
+              onOpenDelete={this.openDeleteClubProfileModal}
+              onHideDelete={this.closeDeleteClubProfileModal}
+              onDelete={this.handleDeleteClubProfile}
+            />
           </Col>
         </Row>
         <Row>
@@ -1467,7 +962,6 @@ class ProfilePage extends Component {
             />
           </Col>
         </Row>
-        {this.renderDeleteClubProfileModal()}
       </Container>
     );
   }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Card } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
 
+import SectionBreadcrumb from '../../component/SectionBreadcrumb';
 import Spinner from '../../component/Spinner';
 import { getAdminRoleRequests, updateAdminRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
@@ -57,11 +57,13 @@ export default function LibraryAdminPage() {
         period={null}
         variant="admin"
         rightContent={(
-          <div className="d-flex align-items-center gap-2 flex-wrap small ms-auto">
-            <Link to="/library" className="text-decoration-underline">Library</Link>
-            <span>&gt;</span>
-            <Link to="/library/admin" className="text-decoration-underline">Admin</Link>
-          </div>
+          <SectionBreadcrumb
+            className="ms-auto"
+            items={[
+              { label: 'Library', to: '/library' },
+              { label: 'Admin', to: '/library/admin' },
+            ]}
+          />
         )}
       />
 

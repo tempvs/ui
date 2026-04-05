@@ -122,3 +122,15 @@ export async function deleteSourceImage(sourceId, imageId) {
 
   return parseResponse(response);
 }
+
+export async function updateSourceImageDescription(sourceId, imageId, description) {
+  const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}/description`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ description }),
+  });
+
+  return parseResponse(response);
+}

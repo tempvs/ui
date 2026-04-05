@@ -1,7 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaLink, FaPlus, FaSave, FaSearch, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+import { FaLink, FaPlus, FaSearch, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+
+import EditableTextFieldRow from '../component/EditableTextFieldRow';
+import EditableTextareaFieldRow from '../component/EditableTextareaFieldRow';
+import {
+  createStashGroup,
+  createStashItem,
+  deleteStashItem,
+  getGroupItems,
+  getLibrarySourcesByIds,
+  getProfileStash,
+  linkStashItemSource,
+  searchLibrarySources,
+  unlinkStashItemSource,
+  updateStashGroupDescription,
+  updateStashGroupName,
+  updateStashItemDescription,
+  updateStashItemName,
+} from './stashApi';
 
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 
@@ -12,32 +30,6 @@ const emptyItemForm = classification => ({
   description: '',
   classification: classification || 'OTHER',
 });
-
-async function requestJson(url, options = {}) {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const error = new Error(`Request failed with status ${response.status}`);
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-}
-
-function encodeLibraryQuery(payload) {
-  return window.btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-}
 
 function buildProfileLabel(profile) {
   return `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || 'Club profile';
@@ -57,7 +49,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [groupSubmitting, setGroupSubmitting] = useState(false);
   const [groupDrafts, setGroupDrafts] = useState({});
+  const [groupStatuses, setGroupStatuses] = useState({});
   const [itemDrafts, setItemDrafts] = useState({});
+  const [itemStatuses, setItemStatuses] = useState({});
   const [itemsByGroup, setItemsByGroup] = useState({});
   const [itemsLoading, setItemsLoading] = useState({});
   const [itemCreateTarget, setItemCreateTarget] = useState(null);
@@ -65,6 +59,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
   const [sourceDetails, setSourceDetails] = useState({});
   const [sourceSearch, setSourceSearch] = useState({});
+  const groupSaveTimersRef = React.useRef({});
+  const itemSaveTimersRef = React.useRef({});
 
   const isClubProfile = profile?.type === 'CLUB';
   const profileLabel = useMemo(() => buildProfileLabel(profile), [profile]);
@@ -86,18 +82,24 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     loadStash();
   }, [isClubProfile, profile?.id]);
 
+  useEffect(() => () => {
+    Object.values(groupSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
+    Object.values(itemSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
+  }, []);
+
   async function loadStash() {
     setLoading(true);
     setFeedback(null);
 
     try {
-      const payload = await requestJson(`/api/stash/group/profile/${profile.id}`);
+      const payload = await getProfileStash(profile.id);
       setStash(payload);
       const groups = payload?.groups || [];
       setGroupDrafts(Object.fromEntries(groups.map(group => [group.id, {
         name: group.name || '',
         description: group.description || '',
       }])));
+      setGroupStatuses({});
       await Promise.all(groups.map(group => loadItems(group.id)));
     } catch (error) {
       setStash(null);
@@ -114,13 +116,20 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     setItemsLoading(prevState => ({ ...prevState, [groupId]: true }));
 
     try {
-      const items = await requestJson(`/api/stash/group/${groupId}/item?page=0&size=40`);
+      const items = await getGroupItems(groupId);
       setItemsByGroup(prevState => ({ ...prevState, [groupId]: items || [] }));
       setItemDrafts(prevState => ({
         ...prevState,
         ...Object.fromEntries((items || []).map(item => [item.id, {
           name: item.name || '',
           description: item.description || '',
+        }])),
+      }));
+      setItemStatuses(prevState => ({
+        ...prevState,
+        ...Object.fromEntries((items || []).map(item => [item.id, {
+          name: null,
+          description: null,
         }])),
       }));
       await hydrateSources(items || []);
@@ -140,8 +149,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     }
 
     try {
-      const query = encodeURIComponent(encodeLibraryQuery({ ids }));
-      const sources = await requestJson(`/api/library/source?q=${query}`);
+      const sources = await getLibrarySourcesByIds(ids);
       setSourceDetails(prevState => ({
         ...prevState,
         ...buildSourceLookupMap(Array.isArray(sources) ? sources : []),
@@ -157,10 +165,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     setFeedback(null);
 
     try {
-      await requestJson(`/api/stash/group/profile/${profile.id}`, {
-        method: 'POST',
-        body: JSON.stringify(groupForm),
-      });
+      await createStashGroup(profile.id, groupForm);
       setGroupForm(emptyGroupForm);
       await loadStash();
       setFeedback({
@@ -177,33 +182,101 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     }
   }
 
-  async function handleSaveGroup(group) {
-    const draft = groupDrafts[group.id];
-    if (!draft) {
+  function setGroupField(groupId, field, value) {
+    setGroupDrafts(prevState => ({
+      ...prevState,
+      [groupId]: {
+        ...prevState[groupId],
+        [field]: value,
+      },
+    }));
+    const group = (stash?.groups || []).find(entry => entry.id === groupId);
+    setGroupStatuses(prevState => ({
+      ...prevState,
+      [groupId]: {
+        ...(prevState[groupId] || {}),
+        [field]: value === ((group?.[field] || '')) ? null : 'pending',
+      },
+    }));
+    const timerKey = `${groupId}:${field}`;
+    if (groupSaveTimersRef.current[timerKey]) {
+      clearTimeout(groupSaveTimersRef.current[timerKey]);
+    }
+    groupSaveTimersRef.current[timerKey] = window.setTimeout(() => {
+      handleSaveGroupField(group, field);
+    }, 1800);
+  }
+
+  async function handleSaveGroupField(group, field) {
+    if (!group) {
+      return;
+    }
+    const draft = groupDrafts[group.id]?.[field] || '';
+    const persisted = group?.[field] || '';
+    const timerKey = `${group.id}:${field}`;
+    if (groupSaveTimersRef.current[timerKey]) {
+      clearTimeout(groupSaveTimersRef.current[timerKey]);
+      delete groupSaveTimersRef.current[timerKey];
+    }
+    if (draft === persisted) {
+      setGroupStatuses(prevState => ({
+        ...prevState,
+        [group.id]: {
+          ...(prevState[group.id] || {}),
+          [field]: null,
+        },
+      }));
       return;
     }
 
     try {
-      if (draft.name !== group.name) {
-        await requestJson(`/api/stash/group/${group.id}/name`, {
-          method: 'PATCH',
-          body: JSON.stringify({ name: draft.name }),
-        });
+      setGroupStatuses(prevState => ({
+        ...prevState,
+        [group.id]: {
+          ...(prevState[group.id] || {}),
+          [field]: 'saving',
+        },
+      }));
+      if (field === 'name') {
+        await updateStashGroupName(group.id, draft);
+      } else {
+        await updateStashGroupDescription(group.id, draft);
       }
-
-      if ((draft.description || '') !== (group.description || '')) {
-        await requestJson(`/api/stash/group/${group.id}/description`, {
-          method: 'PATCH',
-          body: JSON.stringify({ description: draft.description }),
-        });
-      }
-
-      await loadStash();
-      setFeedback({
-        variant: 'success',
-        text: t('profile.stash.groupSaveSuccess', 'Collection updated.'),
-      });
+      setStash(prevState => ({
+        ...prevState,
+        groups: (prevState?.groups || []).map(entry => entry.id === group.id ? { ...entry, [field]: draft } : entry),
+      }));
+      setGroupStatuses(prevState => ({
+        ...prevState,
+        [group.id]: {
+          ...(prevState[group.id] || {}),
+          [field]: 'saved',
+        },
+      }));
+      window.setTimeout(() => {
+        setGroupStatuses(prevState => ({
+          ...prevState,
+          [group.id]: {
+            ...(prevState[group.id] || {}),
+            [field]: null,
+          },
+        }));
+      }, 1000);
     } catch (error) {
+      setGroupDrafts(prevState => ({
+        ...prevState,
+        [group.id]: {
+          ...prevState[group.id],
+          [field]: persisted,
+        },
+      }));
+      setGroupStatuses(prevState => ({
+        ...prevState,
+        [group.id]: {
+          ...(prevState[group.id] || {}),
+          [field]: 'error',
+        },
+      }));
       setFeedback({
         variant: 'danger',
         text: t('profile.stash.groupSaveFailed', 'Unable to save collection changes.'),
@@ -226,12 +299,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     setFeedback(null);
 
     try {
-      await requestJson(`/api/stash/group/${itemCreateTarget.id}/item`, {
-        method: 'POST',
-        body: JSON.stringify({
-          ...itemCreateForm,
-          period: profile.period,
-        }),
+      await createStashItem(itemCreateTarget.id, {
+        ...itemCreateForm,
+        period: profile.period,
       });
       setItemCreateTarget(null);
       setItemCreateForm(emptyItemForm(profile?.period));
@@ -251,33 +321,97 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     }
   }
 
-  async function handleSaveItem(item) {
-    const draft = itemDrafts[item.id];
-    if (!draft) {
+  function setItemField(item, field, value) {
+    setItemDrafts(prevState => ({
+      ...prevState,
+      [item.id]: {
+        ...prevState[item.id],
+        [field]: value,
+      },
+    }));
+    setItemStatuses(prevState => ({
+      ...prevState,
+      [item.id]: {
+        ...(prevState[item.id] || {}),
+        [field]: value === ((item?.[field] || '')) ? null : 'pending',
+      },
+    }));
+    const timerKey = `${item.id}:${field}`;
+    if (itemSaveTimersRef.current[timerKey]) {
+      clearTimeout(itemSaveTimersRef.current[timerKey]);
+    }
+    itemSaveTimersRef.current[timerKey] = window.setTimeout(() => {
+      handleSaveItemField(item, field);
+    }, 1800);
+  }
+
+  async function handleSaveItemField(item, field) {
+    const draft = itemDrafts[item.id]?.[field] || '';
+    const persisted = item?.[field] || '';
+    const timerKey = `${item.id}:${field}`;
+    if (itemSaveTimersRef.current[timerKey]) {
+      clearTimeout(itemSaveTimersRef.current[timerKey]);
+      delete itemSaveTimersRef.current[timerKey];
+    }
+    if (draft === persisted) {
+      setItemStatuses(prevState => ({
+        ...prevState,
+        [item.id]: {
+          ...(prevState[item.id] || {}),
+          [field]: null,
+        },
+      }));
       return;
     }
 
     try {
-      if (draft.name !== item.name) {
-        await requestJson(`/api/stash/item/${item.id}/name`, {
-          method: 'PATCH',
-          body: JSON.stringify({ name: draft.name }),
-        });
+      setItemStatuses(prevState => ({
+        ...prevState,
+        [item.id]: {
+          ...(prevState[item.id] || {}),
+          [field]: 'saving',
+        },
+      }));
+      if (field === 'name') {
+        await updateStashItemName(item.id, draft);
+      } else {
+        await updateStashItemDescription(item.id, draft);
       }
-
-      if ((draft.description || '') !== (item.description || '')) {
-        await requestJson(`/api/stash/item/${item.id}/description`, {
-          method: 'PATCH',
-          body: JSON.stringify({ description: draft.description }),
-        });
-      }
-
-      await loadItems(item.itemGroup.id);
-      setFeedback({
-        variant: 'success',
-        text: t('profile.stash.itemSaveSuccess', 'Item updated.'),
-      });
+      setItemsByGroup(prevState => ({
+        ...prevState,
+        [item.itemGroup.id]: (prevState[item.itemGroup.id] || []).map(entry => entry.id === item.id ? { ...entry, [field]: draft } : entry),
+      }));
+      setItemStatuses(prevState => ({
+        ...prevState,
+        [item.id]: {
+          ...(prevState[item.id] || {}),
+          [field]: 'saved',
+        },
+      }));
+      window.setTimeout(() => {
+        setItemStatuses(prevState => ({
+          ...prevState,
+          [item.id]: {
+            ...(prevState[item.id] || {}),
+            [field]: null,
+          },
+        }));
+      }, 1000);
     } catch (error) {
+      setItemDrafts(prevState => ({
+        ...prevState,
+        [item.id]: {
+          ...prevState[item.id],
+          [field]: persisted,
+        },
+      }));
+      setItemStatuses(prevState => ({
+        ...prevState,
+        [item.id]: {
+          ...(prevState[item.id] || {}),
+          [field]: 'error',
+        },
+      }));
       setFeedback({
         variant: 'danger',
         text: t('profile.stash.itemSaveFailed', 'Unable to save item changes.'),
@@ -287,7 +421,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
 
   async function handleDeleteItem(item) {
     try {
-      await requestJson(`/api/stash/item/${item.id}`, { method: 'DELETE' });
+      await deleteStashItem(item.id);
       await loadItems(item.itemGroup.id);
       setFeedback({
         variant: 'success',
@@ -313,13 +447,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
     }));
 
     try {
-      const encodedQuery = encodeURIComponent(encodeLibraryQuery({
+      const results = await searchLibrarySources({
         query,
         period: item.period,
         classifications: [item.classification],
         types: ALL_SOURCE_TYPES,
-      }));
-      const results = await requestJson(`/api/library/source/find?page=0&size=20&q=${encodedQuery}`);
+      });
       setSourceSearch(prevState => ({
         ...prevState,
         [item.id]: {
@@ -344,7 +477,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
 
   async function handleLinkSource(item, sourceId) {
     try {
-      await requestJson(`/api/stash/item/${item.id}/source/${sourceId}`, { method: 'POST' });
+      await linkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
       setFeedback({
         variant: 'success',
@@ -360,7 +493,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
 
   async function handleUnlinkSource(item, sourceId) {
     try {
-      await requestJson(`/api/stash/item/${item.id}/source/${sourceId}`, { method: 'DELETE' });
+      await unlinkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
       setFeedback({
         variant: 'success',
@@ -449,36 +582,30 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
                     {isEditable ? (
                       <Row className="g-2">
                         <Col md={4}>
-                          <Form.Control
-                            size="sm"
+                          <EditableTextFieldRow
+                            label=""
+                            editable
                             value={groupDrafts[group.id]?.name || ''}
-                            onChange={event => setGroupDrafts(prevState => ({
-                              ...prevState,
-                              [group.id]: {
-                                ...prevState[group.id],
-                                name: event.target.value,
-                              },
-                            }))}
+                            readOnlyValue={group.name}
+                            onChange={event => setGroupField(group.id, 'name', event.target.value)}
+                            onBlur={() => handleSaveGroupField(group, 'name')}
+                            status={groupStatuses[group.id]?.name}
+                            className=""
+                            fieldMaxWidth="100%"
                           />
                         </Col>
                         <Col md={6}>
-                          <Form.Control
-                            size="sm"
+                          <EditableTextFieldRow
+                            label=""
+                            editable
                             value={groupDrafts[group.id]?.description || ''}
-                            onChange={event => setGroupDrafts(prevState => ({
-                              ...prevState,
-                              [group.id]: {
-                                ...prevState[group.id],
-                                description: event.target.value,
-                              },
-                            }))}
+                            readOnlyValue={group.description || '-'}
+                            onChange={event => setGroupField(group.id, 'description', event.target.value)}
+                            onBlur={() => handleSaveGroupField(group, 'description')}
+                            status={groupStatuses[group.id]?.description}
+                            className=""
+                            fieldMaxWidth="100%"
                           />
-                        </Col>
-                        <Col md={2} className="d-flex justify-content-end">
-                          <Button size="sm" variant="outline-secondary" onClick={() => handleSaveGroup(group)}>
-                            <FaSave className="me-2" />
-                            {t('profile.stash.save', 'Save')}
-                          </Button>
                         </Col>
                       </Row>
                     ) : (
@@ -522,36 +649,30 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel }) {
                             <Col lg={6}>
                               {isEditable ? (
                                 <>
-                                  <Form.Control
-                                    size="sm"
-                                    className="mb-2"
+                                  <EditableTextFieldRow
+                                    label=""
+                                    editable
                                     value={itemDrafts[item.id]?.name || ''}
-                                    onChange={event => setItemDrafts(prevState => ({
-                                      ...prevState,
-                                      [item.id]: {
-                                        ...prevState[item.id],
-                                        name: event.target.value,
-                                      },
-                                    }))}
+                                    readOnlyValue={item.name}
+                                    onChange={event => setItemField(item, 'name', event.target.value)}
+                                    onBlur={() => handleSaveItemField(item, 'name')}
+                                    status={itemStatuses[item.id]?.name}
+                                    className="mb-2"
+                                    fieldMaxWidth="100%"
                                   />
-                                  <Form.Control
-                                    size="sm"
-                                    as="textarea"
-                                    rows={2}
+                                  <EditableTextareaFieldRow
+                                    label=""
+                                    editable
                                     value={itemDrafts[item.id]?.description || ''}
-                                    onChange={event => setItemDrafts(prevState => ({
-                                      ...prevState,
-                                      [item.id]: {
-                                        ...prevState[item.id],
-                                        description: event.target.value,
-                                      },
-                                    }))}
+                                    readOnlyValue={item.description || '-'}
+                                    onChange={event => setItemField(item, 'description', event.target.value)}
+                                    onBlur={() => handleSaveItemField(item, 'description')}
+                                    status={itemStatuses[item.id]?.description}
+                                    rows={2}
+                                    className=""
+                                    fieldMaxWidth="100%"
                                   />
                                   <div className="d-flex gap-2 mt-2">
-                                    <Button size="sm" variant="outline-secondary" onClick={() => handleSaveItem(item)}>
-                                      <FaSave className="me-2" />
-                                      {t('profile.stash.save', 'Save')}
-                                    </Button>
                                     <Button size="sm" variant="outline-danger" onClick={() => handleDeleteItem(item)}>
                                       <FaTrashAlt className="me-2" />
                                       {t('profile.stash.delete', 'Delete')}

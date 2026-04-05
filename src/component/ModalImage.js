@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 
 import { Modal, Image }  from 'react-bootstrap';
+import ImageDescriptionBlock from './ImageDescriptionBlock';
 
 class ModalImage extends Component {
   constructor() {
@@ -42,11 +43,7 @@ class ModalImage extends Component {
         <Modal show={this.state.show} onHide={this.handleClose} centered>
           <Modal.Body>
             <Image alt={this.props.alt} src={imageSrc} fluid />
-            {this.props.description && (
-              <div className="text-muted small text-center mt-3">
-                {this.props.description}
-              </div>
-            )}
+            <ImageDescriptionBlock description={this.props.description} className="mt-3" />
           </Modal.Body>
         </Modal>
       </>
