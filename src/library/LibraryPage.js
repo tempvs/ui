@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Dropdown, Form, Row } from 'react-bootstrap';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Badge, Button, Card, Col, Dropdown, Form, OverlayTrigger, Row } from 'react-bootstrap';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import HoverPopover from '../component/HoverPopover';
 import ModalImage from '../component/ModalImage';
 import Spinner from '../component/Spinner';
 import PeriodTile from './PeriodTile';
@@ -109,9 +110,93 @@ function getPeriodLabel(intl, period) {
   return intl.formatMessage({ id: `period.${periodKey}.heading`, defaultMessage: period });
 }
 
-function LibrarySectionHeader({ title, subtitle, period, variant = 'period' }) {
+function getRoleLabel(role) {
+  switch (role) {
+    case 'ROLE_ADMIN':
+      return 'Admin';
+    case 'ROLE_ARCHIVARIUS':
+      return 'Archivarius';
+    case 'ROLE_SCRIBE':
+      return 'Scribe';
+    case 'ROLE_CONTRIBUTOR':
+      return 'Contributor';
+    default:
+      return null;
+  }
+}
+
+function getRoleDescription(role) {
+  switch (role) {
+    case 'ROLE_ADMIN':
+      return 'Can manage role requests and all library sources.';
+    case 'ROLE_ARCHIVARIUS':
+      return 'Can moderate sources, images, and review library requests.';
+    case 'ROLE_SCRIBE':
+      return 'Can edit source details and curate attached images.';
+    case 'ROLE_CONTRIBUTOR':
+      return 'Can add new sources and upload supporting images.';
+    default:
+      return null;
+  }
+}
+
+function getPrimaryRole(userInfo) {
+  const roles = getRoles(userInfo);
+  if (roles.has('ROLE_ADMIN')) {
+    return 'ROLE_ADMIN';
+  }
+  if (roles.has('ROLE_ARCHIVARIUS')) {
+    return 'ROLE_ARCHIVARIUS';
+  }
+  if (roles.has('ROLE_SCRIBE')) {
+    return 'ROLE_SCRIBE';
+  }
+  if (roles.has('ROLE_CONTRIBUTOR')) {
+    return 'ROLE_CONTRIBUTOR';
+  }
+  return null;
+}
+
+function LibraryPeriodBreadcrumb({ period, variant = 'period' }) {
   const intl = useIntl();
-  const leftLabel = period ? `LIBRARY • ${getPeriodLabel(intl, period).toUpperCase()}` : title;
+
+  if (!period) {
+    return null;
+  }
+
+  return (
+    <div className="d-flex align-items-center gap-2 flex-wrap small ms-auto">
+      <Link to="/library" className="text-decoration-underline">Library</Link>
+      <span>&gt;</span>
+      <Link to={`/library/period/${period.toLowerCase()}`} className="text-decoration-underline">
+        {getPeriodLabel(intl, period)}
+      </Link>
+      <Dropdown align="end">
+        <Dropdown.Toggle
+          variant="link"
+          size="sm"
+          className="p-0 text-decoration-none"
+          style={{ color: '#000' }}
+          id={`library-period-switcher-${variant}`}
+        />
+        <Dropdown.Menu>
+          {PERIODS.map(entry => (
+            <Dropdown.Item
+              as={Link}
+              key={entry}
+              to={`/library/period/${entry.toLowerCase()}`}
+              active={entry === period}
+            >
+              {getPeriodLabel(intl, entry)}
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown>
+    </div>
+  );
+}
+function LibrarySectionHeader({ title, subtitle, period, variant = 'period', middleContent = null, rightContent = null }) {
+  const resolvedRightContent = rightContent || <LibraryPeriodBreadcrumb period={period} variant={variant} />;
 
   return (
     <>
@@ -122,42 +207,18 @@ function LibrarySectionHeader({ title, subtitle, period, variant = 'period' }) {
           borderColor: '#d9ccb0',
         }}
       >
-        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-          <div>
+        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div className="me-auto" style={{ minWidth: '8rem' }}>
             <div className="text-uppercase small fw-bold mb-1">
-              {leftLabel}
+              {title}
             </div>
           </div>
-          {period && (
-            <div className="d-flex align-items-center gap-2 flex-wrap small ms-auto">
-              <Link to="/library" className="text-decoration-none">Library</Link>
-              <span>&bull;</span>
-              <Link to={`/library/period/${period.toLowerCase()}`} className="text-decoration-none">
-                {getPeriodLabel(intl, period)}
-              </Link>
-              <Dropdown align="end">
-                <Dropdown.Toggle
-                  variant="link"
-                  size="sm"
-                  className="p-0 text-decoration-none"
-                  style={{ color: '#000' }}
-                  id={`library-period-switcher-${variant}`}
-                />
-                <Dropdown.Menu>
-                  {PERIODS.map(entry => (
-                    <Dropdown.Item
-                      as={Link}
-                      key={entry}
-                      to={`/library/period/${entry.toLowerCase()}`}
-                      active={entry === period}
-                    >
-                      {getPeriodLabel(intl, entry)}
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
+          {middleContent && (
+            <div className="flex-grow-1 d-flex justify-content-center" style={{ minWidth: '16rem', maxWidth: '32rem' }}>
+              {middleContent}
             </div>
           )}
+          {resolvedRightContent}
         </div>
       </div>
       {subtitle && (
@@ -223,6 +284,38 @@ function LibraryLanding() {
     () => PERIODS.map(period => period.toLowerCase()),
     []
   );
+  const roleLabel = getRoleLabel(getPrimaryRole(userInfo));
+  const roleDescription = getRoleDescription(getPrimaryRole(userInfo));
+
+  const accessContent = loading ? (
+    <div className="py-1">
+      <Spinner />
+    </div>
+  ) : (
+    <div className="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+      {roleLabel && roleDescription && (
+        <OverlayTrigger
+          trigger={['hover', 'focus']}
+          placement="bottom"
+          overlay={<HoverPopover text="" default={roleDescription} />}
+        >
+          <span className="fw-semibold" style={{ fontSize: '0.95rem', cursor: 'default' }}>
+            {roleLabel}
+          </span>
+        </OverlayTrigger>
+      )}
+      {welcome?.adminPanelAvailable && (
+        <Button as={Link} to="/library/admin" variant="dark" size="sm">
+          Open admin panel
+        </Button>
+      )}
+      {!welcome?.adminPanelAvailable && welcome?.buttonText && welcome?.role && (
+        <Button variant="outline-dark" size="sm" onClick={handleRoleAction}>
+          {welcome.buttonText}
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="px-4 px-xl-5 py-4">
@@ -231,9 +324,11 @@ function LibraryLanding() {
         subtitle={null}
         period={null}
         variant="landing"
+        middleContent={accessContent}
       />
+      {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
       <Row className="g-4 align-items-start">
-        <Col lg={8}>
+        <Col lg={12}>
           <div className="d-flex flex-column gap-3">
             <div>
               <h1 className="mb-2">
@@ -253,37 +348,6 @@ function LibraryLanding() {
               ))}
             </Row>
           </div>
-        </Col>
-        <Col lg={4}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <div className="text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: '#6c757d' }}>Library access</div>
-              {loading && <Spinner />}
-              {!loading && error && <Alert variant="danger" className="mb-0">{error}</Alert>}
-              {!loading && !error && (
-                <>
-                  <div className="fw-semibold mb-3" style={{ fontSize: '1rem' }}>
-                    {welcome?.greeting || 'Explore the library'}
-                  </div>
-                  {welcome?.adminPanelAvailable && (
-                    <Button as={Link} to="/library/admin" variant="dark">
-                      {welcome.buttonText || 'Open admin panel'}
-                    </Button>
-                  )}
-                  {!welcome?.adminPanelAvailable && welcome?.buttonText && welcome?.role && (
-                    <Button variant="outline-dark" onClick={handleRoleAction}>
-                      {welcome.buttonText}
-                    </Button>
-                  )}
-                  {!welcome?.adminPanelAvailable && !welcome?.buttonText && !userInfo && (
-                    <div className="text-muted" style={{ fontSize: '0.82rem', lineHeight: 1.45 }}>
-                      Sign in to request contributor roles and manage sources.
-                    </div>
-                  )}
-                </>
-              )}
-            </Card.Body>
-          </Card>
         </Col>
       </Row>
     </div>
@@ -414,10 +478,17 @@ function LibraryPeriodPage() {
     <div className="px-4 px-xl-5 py-4">
       <LibrarySectionHeader
         title="LIBRARY"
-        subtitle={intl.formatMessage({ id: `period.${period}.shortDescription`, defaultMessage: 'Historical period overview.' })}
-        period={periodCode}
+        subtitle={null}
+        period={null}
         variant="period"
+        rightContent={<LibraryPeriodBreadcrumb period={periodCode} variant="period" />}
       />
+      <div className="mb-4 mt-2">
+        <h1 className="mb-2">{getPeriodLabel(intl, periodCode)}</h1>
+        <p className="text-muted mb-0">
+          {intl.formatMessage({ id: `period.${period}.shortDescription`, defaultMessage: 'Historical period overview.' })}
+        </p>
+      </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
@@ -596,15 +667,19 @@ function LibraryAdminPage() {
 
   return (
     <div className="px-4 px-xl-5 py-4">
-      <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-4">
-        <div>
-          <Button as={Link} variant="link" className="px-0" to="/library">
-            Back to library
-          </Button>
-          <h1 className="mb-1">Role requests</h1>
-          <p className="text-muted mb-0">Review contributor, scribe, and archivarius requests.</p>
-        </div>
-      </div>
+      <LibrarySectionHeader
+        title="LIBRARY"
+        subtitle="Review contributor, scribe, and archivarius requests."
+        period={null}
+        variant="admin"
+        rightContent={(
+          <div className="d-flex align-items-center gap-2 flex-wrap small ms-auto">
+            <Link to="/library" className="text-decoration-underline">Library</Link>
+            <span>&gt;</span>
+            <Link to="/library/admin" className="text-decoration-underline">Admin</Link>
+          </div>
+        )}
+      />
 
       {error && <Alert variant="danger">{error}</Alert>}
       {loading && <Spinner />}
@@ -961,3 +1036,5 @@ export default function LibraryPage({ view = 'landing' }) {
 
   return <LibraryLanding />;
 }
+
+

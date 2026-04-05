@@ -6,9 +6,15 @@ import { FormattedMessage } from "react-intl";
 
 class HoverPopover extends Component {
   render() {
+    const { text, default: defaultMessage, style, ...rest } = this.props;
+
     return (
-      <Popover className="popover" {...this.props} style={{padding: '7px', ...this.props.style}}>
-        <FormattedMessage id={this.props.text} defaultMessage={this.props.default}/>
+      <Popover className="popover" {...rest} style={{padding: '7px', ...style}}>
+        {text ? (
+          <FormattedMessage id={text} defaultMessage={defaultMessage}/>
+        ) : (
+          defaultMessage
+        )}
       </Popover>
     );
   }

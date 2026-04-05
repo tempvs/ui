@@ -41,3 +41,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}
+      - name: Trigger Render deploy
+        run: >-
+          curl -X POST
+          "${{ secrets.RENDER_DEPLOY_HOOK }}?imgURL=${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}"
