@@ -2,9 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
-import { FaLink, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaLink, FaTrashAlt, FaUnlink } from 'react-icons/fa';
 
-import DisclosureCard from '../component/DisclosureCard';
 import EditableTextFieldRow from '../component/EditableTextFieldRow';
 import EditableTextareaFieldRow from '../component/EditableTextareaFieldRow';
 import IconActionButton from '../component/IconActionButton';
@@ -52,6 +51,8 @@ import { SaveStatus } from '../component/EditableFieldRow';
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 
 const emptyGroupForm = { name: '', description: '' };
+const ChevronDownIcon = FaChevronDown as React.ComponentType;
+const ChevronRightIcon = FaChevronRight as React.ComponentType;
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
 const TrashIcon = FaTrashAlt as React.ComponentType;
 const UnlinkIcon = FaUnlink as React.ComponentType;
@@ -82,16 +83,16 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   const [groupSubmitting, setGroupSubmitting] = useState(false);
   const [groupDrafts, setGroupDrafts] = useState<IdRecord<DraftFields>>({});
   const [groupStatuses, setGroupStatuses] = useState<IdRecord<FieldStatusMap>>({});
-  const [groupExpanded, setGroupExpanded] = useState<IdRecord<boolean>>({});
   const [itemDrafts, setItemDrafts] = useState<IdRecord<DraftFields>>({});
   const [itemStatuses, setItemStatuses] = useState<IdRecord<FieldStatusMap>>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
+  const [groupExpanded, setGroupExpanded] = useState<IdRecord<boolean>>({});
   const [itemsByGroup, setItemsByGroup] = useState<IdRecord<StashItem[]>>({});
   const [itemsLoading, setItemsLoading] = useState<IdRecord<boolean>>({});
+  const [itemExpanded, setItemExpanded] = useState<IdRecord<boolean>>({});
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(null);
   const [itemCreateForm, setItemCreateForm] = useState(emptyItemForm(profile?.period));
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
-  const [itemExpanded, setItemExpanded] = useState<IdRecord<boolean>>({});
   const [sourceDetails, setSourceDetails] = useState<IdRecord<LibrarySourceSummary>>({});
   const [sourceSearch, setSourceSearch] = useState<IdRecord<SourceSearchState>>({});
   const [itemImagesByItem, setItemImagesByItem] = useState<IdRecord<StashItemImage[]>>({});
@@ -157,7 +158,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       setGroupStatuses({});
       setGroupExpanded(prevState => ({
         ...prevState,
-        ...Object.fromEntries(groups.map(group => [group.id, prevState[group.id] || false])),
+        ...Object.fromEntries(groups.map(group => [group.id, prevState[group.id] ?? true])),
       }));
       await Promise.all(groups.map(group => loadItems(group.id)));
     } catch (error) {
@@ -193,22 +194,15 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       }));
       setItemExpanded(prevState => ({
         ...prevState,
-        ...Object.fromEntries((items || []).map(item => [item.id, prevState[item.id] || false])),
+        ...Object.fromEntries((items || []).map(item => [item.id, prevState[item.id] ?? true])),
       }));
       await hydrateSources(items || []);
+      await Promise.all((items || []).map(item => loadItemImages(item.id)));
     } catch (error) {
       setItemsByGroup(prevState => ({ ...prevState, [groupId]: [] }));
     } finally {
       setItemsLoading(prevState => ({ ...prevState, [groupId]: false }));
     }
-  }
-
-  async function ensureItemImagesLoaded(itemId: Id) {
-    if (Object.prototype.hasOwnProperty.call(itemImagesByItem, itemId) || itemImagesLoading[itemId]) {
-      return;
-    }
-
-    await loadItemImages(itemId);
   }
 
   async function loadItemImages(itemId: Id) {
@@ -382,6 +376,14 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setItemCreateForm(emptyItemForm(group?.items?.[0]?.classification || 'OTHER'));
   }
 
+  function toggleGroupExpanded(groupId: Id) {
+    setGroupExpanded(prevState => ({ ...prevState, [groupId]: !(prevState[groupId] ?? true) }));
+  }
+
+  function toggleItemExpanded(itemId: Id) {
+    setItemExpanded(prevState => ({ ...prevState, [itemId]: !(prevState[itemId] ?? true) }));
+  }
+
   async function handleCreateItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!itemCreateTarget) {
@@ -514,12 +516,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   async function handleDeleteItem(item: StashItem) {
     try {
       await deleteStashItem(item.id);
+      await loadItems(item.itemGroup.id);
       setItemExpanded(prevState => {
         const nextState = { ...prevState };
         delete nextState[item.id];
         return nextState;
       });
-      await loadItems(item.itemGroup.id);
       setFeedback({
         variant: 'success',
         text: t('profile.stash.itemDeleteSuccess', 'Item deleted.'),
@@ -780,17 +782,6 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function toggleItemExpanded(itemId: Id) {
-    const nextExpanded = !itemExpanded[itemId];
-    if (nextExpanded) {
-      ensureItemImagesLoaded(itemId);
-    }
-    setItemExpanded(prevState => ({
-      ...prevState,
-      [itemId]: nextExpanded,
-    }));
-  }
-
   if (!isClubProfile) {
     return null;
   }
@@ -873,11 +864,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
           </div>
         )}
 
-        <div className="d-grid gap-3">
+        <div className="d-grid gap-4">
           {groups.map(group => {
             const items = itemsByGroup[group.id] || [];
             const searchStateByItem = sourceSearch;
-            const isGroupExpanded = Boolean(groupExpanded[group.id]);
             const loadedGroupImageCount = items.reduce(
               (count, item) => count + ((itemImagesByItem[item.id] || []).length),
               0
@@ -889,148 +879,155 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
               `${groupSourceCount} ${t('profile.stash.sourcesCount', 'source(s)')}`,
               hasLoadedGroupImages ? `${loadedGroupImageCount} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
             ].filter(Boolean);
+            const isGroupExpanded = groupExpanded[group.id] ?? true;
 
             return (
-              <DisclosureCard
+              <section
                 key={group.id}
-                className="bg-white"
-                expanded={isGroupExpanded}
-                onToggle={() => setGroupExpanded(prevState => ({
-                  ...prevState,
-                  [group.id]: !prevState[group.id],
-                }))}
-                style={{
-                  borderColor: '#e3d8c6',
-                }}
-                summary={(
-                  <>
-                    <div className="fw-semibold">{groupDrafts[group.id]?.name || group.name}</div>
-                    {(groupDrafts[group.id]?.description || group.description) && (
-                      <div className="small text-muted mt-1">
-                        {groupDrafts[group.id]?.description || group.description}
-                      </div>
-                    )}
-                    <div className="small text-muted mt-2">
-                      {groupMetadata.join(' \u2022 ')}
-                    </div>
-                  </>
-                )}
+                className="stash-collection-section border p-3 p-lg-4"
               >
-                <div className="mt-3">
+                <div className={`stash-collection-header d-flex justify-content-between align-items-start gap-3 flex-wrap ${isGroupExpanded ? 'border-bottom pb-3 mb-3' : ''}`}>
+                  <button
+                    type="button"
+                    className="stash-heading-toggle"
+                    onClick={() => toggleGroupExpanded(group.id)}
+                    aria-expanded={isGroupExpanded}
+                  >
+                    <span className="stash-chevron">
+                      {isGroupExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                    </span>
+                    <span className="d-block" style={{ minWidth: 0 }}>
+                      <span className="d-block fw-semibold fs-5">{groupDrafts[group.id]?.name || group.name}</span>
+                      {(groupDrafts[group.id]?.description || group.description) && (
+                        <span className="d-block small text-muted mt-1">
+                          {groupDrafts[group.id]?.description || group.description}
+                        </span>
+                      )}
+                      <span className="d-block small text-muted mt-2">
+                        {groupMetadata.join(' \u2022 ')}
+                      </span>
+                    </span>
+                  </button>
                   {isEditable && (
-                    <Row className="g-2 mb-3">
-                      <Col md={4}>
-                        <EditableTextFieldRow
-                          label=""
-                          editable
-                          value={groupDrafts[group.id]?.name || ''}
-                          readOnlyValue={group.name}
-                          onChange={event => setGroupField(group.id, 'name', event.target.value)}
-                          onBlur={() => handleSaveGroupField(group, 'name')}
-                          status={groupStatuses[group.id]?.name}
-                          className=""
-                          fieldMaxWidth="100%"
-                        />
-                      </Col>
-                      <Col md={6}>
-                        <EditableTextFieldRow
-                          label=""
-                          editable
-                          value={groupDrafts[group.id]?.description || ''}
-                          readOnlyValue={group.description || '-'}
-                          onChange={event => setGroupField(group.id, 'description', event.target.value)}
-                          onBlur={() => handleSaveGroupField(group, 'description')}
-                          status={groupStatuses[group.id]?.description}
-                          className=""
-                          fieldMaxWidth="100%"
-                        />
-                      </Col>
-                    </Row>
+                    <PlusActionButton
+                      title={t('profile.stash.itemCreate', 'Add item')}
+                      onClick={() => openCreateItem(group)}
+                    />
                   )}
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="small text-uppercase text-muted fw-bold">
+                </div>
+
+                {isGroupExpanded && (
+                  <div>
+                    {isEditable && (
+                      <Row className="g-2 mb-3">
+                        <Col md={4}>
+                          <EditableTextFieldRow
+                            label=""
+                            editable
+                            value={groupDrafts[group.id]?.name || ''}
+                            readOnlyValue={group.name}
+                            onChange={event => setGroupField(group.id, 'name', event.target.value)}
+                            onBlur={() => handleSaveGroupField(group, 'name')}
+                            status={groupStatuses[group.id]?.name}
+                            className=""
+                            fieldMaxWidth="100%"
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <EditableTextFieldRow
+                            label=""
+                            editable
+                            value={groupDrafts[group.id]?.description || ''}
+                            readOnlyValue={group.description || '-'}
+                            onChange={event => setGroupField(group.id, 'description', event.target.value)}
+                            onBlur={() => handleSaveGroupField(group, 'description')}
+                            status={groupStatuses[group.id]?.description}
+                            className=""
+                            fieldMaxWidth="100%"
+                          />
+                        </Col>
+                      </Row>
+                    )}
+                    <div className="small text-uppercase text-muted fw-bold mb-2">
                       {t('profile.stash.itemsTitle', 'Items')}
                     </div>
-                    {isEditable && (
-                      <PlusActionButton
-                        title={t('profile.stash.itemCreate', 'Add item')}
-                        onClick={() => openCreateItem(group)}
-                      />
+
+                    {itemsLoading[group.id] && <Spinner size="sm" />}
+                    {!itemsLoading[group.id] && !items.length && (
+                      <div className="py-4 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #e3d8c6' }}>
+                        <div className="small fw-semibold mb-1">
+                          {t('profile.stash.itemsEmptyTitle', 'No items yet')}
+                        </div>
+                        <div className="small text-muted mb-3">
+                          {t('profile.stash.itemsEmpty', 'Add the first item to this collection.')}
+                        </div>
+                        {isEditable && (
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => openCreateItem(group)}
+                          >
+                            {t('profile.stash.itemCreateFirst', 'Add first item')}
+                          </Button>
+                        )}
+                      </div>
                     )}
-                  </div>
 
-                  {itemsLoading[group.id] && <Spinner size="sm" />}
-                  {!itemsLoading[group.id] && !items.length && (
-                    <div className="py-4 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #e3d8c6' }}>
-                      <div className="small fw-semibold mb-1">
-                        {t('profile.stash.itemsEmptyTitle', 'No items yet')}
-                      </div>
-                      <div className="small text-muted mb-3">
-                        {t('profile.stash.itemsEmpty', 'Add the first item to this collection.')}
-                      </div>
-                      {isEditable && (
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          onClick={() => openCreateItem(group)}
-                        >
-                          {t('profile.stash.itemCreateFirst', 'Add first item')}
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    <Row className="g-3">
+                      {items.map(item => {
+                        const sourceState = searchStateByItem[item.id] || {};
+                        const hasLoadedImages = Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id);
+                        const itemMetadata = [
+                          getClassificationLabel(intl, item.classification),
+                          `${(item.sources || []).length} ${t('profile.stash.sourcesCount', 'source(s)')}`,
+                          hasLoadedImages ? `${(itemImagesByItem[item.id] || []).length} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
+                        ].filter(Boolean);
+                        const isItemExpanded = itemExpanded[item.id] ?? true;
 
-                  <div className="d-grid gap-3">
-                    {items.map(item => {
-                      const sourceState = searchStateByItem[item.id] || {};
-                      const isExpanded = Boolean(itemExpanded[item.id]);
-                      const hasLoadedImages = Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id);
-                      const itemMetadata = [
-                        getClassificationLabel(intl, item.classification),
-                        `${(item.sources || []).length} ${t('profile.stash.sourcesCount', 'source(s)')}`,
-                        hasLoadedImages ? `${(itemImagesByItem[item.id] || []).length} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
-                      ].filter(Boolean);
-
-                      return (
-                        <DisclosureCard
-                          key={item.id}
-                          expanded={isExpanded}
-                          onToggle={() => toggleItemExpanded(item.id)}
-                          topRightAction={isEditable ? (
-                            <div className="position-absolute top-0 end-0 mt-3 me-3">
-                              <IconActionButton
-                                title={t('profile.stash.delete', 'Delete')}
-                                onClick={() => handleDeleteItem(item)}
-                                borderColor="#c77d7d"
-                                color="#8e2323"
-                                backgroundColor="#fff"
-                                size="1.9rem"
-                                fontSize="0.9rem"
-                              >
-                                <TrashIcon />
-                              </IconActionButton>
-                            </div>
-                          ) : null}
-                          style={{
-                            borderColor: '#ebe4d8',
-                            backgroundColor: '#fcfbf8',
-                          }}
-                          summary={(
-                            <>
-                              <div className="fw-semibold">{item.name}</div>
-                              {item.description && (
-                                <div className="small text-muted mt-1">
-                                  {item.description}
-                                </div>
-                              )}
-                              <div className="small text-muted mt-2">
-                                {itemMetadata.join(' \u2022 ')}
+                        return (
+                          <Col lg={6} key={item.id}>
+                            <article className="stash-item-card border p-3 position-relative">
+                            {isEditable && (
+                              <div className="position-absolute top-0 end-0 mt-2 me-2">
+                                <IconActionButton
+                                  title={t('profile.stash.delete', 'Delete')}
+                                  onClick={() => handleDeleteItem(item)}
+                                  borderColor="#c77d7d"
+                                  color="#8e2323"
+                                  backgroundColor="#fff"
+                                  size="1.9rem"
+                                  fontSize="0.9rem"
+                                >
+                                  <TrashIcon />
+                                </IconActionButton>
                               </div>
-                            </>
-                          )}
-                        >
-                          <Row className="g-3 mt-1">
-                              <Col lg={6}>
+                            )}
+
+                            <button
+                              type="button"
+                              className={`stash-heading-toggle stash-item-toggle ${isItemExpanded ? 'mb-3' : ''}`}
+                              onClick={() => toggleItemExpanded(item.id)}
+                              aria-expanded={isItemExpanded}
+                            >
+                              <span className="stash-chevron">
+                                {isItemExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                              </span>
+                              <span className="d-block">
+                                <span className="d-block fw-semibold">{item.name}</span>
+                                {item.description && (
+                                  <span className="d-block small text-muted mt-1">
+                                    {item.description}
+                                  </span>
+                                )}
+                                <span className="d-block small text-muted mt-2">
+                                  {itemMetadata.join(' \u2022 ')}
+                                </span>
+                              </span>
+                            </button>
+
+                              {isItemExpanded && (
+                                <Row className="g-3">
+                                  <Col xs={12}>
                                 {isEditable ? (
                                   <>
                                     <EditableTextFieldRow
@@ -1106,8 +1103,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     </div>
                                   </>
                                 )}
-                              </Col>
-                              <Col lg={6}>
+                                  </Col>
+                                  <Col xs={12}>
                                 <div className="small text-uppercase text-muted fw-bold mb-2">
                                   {t('profile.stash.sourcesTitle', 'Linked sources')}
                                 </div>
@@ -1187,14 +1184,17 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     )}
                                   </div>
                                 )}
-                              </Col>
-                            </Row>
-                        </DisclosureCard>
-                      );
-                    })}
+                                  </Col>
+                                </Row>
+                              )}
+                            </article>
+                          </Col>
+                        );
+                      })}
+                    </Row>
                   </div>
-                </div>
-              </DisclosureCard>
+                )}
+              </section>
             );
           })}
         </div>

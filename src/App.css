@@ -64,3 +64,54 @@ h1, h2, h3 {
   padding-bottom: 0.2rem;
   margin-bottom: 0.55rem;
 }
+
+.stash-collection-section {
+  border-color: #cfd8d3 !important;
+  border-left: 4px solid #4f7567 !important;
+  background: linear-gradient(180deg, #fffefa 0%, #f8faf8 100%);
+  box-shadow: 0 0.22rem 0.85rem rgba(31, 38, 35, 0.07);
+}
+
+.stash-item-card {
+  border-color: #d9e0dc !important;
+  border-left: 3px solid #6d7d8c !important;
+  background-color: #fffefa;
+  box-shadow: 0 0.18rem 0.62rem rgba(31, 38, 35, 0.06);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.stash-item-card:hover {
+  border-color: #b8c6be !important;
+  box-shadow: 0 0.32rem 0.95rem rgba(31, 38, 35, 0.1);
+  transform: translateY(-1px);
+}
+
+.stash-heading-toggle {
+  display: flex;
+  flex: 1 1 20rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.stash-heading-toggle:focus {
+  outline: 2px solid rgba(79, 117, 103, 0.34);
+  outline-offset: 3px;
+}
+
+.stash-chevron {
+  flex: 0 0 1rem;
+  width: 1rem;
+  padding-top: 0.18rem;
+  color: #4f5f58;
+}
+
+.stash-item-toggle {
+  width: 100%;
+  padding-right: 2.6rem;
+}
