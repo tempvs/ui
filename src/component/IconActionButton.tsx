@@ -1,5 +1,19 @@
 import React from 'react';
-import { Button } from 'react-bootstrap';
+import { Button, ButtonProps } from 'react-bootstrap';
+
+export type IconActionButtonProps = Omit<ButtonProps, 'size' | 'title' | 'onClick'> & {
+  children?: React.ReactNode;
+  title?: string;
+  onClick?: React.MouseEventHandler<HTMLElement>;
+  stopPropagation?: boolean;
+  size?: string;
+  fontSize?: string;
+  borderColor?: string;
+  color?: string;
+  backgroundColor?: string;
+  className?: string;
+  style?: React.CSSProperties;
+};
 
 export default function IconActionButton({
   children,
@@ -15,8 +29,8 @@ export default function IconActionButton({
   className = '',
   style = {},
   ...props
-}) {
-  const handleClick = event => {
+}: IconActionButtonProps) {
+  const handleClick: React.MouseEventHandler<HTMLElement> = event => {
     if (stopPropagation) {
       event.preventDefault();
       event.stopPropagation();
@@ -24,7 +38,7 @@ export default function IconActionButton({
     onClick?.(event);
   };
 
-  const handleMouseDown = event => {
+  const handleMouseDown: React.MouseEventHandler<HTMLElement> = event => {
     if (stopPropagation) {
       event.preventDefault();
       event.stopPropagation();

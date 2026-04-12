@@ -1,9 +1,26 @@
 import React from 'react';
 
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
-import { buildClubProfileLabel } from '../profileLabels';
+import { buildClubProfileLabel, PeriodLabelResolver, ProfileLabelSource } from '../profileLabels';
 
-function buildProfilePath(getCanonicalProfilePath, profile) {
+type ProfilePathBuilder = (profile: ProfileLabelSource) => string;
+
+type ClubProfile = NonNullable<ProfileLabelSource> & {
+  id?: string | number;
+  alias?: string | null;
+};
+
+type ProfileHeaderBreadcrumbProps = {
+  ownerLink?: string | null;
+  ownerLabel?: React.ReactNode;
+  currentProfile: ClubProfile;
+  siblingClubProfiles?: ClubProfile[];
+  getCanonicalProfilePath: ProfilePathBuilder;
+  getPeriodLabel: PeriodLabelResolver;
+  emptyLabel?: React.ReactNode;
+};
+
+function buildProfilePath(getCanonicalProfilePath: ProfilePathBuilder, profile: ProfileLabelSource): string {
   return getCanonicalProfilePath(profile);
 }
 
@@ -11,11 +28,11 @@ export default function ProfileHeaderBreadcrumb({
   ownerLink,
   ownerLabel,
   currentProfile,
-  siblingClubProfiles,
+  siblingClubProfiles = [],
   getCanonicalProfilePath,
   getPeriodLabel,
   emptyLabel,
-}) {
+}: ProfileHeaderBreadcrumbProps) {
   if (!ownerLink) {
     return null;
   }

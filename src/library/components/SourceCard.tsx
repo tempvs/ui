@@ -5,7 +5,20 @@ import { Link } from 'react-router-dom';
 
 import { getClassificationLabel, getTypeLabel, PeriodBadge } from '../libraryShared';
 
-export default function SourceCard({ source }) {
+type SourceCardSource = {
+  id: string | number;
+  name?: string | null;
+  description?: string | null;
+  classification?: string | null;
+  type?: string | null;
+  period?: string | null;
+};
+
+type SourceCardProps = {
+  source: SourceCardSource;
+};
+
+export default function SourceCard({ source }: SourceCardProps) {
   const intl = useIntl();
 
   return (

@@ -1,10 +1,20 @@
 import React from 'react';
 import { useIntl } from 'react-intl';
 
-import SectionBreadcrumb from '../../component/SectionBreadcrumb';
+import SectionBreadcrumb, { SectionBreadcrumbItem } from '../../component/SectionBreadcrumb';
 import { getPeriodLabel, PERIODS } from '../libraryShared';
 
-export default function LibraryPeriodBreadcrumb({ period, variant = 'period', trailingItem = null }) {
+type LibraryPeriodBreadcrumbProps = {
+  period?: string | null;
+  variant?: string;
+  trailingItem?: SectionBreadcrumbItem | null;
+};
+
+export default function LibraryPeriodBreadcrumb({
+  period,
+  variant = 'period',
+  trailingItem = null,
+}: LibraryPeriodBreadcrumbProps) {
   const intl = useIntl();
 
   if (!period) {

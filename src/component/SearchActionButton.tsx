@@ -1,7 +1,15 @@
 import React from 'react';
 import { FaSearch } from 'react-icons/fa';
 
-import IconActionButton from './IconActionButton';
+import IconActionButton, { IconActionButtonProps } from './IconActionButton';
+
+type SearchIconProps = {
+  className?: string;
+};
+
+type SearchActionButtonProps = Omit<IconActionButtonProps, 'children'>;
+
+const SearchIcon = FaSearch as React.ComponentType<SearchIconProps>;
 
 export default function SearchActionButton({
   title = 'Search',
@@ -12,7 +20,7 @@ export default function SearchActionButton({
   className = '',
   style = {},
   ...props
-}) {
+}: SearchActionButtonProps) {
   return (
     <IconActionButton
       title={title}
@@ -24,7 +32,7 @@ export default function SearchActionButton({
       style={style}
       {...props}
     >
-      <FaSearch />
+      <SearchIcon />
     </IconActionButton>
   );
 }

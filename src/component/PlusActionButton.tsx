@@ -1,7 +1,15 @@
 import React from 'react';
 import { FaPlus } from 'react-icons/fa';
 
-import IconActionButton from './IconActionButton';
+import IconActionButton, { IconActionButtonProps } from './IconActionButton';
+
+type PlusIconProps = {
+  className?: string;
+};
+
+type PlusActionButtonProps = Omit<IconActionButtonProps, 'children'>;
+
+const PlusIcon = FaPlus as React.ComponentType<PlusIconProps>;
 
 export default function PlusActionButton({
   title,
@@ -13,7 +21,7 @@ export default function PlusActionButton({
   className = '',
   style = {},
   ...props
-}) {
+}: PlusActionButtonProps) {
   return (
     <IconActionButton
       onClick={onClick}
@@ -30,7 +38,7 @@ export default function PlusActionButton({
       }}
       {...props}
     >
-      <FaPlus />
+      <PlusIcon />
     </IconActionButton>
   );
 }

@@ -1,5 +1,14 @@
 import React from 'react';
 
+type SectionHeaderBarProps = {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  middleContent?: React.ReactNode;
+  rightContent?: React.ReactNode;
+  backgroundColor?: string;
+  borderColor?: string;
+};
+
 export default function SectionHeaderBar({
   title,
   subtitle = null,
@@ -7,7 +16,7 @@ export default function SectionHeaderBar({
   rightContent = null,
   backgroundColor = '#f3efe4',
   borderColor = '#d9ccb0',
-}) {
+}: SectionHeaderBarProps) {
   return (
     <>
       <div

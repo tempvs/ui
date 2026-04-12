@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 
-import IconActionButton from './IconActionButton';
+import IconActionButton, { IconActionButtonProps } from './IconActionButton';
+
+type ConfirmingTrashButtonProps = Omit<IconActionButtonProps, 'children' | 'title' | 'onClick'> & {
+  title?: string;
+  confirmTitle?: React.ReactNode;
+  confirmMessage?: React.ReactNode;
+  confirmLabel?: React.ReactNode;
+  cancelLabel?: React.ReactNode;
+  onConfirm?: () => void;
+};
+
+const TrashIcon = FaTrashAlt as React.ComponentType;
 
 export default function ConfirmingTrashButton({
   title = 'Delete',
@@ -12,7 +23,7 @@ export default function ConfirmingTrashButton({
   cancelLabel = 'Cancel',
   onConfirm,
   ...props
-}) {
+}: ConfirmingTrashButtonProps) {
   const [show, setShow] = useState(false);
 
   const openModal = () => setShow(true);
@@ -29,7 +40,7 @@ export default function ConfirmingTrashButton({
         onClick={openModal}
         {...props}
       >
-        <FaTrashAlt />
+        <TrashIcon />
       </IconActionButton>
 
       <Modal show={show} onHide={closeModal} centered>

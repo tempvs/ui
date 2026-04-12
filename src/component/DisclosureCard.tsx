@@ -1,6 +1,19 @@
 import React from 'react';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 
+type DisclosureCardProps = {
+  expanded: boolean;
+  onToggle: React.MouseEventHandler<HTMLButtonElement>;
+  summary: React.ReactNode;
+  topRightAction?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+};
+
+const ChevronDownIcon = FaChevronDown as React.ComponentType;
+const ChevronRightIcon = FaChevronRight as React.ComponentType;
+
 export default function DisclosureCard({
   expanded,
   onToggle,
@@ -9,7 +22,7 @@ export default function DisclosureCard({
   children = null,
   className = '',
   style = {},
-}) {
+}: DisclosureCardProps) {
   return (
     <div
       className={`tempvs-disclosure-card rounded border p-3 position-relative ${!expanded ? 'tempvs-disclosure-card-collapsed' : ''} ${className}`.trim()}
@@ -24,7 +37,7 @@ export default function DisclosureCard({
         <div className="d-flex align-items-start justify-content-between gap-3 pe-5">
           <div className="d-flex align-items-start gap-3 flex-grow-1">
             <div className="pt-1" style={{ color: '#4b4b4b', minWidth: '1rem' }}>
-              {expanded ? <FaChevronDown /> : <FaChevronRight />}
+              {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
             </div>
             <div className="flex-grow-1">
               {summary}
