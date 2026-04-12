@@ -3,8 +3,7 @@ import React from 'react';
 import EditableSelectFieldRow from '../../component/EditableSelectFieldRow';
 import EditableTextFieldRow from '../../component/EditableTextFieldRow';
 import { SaveStatus } from '../../component/EditableFieldRow';
-
-type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+import { MessageFormatter, ProfileField } from '../profileTypes';
 
 type ProfileFieldsState = {
   firstName?: string | null;
@@ -21,11 +20,11 @@ type ProfileFieldsPanelProps = {
   type?: string | null;
   state: ProfileFieldsState;
   periods: string[];
-  t: Translator;
+  t: MessageFormatter;
   getPeriodLabel: (period?: string | null) => string;
   editable: boolean;
   onInputChange: (event: { target: { name: string; value: string } }) => void;
-  onFieldBlur: (field: string) => void;
+  onFieldBlur: (field: ProfileField) => void;
 };
 
 export default function ProfileFieldsPanel({

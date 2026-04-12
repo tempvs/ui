@@ -4,14 +4,15 @@ import { Link } from 'react-router-dom';
 
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
 import Spinner from '../../component/Spinner';
-import { getAdminRoleRequests, updateAdminRoleRequest } from '../libraryApi';
+import { getErrorMessage } from '../../util/errors';
+import { getAdminRoleRequests, LibraryRoleRequest, updateAdminRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { PAGE_SIZE } from '../libraryShared';
 
 export default function LibraryAdminPage() {
   const [loading, setLoading] = useState(true);
-  const [roleRequests, setRoleRequests] = useState([]);
-  const [error, setError] = useState(null);
+  const [roleRequests, setRoleRequests] = useState<LibraryRoleRequest[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const loadRoleRequests = async () => {
     setLoading(true);
@@ -25,7 +26,7 @@ export default function LibraryAdminPage() {
 
       setRoleRequests(result.data?.roleRequests || []);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,7 @@ export default function LibraryAdminPage() {
     loadRoleRequests();
   }, []);
 
-  const updateRoleRequest = async (role, userId, method) => {
+  const updateRoleRequest = async (role: string, userId: string | number, method: string) => {
     setError(null);
 
     try {
@@ -46,7 +47,7 @@ export default function LibraryAdminPage() {
 
       setRoleRequests(result.data?.roleRequests || []);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 

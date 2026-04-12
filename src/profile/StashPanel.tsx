@@ -14,6 +14,7 @@ import Spinner from '../component/Spinner';
 import StackedImageGallery from '../component/StackedImageGallery';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { readFileAsBase64 } from '../util/fileUtils';
+import { clearAllTimers, clearTimer } from '../util/timers';
 import {
   createStashGroup,
   createStashItem,
@@ -33,6 +34,20 @@ import {
   updateStashItemDescription,
   updateStashItemName,
 } from './stashApi';
+import {
+  DraftFields,
+  Feedback,
+  Id,
+  LibrarySourceSummary,
+  ReplacingItemImage,
+  SourceSearchState,
+  Stash,
+  StashGroup,
+  StashItem,
+  StashItemImage,
+  StashPanelProps,
+} from './profileTypes';
+import { SaveStatus } from '../component/EditableFieldRow';
 
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 
@@ -41,45 +56,49 @@ const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
 const TrashIcon = FaTrashAlt as React.ComponentType;
 const UnlinkIcon = FaUnlink as React.ComponentType;
 
-const emptyItemForm = classification => ({
+type FieldName = keyof DraftFields;
+type FieldStatusMap = Partial<Record<FieldName, SaveStatus>>;
+type IdRecord<T> = Record<Id, T>;
+
+const emptyItemForm = (classification?: string | null): DraftFields & { classification: string } => ({
   name: '',
   description: '',
   classification: classification || 'OTHER',
 });
 
-function buildSourceLookupMap(sources) {
+function buildSourceLookupMap(sources: LibrarySourceSummary[]): IdRecord<LibrarySourceSummary> {
   return sources.reduce((accumulator, source) => ({
     ...accumulator,
     [source.id]: source,
-  }), {});
+  }), {} as IdRecord<LibrarySourceSummary>);
 }
 
-export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }: any) {
+export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }: StashPanelProps) {
   const intl = useIntl();
-  const [stash, setStash] = useState<any>(null);
+  const [stash, setStash] = useState<Stash | null>(null);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<any>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [groupSubmitting, setGroupSubmitting] = useState(false);
-  const [groupDrafts, setGroupDrafts] = useState<any>({});
-  const [groupStatuses, setGroupStatuses] = useState<any>({});
-  const [groupExpanded, setGroupExpanded] = useState<any>({});
-  const [itemDrafts, setItemDrafts] = useState<any>({});
-  const [itemStatuses, setItemStatuses] = useState<any>({});
+  const [groupDrafts, setGroupDrafts] = useState<IdRecord<DraftFields>>({});
+  const [groupStatuses, setGroupStatuses] = useState<IdRecord<FieldStatusMap>>({});
+  const [groupExpanded, setGroupExpanded] = useState<IdRecord<boolean>>({});
+  const [itemDrafts, setItemDrafts] = useState<IdRecord<DraftFields>>({});
+  const [itemStatuses, setItemStatuses] = useState<IdRecord<FieldStatusMap>>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
-  const [itemsByGroup, setItemsByGroup] = useState<any>({});
-  const [itemsLoading, setItemsLoading] = useState<any>({});
-  const [itemCreateTarget, setItemCreateTarget] = useState<any>(null);
+  const [itemsByGroup, setItemsByGroup] = useState<IdRecord<StashItem[]>>({});
+  const [itemsLoading, setItemsLoading] = useState<IdRecord<boolean>>({});
+  const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(null);
   const [itemCreateForm, setItemCreateForm] = useState(emptyItemForm(profile?.period));
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
-  const [itemExpanded, setItemExpanded] = useState<any>({});
-  const [sourceDetails, setSourceDetails] = useState<any>({});
-  const [sourceSearch, setSourceSearch] = useState<any>({});
-  const [itemImagesByItem, setItemImagesByItem] = useState<any>({});
-  const [itemImagesLoading, setItemImagesLoading] = useState<any>({});
-  const [itemImageDrafts, setItemImageDrafts] = useState<any>({});
-  const [itemImageStatuses, setItemImageStatuses] = useState<any>({});
-  const [itemImageUploadTarget, setItemImageUploadTarget] = useState<any>(null);
+  const [itemExpanded, setItemExpanded] = useState<IdRecord<boolean>>({});
+  const [sourceDetails, setSourceDetails] = useState<IdRecord<LibrarySourceSummary>>({});
+  const [sourceSearch, setSourceSearch] = useState<IdRecord<SourceSearchState>>({});
+  const [itemImagesByItem, setItemImagesByItem] = useState<IdRecord<StashItemImage[]>>({});
+  const [itemImagesLoading, setItemImagesLoading] = useState<IdRecord<boolean>>({});
+  const [itemImageDrafts, setItemImageDrafts] = useState<IdRecord<string>>({});
+  const [itemImageStatuses, setItemImageStatuses] = useState<IdRecord<SaveStatus>>({});
+  const [itemImageUploadTarget, setItemImageUploadTarget] = useState<StashItem | null>(null);
   const [itemImageDescription, setItemImageDescription] = useState('');
   const [itemImageUploading, setItemImageUploading] = useState(false);
   const groupSaveTimersRef = React.useRef<Record<string, number>>({});
@@ -87,9 +106,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   const itemImageSaveTimersRef = React.useRef<Record<string, number>>({});
   const itemImageInputRef = useRef<HTMLInputElement>(null);
   const replaceItemImageInputRef = useRef<HTMLInputElement>(null);
-  const replacingItemImageRef = useRef<any>(null);
+  const replacingItemImageRef = useRef<ReplacingItemImage | null>(null);
 
   const isClubProfile = profile?.type === 'CLUB';
+  const profileId = profile?.id;
   useEffect(() => {
     setGroupForm(emptyGroupForm);
     setGroupCreateVisible(false);
@@ -113,9 +133,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   }, [isClubProfile, profile?.id]);
 
   useEffect(() => () => {
-    Object.values(groupSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
-    Object.values(itemSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
-    Object.values(itemImageSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
+    clearAllTimers(groupSaveTimersRef.current);
+    clearAllTimers(itemSaveTimersRef.current);
+    clearAllTimers(itemImageSaveTimersRef.current);
   }, []);
 
   async function loadStash() {
@@ -123,7 +143,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setFeedback(null);
 
     try {
-      const payload = await getProfileStash(profile.id);
+      if (!profileId) {
+        return;
+      }
+
+      const payload = await getProfileStash(profileId);
       setStash(payload);
       const groups = payload?.groups || [];
       setGroupDrafts(Object.fromEntries(groups.map(group => [group.id, {
@@ -147,7 +171,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function loadItems(groupId) {
+  async function loadItems(groupId: Id) {
     setItemsLoading(prevState => ({ ...prevState, [groupId]: true }));
 
     try {
@@ -179,7 +203,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function ensureItemImagesLoaded(itemId) {
+  async function ensureItemImagesLoaded(itemId: Id) {
     if (Object.prototype.hasOwnProperty.call(itemImagesByItem, itemId) || itemImagesLoading[itemId]) {
       return;
     }
@@ -187,7 +211,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     await loadItemImages(itemId);
   }
 
-  async function loadItemImages(itemId) {
+  async function loadItemImages(itemId: Id) {
     setItemImagesLoading(prevState => ({ ...prevState, [itemId]: true }));
 
     try {
@@ -209,8 +233,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function hydrateSources(items) {
-    const ids = Array.from(new Set<any>(items.flatMap(item => item.sources || [])))
+  async function hydrateSources(items: StashItem[]) {
+    const ids = Array.from(new Set<Id>(items.flatMap(item => item.sources || [])))
       .filter(id => !sourceDetails[id]);
 
     if (!ids.length) {
@@ -228,13 +252,17 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleCreateGroup(event) {
+  async function handleCreateGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setGroupSubmitting(true);
     setFeedback(null);
 
     try {
-      await createStashGroup(profile.id, groupForm);
+      if (!profileId) {
+        return;
+      }
+
+      await createStashGroup(profileId, groupForm);
       setGroupForm(emptyGroupForm);
       setGroupCreateVisible(false);
       await loadStash();
@@ -252,7 +280,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function setGroupField(groupId, field, value) {
+  function setGroupField(groupId: Id, field: FieldName, value: string) {
     setGroupDrafts(prevState => ({
       ...prevState,
       [groupId]: {
@@ -269,25 +297,20 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       },
     }));
     const timerKey = `${groupId}:${field}`;
-    if (groupSaveTimersRef.current[timerKey]) {
-      clearTimeout(groupSaveTimersRef.current[timerKey]);
-    }
+    clearTimer(groupSaveTimersRef.current, timerKey);
     groupSaveTimersRef.current[timerKey] = window.setTimeout(() => {
       handleSaveGroupField(group, field);
     }, 1800);
   }
 
-  async function handleSaveGroupField(group, field) {
+  async function handleSaveGroupField(group: StashGroup | undefined, field: FieldName) {
     if (!group) {
       return;
     }
     const draft = groupDrafts[group.id]?.[field] || '';
     const persisted = group?.[field] || '';
     const timerKey = `${group.id}:${field}`;
-    if (groupSaveTimersRef.current[timerKey]) {
-      clearTimeout(groupSaveTimersRef.current[timerKey]);
-      delete groupSaveTimersRef.current[timerKey];
-    }
+    clearTimer(groupSaveTimersRef.current, timerKey);
     if (draft === persisted) {
       setGroupStatuses(prevState => ({
         ...prevState,
@@ -354,12 +377,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function openCreateItem(group) {
+  function openCreateItem(group: StashGroup) {
     setItemCreateTarget(group);
     setItemCreateForm(emptyItemForm(group?.items?.[0]?.classification || 'OTHER'));
   }
 
-  async function handleCreateItem(event) {
+  async function handleCreateItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!itemCreateTarget) {
       return;
@@ -369,6 +392,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setFeedback(null);
 
     try {
+      if (!profile) {
+        return;
+      }
+
       await createStashItem(itemCreateTarget.id, {
         ...itemCreateForm,
         period: profile.period,
@@ -391,7 +418,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function setItemField(item, field, value) {
+  function setItemField(item: StashItem, field: FieldName, value: string) {
     setItemDrafts(prevState => ({
       ...prevState,
       [item.id]: {
@@ -407,22 +434,17 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       },
     }));
     const timerKey = `${item.id}:${field}`;
-    if (itemSaveTimersRef.current[timerKey]) {
-      clearTimeout(itemSaveTimersRef.current[timerKey]);
-    }
+    clearTimer(itemSaveTimersRef.current, timerKey);
     itemSaveTimersRef.current[timerKey] = window.setTimeout(() => {
       handleSaveItemField(item, field);
     }, 1800);
   }
 
-  async function handleSaveItemField(item, field) {
+  async function handleSaveItemField(item: StashItem, field: FieldName) {
     const draft = itemDrafts[item.id]?.[field] || '';
     const persisted = item?.[field] || '';
     const timerKey = `${item.id}:${field}`;
-    if (itemSaveTimersRef.current[timerKey]) {
-      clearTimeout(itemSaveTimersRef.current[timerKey]);
-      delete itemSaveTimersRef.current[timerKey];
-    }
+    clearTimer(itemSaveTimersRef.current, timerKey);
     if (draft === persisted) {
       setItemStatuses(prevState => ({
         ...prevState,
@@ -489,7 +511,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleDeleteItem(item) {
+  async function handleDeleteItem(item: StashItem) {
     try {
       await deleteStashItem(item.id);
       setItemExpanded(prevState => {
@@ -510,7 +532,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleUploadItemImage(event) {
+  async function handleUploadItemImage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const file = itemImageInputRef.current?.files?.[0];
 
@@ -548,7 +570,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function handleOpenReplaceItemImagePicker(item, image) {
+  function handleOpenReplaceItemImagePicker(item: StashItem, image: StashItemImage) {
     replacingItemImageRef.current = { itemId: item.id, image };
     if (replaceItemImageInputRef.current) {
       replaceItemImageInputRef.current.value = '';
@@ -556,7 +578,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleReplaceItemImage(event) {
+  async function handleReplaceItemImage(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     const target = replacingItemImageRef.current;
 
@@ -592,14 +614,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function clearItemImageSaveTimer(imageId) {
-    if (itemImageSaveTimersRef.current[imageId]) {
-      clearTimeout(itemImageSaveTimersRef.current[imageId]);
-      delete itemImageSaveTimersRef.current[imageId];
-    }
+  function clearItemImageSaveTimer(imageId: Id) {
+    clearTimer(itemImageSaveTimersRef.current, String(imageId));
   }
 
-  const resetItemImageStatusLater = (imageId, delay = 1000) => {
+  const resetItemImageStatusLater = (imageId: Id, delay = 1000) => {
     window.setTimeout(() => {
       setItemImageStatuses(prevState => ({
         ...prevState,
@@ -608,7 +627,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }, delay);
   };
 
-  async function handleDeleteItemImage(itemId, imageId) {
+  async function handleDeleteItemImage(itemId: Id, imageId: Id) {
     try {
       await deleteStashItemImage(itemId, imageId);
       clearItemImageSaveTimer(imageId);
@@ -625,7 +644,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleUpdateItemImageDescription(itemId, imageId, nextValue = itemImageDrafts[imageId] || '') {
+  async function handleUpdateItemImageDescription(itemId: Id, imageId: Id, nextValue = itemImageDrafts[imageId] || '') {
     const persistedValue = (itemImagesByItem[itemId] || []).find(image => image.id === imageId)?.description || '';
     if ((nextValue || '') === persistedValue) {
       setItemImageStatuses(prevState => ({
@@ -669,7 +688,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function handleItemImageDescriptionChange(itemId, imageId, value) {
+  function handleItemImageDescriptionChange(itemId: Id, imageId: Id, value: string) {
     setItemImageDrafts(prevState => ({
       ...prevState,
       [imageId]: value,
@@ -684,12 +703,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }, 1800);
   }
 
-  function handleItemImageDescriptionBlur(itemId, imageId) {
+  function handleItemImageDescriptionBlur(itemId: Id, imageId: Id) {
     clearItemImageSaveTimer(imageId);
     handleUpdateItemImageDescription(itemId, imageId);
   }
 
-  async function handleSearchSources(item) {
+  async function handleSearchSources(item: StashItem) {
     const query = sourceSearch[item.id]?.query || '';
     setSourceSearch(prevState => ({
       ...prevState,
@@ -704,7 +723,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       const results = await searchLibrarySources({
         query,
         period: item.period,
-        classifications: [item.classification],
+        classifications: item.classification ? [item.classification] : [],
         types: ALL_SOURCE_TYPES,
       });
       setSourceSearch(prevState => ({
@@ -729,7 +748,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleLinkSource(item, sourceId) {
+  async function handleLinkSource(item: StashItem, sourceId: Id) {
     try {
       await linkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
@@ -745,7 +764,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleUnlinkSource(item, sourceId) {
+  async function handleUnlinkSource(item: StashItem, sourceId: Id) {
     try {
       await unlinkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
@@ -761,7 +780,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  function toggleItemExpanded(itemId) {
+  function toggleItemExpanded(itemId: Id) {
     const nextExpanded = !itemExpanded[itemId];
     if (nextExpanded) {
       ensureItemImagesLoaded(itemId);
@@ -781,7 +800,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   const totalSources = groups.reduce((count, group) => (
     count + (itemsByGroup[group.id] || []).reduce((itemCount, item) => itemCount + (item.sources || []).length, 0)
   ), 0);
-  const loadedImageCount = Object.values(itemImagesByItem).reduce((count, images: any) => count + (images || []).length, 0);
+  const loadedImageCount = Object.values(itemImagesByItem).reduce((count, images) => count + (images || []).length, 0);
   const headerStats = [
     `${groups.length} ${t('profile.stash.collectionsCount', 'collection(s)')}`,
     `${totalItems} ${t('profile.stash.itemsCount', 'item(s)')}`,
@@ -1055,7 +1074,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       {!itemImagesLoading[item.id] && (
                                         <StackedImageGallery
                                           images={itemImagesByItem[item.id] || []}
-                                          title={item.name}
+                                          title={item.name || undefined}
                                           emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
                                           editable={isEditable}
                                           onDeleteImage={imageId => handleDeleteItemImage(item.id, imageId)}
@@ -1080,7 +1099,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       {!itemImagesLoading[item.id] && hasLoadedImages && (
                                         <StackedImageGallery
                                           images={itemImagesByItem[item.id] || []}
-                                          title={item.name}
+                                          title={item.name || undefined}
                                           emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
                                         />
                                       )}
@@ -1147,7 +1166,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     {sourceState.loading && <Spinner size="sm" />}
                                     {(sourceState.results || []).length > 0 && (
                                       <div className="d-grid gap-2">
-                                        {sourceState.results.map(source => (
+                                        {(sourceState.results || []).map(source => (
                                           <div key={source.id} className="d-flex align-items-center justify-content-between gap-2">
                                             <div className="small">
                                               <div className="fw-semibold">{source.name}</div>

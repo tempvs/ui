@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PlusActionButton from '../../component/PlusActionButton';
 import SearchActionButton from '../../component/SearchActionButton';
 import Spinner from '../../component/Spinner';
+import { getErrorMessage } from '../../util/errors';
 import { createSource, findSources, LibrarySource } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
@@ -19,6 +20,7 @@ import {
   TYPES,
 } from '../libraryShared';
 import { canContribute } from '../libraryRoles';
+import { LibraryUserInfoPayload } from '../libraryApi';
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -28,12 +30,12 @@ export default function LibraryPeriodPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
-  const [sources, setSources] = useState([]);
-  const [error, setError] = useState(null);
+  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [sources, setSources] = useState<LibrarySource[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [selectedClassifications, setSelectedClassifications] = useState([]);
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedClassifications, setSelectedClassifications] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [draftSource, setDraftSource] = useState({
     name: '',
     description: '',
@@ -64,7 +66,7 @@ export default function LibraryPeriodPage() {
       setSources(Array.isArray(result.data) ? result.data : []);
       setUserInfo(result.userInfo);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,11 @@ export default function LibraryPeriodPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodCode]);
 
-  const handleToggle = (value, selectedValues, setter) => {
+  const handleToggle = (
+    value: string,
+    selectedValues: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
     setter(
       selectedValues.includes(value)
         ? selectedValues.filter(entry => entry !== value)
@@ -84,12 +90,12 @@ export default function LibraryPeriodPage() {
     );
   };
 
-  const handleSearchSubmit = (event) => {
+  const handleSearchSubmit: React.FormEventHandler<HTMLFormElement> = event => {
     event.preventDefault();
     searchSources();
   };
 
-  const handleCreateSource = async (event) => {
+  const handleCreateSource: React.FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -112,7 +118,7 @@ export default function LibraryPeriodPage() {
       setShowCreateModal(false);
       navigate(`/library/source/${(result.data as LibrarySource).id}`);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setSubmitting(false);
     }

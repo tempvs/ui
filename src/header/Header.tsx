@@ -54,10 +54,13 @@ class Header extends Component<Record<string, never>, HeaderState> {
   loadOAuthProfile() {
     const clearAvatar = () => this.setState({ avatarUrl: null, avatarText: null });
     doFetch('/api/user/oauth/me', 'GET', null, {
-      200: (profile: OAuthProfile) => this.setState({
-        avatarUrl: profile?.picture || null,
-        avatarText: this.buildAvatarText(profile),
-      }),
+      200: profile => {
+        const oauthProfile = profile as OAuthProfile;
+        this.setState({
+          avatarUrl: oauthProfile?.picture || null,
+          avatarText: this.buildAvatarText(oauthProfile),
+        });
+      },
       401: clearAvatar,
       403: clearAvatar,
       404: clearAvatar,

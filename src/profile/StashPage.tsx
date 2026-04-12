@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
-import { injectIntl } from 'react-intl';
+import { injectIntl, IntlShape } from 'react-intl';
 import { useParams } from 'react-router-dom';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
@@ -15,24 +15,29 @@ import {
   fetchOwnerUserProfile,
   fetchProfileById,
 } from './profileApi';
+import { Id, Profile } from './profileTypes';
 
-function buildCanonicalProfilePath(profile) {
+function buildCanonicalProfilePath(profile: Profile | null) {
   return `/profile/${profile?.alias || profile?.id}`;
 }
 
-function StashPage({ intl }: any) {
+type StashPageProps = {
+  intl: IntlShape;
+};
+
+function StashPage({ intl }: StashPageProps) {
   const { id } = useParams();
   const [loaded, setLoaded] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [ownerUserProfile, setOwnerUserProfile] = useState(null);
-  const [clubProfiles, setClubProfiles] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(null);
+  const [clubProfiles, setClubProfiles] = useState<Profile[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<Id | null>(null);
 
-  const t = (messageId: string, defaultMessage: string, values?: Record<string, unknown>) => (
+  const t = (messageId: string, defaultMessage: string, values?: Record<string, string | number | boolean | Date>) => (
     intl.formatMessage({ id: messageId, defaultMessage }, values)
   );
 
-  const getPeriodLabel = (period) => getSharedPeriodLabel(intl, period);
+  const getPeriodLabel = (period?: string | null) => getSharedPeriodLabel(intl, period);
 
   useEffect(() => {
     fetchCurrentUserInfo(result => {

@@ -1,17 +1,20 @@
 import { doFetch } from '../util/Fetcher';
 
+import {
+  Avatar,
+  CurrentUserInfo,
+  Id,
+  OauthProfile,
+  Profile,
+} from './profileTypes';
+
 type JsonRecord = Record<string, unknown>;
 type RequestOptions = RequestInit & {
   headers?: HeadersInit;
 };
 
-type CurrentUserInfo = {
-  currentUserId: unknown | null;
-  oauthProfile: JsonRecord | null;
-};
-
-type ProfileHandlers = {
-  onSuccess: (data: any) => void;
+type ProfileHandlers<TData> = {
+  onSuccess: (data: TData) => void;
   onMissing?: () => void;
   onEmpty?: () => void;
   onError?: () => void;
@@ -30,7 +33,7 @@ function requestJson(url: string, options: RequestOptions = {}) {
 export function fetchCurrentUserInfo(onResult: (result: CurrentUserInfo) => void): void {
   doFetch('/api/user/oauth/me', 'GET', null, {
     200: profile => {
-      const data = (profile || {}) as JsonRecord;
+      const data = (profile || {}) as OauthProfile;
       onResult({ currentUserId: data.userId || null, oauthProfile: data || null });
     },
     401: () => onResult({ currentUserId: null, oauthProfile: null }),
@@ -39,15 +42,15 @@ export function fetchCurrentUserInfo(onResult: (result: CurrentUserInfo) => void
   });
 }
 
-export function fetchProfileById(id: string | number | null | undefined, handlers: ProfileHandlers): void {
+export function fetchProfileById(id: Id | null | undefined, handlers: ProfileHandlers<Profile>): void {
   const url = id ? `/api/profile/profile/${id}` : '/api/profile/profile';
   doFetch(url, 'GET', null, {
-    200: profile => handlers.onSuccess(profile),
+    200: profile => handlers.onSuccess(profile as Profile),
     404: () => handlers.onMissing?.(),
   });
 }
 
-export function fetchAvatar(profileId: string | number, handlers: ProfileHandlers): void {
+export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): void {
   doFetch(`/api/image/image/profile/${profileId}`, 'GET', null, {
     200: avatars => {
       if (Array.isArray(avatars) && avatars.length) {
@@ -63,16 +66,16 @@ export function fetchAvatar(profileId: string | number, handlers: ProfileHandler
   });
 }
 
-export function fetchClubProfiles(userId: string | number, handlers: ProfileHandlers): void {
+export function fetchClubProfiles(userId: Id, handlers: ProfileHandlers<Profile[]>): void {
   doFetch(`/api/profile/club-profile?userId=${userId}`, 'GET', null, {
     200: profiles => handlers.onSuccess(Array.isArray(profiles) ? profiles : []),
     default: () => handlers.onError?.(),
   });
 }
 
-export function fetchOwnerUserProfile(userId: string | number, handlers: ProfileHandlers): void {
+export function fetchOwnerUserProfile(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
   doFetch(`/api/profile/user-profile?userId=${userId}`, 'GET', null, {
-    200: profile => handlers.onSuccess(profile || null),
+    200: profile => handlers.onSuccess((profile as Profile | null) || null),
     default: () => handlers.onError?.(),
   });
 }
@@ -90,34 +93,34 @@ export function createClubProfile(event: FetchFormEvent, handlers: Record<string
   doFetch('/api/profile/club-profile', 'POST', event, handlers);
 }
 
-export function updateProfile(profileId: string | number, payload: JsonRecord) {
+export function updateProfile(profileId: Id, payload: JsonRecord) {
   return requestJson(`/api/profile/profile/${profileId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
 
-export function deleteProfile(profileId: string | number) {
+export function deleteProfile(profileId: Id) {
   return requestJson(`/api/profile/profile/${profileId}`, {
     method: 'DELETE',
   });
 }
 
-export function uploadAvatar(profileId: string | number, payload: JsonRecord) {
+export function uploadAvatar(profileId: Id, payload: JsonRecord) {
   return requestJson(`/api/profile/profile/${profileId}/avatar`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export function updateAvatarDescription(profileId: string | number, description: string) {
+export function updateAvatarDescription(profileId: Id, description: string | null) {
   return requestJson(`/api/profile/profile/${profileId}/avatar/description`, {
     method: 'PUT',
     body: JSON.stringify({ description }),
   });
 }
 
-export function deleteAvatar(profileId: string | number) {
+export function deleteAvatar(profileId: Id) {
   return requestJson(`/api/profile/profile/${profileId}/avatar`, {
     method: 'DELETE',
   });

@@ -4,8 +4,7 @@ import { FaTimes } from 'react-icons/fa';
 
 import PlusActionButton from '../../component/PlusActionButton';
 import Spinner from '../../component/Spinner';
-
-type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+import { MessageFormatter } from '../profileTypes';
 
 type ClubProfile = {
   id: string | number;
@@ -27,7 +26,7 @@ type ClubProfilesSectionProps = {
   clubProfileDeleteError?: unknown;
   periods: string[];
   getPeriodLabel: (period: string) => string;
-  t: Translator;
+  t: MessageFormatter;
   onShowCreate?: React.MouseEventHandler<HTMLElement>;
   onHideCreate?: () => void;
   onCreate?: React.FormEventHandler<HTMLFormElement>;
@@ -141,8 +140,10 @@ export default function ClubProfilesSection({
               </Form.Select>
             </Form.Group>
             <div className="d-flex align-items-center justify-content-end gap-2">
-              {clubProfileCreateError && <ErrorIcon className="text-danger" title={t('profile.create.failedShort', 'Creation failed')} />}
-              <Button variant="secondary" type="submit">{t('profile.clubProfile.create.submit', 'Create club profile')}</Button>
+              <>
+                {clubProfileCreateError && <ErrorIcon className="text-danger" title={t('profile.create.failedShort', 'Creation failed')} />}
+                <Button variant="secondary" type="submit">{t('profile.clubProfile.create.submit', 'Create club profile')}</Button>
+              </>
             </div>
           </Form>
         </Modal.Body>
@@ -153,17 +154,19 @@ export default function ClubProfilesSection({
           <Modal.Title>{t('profile.clubProfile.delete.title', 'Delete club profile')}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="mb-2">
-            {t('profile.clubProfile.delete.confirm', 'Delete {name}?', {
-              name: clubProfileName || t('profile.clubProfile.delete.fallbackName', 'this club profile'),
-            })}
-          </p>
-          {clubProfileDeleteError && (
-            <div className="mt-3 d-flex align-items-center gap-2 text-danger">
-              <ErrorIcon title={t('profile.clubProfile.delete.failedShort', 'Deletion failed')} />
-              <span>{t('profile.clubProfile.delete.failed', 'Deletion failed.')}</span>
-            </div>
-          )}
+          <>
+            <p className="mb-2">
+              {t('profile.clubProfile.delete.confirm', 'Delete {name}?', {
+                name: clubProfileName || t('profile.clubProfile.delete.fallbackName', 'this club profile'),
+              })}
+            </p>
+            {clubProfileDeleteError && (
+              <div className="mt-3 d-flex align-items-center gap-2 text-danger">
+                <ErrorIcon title={t('profile.clubProfile.delete.failedShort', 'Deletion failed')} />
+                <span>{t('profile.clubProfile.delete.failed', 'Deletion failed.')}</span>
+              </div>
+            )}
+          </>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="outline-secondary" onClick={onHideDelete}>

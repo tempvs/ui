@@ -8,8 +8,7 @@ import ImageOverlayActionButton from '../../component/ImageOverlayActionButton';
 import ModalImage from '../../component/ModalImage';
 import Spinner from '../../component/Spinner';
 import { SaveStatus } from '../../component/EditableFieldRow';
-
-type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+import { MessageFormatter } from '../profileTypes';
 
 type ProfileAvatarPanelProps = {
   avatarPanelWidth: string;
@@ -24,7 +23,7 @@ type ProfileAvatarPanelProps = {
   avatarDescriptionStatus?: SaveStatus;
   isEditable: boolean;
   initials?: string;
-  t: Translator;
+  t: MessageFormatter;
   onUploadChange?: React.ChangeEventHandler<HTMLInputElement>;
   onOpenFilePicker?: React.MouseEventHandler<HTMLElement>;
   onDelete?: () => void;

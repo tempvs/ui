@@ -5,17 +5,18 @@ import { Link } from 'react-router-dom';
 
 import HoverPopover from '../../component/HoverPopover';
 import Spinner from '../../component/Spinner';
+import { getErrorMessage } from '../../util/errors';
 import PeriodTile from '../PeriodTile';
-import { getWelcome, updateRoleRequest } from '../libraryApi';
+import { getWelcome, LibraryUserInfoPayload, LibraryWelcome, updateRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { PERIODS } from '../libraryShared';
 import { getPrimaryRoleMeta } from '../libraryRoles';
 
 export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
-  const [welcome, setWelcome] = useState(null);
-  const [userInfo, setUserInfo] = useState(null);
-  const [error, setError] = useState(null);
+  const [welcome, setWelcome] = useState<LibraryWelcome | null>(null);
+  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadWelcome = async () => {
     setLoading(true);
@@ -30,7 +31,7 @@ export default function LibraryLandingPage() {
       setWelcome(result.data);
       setUserInfo(result.userInfo);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export default function LibraryLandingPage() {
       setWelcome(result.data);
       setUserInfo(result.userInfo);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 

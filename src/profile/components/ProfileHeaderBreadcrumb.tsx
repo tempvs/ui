@@ -3,12 +3,12 @@ import React from 'react';
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
 import { buildClubProfileLabel, PeriodLabelResolver, ProfileLabelSource } from '../profileLabels';
 
-type ProfilePathBuilder = (profile: ProfileLabelSource) => string;
-
 type ClubProfile = NonNullable<ProfileLabelSource> & {
   id?: string | number;
   alias?: string | null;
 };
+
+type ProfilePathBuilder = (profile: ClubProfile) => string;
 
 type ProfileHeaderBreadcrumbProps = {
   ownerLink?: string | null;
@@ -20,7 +20,7 @@ type ProfileHeaderBreadcrumbProps = {
   emptyLabel?: React.ReactNode;
 };
 
-function buildProfilePath(getCanonicalProfilePath: ProfilePathBuilder, profile: ProfileLabelSource): string {
+function buildProfilePath(getCanonicalProfilePath: ProfilePathBuilder, profile: ClubProfile): string {
   return getCanonicalProfilePath(profile);
 }
 

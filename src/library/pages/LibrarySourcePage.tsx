@@ -27,6 +27,8 @@ import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { getClassificationLabel, getTypeLabel } from '../libraryShared';
 import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
 import { readFileAsBase64 } from '../../util/fileUtils';
+import { getErrorMessage } from '../../util/errors';
+import { clearAllTimers, clearTimer } from '../../util/timers';
 import { SaveStatus } from '../../component/EditableFieldRow';
 
 type SourceField = 'name' | 'description';
@@ -87,7 +89,7 @@ export default function LibrarySourcePage() {
       setImageStatuses({});
       setUserInfo(sourceResult.userInfo);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setLoading(false);
     }
@@ -98,8 +100,8 @@ export default function LibrarySourcePage() {
   }, [loadSource]);
 
   useEffect(() => () => {
-    Object.values(imageSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
-    Object.values(fieldSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
+    clearAllTimers(imageSaveTimersRef.current);
+    clearAllTimers(fieldSaveTimersRef.current);
   }, []);
 
   const patchSource = async (field: SourceField, value: string) => {
@@ -153,7 +155,7 @@ export default function LibrarySourcePage() {
           [field]: null,
         }));
       }, 1500);
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 
@@ -171,14 +173,15 @@ export default function LibrarySourcePage() {
   };
 
   const handleFieldBlur = (field: SourceField) => {
-    if (fieldSaveTimersRef.current[field]) {
-      clearTimeout(fieldSaveTimersRef.current[field]);
-      delete fieldSaveTimersRef.current[field];
-    }
+    clearTimer(fieldSaveTimersRef.current, field);
     patchSource(field, field === 'name' ? draftName : draftDescription);
   };
 
   const handleDeleteSource = async () => {
+    if (!source) {
+      return;
+    }
+
     if (!window.confirm('Delete this source?')) {
       return;
     }
@@ -195,7 +198,7 @@ export default function LibrarySourcePage() {
 
       navigate(`/library/period/${(source.period || '').toLowerCase()}`);
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 
@@ -230,7 +233,7 @@ export default function LibrarySourcePage() {
       setShowUploadModal(false);
       await loadSource();
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setUploadingImage(false);
     }
@@ -274,7 +277,7 @@ export default function LibrarySourcePage() {
 
       await loadSource();
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     } finally {
       setUploadingImage(false);
       replacingImageRef.current = null;
@@ -283,10 +286,7 @@ export default function LibrarySourcePage() {
   };
 
   const clearImageSaveTimer = (imageId: LibrarySourceImage['id']) => {
-    if (imageSaveTimersRef.current[imageId]) {
-      clearTimeout(imageSaveTimersRef.current[imageId]);
-      delete imageSaveTimersRef.current[imageId];
-    }
+    clearTimer(imageSaveTimersRef.current, String(imageId));
   };
 
   const resetImageStatusLater = (imageId: LibrarySourceImage['id'], delay = 1000) => {
@@ -309,7 +309,7 @@ export default function LibrarySourcePage() {
       clearImageSaveTimer(imageId);
       await loadSource();
     } catch (fetchError) {
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 
@@ -354,7 +354,7 @@ export default function LibrarySourcePage() {
         [imageId]: 'error',
       }));
       resetImageStatusLater(imageId, 1500);
-      setError(fetchError.message);
+      setError(getErrorMessage(fetchError));
     }
   };
 
@@ -512,7 +512,7 @@ export default function LibrarySourcePage() {
                 <div className="mb-4">
                     <StackedImageGallery
                       images={images}
-                      title={source.name}
+                      title={source.name || undefined}
                       emptyText="No images uploaded for this source yet."
                       editable={canEditSource(userInfo)}
                       onDeleteImage={handleDeleteImage}

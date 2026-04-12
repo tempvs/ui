@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Col, Container, Form, Row } from 'react-bootstrap';
 import { FaTimes } from 'react-icons/fa';
 
-type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+import { MessageFormatter } from '../profileTypes';
 
 type CreateProfileFormProps = {
   firstName?: string;
@@ -12,7 +12,7 @@ type CreateProfileFormProps = {
   location?: string;
   alias?: string;
   isErrorMessage?: boolean;
-  t: Translator;
+  t: MessageFormatter;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
   onSubmit?: React.FormEventHandler<HTMLFormElement>;
 };
