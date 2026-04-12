@@ -20,6 +20,7 @@ type StackedImageGalleryProps = {
   images?: GalleryImage[];
   title?: string;
   emptyText?: string;
+  previewSize?: 'default' | 'compact';
   editable?: boolean;
   onDeleteImage?: (imageId: GalleryImage['id']) => void;
   onReplaceImage?: (image: GalleryImage) => void;
@@ -43,6 +44,7 @@ export default function StackedImageGallery({
   images,
   title = 'Images',
   emptyText = 'No images yet.',
+  previewSize = 'default',
   editable = false,
   onDeleteImage,
   onReplaceImage,
@@ -55,6 +57,7 @@ export default function StackedImageGallery({
   const [activeIndex, setActiveIndex] = useState(0);
 
   const previewImages = useMemo(() => (images || []).slice(0, 3), [images]);
+  const isCompact = previewSize === 'compact';
 
   if (!images?.length) {
     return <div className="small text-muted">{emptyText}</div>;
@@ -74,8 +77,8 @@ export default function StackedImageGallery({
         <div
           className="position-relative mx-auto"
           style={{
-            width: 'min(100%, 22rem)',
-            height: '18rem',
+            width: isCompact ? 'min(100%, 10.5rem)' : 'min(100%, 22rem)',
+            height: isCompact ? '7.25rem' : '18rem',
           }}
         >
           {previewImages.slice().reverse().map((image, index) => {
@@ -87,7 +90,7 @@ export default function StackedImageGallery({
                 style={{
                   width: '100%',
                   height: '100%',
-                  transform: `translate(${depth * 16}px, ${depth * 14}px)`,
+                  transform: `translate(${depth * (isCompact ? 8 : 16)}px, ${depth * (isCompact ? 7 : 14)}px)`,
                   zIndex: index + 1,
                   borderColor: '#d8cbb4',
                 }}

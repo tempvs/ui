@@ -1030,55 +1030,67 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
                               {isItemExpanded && (
                                 <Row className="g-3">
-                                  <Col xs={12}>
-                                {isEditable ? (
-                                  <>
-                                    <EditableTextFieldRow
-                                      label=""
-                                      editable
-                                      value={itemDrafts[item.id]?.name || ''}
-                                      readOnlyValue={item.name}
-                                      onChange={event => setItemField(item, 'name', event.target.value)}
-                                      onBlur={() => handleSaveItemField(item, 'name')}
-                                      status={itemStatuses[item.id]?.name}
-                                      className="mb-2"
-                                      fieldMaxWidth="100%"
-                                    />
-                                    <EditableTextareaFieldRow
-                                      label=""
-                                      editable
-                                      value={itemDrafts[item.id]?.description || ''}
-                                      readOnlyValue={item.description || '-'}
-                                      onChange={event => setItemField(item, 'description', event.target.value)}
-                                      onBlur={() => handleSaveItemField(item, 'description')}
-                                      status={itemStatuses[item.id]?.description}
-                                      rows={2}
-                                      className=""
-                                      fieldMaxWidth="100%"
-                                    />
-                                    <div className="stash-detail-panel mt-3">
+                                  <Col md={7}>
+                                    {isEditable ? (
+                                      <>
+                                        <EditableTextFieldRow
+                                          label=""
+                                          editable
+                                          value={itemDrafts[item.id]?.name || ''}
+                                          readOnlyValue={item.name}
+                                          onChange={event => setItemField(item, 'name', event.target.value)}
+                                          onBlur={() => handleSaveItemField(item, 'name')}
+                                          status={itemStatuses[item.id]?.name}
+                                          className="mb-2"
+                                          fieldMaxWidth="100%"
+                                        />
+                                        <EditableTextareaFieldRow
+                                          label=""
+                                          editable
+                                          value={itemDrafts[item.id]?.description || ''}
+                                          readOnlyValue={item.description || '-'}
+                                          onChange={event => setItemField(item, 'description', event.target.value)}
+                                          onBlur={() => handleSaveItemField(item, 'description')}
+                                          status={itemStatuses[item.id]?.description}
+                                          rows={2}
+                                          className=""
+                                          fieldMaxWidth="100%"
+                                        />
+                                      </>
+                                    ) : (
+                                      <div className="stash-item-readonly-copy">
+                                        <div className="fw-semibold">{item.name}</div>
+                                        {item.description && <div className="small text-muted">{item.description}</div>}
+                                      </div>
+                                    )}
+                                  </Col>
+                                  <Col md={5}>
+                                    <div className="stash-image-stack-panel">
                                       <div className="d-flex justify-content-between align-items-center mb-2">
                                         <div className="stash-subheading mb-0">
                                           {t('profile.stash.imagesTitle', 'Images')}
                                         </div>
-                                        <PlusActionButton
-                                          title={t('profile.stash.itemImageUpload', 'Upload image')}
-                                          onClick={() => {
-                                            setFeedback(null);
-                                            setItemImageDescription('');
-                                            setItemImageUploadTarget(item);
-                                          }}
-                                        />
+                                        {isEditable && (
+                                          <PlusActionButton
+                                            title={t('profile.stash.itemImageUpload', 'Upload image')}
+                                            onClick={() => {
+                                              setFeedback(null);
+                                              setItemImageDescription('');
+                                              setItemImageUploadTarget(item);
+                                            }}
+                                          />
+                                        )}
                                       </div>
                                       {itemImagesLoading[item.id] && <Spinner size="sm" />}
-                                      {!itemImagesLoading[item.id] && (
+                                      {!itemImagesLoading[item.id] && (isEditable || hasLoadedImages) && (
                                         <StackedImageGallery
                                           images={itemImagesByItem[item.id] || []}
                                           title={item.name || undefined}
                                           emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
+                                          previewSize="compact"
                                           editable={isEditable}
-                                          onDeleteImage={imageId => handleDeleteItemImage(item.id, imageId)}
-                                          onReplaceImage={image => handleOpenReplaceItemImagePicker(item, image)}
+                                          onDeleteImage={isEditable ? imageId => handleDeleteItemImage(item.id, imageId) : undefined}
+                                          onReplaceImage={isEditable ? image => handleOpenReplaceItemImagePicker(item, image) : undefined}
                                           imageDrafts={itemImageDrafts}
                                           imageStatuses={itemImageStatuses}
                                           onDescriptionChange={(imageId, value) => handleItemImageDescriptionChange(item.id, imageId, value)}
@@ -1086,26 +1098,6 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                         />
                                       )}
                                     </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="fw-semibold">{item.name}</div>
-                                    {item.description && <div className="small text-muted">{item.description}</div>}
-                                    <div className="stash-detail-panel mt-3">
-                                      <div className="stash-subheading">
-                                        {t('profile.stash.imagesTitle', 'Images')}
-                                      </div>
-                                      {itemImagesLoading[item.id] && <Spinner size="sm" />}
-                                      {!itemImagesLoading[item.id] && hasLoadedImages && (
-                                        <StackedImageGallery
-                                          images={itemImagesByItem[item.id] || []}
-                                          title={item.name || undefined}
-                                          emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
-                                        />
-                                      )}
-                                    </div>
-                                  </>
-                                )}
                                   </Col>
                                   <Col xs={12}>
                                 <div className="stash-subheading">
