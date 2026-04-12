@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -21,7 +21,7 @@ import {
 } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import { getClassificationLabel, getTypeLabel, PeriodBadge } from '../libraryShared';
+import { getClassificationLabel, getTypeLabel } from '../libraryShared';
 import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
 import { readFileAsBase64 } from '../../util/fileUtils';
 
@@ -30,7 +30,6 @@ export default function LibrarySourcePage() {
   const navigate = useNavigate();
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [source, setSource] = useState(null);
@@ -104,7 +103,6 @@ export default function LibrarySourcePage() {
     }
 
     try {
-      setSaving(true);
       setError(null);
       setFieldStatuses(prevState => ({
         ...prevState,
@@ -144,8 +142,6 @@ export default function LibrarySourcePage() {
         }));
       }, 1500);
       setError(fetchError.message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -382,10 +378,16 @@ export default function LibrarySourcePage() {
     );
   }
 
+  const headerTitle = [
+    source.name,
+    getClassificationLabel(intl, source.classification),
+    getTypeLabel(intl, source.type),
+  ].filter(Boolean).join(' \u2022 ');
+
   return (
     <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
-        title={source.name}
+        title={headerTitle}
         subtitle={null}
         period={source.period}
         variant="source"
@@ -394,20 +396,15 @@ export default function LibrarySourcePage() {
             period={source.period}
             variant="source"
             trailingItem={{
-              label: `${source.name} (${getTypeLabel(intl, source.type)})`,
+              label: source.name,
               to: `/library/source/${source.id}`,
             }}
           />
         )}
       />
 
-      <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
-        <div className="d-flex gap-2 flex-wrap">
-          <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>
-          <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
-          <PeriodBadge period={source.period} />
-        </div>
-        {canDeleteSource(userInfo) && (
+      {canDeleteSource(userInfo) && (
+        <div className="d-flex justify-content-end mb-4">
           <IconActionButton
             title="Delete source"
             onClick={handleDeleteSource}
@@ -419,8 +416,8 @@ export default function LibrarySourcePage() {
           >
             <FaTrashAlt />
           </IconActionButton>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && <Alert variant="danger">{error}</Alert>}
 
@@ -455,7 +452,7 @@ export default function LibrarySourcePage() {
                   scheduleFieldSave('description', value);
                 }}
                 onBlur={() => handleFieldBlur('description')}
-                readOnlyValue={source.description || 'No description yet.'}
+                readOnlyValue={source.description || '-'}
                 status={fieldStatuses.description}
                 className=""
                 savingTitle="Saving"

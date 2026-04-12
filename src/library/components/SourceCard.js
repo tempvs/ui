@@ -28,7 +28,7 @@ export default function SourceCard({ source }) {
           <PeriodBadge period={source.period} />
         </div>
         <Card.Text className="text-muted flex-grow-1">
-          {source.description || 'No description yet.'}
+          {source.description || '-'}
         </Card.Text>
         <div className="d-flex gap-2 flex-wrap mb-3">
           <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>
