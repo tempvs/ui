@@ -37,6 +37,9 @@ import {
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 
 const emptyGroupForm = { name: '', description: '' };
+const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
+const TrashIcon = FaTrashAlt as React.ComponentType;
+const UnlinkIcon = FaUnlink as React.ComponentType;
 
 const emptyItemForm = classification => ({
   name: '',
@@ -51,40 +54,40 @@ function buildSourceLookupMap(sources) {
   }), {});
 }
 
-export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }) {
+export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }: any) {
   const intl = useIntl();
-  const [stash, setStash] = useState(null);
+  const [stash, setStash] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, setFeedback] = useState<any>(null);
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [groupSubmitting, setGroupSubmitting] = useState(false);
-  const [groupDrafts, setGroupDrafts] = useState({});
-  const [groupStatuses, setGroupStatuses] = useState({});
-  const [groupExpanded, setGroupExpanded] = useState({});
-  const [itemDrafts, setItemDrafts] = useState({});
-  const [itemStatuses, setItemStatuses] = useState({});
+  const [groupDrafts, setGroupDrafts] = useState<any>({});
+  const [groupStatuses, setGroupStatuses] = useState<any>({});
+  const [groupExpanded, setGroupExpanded] = useState<any>({});
+  const [itemDrafts, setItemDrafts] = useState<any>({});
+  const [itemStatuses, setItemStatuses] = useState<any>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
-  const [itemsByGroup, setItemsByGroup] = useState({});
-  const [itemsLoading, setItemsLoading] = useState({});
-  const [itemCreateTarget, setItemCreateTarget] = useState(null);
+  const [itemsByGroup, setItemsByGroup] = useState<any>({});
+  const [itemsLoading, setItemsLoading] = useState<any>({});
+  const [itemCreateTarget, setItemCreateTarget] = useState<any>(null);
   const [itemCreateForm, setItemCreateForm] = useState(emptyItemForm(profile?.period));
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
-  const [itemExpanded, setItemExpanded] = useState({});
-  const [sourceDetails, setSourceDetails] = useState({});
-  const [sourceSearch, setSourceSearch] = useState({});
-  const [itemImagesByItem, setItemImagesByItem] = useState({});
-  const [itemImagesLoading, setItemImagesLoading] = useState({});
-  const [itemImageDrafts, setItemImageDrafts] = useState({});
-  const [itemImageStatuses, setItemImageStatuses] = useState({});
-  const [itemImageUploadTarget, setItemImageUploadTarget] = useState(null);
+  const [itemExpanded, setItemExpanded] = useState<any>({});
+  const [sourceDetails, setSourceDetails] = useState<any>({});
+  const [sourceSearch, setSourceSearch] = useState<any>({});
+  const [itemImagesByItem, setItemImagesByItem] = useState<any>({});
+  const [itemImagesLoading, setItemImagesLoading] = useState<any>({});
+  const [itemImageDrafts, setItemImageDrafts] = useState<any>({});
+  const [itemImageStatuses, setItemImageStatuses] = useState<any>({});
+  const [itemImageUploadTarget, setItemImageUploadTarget] = useState<any>(null);
   const [itemImageDescription, setItemImageDescription] = useState('');
   const [itemImageUploading, setItemImageUploading] = useState(false);
-  const groupSaveTimersRef = React.useRef({});
-  const itemSaveTimersRef = React.useRef({});
-  const itemImageSaveTimersRef = React.useRef({});
-  const itemImageInputRef = useRef(null);
-  const replaceItemImageInputRef = useRef(null);
-  const replacingItemImageRef = useRef(null);
+  const groupSaveTimersRef = React.useRef<Record<string, number>>({});
+  const itemSaveTimersRef = React.useRef<Record<string, number>>({});
+  const itemImageSaveTimersRef = React.useRef<Record<string, number>>({});
+  const itemImageInputRef = useRef<HTMLInputElement>(null);
+  const replaceItemImageInputRef = useRef<HTMLInputElement>(null);
+  const replacingItemImageRef = useRef<any>(null);
 
   const isClubProfile = profile?.type === 'CLUB';
   useEffect(() => {
@@ -205,7 +208,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   }
 
   async function hydrateSources(items) {
-    const ids = [...new Set(items.flatMap(item => item.sources || []))]
+    const ids = Array.from(new Set<any>(items.flatMap(item => item.sources || [])))
       .filter(id => !sourceDetails[id]);
 
     if (!ids.length) {
@@ -776,7 +779,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   const totalSources = groups.reduce((count, group) => (
     count + (itemsByGroup[group.id] || []).reduce((itemCount, item) => itemCount + (item.sources || []).length, 0)
   ), 0);
-  const loadedImageCount = Object.values(itemImagesByItem).reduce((count, images) => count + (images || []).length, 0);
+  const loadedImageCount = Object.values(itemImagesByItem).reduce((count, images: any) => count + (images || []).length, 0);
   const headerStats = [
     `${groups.length} ${t('profile.stash.collectionsCount', 'collection(s)')}`,
     `${totalItems} ${t('profile.stash.itemsCount', 'item(s)')}`,
@@ -789,7 +792,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       <div className="p-3 p-lg-4 rounded border" style={{ backgroundColor: '#f7f4ee', borderColor: '#d9ccb8' }}>
 
         {feedback && <Alert variant={feedback.variant} className="py-2">{feedback.text}</Alert>}
-        {loading && <Spinner animation="border" size="sm" />}
+        {loading && <Spinner size="sm" />}
 
         {!loading && (
           <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 pb-3 border-bottom">
@@ -935,7 +938,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                     )}
                   </div>
 
-                  {itemsLoading[group.id] && <Spinner animation="border" size="sm" />}
+                  {itemsLoading[group.id] && <Spinner size="sm" />}
                   {!itemsLoading[group.id] && !items.length && (
                     <div className="py-4 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #e3d8c6' }}>
                       <div className="small fw-semibold mb-1">
@@ -983,7 +986,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                 size="1.9rem"
                                 fontSize="0.9rem"
                               >
-                                <FaTrashAlt />
+                                <TrashIcon />
                               </IconActionButton>
                             </div>
                           ) : null}
@@ -1046,7 +1049,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                           }}
                                         />
                                       </div>
-                                      {itemImagesLoading[item.id] && <Spinner animation="border" size="sm" />}
+                                      {itemImagesLoading[item.id] && <Spinner size="sm" />}
                                       {!itemImagesLoading[item.id] && (
                                         <StackedImageGallery
                                           images={itemImagesByItem[item.id] || []}
@@ -1071,7 +1074,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       <div className="small text-uppercase text-muted fw-bold mb-2">
                                         {t('profile.stash.imagesTitle', 'Images')}
                                       </div>
-                                      {itemImagesLoading[item.id] && <Spinner animation="border" size="sm" />}
+                                      {itemImagesLoading[item.id] && <Spinner size="sm" />}
                                       {!itemImagesLoading[item.id] && hasLoadedImages && (
                                         <StackedImageGallery
                                           images={itemImagesByItem[item.id] || []}
@@ -1108,7 +1111,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                         )}
                                         {isEditable && (
                                           <Button size="sm" variant="outline-secondary" onClick={() => handleUnlinkSource(item, sourceId)}>
-                                            <FaUnlink />
+                                            <UnlinkIcon />
                                           </Button>
                                         )}
                                       </div>
@@ -1139,7 +1142,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       />
                                     </div>
                                     {sourceState.error && <div className="small text-danger mb-2">{sourceState.error}</div>}
-                                    {sourceState.loading && <Spinner animation="border" size="sm" />}
+                                    {sourceState.loading && <Spinner size="sm" />}
                                     {(sourceState.results || []).length > 0 && (
                                       <div className="d-grid gap-2">
                                         {sourceState.results.map(source => (
@@ -1154,7 +1157,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                               disabled={(item.sources || []).includes(source.id)}
                                               onClick={() => handleLinkSource(item, source.id)}
                                             >
-                                              <FaLink className="me-2" />
+                                              <LinkIcon className="me-2" />
                                               {t('profile.stash.link', 'Link')}
                                             </Button>
                                           </div>

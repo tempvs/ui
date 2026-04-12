@@ -20,7 +20,7 @@ function buildCanonicalProfilePath(profile) {
   return `/profile/${profile?.alias || profile?.id}`;
 }
 
-function StashPage({ intl }) {
+function StashPage({ intl }: any) {
   const { id } = useParams();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -28,7 +28,7 @@ function StashPage({ intl }) {
   const [clubProfiles, setClubProfiles] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  const t = (messageId, defaultMessage, values) => (
+  const t = (messageId: string, defaultMessage: string, values?: Record<string, unknown>) => (
     intl.formatMessage({ id: messageId, defaultMessage }, values)
   );
 

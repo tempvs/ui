@@ -77,11 +77,16 @@ export function fetchOwnerUserProfile(userId: string | number, handlers: Profile
   });
 }
 
-export function createUserProfile(event: { target: HTMLFormElement }, handlers: Record<string | number, (data?: unknown) => unknown>): void {
+type FetchFormEvent = {
+  currentTarget?: HTMLFormElement;
+  target?: EventTarget | null;
+};
+
+export function createUserProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
   doFetch('/api/profile/user-profile', 'POST', event, handlers);
 }
 
-export function createClubProfile(event: { target: HTMLFormElement }, handlers: Record<string | number, (data?: unknown) => unknown>): void {
+export function createClubProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
   doFetch('/api/profile/club-profile', 'POST', event, handlers);
 }
 

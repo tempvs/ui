@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import { Container, Row, Col, Button } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { injectIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
@@ -35,12 +35,14 @@ const AVATAR_TARGET_BYTES = 900 * 1024;
 const AVATAR_MIN_QUALITY = 0.55;
 const AVATAR_PANEL_WIDTH = '18rem';
 
-class ProfilePage extends Component {
-  autoSaveTimers = {};
-  statusResetTimers = {};
+const TrashIcon = FaTrashAlt as React.ComponentType;
 
-  constructor() {
-    super();
+class ProfilePage extends Component<any, any> {
+  autoSaveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+  statusResetTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+  constructor(props: any) {
+    super(props);
     this.state = this.buildInitialState();
   }
 
@@ -288,7 +290,7 @@ class ProfilePage extends Component {
     return `/profile/${profile.alias || profile.id}`;
   }
 
-  t(id, defaultMessage, values) {
+  t(id, defaultMessage, values?: Record<string, unknown>) {
     return this.props.intl.formatMessage({ id, defaultMessage }, values);
   }
 
@@ -637,7 +639,7 @@ class ProfilePage extends Component {
   }
 
   loadImage(file) {
-    return new Promise((resolve, reject) => {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
       const imageUrl = URL.createObjectURL(file);
       const image = new Image();
       image.onload = () => {
@@ -671,7 +673,7 @@ class ProfilePage extends Component {
   }
 
   canvasToFile(canvas, originalName, quality) {
-    return new Promise((resolve, reject) => {
+    return new Promise<File>((resolve, reject) => {
       canvas.toBlob(blob => {
         if (!blob) {
           reject(new Error(this.t('profile.avatar.resizeFailed', 'Unable to resize the selected image.')));
@@ -887,7 +889,7 @@ class ProfilePage extends Component {
             <ProfileFieldsPanel
               type={this.state.type}
               state={this.state}
-              periods={PERIODS}
+              periods={[...PERIODS]}
               t={this.t.bind(this)}
               getPeriodLabel={this.getPeriodLabel.bind(this)}
               editable={isEditable}
@@ -911,19 +913,18 @@ class ProfilePage extends Component {
                       })}
                       title={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
                     >
-                      <FaTrashAlt />
+                      <TrashIcon />
                     </IconActionButton>
                   </div>
                 )}
                 <div className="d-flex justify-content-start">
-                  <Button
-                    as={Link}
+                  <Link
                     to={`/stash/${this.state.alias || this.state.profileId}`}
-                    variant="outline-secondary"
+                    className="btn btn-outline-secondary"
                     style={{ minWidth: '9.5rem' }}
                   >
                     {this.t('profile.stash.button', 'Stash')}
-                  </Button>
+                  </Link>
                 </div>
               </div>
             )}
@@ -938,7 +939,7 @@ class ProfilePage extends Component {
               clubProfileCreateError={this.state.clubProfileCreateError}
               clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
               clubProfileDeleteError={this.state.clubProfileDeleteError}
-              periods={PERIODS}
+              periods={[...PERIODS]}
               getPeriodLabel={this.getPeriodLabel.bind(this)}
               t={this.t.bind(this)}
               onShowCreate={() => this.setState({ clubProfileCreateVisible: true, clubProfileCreateError: false })}
