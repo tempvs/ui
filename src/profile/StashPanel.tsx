@@ -801,13 +801,13 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
   return (
     <div className={embedded ? 'mt-4 pt-2' : ''}>
-      <div className="p-3 p-lg-4 rounded border" style={{ backgroundColor: '#f7f4ee', borderColor: '#d9ccb8' }}>
+      <div className="stash-shell p-3 p-lg-4">
 
         {feedback && <Alert variant={feedback.variant} className="py-2">{feedback.text}</Alert>}
         {loading && <Spinner size="sm" />}
 
         {!loading && (
-          <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 pb-3 border-bottom">
+          <div className="stash-summary-header d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
             <div style={{ minWidth: 0 }}>
               <div className="fw-semibold">
                 {t('profile.stash.collectionsTitle', 'Collections')}
@@ -819,8 +819,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                 {headerStats.map(stat => (
                   <span
                     key={stat}
-                    className="small px-2 py-1 border bg-white text-muted"
-                    style={{ borderColor: '#e3d8c6' }}
+                    className="stash-meta-chip"
                   >
                     {stat}
                   </span>
@@ -884,9 +883,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
             return (
               <section
                 key={group.id}
-                className="stash-collection-section border p-3 p-lg-4"
+                className="stash-collection-section p-3 p-lg-4"
               >
-                <div className={`stash-collection-header d-flex justify-content-between align-items-start gap-3 flex-wrap ${isGroupExpanded ? 'border-bottom pb-3 mb-3' : ''}`}>
+                <div className={`stash-collection-header d-flex justify-content-between align-items-start gap-3 flex-wrap ${isGroupExpanded ? 'mb-3' : ''}`}>
                   <button
                     type="button"
                     className="stash-heading-toggle"
@@ -903,8 +902,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                           {groupDrafts[group.id]?.description || group.description}
                         </span>
                       )}
-                      <span className="d-block small text-muted mt-2">
-                        {groupMetadata.join(' \u2022 ')}
+                      <span className="stash-meta-row mt-2">
+                        {groupMetadata.map(value => (
+                          <span key={value} className="stash-meta-chip">{value}</span>
+                        ))}
                       </span>
                     </span>
                   </button>
@@ -919,7 +920,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                 {isGroupExpanded && (
                   <div>
                     {isEditable && (
-                      <Row className="g-2 mb-3">
+                      <Row className="stash-edit-strip g-2 mb-3">
                         <Col md={4}>
                           <EditableTextFieldRow
                             label=""
@@ -948,7 +949,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                         </Col>
                       </Row>
                     )}
-                    <div className="small text-uppercase text-muted fw-bold mb-2">
+                    <div className="stash-subheading">
                       {t('profile.stash.itemsTitle', 'Items')}
                     </div>
 
@@ -986,7 +987,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
                         return (
                           <Col lg={6} key={item.id}>
-                            <article className="stash-item-card border p-3 position-relative">
+                            <article className="stash-item-card p-3 position-relative">
                             {isEditable && (
                               <div className="position-absolute top-0 end-0 mt-2 me-2">
                                 <IconActionButton
@@ -1019,8 +1020,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     {item.description}
                                   </span>
                                 )}
-                                <span className="d-block small text-muted mt-2">
-                                  {itemMetadata.join(' \u2022 ')}
+                                <span className="stash-meta-row mt-2">
+                                  {itemMetadata.map(value => (
+                                    <span key={value} className="stash-meta-chip stash-meta-chip-soft">{value}</span>
+                                  ))}
                                 </span>
                               </span>
                             </button>
@@ -1053,9 +1056,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       className=""
                                       fieldMaxWidth="100%"
                                     />
-                                    <div className="mt-3 pt-3 border-top">
+                                    <div className="stash-detail-panel mt-3">
                                       <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <div className="small text-uppercase text-muted fw-bold">
+                                        <div className="stash-subheading mb-0">
                                           {t('profile.stash.imagesTitle', 'Images')}
                                         </div>
                                         <PlusActionButton
@@ -1088,8 +1091,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                   <>
                                     <div className="fw-semibold">{item.name}</div>
                                     {item.description && <div className="small text-muted">{item.description}</div>}
-                                    <div className="mt-3 pt-3 border-top">
-                                      <div className="small text-uppercase text-muted fw-bold mb-2">
+                                    <div className="stash-detail-panel mt-3">
+                                      <div className="stash-subheading">
                                         {t('profile.stash.imagesTitle', 'Images')}
                                       </div>
                                       {itemImagesLoading[item.id] && <Spinner size="sm" />}
@@ -1105,7 +1108,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                 )}
                                   </Col>
                                   <Col xs={12}>
-                                <div className="small text-uppercase text-muted fw-bold mb-2">
+                                <div className="stash-subheading">
                                   {t('profile.stash.sourcesTitle', 'Linked sources')}
                                 </div>
 
@@ -1138,7 +1141,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                 </div>
 
                                 {isEditable && (
-                                  <div className="mt-3 pt-2 border-top">
+                                  <div className="stash-detail-panel mt-3">
                                     <div className="input-group input-group-sm mb-2">
                                       <Form.Control
                                         value={sourceState.query || ''}

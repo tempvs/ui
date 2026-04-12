@@ -65,25 +65,31 @@ h1, h2, h3 {
   margin-bottom: 0.55rem;
 }
 
+.stash-shell {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 248, 0.95) 0%, rgba(255, 254, 250, 0.95) 100%);
+}
+
+.stash-summary-header {
+  padding-bottom: 0.35rem;
+}
+
 .stash-collection-section {
-  border-color: #cfd8d3 !important;
-  border-left: 4px solid #4f7567 !important;
-  background: linear-gradient(180deg, #fffefa 0%, #f8faf8 100%);
-  box-shadow: 0 0.22rem 0.85rem rgba(31, 38, 35, 0.07);
+  background: linear-gradient(180deg, #fffefa 0%, #f7faf8 100%);
+  box-shadow: 0 0.3rem 1.1rem rgba(31, 38, 35, 0.08);
 }
 
 .stash-item-card {
-  border-color: #d9e0dc !important;
-  border-left: 3px solid #6d7d8c !important;
-  background-color: #fffefa;
-  box-shadow: 0 0.18rem 0.62rem rgba(31, 38, 35, 0.06);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  background:
+    linear-gradient(90deg, rgba(79, 117, 103, 0.12), transparent 34%),
+    #ffffff;
+  box-shadow: 0 0.24rem 0.85rem rgba(31, 38, 35, 0.08);
+  transition: box-shadow 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
 }
 
 .stash-item-card:hover {
-  border-color: #b8c6be !important;
-  box-shadow: 0 0.32rem 0.95rem rgba(31, 38, 35, 0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 0.42rem 1.2rem rgba(31, 38, 35, 0.12);
+  transform: translateY(-2px);
 }
 
 .stash-heading-toggle {
@@ -114,4 +120,47 @@ h1, h2, h3 {
 .stash-item-toggle {
   width: 100%;
   padding-right: 2.6rem;
+}
+
+.stash-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.stash-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.12rem 0.45rem;
+  background-color: rgba(79, 117, 103, 0.1);
+  color: #3f514b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.stash-meta-chip-soft {
+  background-color: rgba(109, 125, 140, 0.1);
+  color: #48545f;
+}
+
+.stash-edit-strip {
+  background-color: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(79, 117, 103, 0.1);
+  padding: 0.35rem 0.2rem;
+}
+
+.stash-detail-panel {
+  background-color: rgba(248, 250, 248, 0.8);
+  box-shadow: inset 0 1px 0 rgba(79, 117, 103, 0.12);
+  padding-top: 0.8rem;
+}
+
+.stash-subheading {
+  margin-bottom: 0.5rem;
+  color: #58635f;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
