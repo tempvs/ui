@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
-import { FaLink, FaPlus, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+import { FaLink, FaTrashAlt, FaUnlink } from 'react-icons/fa';
 
 import DisclosureCard from '../component/DisclosureCard';
 import EditableTextFieldRow from '../component/EditableTextFieldRow';
@@ -771,6 +771,19 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     return null;
   }
 
+  const groups = stash?.groups || [];
+  const totalItems = groups.reduce((count, group) => count + (itemsByGroup[group.id] || []).length, 0);
+  const totalSources = groups.reduce((count, group) => (
+    count + (itemsByGroup[group.id] || []).reduce((itemCount, item) => itemCount + (item.sources || []).length, 0)
+  ), 0);
+  const loadedImageCount = Object.values(itemImagesByItem).reduce((count, images) => count + (images || []).length, 0);
+  const headerStats = [
+    `${groups.length} ${t('profile.stash.collectionsCount', 'collection(s)')}`,
+    `${totalItems} ${t('profile.stash.itemsCount', 'item(s)')}`,
+    `${totalSources} ${t('profile.stash.sourcesCount', 'source(s)')}`,
+    loadedImageCount ? `${loadedImageCount} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
+  ].filter(Boolean);
+
   return (
     <div className={embedded ? 'mt-4 pt-2' : ''}>
       <div className="p-3 p-lg-4 rounded border" style={{ backgroundColor: '#f7f4ee', borderColor: '#d9ccb8' }}>
@@ -779,13 +792,24 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
         {loading && <Spinner animation="border" size="sm" />}
 
         {!loading && (
-          <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
-            <div>
-              <div className="small text-uppercase text-muted fw-bold">
+          <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 pb-3 border-bottom">
+            <div style={{ minWidth: 0 }}>
+              <div className="fw-semibold">
                 {t('profile.stash.collectionsTitle', 'Collections')}
               </div>
-              <div className="small text-muted">
-                {(stash?.groups || []).length} {t('profile.stash.collectionsCount', 'collection(s)')}
+              <div className="small text-muted mt-1">
+                {t('profile.stash.summary', 'Track collections, item images, and linked library sources for this club profile.')}
+              </div>
+              <div className="d-flex align-items-center gap-2 flex-wrap mt-2">
+                {headerStats.map(stat => (
+                  <span
+                    key={stat}
+                    className="small px-2 py-1 border bg-white text-muted"
+                    style={{ borderColor: '#e3d8c6' }}
+                  >
+                    {stat}
+                  </span>
+                ))}
               </div>
             </div>
             {isEditable && (
@@ -801,14 +825,32 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
           </div>
         )}
 
-        {!loading && !stash?.groups?.length && (
-          <div className="small text-muted">
-            {t('profile.stash.empty', 'No collections yet. Start by creating the first group of belongings.')}
+        {!loading && !groups.length && (
+          <div className="py-5 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #d9ccb8' }}>
+            <div className="fw-semibold mb-1">
+              {t('profile.stash.emptyTitle', 'No collections yet')}
+            </div>
+            <div className="small text-muted mb-3">
+              {t('profile.stash.empty', 'Start by creating the first group of belongings.')}
+            </div>
+            {isEditable && (
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => {
+                  setFeedback(null);
+                  setGroupForm(emptyGroupForm);
+                  setGroupCreateVisible(true);
+                }}
+              >
+                {t('profile.stash.groupCreateFirst', 'Create first collection')}
+              </Button>
+            )}
           </div>
         )}
 
         <div className="d-grid gap-3">
-          {(stash?.groups || []).map(group => {
+          {groups.map(group => {
             const items = itemsByGroup[group.id] || [];
             const searchStateByItem = sourceSearch;
             const isGroupExpanded = Boolean(groupExpanded[group.id]);
@@ -817,6 +859,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
               0
             );
             const hasLoadedGroupImages = items.some(item => Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id));
+            const groupSourceCount = items.reduce((count, item) => count + (item.sources || []).length, 0);
+            const groupMetadata = [
+              `${items.length} ${t('profile.stash.itemsCount', 'item(s)')}`,
+              `${groupSourceCount} ${t('profile.stash.sourcesCount', 'source(s)')}`,
+              hasLoadedGroupImages ? `${loadedGroupImageCount} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
+            ].filter(Boolean);
 
             return (
               <DisclosureCard
@@ -838,18 +886,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                         {groupDrafts[group.id]?.description || group.description}
                       </div>
                     )}
-                    <div className="d-flex gap-2 flex-wrap mt-2">
-                      <Badge bg="light" text="dark">
-                        {group.profile?.period ? getPeriodLabel(group.profile.period) : getPeriodLabel(profile.period)}
-                      </Badge>
-                      <Badge bg="light" text="dark">
-                        {items.length} {t('profile.stash.itemsCount', 'item(s)')}
-                      </Badge>
-                      {hasLoadedGroupImages && (
-                        <Badge bg="light" text="dark">
-                          {loadedGroupImageCount} {t('profile.stash.imagesCount', 'image(s)')}
-                        </Badge>
-                      )}
+                    <div className="small text-muted mt-2">
+                      {groupMetadata.join(' \u2022 ')}
                     </div>
                   </>
                 )}
@@ -899,8 +937,22 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
                   {itemsLoading[group.id] && <Spinner animation="border" size="sm" />}
                   {!itemsLoading[group.id] && !items.length && (
-                    <div className="small text-muted">
-                      {t('profile.stash.itemsEmpty', 'No items in this collection yet.')}
+                    <div className="py-4 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #e3d8c6' }}>
+                      <div className="small fw-semibold mb-1">
+                        {t('profile.stash.itemsEmptyTitle', 'No items yet')}
+                      </div>
+                      <div className="small text-muted mb-3">
+                        {t('profile.stash.itemsEmpty', 'Add the first item to this collection.')}
+                      </div>
+                      {isEditable && (
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => openCreateItem(group)}
+                        >
+                          {t('profile.stash.itemCreateFirst', 'Add first item')}
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -909,6 +961,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                       const sourceState = searchStateByItem[item.id] || {};
                       const isExpanded = Boolean(itemExpanded[item.id]);
                       const hasLoadedImages = Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id);
+                      const itemMetadata = [
+                        getClassificationLabel(intl, item.classification),
+                        `${(item.sources || []).length} ${t('profile.stash.sourcesCount', 'source(s)')}`,
+                        hasLoadedImages ? `${(itemImagesByItem[item.id] || []).length} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
+                      ].filter(Boolean);
+
                       return (
                         <DisclosureCard
                           key={item.id}
@@ -941,17 +999,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                   {item.description}
                                 </div>
                               )}
-                              <div className="d-flex gap-2 flex-wrap mt-2">
-                                <Badge bg="secondary">{getClassificationLabel(intl, item.classification)}</Badge>
-                                <Badge bg="light" text="dark">{getPeriodLabel(item.period)}</Badge>
-                                <Badge bg="light" text="dark">
-                                  {(item.sources || []).length} {t('profile.stash.sourcesCount', 'source(s)')}
-                                </Badge>
-                                {hasLoadedImages && (
-                                  <Badge bg="light" text="dark">
-                                    {(itemImagesByItem[item.id] || []).length} {t('profile.stash.imagesCount', 'image(s)')}
-                                  </Badge>
-                                )}
+                              <div className="small text-muted mt-2">
+                                {itemMetadata.join(' \u2022 ')}
                               </div>
                             </>
                           )}
