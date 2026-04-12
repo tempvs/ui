@@ -44,6 +44,53 @@
   min-height: 2.25rem;
 }
 
+.header-icon-button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  min-width: 2.25rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.header-icon-button:hover,
+.header-icon-button:focus,
+.header-icon-button:active {
+  background: rgba(26, 115, 232, 0.08);
+  box-shadow: none;
+}
+
+.header-icon-popover-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tempvs-header-popover {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 20;
+  transform: translate(-50%, 0.85rem);
+  pointer-events: none;
+  border: 1px solid rgba(40, 40, 40, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.12);
+  color: #1f1f1f;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0.25rem 0.45rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.header-icon-popover-anchor:hover .tempvs-header-popover,
+.header-icon-popover-anchor:focus-within .tempvs-header-popover {
+  opacity: 1;
+}
+
 .auth-control-button {
   padding: 0.25rem 0.35rem;
   border: 0;

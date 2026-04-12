@@ -5,6 +5,45 @@ import { FaTimes } from 'react-icons/fa';
 import PlusActionButton from '../../component/PlusActionButton';
 import Spinner from '../../component/Spinner';
 
+type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+
+type ClubProfile = {
+  id: string | number;
+  firstName?: string | null;
+  lastName?: string | null;
+  nickName?: string | null;
+};
+
+type ClubProfilesSectionProps = {
+  isUserProfile: boolean;
+  canCreate: boolean;
+  visibleClubProfiles: ClubProfile[];
+  showEmptyMessage: boolean;
+  clubProfilesLoaded: boolean;
+  clubProfilesMessage?: React.ReactNode;
+  clubProfileCreateVisible: boolean;
+  clubProfileCreateError?: unknown;
+  clubProfileDeleteTarget?: ClubProfile | null;
+  clubProfileDeleteError?: unknown;
+  periods: string[];
+  getPeriodLabel: (period: string) => string;
+  t: Translator;
+  onShowCreate?: React.MouseEventHandler<HTMLElement>;
+  onHideCreate?: () => void;
+  onCreate?: React.FormEventHandler<HTMLFormElement>;
+  onOpenProfile: (profile: ClubProfile) => void;
+  onOpenDelete?: (profile: ClubProfile) => void;
+  onHideDelete?: () => void;
+  onDelete?: React.MouseEventHandler<HTMLButtonElement>;
+};
+
+type IconProps = {
+  className?: string;
+  title?: string;
+};
+
+const ErrorIcon = FaTimes as React.ComponentType<IconProps>;
+
 export default function ClubProfilesSection({
   isUserProfile,
   canCreate,
@@ -23,12 +62,11 @@ export default function ClubProfilesSection({
   onHideCreate,
   onCreate,
   onOpenProfile,
-  onOpenDelete,
   onHideDelete,
   onDelete,
-}) {
+}: ClubProfilesSectionProps) {
   const clubProfileName = clubProfileDeleteTarget
-    ? `${clubProfileDeleteTarget.firstName} ${clubProfileDeleteTarget.lastName}`.trim()
+    ? `${clubProfileDeleteTarget.firstName || ''} ${clubProfileDeleteTarget.lastName || ''}`.trim()
     : '';
 
   return (
@@ -103,7 +141,7 @@ export default function ClubProfilesSection({
               </Form.Select>
             </Form.Group>
             <div className="d-flex align-items-center justify-content-end gap-2">
-              {clubProfileCreateError && <FaTimes className="text-danger" title={t('profile.create.failedShort', 'Creation failed')} />}
+              {clubProfileCreateError && <ErrorIcon className="text-danger" title={t('profile.create.failedShort', 'Creation failed')} />}
               <Button variant="secondary" type="submit">{t('profile.clubProfile.create.submit', 'Create club profile')}</Button>
             </div>
           </Form>
@@ -122,7 +160,7 @@ export default function ClubProfilesSection({
           </p>
           {clubProfileDeleteError && (
             <div className="mt-3 d-flex align-items-center gap-2 text-danger">
-              <FaTimes title={t('profile.clubProfile.delete.failedShort', 'Deletion failed')} />
+              <ErrorIcon title={t('profile.clubProfile.delete.failedShort', 'Deletion failed')} />
               <span>{t('profile.clubProfile.delete.failed', 'Deletion failed.')}</span>
             </div>
           )}

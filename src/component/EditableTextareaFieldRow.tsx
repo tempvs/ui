@@ -1,9 +1,25 @@
 import React from 'react';
 import { Form } from 'react-bootstrap';
 
-import EditableFieldRow from './EditableFieldRow';
+import EditableFieldRow, { SaveStatus } from './EditableFieldRow';
 
-export default function EditableTextFieldRow({
+type EditableTextareaFieldRowProps = {
+  label?: React.ReactNode;
+  editable: boolean;
+  value?: string | number | string[];
+  readOnlyValue?: React.ReactNode;
+  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
+  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>;
+  status?: SaveStatus;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+  fieldMaxWidth?: string;
+  savingTitle?: string;
+  errorTitle?: string;
+};
+
+export default function EditableTextareaFieldRow({
   label,
   editable,
   value,
@@ -12,19 +28,20 @@ export default function EditableTextFieldRow({
   onBlur,
   status = null,
   placeholder,
-  type = 'text',
-  className = 'mb-2',
+  rows = 5,
+  className = '',
   fieldMaxWidth = '100%',
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
-}) {
+}: EditableTextareaFieldRowProps) {
   return (
     <EditableFieldRow
       label={label}
       editable={editable}
       control={(
         <Form.Control
-          type={type}
+          as="textarea"
+          rows={rows}
           value={value}
           onChange={onChange}
           onBlur={onBlur}

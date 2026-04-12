@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { RefObject, useEffect, useState } from 'react';
 
-export default function useIsTruncated(ref, dependencies = []) {
+export default function useIsTruncated<T extends HTMLElement>(
+  ref: RefObject<T>,
+  dependencies: unknown[] = []
+): boolean {
   const [isTruncated, setIsTruncated] = useState(false);
 
   useEffect(() => {

@@ -5,6 +5,21 @@ import ImageDescriptionBlock from './ImageDescriptionBlock';
 import HoverPopover from './HoverPopover';
 import InlineSaveStatus from './InlineSaveStatus';
 import useIsTruncated from './useIsTruncated';
+import { SaveStatus } from './EditableFieldRow';
+
+type EditableImageDescriptionProps = {
+  editable: boolean;
+  value?: string | null;
+  status?: SaveStatus;
+  placeholder?: string;
+  emptyText?: string;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  className?: string;
+  bordered?: boolean;
+  savingTitle?: string;
+  errorTitle?: string;
+};
 
 export default function EditableImageDescription({
   editable,
@@ -18,8 +33,8 @@ export default function EditableImageDescription({
   bordered = true,
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
-}) {
-  const inputRef = useRef(null);
+}: EditableImageDescriptionProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const overlayText = value || placeholder;
   const isTruncated = useIsTruncated(inputRef, [overlayText]);
 

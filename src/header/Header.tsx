@@ -1,9 +1,6 @@
-import React, { Component } from "react";
-
-import { Container, Row, Col } from 'react-bootstrap'
-
+import React, { Component } from 'react';
+import { Col, Container, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-
 import Cookies from 'js-cookie';
 
 import ProfileButton from '../profile/ProfileButton';
@@ -12,16 +9,28 @@ import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
 import { doFetch } from '../util/Fetcher';
 
-import "./Header.css";
+import './Header.css';
 
-class Header extends Component {
-  constructor() {
-    super();
+type OAuthProfile = {
+  picture?: string | null;
+  name?: string | null;
+  email?: string | null;
+};
+
+type HeaderState = {
+  loggedIn: string | boolean | undefined;
+  avatarUrl: string | null;
+  avatarText: string | null;
+};
+
+class Header extends Component<Record<string, never>, HeaderState> {
+  constructor(props: Record<string, never>) {
+    super(props);
     const loggedIn = Cookies.get('TEMPVS_LOGGED_IN');
     this.state = {
-      loggedIn: loggedIn,
+      loggedIn,
       avatarUrl: null,
-      avatarText: null
+      avatarText: null,
     };
     this.logIn = this.logIn.bind(this);
     this.logOut = this.logOut.bind(this);
@@ -35,28 +44,29 @@ class Header extends Component {
   }
 
   logIn() {
-    this.setState({loggedIn: true}, this.loadOAuthProfile);
+    this.setState({ loggedIn: true }, this.loadOAuthProfile);
   }
 
   logOut() {
-    this.setState({loggedIn: false, avatarUrl: null, avatarText: null});
+    this.setState({ loggedIn: false, avatarUrl: null, avatarText: null });
   }
 
   loadOAuthProfile() {
-    doFetch("/api/user/oauth/me", "GET", null, {
-      200: profile => this.setState({
+    const clearAvatar = () => this.setState({ avatarUrl: null, avatarText: null });
+    doFetch('/api/user/oauth/me', 'GET', null, {
+      200: (profile: OAuthProfile) => this.setState({
         avatarUrl: profile?.picture || null,
-        avatarText: this.buildAvatarText(profile)
+        avatarText: this.buildAvatarText(profile),
       }),
-      401: () => this.setState({avatarUrl: null, avatarText: null}),
-      403: () => this.setState({avatarUrl: null, avatarText: null}),
-      404: () => this.setState({avatarUrl: null, avatarText: null}),
-      default: () => this.setState({avatarUrl: null, avatarText: null})
+      401: clearAvatar,
+      403: clearAvatar,
+      404: clearAvatar,
+      default: clearAvatar,
     });
   }
 
-  buildAvatarText(profile) {
-    const name = (profile?.name || "").trim();
+  buildAvatarText(profile?: OAuthProfile | null) {
+    const name = (profile?.name || '').trim();
     if (name) {
       const words = name.split(/\s+/).filter(Boolean);
       if (words.length > 1) {
@@ -66,12 +76,12 @@ class Header extends Component {
       return name.slice(0, 2).toUpperCase();
     }
 
-    const email = (profile?.email || "").trim();
+    const email = (profile?.email || '').trim();
     if (!email) {
       return null;
     }
 
-    const localPart = email.split("@")[0];
+    const localPart = email.split('@')[0];
     const tokens = localPart.split(/[._-]+/).filter(Boolean);
     if (tokens.length > 1) {
       return (tokens[0][0] + tokens[1][0]).toUpperCase();
@@ -86,23 +96,22 @@ class Header extends Component {
         <Container>
           <Row className="show-grid">
             <Col sm={3}>
-              {this.state.loggedIn &&
+              {this.state.loggedIn && (
                 <Link to="/profile">
                   <ProfileButton />
                 </Link>
-              }
+              )}
             </Col>
             <Col sm={6}>
               <Link to="/library">
                 <LibraryButton />
               </Link>
             </Col>
-            <Col sm={2}>
-            </Col>
+            <Col sm={2} />
             <Col sm={1}>
               {this.state.loggedIn
-                ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText}/>
-                : <LoginRegisterButton logIn={this.logIn}/>}
+                ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
+                : <LoginRegisterButton />}
             </Col>
           </Row>
         </Container>

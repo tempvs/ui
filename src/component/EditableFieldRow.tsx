@@ -2,6 +2,23 @@ import React from 'react';
 
 import InlineSaveStatus from './InlineSaveStatus';
 
+export type SaveStatus = 'pending' | 'saving' | 'saved' | 'error' | string | null | undefined;
+
+type EditableFieldRowProps = {
+  label?: React.ReactNode;
+  editable: boolean;
+  control: React.ReactNode;
+  readOnlyValue?: React.ReactNode;
+  status?: SaveStatus;
+  action?: React.ReactNode;
+  actionPlacement?: 'inline' | 'stacked';
+  labelWidth?: string;
+  fieldMaxWidth?: string;
+  savingTitle?: string;
+  errorTitle?: string;
+  className?: string;
+};
+
 export default function EditableFieldRow({
   label,
   editable,
@@ -15,7 +32,7 @@ export default function EditableFieldRow({
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
   className = 'mb-2',
-}) {
+}: EditableFieldRowProps) {
   return (
     <div className={`d-flex align-items-center gap-3 ${className}`.trim()}>
       <div className="text-start small fw-semibold" style={{ width: labelWidth }}>

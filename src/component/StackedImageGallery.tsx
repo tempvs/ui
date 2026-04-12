@@ -6,8 +6,36 @@ import ConfirmingTrashButton from './ConfirmingTrashButton';
 import EditableImageDescription from './EditableImageDescription';
 import ImageOverlayActionButton from './ImageOverlayActionButton';
 import ImageDescriptionBlock from './ImageDescriptionBlock';
+import { SaveStatus } from './EditableFieldRow';
 
-function getImageSrc(image) {
+export type GalleryImage = {
+  id: string | number;
+  url?: string | null;
+  src?: string | null;
+  fileName?: string | null;
+  description?: string | null;
+};
+
+type StackedImageGalleryProps = {
+  images?: GalleryImage[];
+  title?: string;
+  emptyText?: string;
+  editable?: boolean;
+  onDeleteImage?: (imageId: GalleryImage['id']) => void;
+  onReplaceImage?: (image: GalleryImage) => void;
+  imageDrafts?: Record<string | number, string | undefined>;
+  imageStatuses?: Record<string | number, SaveStatus>;
+  onDescriptionChange?: (imageId: GalleryImage['id'], value: string) => void;
+  onDescriptionBlur?: (imageId: GalleryImage['id']) => void;
+};
+
+type UploadIconProps = {
+  className?: string;
+};
+
+const UploadIcon = FaUpload as React.ComponentType<UploadIconProps>;
+
+function getImageSrc(image: GalleryImage): string {
   return image?.url || `data:image/jpeg;base64, ${image?.src || ''}`;
 }
 
@@ -22,7 +50,7 @@ export default function StackedImageGallery({
   imageStatuses = {},
   onDescriptionChange,
   onDescriptionBlur,
-}) {
+}: StackedImageGalleryProps) {
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -117,7 +145,7 @@ export default function StackedImageGallery({
           <Carousel
             className="stacked-image-gallery-carousel"
             activeIndex={activeIndex}
-            onSelect={selectedIndex => setActiveIndex(selectedIndex)}
+            onSelect={selectedIndex => setActiveIndex(selectedIndex || 0)}
             interval={null}
             style={{
               border: '1px solid #d8cbb4',
@@ -138,7 +166,7 @@ export default function StackedImageGallery({
                       popover="Replace this picture with a new one. This does not edit the current image."
                       style={{ zIndex: 4 }}
                     >
-                      <FaUpload />
+                      <UploadIcon />
                     </ImageOverlayActionButton>
                   )}
                   {editable && onDeleteImage && (

@@ -1,10 +1,24 @@
 import React, { useState } from 'react';
-import { Modal, Image }  from 'react-bootstrap';
+import { Image, Modal } from 'react-bootstrap';
+
 import ImageDescriptionBlock from './ImageDescriptionBlock';
 
-function ModalImage(props) {
+type ModalImageProps = {
+  url?: string | null;
+  src?: string | null;
+  alt?: string;
+  description?: string | null;
+  wrapperStyle?: React.CSSProperties;
+  imageStyle?: React.CSSProperties;
+  modalSize?: 'sm' | 'lg' | 'xl';
+  modalTopLeftAction?: React.ReactNode;
+  modalTopRightAction?: React.ReactNode;
+  modalDescriptionContent?: React.ReactNode;
+};
+
+function ModalImage(props: ModalImageProps) {
   const [show, setShow] = useState(false);
-  const imageSrc = props.url || `data:image/jpeg;base64, ${props.src}`;
+  const imageSrc = props.url || `data:image/jpeg;base64, ${props.src || ''}`;
   const wrapperStyle = {
     width: '100%',
     maxWidth: '18rem',

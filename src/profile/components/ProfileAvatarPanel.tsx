@@ -7,6 +7,37 @@ import EditableImageDescription from '../../component/EditableImageDescription';
 import ImageOverlayActionButton from '../../component/ImageOverlayActionButton';
 import ModalImage from '../../component/ModalImage';
 import Spinner from '../../component/Spinner';
+import { SaveStatus } from '../../component/EditableFieldRow';
+
+type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+
+type ProfileAvatarPanelProps = {
+  avatarPanelWidth: string;
+  avatarVisible: boolean;
+  avatarLoaded: boolean;
+  avatarImage?: string | null;
+  avatarUrl?: string | null;
+  avatarInfo?: string | null;
+  avatarUploadStatus?: string | null;
+  avatarUploadMessage?: string | null;
+  avatarDescriptionDraft?: string | null;
+  avatarDescriptionStatus?: SaveStatus;
+  isEditable: boolean;
+  initials?: string;
+  t: Translator;
+  onUploadChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onOpenFilePicker?: React.MouseEventHandler<HTMLElement>;
+  onDelete?: () => void;
+  onDescriptionChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onDescriptionBlur?: React.FocusEventHandler<HTMLInputElement>;
+};
+
+type IconProps = {
+  className?: string;
+};
+
+const SavingIcon = FaHourglassHalf as React.ComponentType<IconProps>;
+const UploadIcon = FaUpload as React.ComponentType;
 
 export default function ProfileAvatarPanel({
   avatarPanelWidth,
@@ -27,8 +58,9 @@ export default function ProfileAvatarPanel({
   onDelete,
   onDescriptionChange,
   onDescriptionBlur,
-}) {
+}: ProfileAvatarPanelProps) {
   const hasDescription = Boolean((avatarInfo || '').trim());
+  const uploadControl = avatarUploadStatus === 'uploading' ? <SavingIcon className="text-muted" /> : <UploadIcon />;
 
   return (
     <>
@@ -46,7 +78,7 @@ export default function ProfileAvatarPanel({
               <ModalImage
                 src={avatarImage}
                 url={avatarUrl}
-                alt={avatarInfo}
+                alt={avatarInfo || undefined}
                 description={avatarInfo}
                 wrapperStyle={{ maxWidth: '100%' }}
                 modalTopLeftAction={isEditable ? (
@@ -56,7 +88,7 @@ export default function ProfileAvatarPanel({
                     title="Replace"
                     popover="Replace"
                   >
-                    {avatarUploadStatus === 'uploading' ? <FaHourglassHalf className="text-muted" /> : <FaUpload />}
+                    {uploadControl}
                   </ImageOverlayActionButton>
                 ) : null}
                 modalTopRightAction={isEditable ? (
@@ -125,7 +157,7 @@ export default function ProfileAvatarPanel({
             title="Replace"
             popover="Replace"
           >
-            {avatarUploadStatus === 'uploading' ? <FaHourglassHalf className="text-muted" /> : <FaUpload />}
+            {uploadControl}
           </ImageOverlayActionButton>
         )}
         {isEditable && avatarVisible && (

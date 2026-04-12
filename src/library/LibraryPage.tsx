@@ -5,7 +5,13 @@ import LibraryLandingPage from './pages/LibraryLandingPage';
 import LibraryPeriodPage from './pages/LibraryPeriodPage';
 import LibrarySourcePage from './pages/LibrarySourcePage';
 
-export default function LibraryPage({ view = 'landing' }) {
+type LibraryView = 'landing' | 'period' | 'source' | 'admin';
+
+type LibraryPageProps = {
+  view?: LibraryView;
+};
+
+export default function LibraryPage({ view = 'landing' }: LibraryPageProps) {
   if (view === 'period') {
     return <LibraryPeriodPage />;
   }

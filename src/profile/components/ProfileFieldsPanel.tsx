@@ -1,6 +1,32 @@
 import React from 'react';
+
 import EditableSelectFieldRow from '../../component/EditableSelectFieldRow';
 import EditableTextFieldRow from '../../component/EditableTextFieldRow';
+import { SaveStatus } from '../../component/EditableFieldRow';
+
+type Translator = (id: string, defaultMessage: string, values?: Record<string, unknown>) => string;
+
+type ProfileFieldsState = {
+  firstName?: string | null;
+  lastName?: string | null;
+  nickName?: string | null;
+  profileEmail?: string | null;
+  location?: string | null;
+  alias?: string | null;
+  period?: string | null;
+  fieldStatuses?: Record<string, SaveStatus>;
+};
+
+type ProfileFieldsPanelProps = {
+  type?: string | null;
+  state: ProfileFieldsState;
+  periods: string[];
+  t: Translator;
+  getPeriodLabel: (period?: string | null) => string;
+  editable: boolean;
+  onInputChange: (event: { target: { name: string; value: string } }) => void;
+  onFieldBlur: (field: string) => void;
+};
 
 export default function ProfileFieldsPanel({
   type,
@@ -11,7 +37,7 @@ export default function ProfileFieldsPanel({
   editable,
   onInputChange,
   onFieldBlur,
-}) {
+}: ProfileFieldsPanelProps) {
   return (
     <>
       <EditableTextFieldRow
@@ -19,7 +45,7 @@ export default function ProfileFieldsPanel({
         editable={editable}
         value={state.firstName || ''}
         readOnlyValue={state.firstName}
-        onChange={onInputChange}
+        onChange={event => onInputChange({ target: { name: 'firstName', value: event.target.value } })}
         onBlur={() => onFieldBlur('firstName')}
         status={state.fieldStatuses?.firstName}
         className="mb-2"
