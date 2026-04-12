@@ -6,6 +6,7 @@ COPY package-lock.json ./
 COPY scripts ./scripts
 RUN npm ci --no-audit --no-fund
 COPY . ./
+RUN npm run typecheck
 RUN npm run build
 
 # production environment
