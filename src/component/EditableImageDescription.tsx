@@ -36,7 +36,7 @@ export default function EditableImageDescription({
 }: EditableImageDescriptionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const overlayText = value || placeholder;
-  const isTruncated = useIsTruncated(inputRef, [overlayText]);
+  const isTruncated = useIsTruncated(inputRef, overlayText);
 
   if (!editable) {
     return <ImageDescriptionBlock description={value} emptyText={emptyText} bordered={bordered} className={className} />;

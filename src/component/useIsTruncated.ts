@@ -2,7 +2,7 @@ import { RefObject, useEffect, useState } from 'react';
 
 export default function useIsTruncated<T extends HTMLElement>(
   ref: RefObject<T>,
-  dependencies: unknown[] = []
+  dependency: unknown = null
 ): boolean {
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -20,7 +20,7 @@ export default function useIsTruncated<T extends HTMLElement>(
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [ref, ...dependencies]);
+  }, [ref, dependency]);
 
   return isTruncated;
 }

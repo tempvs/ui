@@ -72,6 +72,8 @@ export default function LibraryPeriodPage() {
 
   useEffect(() => {
     searchSources();
+    // The period route change should reload with the current search draft, not run on every draft edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodCode]);
 
   const handleToggle = (value, selectedValues, setter) => {

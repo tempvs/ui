@@ -108,6 +108,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
 
     loadStash();
+    // The stash should reload on profile changes, not on every callback identity change from the parent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClubProfile, profile?.id]);
 
   useEffect(() => () => {

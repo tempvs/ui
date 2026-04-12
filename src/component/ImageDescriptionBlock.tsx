@@ -19,7 +19,7 @@ export default function ImageDescriptionBlock({
 }: ImageDescriptionBlockProps) {
   const text = (description || '').trim() || emptyText;
   const textRef = useRef<HTMLDivElement>(null);
-  const isTruncated = useIsTruncated(textRef, [text]);
+  const isTruncated = useIsTruncated(textRef, text);
 
   if (!text) {
     return null;

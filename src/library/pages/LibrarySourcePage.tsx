@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
@@ -60,7 +60,7 @@ export default function LibrarySourcePage() {
   const fieldSaveTimersRef = useRef<Partial<Record<SourceField, number>>>({});
   const replacingImageRef = useRef<LibrarySourceImage | null>(null);
 
-  const loadSource = async () => {
+  const loadSource = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -91,11 +91,11 @@ export default function LibrarySourcePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sourceId]);
 
   useEffect(() => {
     loadSource();
-  }, [sourceId]);
+  }, [loadSource]);
 
   useEffect(() => () => {
     Object.values(imageSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
