@@ -3,7 +3,7 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import { FormattedMessage } from 'react-intl';
 
-import { doFetch } from '../util/Fetcher.js';
+import { doFetch } from '../util/Fetcher';
 
 const initialState = { messageShown: false, messageText: '' };
 

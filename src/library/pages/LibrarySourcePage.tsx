@@ -14,6 +14,9 @@ import {
   deleteSourceImage,
   getSource,
   getSourceImages,
+  LibrarySource,
+  LibrarySourceImage,
+  LibraryUserInfoPayload,
   patchSourceField,
   removeSource,
   updateSourceImageDescription,
@@ -24,6 +27,15 @@ import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { getClassificationLabel, getTypeLabel } from '../libraryShared';
 import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
 import { readFileAsBase64 } from '../../util/fileUtils';
+import { SaveStatus } from '../../component/EditableFieldRow';
+
+type SourceField = 'name' | 'description';
+
+type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
+
+type ImageRecord<T> = Record<string | number, T>;
+
+const TrashIcon = FaTrashAlt as React.ComponentType;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
@@ -32,21 +44,21 @@ export default function LibrarySourcePage() {
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [source, setSource] = useState(null);
-  const [images, setImages] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-  const [error, setError] = useState(null);
+  const [source, setSource] = useState<LibrarySource | null>(null);
+  const [images, setImages] = useState<LibrarySourceImage[]>([]);
+  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [error, setError] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
-  const [fieldStatuses, setFieldStatuses] = useState({});
+  const [fieldStatuses, setFieldStatuses] = useState<SourceFieldStatuses>({});
   const [imageDescription, setImageDescription] = useState('');
-  const [imageDrafts, setImageDrafts] = useState({});
-  const [imageStatuses, setImageStatuses] = useState({});
-  const imageInputRef = useRef(null);
-  const replaceImageInputRef = useRef(null);
-  const imageSaveTimersRef = useRef({});
-  const fieldSaveTimersRef = useRef({});
-  const replacingImageRef = useRef(null);
+  const [imageDrafts, setImageDrafts] = useState<ImageRecord<string>>({});
+  const [imageStatuses, setImageStatuses] = useState<ImageRecord<SaveStatus>>({});
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const replaceImageInputRef = useRef<HTMLInputElement>(null);
+  const imageSaveTimersRef = useRef<ImageRecord<number>>({});
+  const fieldSaveTimersRef = useRef<Partial<Record<SourceField, number>>>({});
+  const replacingImageRef = useRef<LibrarySourceImage | null>(null);
 
   const loadSource = async () => {
     setLoading(true);
@@ -90,7 +102,7 @@ export default function LibrarySourcePage() {
     Object.values(fieldSaveTimersRef.current).forEach(timerId => clearTimeout(timerId));
   }, []);
 
-  const patchSource = async (field, value) => {
+  const patchSource = async (field: SourceField, value: string) => {
     const persistedValue = field === 'name'
       ? (source?.name || '')
       : (source?.description || '');
@@ -145,7 +157,7 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const scheduleFieldSave = (field, value) => {
+  const scheduleFieldSave = (field: SourceField, value: string) => {
     if (fieldSaveTimersRef.current[field]) {
       clearTimeout(fieldSaveTimersRef.current[field]);
     }
@@ -158,7 +170,7 @@ export default function LibrarySourcePage() {
     }, 1800);
   };
 
-  const handleFieldBlur = (field) => {
+  const handleFieldBlur = (field: SourceField) => {
     if (fieldSaveTimersRef.current[field]) {
       clearTimeout(fieldSaveTimersRef.current[field]);
       delete fieldSaveTimersRef.current[field];
@@ -176,18 +188,18 @@ export default function LibrarySourcePage() {
       if (!result.ok) {
         throw new Error(
           (typeof result.data === 'string' && result.data)
-          || result.data?.message
+          || (result.data && typeof result.data === 'object' && 'message' in result.data ? result.data.message : null)
           || 'Unable to delete the source.'
         );
       }
 
-      navigate(`/library/period/${source.period.toLowerCase()}`);
+      navigate(`/library/period/${(source.period || '').toLowerCase()}`);
     } catch (fetchError) {
       setError(fetchError.message);
     }
   };
 
-  const handleUploadImage = async (event) => {
+  const handleUploadImage: React.FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault();
     const file = imageInputRef.current?.files?.[0];
 
@@ -224,7 +236,7 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleOpenReplaceImagePicker = (image) => {
+  const handleOpenReplaceImagePicker = (image: LibrarySourceImage) => {
     replacingImageRef.current = image;
     if (replaceImageInputRef.current) {
       replaceImageInputRef.current.value = '';
@@ -232,7 +244,7 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleReplaceImage = async (event) => {
+  const handleReplaceImage: React.ChangeEventHandler<HTMLInputElement> = async event => {
     const file = event.target.files?.[0];
     const targetImage = replacingImageRef.current;
 
@@ -270,14 +282,14 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const clearImageSaveTimer = (imageId) => {
+  const clearImageSaveTimer = (imageId: LibrarySourceImage['id']) => {
     if (imageSaveTimersRef.current[imageId]) {
       clearTimeout(imageSaveTimersRef.current[imageId]);
       delete imageSaveTimersRef.current[imageId];
     }
   };
 
-  const resetImageStatusLater = (imageId, delay = 1000) => {
+  const resetImageStatusLater = (imageId: LibrarySourceImage['id'], delay = 1000) => {
     window.setTimeout(() => {
       setImageStatuses(prevState => ({
         ...prevState,
@@ -286,7 +298,7 @@ export default function LibrarySourcePage() {
     }, delay);
   };
 
-  const handleDeleteImage = async (imageId) => {
+  const handleDeleteImage = async (imageId: LibrarySourceImage['id']) => {
     try {
       const result = await deleteSourceImage(sourceId, imageId);
 
@@ -301,7 +313,7 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleUpdateImageDescription = async (imageId, nextValue = imageDrafts[imageId] || '') => {
+  const handleUpdateImageDescription = async (imageId: LibrarySourceImage['id'], nextValue = imageDrafts[imageId] || '') => {
     const persistedValue = images.find(image => image.id === imageId)?.description || '';
     if ((nextValue || '') === persistedValue) {
       setImageStatuses(prevState => ({
@@ -346,7 +358,7 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleImageDescriptionChange = (imageId, value) => {
+  const handleImageDescriptionChange = (imageId: LibrarySourceImage['id'], value: string) => {
     setImageDrafts(prevState => ({
       ...prevState,
       [imageId]: value,
@@ -361,7 +373,7 @@ export default function LibrarySourcePage() {
     }, 1800);
   };
 
-  const handleImageDescriptionBlur = (imageId) => {
+  const handleImageDescriptionBlur = (imageId: LibrarySourceImage['id']) => {
     clearImageSaveTimer(imageId);
     handleUpdateImageDescription(imageId);
   };
@@ -414,7 +426,7 @@ export default function LibrarySourcePage() {
             size="1.9rem"
             fontSize="0.9rem"
           >
-            <FaTrashAlt />
+            <TrashIcon />
           </IconActionButton>
         </div>
       )}

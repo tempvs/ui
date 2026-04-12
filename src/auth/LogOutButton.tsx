@@ -3,7 +3,7 @@ import { FaSignOutAlt } from 'react-icons/fa';
 import { Button, Modal } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 
-import { doFetch } from '../util/Fetcher.js';
+import { doFetch } from '../util/Fetcher';
 import HeaderIconPopover from '../component/HeaderIconPopover';
 
 type LogOutButtonProps = {

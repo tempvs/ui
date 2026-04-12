@@ -85,9 +85,9 @@ export default function LibraryLandingPage() {
         </OverlayTrigger>
       )}
       {welcome?.adminPanelAvailable && (
-        <Button as={Link} to="/library/admin" variant="dark" size="sm">
+        <Link to="/library/admin" className="btn btn-dark btn-sm">
           Open admin panel
-        </Button>
+        </Link>
       )}
       {!welcome?.adminPanelAvailable && welcome?.buttonText && welcome?.role && (
         <Button variant="outline-dark" size="sm" onClick={handleRoleAction}>

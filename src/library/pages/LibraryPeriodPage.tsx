@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PlusActionButton from '../../component/PlusActionButton';
 import SearchActionButton from '../../component/SearchActionButton';
 import Spinner from '../../component/Spinner';
-import { createSource, findSources } from '../libraryApi';
+import { createSource, findSources, LibrarySource } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import SourceCard from '../components/SourceCard';
@@ -99,11 +99,16 @@ export default function LibraryPeriodPage() {
       });
 
       if (!result.ok) {
-        throw new Error(result.data?.message || 'Unable to create the source.');
+        const message = result.data && 'message' in result.data ? result.data.message : null;
+        throw new Error(message || 'Unable to create the source.');
+      }
+
+      if (!result.data || !('id' in result.data)) {
+        throw new Error('Unable to create the source.');
       }
 
       setShowCreateModal(false);
-      navigate(`/library/source/${result.data.id}`);
+      navigate(`/library/source/${(result.data as LibrarySource).id}`);
     } catch (fetchError) {
       setError(fetchError.message);
     } finally {
