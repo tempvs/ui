@@ -152,7 +152,7 @@ export default function LibraryPeriodPage() {
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
-                  <Form.Label>Classification</Form.Label>
+                  <Form.Label className="library-source-filter-heading">Classification</Form.Label>
                   <div className="d-flex flex-column gap-2">
                     {CLASSIFICATIONS.map(classification => (
                       <Form.Check
@@ -167,7 +167,7 @@ export default function LibraryPeriodPage() {
                   </div>
                 </Form.Group>
                 <Form.Group className="mb-3">
-                  <Form.Label>Type</Form.Label>
+                  <Form.Label className="library-source-filter-heading">Type</Form.Label>
                   <div className="d-flex flex-column gap-2">
                     {TYPES.map(type => (
                       <Form.Check

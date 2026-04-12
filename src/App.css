@@ -52,3 +52,15 @@ h1, h2, h3 {
   border-color: #3f474f;
   box-shadow: 0 0 0 0.15rem rgba(63, 71, 79, 0.18);
 }
+
+.library-source-filter-heading {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #343a40;
+  border-bottom: 1px solid #8c9399;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.55rem;
+}
