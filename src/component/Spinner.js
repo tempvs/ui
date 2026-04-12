@@ -1,34 +1,25 @@
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
 
-export default function Spinner({ size = '2.5rem' }) {
+export default function Spinner({ size = '50px' }) {
+  const isSmall = size === 'sm';
+  const resolvedSize = isSmall ? '14px' : size;
+  const src = `${process.env.PUBLIC_URL}/${isSmall ? 'spinner-sm.gif' : 'spinner.gif'}`;
+
   return (
     <FormattedMessage id="loading" defaultMessage="Loading">
       {label => (
         <div className="d-inline-flex align-items-center justify-content-center" aria-label={label} title={label}>
-          <span
-            role="img"
+          <img
+            src={src}
+            alt=""
             aria-hidden="true"
             style={{
-              display: 'inline-block',
-              fontSize: size,
-              lineHeight: 1,
-              animation: 'tempvs-hourglass-flip 1.4s ease-in-out infinite',
-              transformOrigin: '50% 50%',
+              width: resolvedSize,
+              height: resolvedSize,
+              maxWidth: 'none',
             }}
-          >
-            ⏳
-          </span>
-          <style>
-            {`
-              @keyframes tempvs-hourglass-flip {
-                0% { transform: rotate(0deg); }
-                45% { transform: rotate(0deg); }
-                55% { transform: rotate(180deg); }
-                100% { transform: rotate(180deg); }
-              }
-            `}
-          </style>
+          />
         </div>
       )}
     </FormattedMessage>

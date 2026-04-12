@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { FaLink, FaPlus, FaTrashAlt, FaUnlink } from 'react-icons/fa';
@@ -10,6 +10,7 @@ import EditableTextareaFieldRow from '../component/EditableTextareaFieldRow';
 import IconActionButton from '../component/IconActionButton';
 import PlusActionButton from '../component/PlusActionButton';
 import SearchActionButton from '../component/SearchActionButton';
+import Spinner from '../component/Spinner';
 import StackedImageGallery from '../component/StackedImageGallery';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { readFileAsBase64 } from '../util/fileUtils';
