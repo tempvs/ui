@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from 'react-bootstrap';
-import { useIntl } from 'react-intl';
+import { IntlShape, useIntl } from 'react-intl';
 
 export const PERIODS = [
   'ANCIENT',
@@ -14,23 +14,31 @@ export const PERIODS = [
   'WWII',
   'CONTEMPORARY',
   'OTHER',
-];
+] as const;
 
-export function getPeriodMessageId(period) {
+export type Period = typeof PERIODS[number];
+
+type PeriodValue = string | null | undefined;
+
+type PeriodBadgeProps = {
+  period?: PeriodValue;
+};
+
+export function getPeriodMessageId(period: PeriodValue): string | null {
   const periodKey = period?.toLowerCase?.();
   return periodKey ? `period.${periodKey}.heading` : null;
 }
 
-export function getPeriodLabel(intl, period) {
+export function getPeriodLabel(intl: IntlShape, period: PeriodValue): string {
   const messageId = getPeriodMessageId(period);
   if (!messageId) {
     return '';
   }
 
-  return intl.formatMessage({ id: messageId, defaultMessage: period });
+  return intl.formatMessage({ id: messageId, defaultMessage: period || '' });
 }
 
-export function PeriodBadge({ period }) {
+export function PeriodBadge({ period }: PeriodBadgeProps) {
   const intl = useIntl();
   const label = getPeriodLabel(intl, period);
 
