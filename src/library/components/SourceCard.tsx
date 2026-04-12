@@ -16,9 +16,10 @@ type SourceCardSource = {
 
 type SourceCardProps = {
   source: SourceCardSource;
+  showPeriodBadge?: boolean;
 };
 
-export default function SourceCard({ source }: SourceCardProps) {
+export default function SourceCard({ source, showPeriodBadge = true }: SourceCardProps) {
   const intl = useIntl();
 
   return (
@@ -38,7 +39,7 @@ export default function SourceCard({ source }: SourceCardProps) {
               {source.name}
             </Link>
           </Card.Title>
-          <PeriodBadge period={source.period} />
+          {showPeriodBadge && <PeriodBadge period={source.period} />}
         </div>
         <Card.Text className="text-muted flex-grow-1">
           {source.description || '-'}

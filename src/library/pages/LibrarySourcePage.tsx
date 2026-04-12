@@ -391,7 +391,7 @@ export default function LibrarySourcePage() {
   }
 
   const headerTitle = [
-    source.name,
+    'SOURCE',
     getClassificationLabel(intl, source.classification),
     getTypeLabel(intl, source.type),
   ].filter(Boolean).join(' \u2022 ');

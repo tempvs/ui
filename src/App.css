@@ -42,3 +42,13 @@ h1, h2, h3 {
   border-color: #d7c8b1 !important;
   box-shadow: 0 0 0 2px rgba(215, 200, 177, 0.22);
 }
+
+.library-source-filter .form-check-input {
+  border-color: #6f7479;
+  border-width: 2px;
+}
+
+.library-source-filter .form-check-input:focus {
+  border-color: #3f474f;
+  box-shadow: 0 0 0 0.15rem rgba(63, 71, 79, 0.18);
+}

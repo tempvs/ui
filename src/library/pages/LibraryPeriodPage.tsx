@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import PlusActionButton from '../../component/PlusActionButton';
-import SearchActionButton from '../../component/SearchActionButton';
 import Spinner from '../../component/Spinner';
 import { getErrorMessage } from '../../util/errors';
 import { createSource, findSources, LibrarySource } from '../libraryApi';
@@ -45,7 +44,7 @@ export default function LibraryPeriodPage() {
 
   const periodCode = (period || '').toUpperCase();
 
-  const searchSources = async () => {
+  const searchSources = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -70,13 +69,15 @@ export default function LibraryPeriodPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [periodCode, query, selectedClassifications, selectedTypes]);
 
   useEffect(() => {
-    searchSources();
-    // The period route change should reload with the current search draft, not run on every draft edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodCode]);
+    const timerId = window.setTimeout(() => {
+      searchSources();
+    }, 250);
+
+    return () => window.clearTimeout(timerId);
+  }, [searchSources]);
 
   const handleToggle = (
     value: string,
@@ -88,11 +89,6 @@ export default function LibraryPeriodPage() {
         ? selectedValues.filter(entry => entry !== value)
         : [...selectedValues, value]
     );
-  };
-
-  const handleSearchSubmit: React.FormEventHandler<HTMLFormElement> = event => {
-    event.preventDefault();
-    searchSources();
   };
 
   const handleCreateSource: React.FormEventHandler<HTMLFormElement> = async event => {
@@ -147,24 +143,13 @@ export default function LibraryPeriodPage() {
           <Card className="border-0 shadow-sm mb-4">
             <Card.Body>
               <Card.Title>Find sources</Card.Title>
-              <Form onSubmit={handleSearchSubmit}>
+              <Form className="library-source-filter" onSubmit={event => event.preventDefault()}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Search text</Form.Label>
-                  <div className="input-group">
-                    <Form.Control
-                      value={query}
-                      onChange={event => setQuery(event.target.value)}
-                      placeholder="Name or description"
-                    />
-                    <SearchActionButton
-                      title="Search sources"
-                      type="submit"
-                      className="rounded-0 rounded-end"
-                      borderColor="#ced4da"
-                      color="#495057"
-                      size="2.375rem"
-                    />
-                  </div>
+                  <Form.Control
+                    value={query}
+                    onChange={event => setQuery(event.target.value)}
+                    placeholder="Name or description"
+                  />
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Classification</Form.Label>
@@ -232,7 +217,7 @@ export default function LibraryPeriodPage() {
               <Row className="g-3">
                 {sources.map(source => (
                   <Col md={6} key={source.id}>
-                    <SourceCard source={source} />
+                    <SourceCard source={source} showPeriodBadge={false} />
                   </Col>
                 ))}
               </Row>
