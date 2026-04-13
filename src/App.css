@@ -92,6 +92,10 @@ h1, h2, h3 {
   transform: translateY(-2px);
 }
 
+.stash-item-pending-card {
+  min-height: 9rem;
+}
+
 .stash-heading-toggle {
   display: flex;
   flex: 1 1 20rem;
@@ -166,6 +170,47 @@ h1, h2, h3 {
 
 .stash-item-readonly-copy {
   max-width: 28rem;
+}
+
+.source-display-tile {
+  min-height: 13rem;
+}
+
+.stash-source-copy {
+  max-width: 26rem;
+}
+
+.source-card-body {
+  align-items: flex-start;
+  min-height: 10rem;
+}
+
+.source-card-image-link {
+  flex: 0 0 7rem;
+  height: 7rem;
+  overflow: hidden;
+  background-color: rgba(248, 250, 248, 0.9);
+  box-shadow: 0 0.18rem 0.65rem rgba(31, 38, 35, 0.1);
+}
+
+.source-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #f8faf8;
+  display: block;
+}
+
+@media (max-width: 575.98px) {
+  .source-card-body {
+    flex-direction: column;
+  }
+
+  .source-card-image-link {
+    flex-basis: auto;
+    width: 100%;
+    height: 9rem;
+  }
 }
 
 .stash-subheading {

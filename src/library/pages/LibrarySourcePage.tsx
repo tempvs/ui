@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -433,101 +433,95 @@ export default function LibrarySourcePage() {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Row className="g-4 align-items-start">
-        <Col lg={5}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body>
-              <Card.Title>Source details</Card.Title>
-              <EditableTextFieldRow
-                label="Name"
-                editable={canEditSource(userInfo)}
-                value={draftName}
-                onChange={event => {
-                  const value = event.target.value;
-                  setDraftName(value);
-                  scheduleFieldSave('name', value);
-                }}
-                onBlur={() => handleFieldBlur('name')}
-                readOnlyValue={source.name}
-                status={fieldStatuses.name}
-                className="mb-3"
-                savingTitle="Saving"
-                errorTitle="Save failed"
-              />
-              <EditableTextareaFieldRow
-                label="Description"
-                editable={canEditSource(userInfo)}
-                value={draftDescription}
-                onChange={event => {
-                  const value = event.target.value;
-                  setDraftDescription(value);
-                  scheduleFieldSave('description', value);
-                }}
-                onBlur={() => handleFieldBlur('description')}
-                readOnlyValue={source.description || '-'}
-                status={fieldStatuses.description}
-                className=""
-                savingTitle="Saving"
-                errorTitle="Save failed"
-              />
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col lg={7}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
-                <Card.Title className="mb-0">Images</Card.Title>
-                <div className="d-flex align-items-center gap-2">
-                  <div className="text-muted small">{images.length} image(s)</div>
-                  {canContribute(userInfo) && (
-                    <PlusActionButton
-                      title="Upload image"
-                      onClick={() => {
-                        setError(null);
-                        setShowUploadModal(true);
+      <div className="stash-shell p-3 p-lg-4">
+        <Row className="g-3">
+          <Col lg={12}>
+            <article className="stash-item-card source-display-tile p-3 position-relative">
+              <Row className="g-3">
+                <Col md={7}>
+                  <div className="stash-subheading">Source details</div>
+                  <div className="stash-source-copy">
+                    <EditableTextFieldRow
+                      label=""
+                      editable={canEditSource(userInfo)}
+                      value={draftName}
+                      onChange={event => {
+                        const value = event.target.value;
+                        setDraftName(value);
+                        scheduleFieldSave('name', value);
                       }}
+                      onBlur={() => handleFieldBlur('name')}
+                      readOnlyValue={source.name}
+                      status={fieldStatuses.name}
+                      className="mb-2"
+                      fieldMaxWidth="100%"
+                      savingTitle="Saving"
+                      errorTitle="Save failed"
                     />
-                  )}
-                </div>
-              </div>
+                    <EditableTextareaFieldRow
+                      label=""
+                      editable={canEditSource(userInfo)}
+                      value={draftDescription}
+                      onChange={event => {
+                        const value = event.target.value;
+                        setDraftDescription(value);
+                        scheduleFieldSave('description', value);
+                      }}
+                      onBlur={() => handleFieldBlur('description')}
+                      readOnlyValue={source.description || '-'}
+                      status={fieldStatuses.description}
+                      className=""
+                      fieldMaxWidth="100%"
+                      savingTitle="Saving"
+                      errorTitle="Save failed"
+                    />
+                  </div>
+                </Col>
+                <Col md={5}>
+                  <div className="stash-image-stack-panel">
+                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                      <div className="stash-subheading mb-0">Images</div>
+                      {canContribute(userInfo) && (
+                        <PlusActionButton
+                          title="Upload image"
+                          onClick={() => {
+                            setError(null);
+                            setShowUploadModal(true);
+                          }}
+                        />
+                      )}
+                    </div>
 
-              {canContribute(userInfo) && (
-                <>
-                  <Form.Control
-                    ref={replaceImageInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleReplaceImage}
-                    className="d-none"
-                  />
-                </>
-              )}
+                    {canContribute(userInfo) && (
+                      <Form.Control
+                        ref={replaceImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReplaceImage}
+                        className="d-none"
+                      />
+                    )}
 
-              {images.length === 0 && (
-                <Alert variant="light" className="border mb-0">No images uploaded for this source yet.</Alert>
-              )}
-
-              {images.length > 0 && (
-                <div className="mb-4">
                     <StackedImageGallery
                       images={images}
                       title={source.name || undefined}
                       emptyText="No images uploaded for this source yet."
+                      previewSize="compact"
                       editable={canEditSource(userInfo)}
                       onDeleteImage={handleDeleteImage}
                       onReplaceImage={handleOpenReplaceImagePicker}
                       imageDrafts={imageDrafts}
                       imageStatuses={imageStatuses}
                       onDescriptionChange={handleImageDescriptionChange}
-                    onDescriptionBlur={handleImageDescriptionBlur}
-                  />
-                </div>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+                      onDescriptionBlur={handleImageDescriptionBlur}
+                    />
+                  </div>
+                </Col>
+              </Row>
+            </article>
+          </Col>
+        </Row>
+      </div>
 
       {canContribute(userInfo) && (
         <Modal

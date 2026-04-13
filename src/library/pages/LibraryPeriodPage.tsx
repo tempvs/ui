@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PlusActionButton from '../../component/PlusActionButton';
 import Spinner from '../../component/Spinner';
 import { getErrorMessage } from '../../util/errors';
-import { createSource, findSources, LibrarySource } from '../libraryApi';
+import { createSource, findSources, getSourceImages, LibrarySource, LibrarySourceImage } from '../libraryApi';
 import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import SourceCard from '../components/SourceCard';
@@ -31,6 +31,7 @@ export default function LibraryPeriodPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [sources, setSources] = useState<LibrarySource[]>([]);
+  const [sourcePreviewImages, setSourcePreviewImages] = useState<Record<string | number, LibrarySourceImage | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [selectedClassifications, setSelectedClassifications] = useState<string[]>([]);
@@ -62,8 +63,23 @@ export default function LibraryPeriodPage() {
         throw new Error('Unable to load sources for this period.');
       }
 
-      setSources(Array.isArray(result.data) ? result.data : []);
+      const nextSources = Array.isArray(result.data) ? result.data : [];
+      setSources(nextSources);
+      setSourcePreviewImages({});
       setUserInfo(result.userInfo);
+
+      const previewEntries = await Promise.all(nextSources.map(async source => {
+        try {
+          const imageResult = await getSourceImages(source.id);
+          if (!imageResult.ok || !Array.isArray(imageResult.data)) {
+            return [source.id, null] as const;
+          }
+          return [source.id, imageResult.data[0] || null] as const;
+        } catch (previewError) {
+          return [source.id, null] as const;
+        }
+      }));
+      setSourcePreviewImages(Object.fromEntries(previewEntries));
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -217,7 +233,11 @@ export default function LibraryPeriodPage() {
               <Row className="g-3">
                 {sources.map(source => (
                   <Col md={6} key={source.id}>
-                    <SourceCard source={source} showPeriodBadge={false} />
+                    <SourceCard
+                      source={source}
+                      showPeriodBadge={false}
+                      firstImage={sourcePreviewImages[source.id] || null}
+                    />
                   </Col>
                 ))}
               </Row>

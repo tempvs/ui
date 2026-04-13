@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
-import { FaChevronDown, FaChevronRight, FaLink, FaTrashAlt, FaUnlink } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaLink, FaUnlink } from 'react-icons/fa';
 
+import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import EditableTextFieldRow from '../component/EditableTextFieldRow';
 import EditableTextareaFieldRow from '../component/EditableTextareaFieldRow';
-import IconActionButton from '../component/IconActionButton';
 import PlusActionButton from '../component/PlusActionButton';
 import SearchActionButton from '../component/SearchActionButton';
 import Spinner from '../component/Spinner';
@@ -17,6 +17,7 @@ import { clearAllTimers, clearTimer } from '../util/timers';
 import {
   createStashGroup,
   createStashItem,
+  deleteStashGroup,
   deleteStashItemImage,
   deleteStashItem,
   getGroupItems,
@@ -54,7 +55,6 @@ const emptyGroupForm = { name: '', description: '' };
 const ChevronDownIcon = FaChevronDown as React.ComponentType;
 const ChevronRightIcon = FaChevronRight as React.ComponentType;
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
-const TrashIcon = FaTrashAlt as React.ComponentType;
 const UnlinkIcon = FaUnlink as React.ComponentType;
 
 type FieldName = keyof DraftFields;
@@ -66,6 +66,12 @@ const emptyItemForm = (classification?: string | null): DraftFields & { classifi
   description: '',
   classification: classification || 'OTHER',
 });
+
+function wait(milliseconds: number) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
 
 function buildSourceLookupMap(sources: LibrarySourceSummary[]): IdRecord<LibrarySourceSummary> {
   return sources.reduce((accumulator, source) => ({
@@ -93,6 +99,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(null);
   const [itemCreateForm, setItemCreateForm] = useState(emptyItemForm(profile?.period));
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
+  const [itemCreatePendingByGroup, setItemCreatePendingByGroup] = useState<IdRecord<boolean>>({});
   const [sourceDetails, setSourceDetails] = useState<IdRecord<LibrarySourceSummary>>({});
   const [sourceSearch, setSourceSearch] = useState<IdRecord<SourceSearchState>>({});
   const [itemImagesByItem, setItemImagesByItem] = useState<IdRecord<StashItemImage[]>>({});
@@ -116,6 +123,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setGroupCreateVisible(false);
     setItemCreateTarget(null);
     setItemCreateForm(emptyItemForm(profile?.period));
+    setItemCreatePendingByGroup({});
     setItemImageUploadTarget(null);
     setItemImageDescription('');
     setSourceSearch({});
@@ -390,32 +398,33 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
       return;
     }
 
+    if (!profile) {
+      return;
+    }
+
+    const targetGroupId = itemCreateTarget.id;
+    const payload = {
+      ...itemCreateForm,
+      period: profile.period,
+    };
+
     setItemCreateSubmitting(true);
     setFeedback(null);
+    setItemCreateTarget(null);
+    setItemCreateForm(emptyItemForm(profile?.period));
+    setItemCreatePendingByGroup(prevState => ({ ...prevState, [targetGroupId]: true }));
 
     try {
-      if (!profile) {
-        return;
-      }
-
-      await createStashItem(itemCreateTarget.id, {
-        ...itemCreateForm,
-        period: profile.period,
-      });
-      setItemCreateTarget(null);
-      setItemCreateForm(emptyItemForm(profile?.period));
-      await loadItems(itemCreateTarget.id);
-      await loadStash();
-      setFeedback({
-        variant: 'success',
-        text: t('profile.stash.itemCreateSuccess', 'Item added.'),
-      });
+      await createStashItem(targetGroupId, payload);
+      await wait(1000);
+      await loadItems(targetGroupId);
     } catch (error) {
       setFeedback({
         variant: 'danger',
         text: t('profile.stash.itemCreateFailed', 'Unable to add this item.'),
       });
     } finally {
+      setItemCreatePendingByGroup(prevState => ({ ...prevState, [targetGroupId]: false }));
       setItemCreateSubmitting(false);
     }
   }
@@ -522,14 +531,27 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
         delete nextState[item.id];
         return nextState;
       });
-      setFeedback({
-        variant: 'success',
-        text: t('profile.stash.itemDeleteSuccess', 'Item deleted.'),
-      });
     } catch (error) {
       setFeedback({
         variant: 'danger',
         text: t('profile.stash.itemDeleteFailed', 'Unable to delete this item.'),
+      });
+    }
+  }
+
+  async function handleDeleteGroup(group: StashGroup) {
+    try {
+      await deleteStashGroup(group.id);
+      await loadStash();
+      setGroupExpanded(prevState => {
+        const nextState = { ...prevState };
+        delete nextState[group.id];
+        return nextState;
+      });
+    } catch (error) {
+      setFeedback({
+        variant: 'danger',
+        text: t('profile.stash.groupDeleteFailed', 'Unable to delete this collection.'),
       });
     }
   }
@@ -866,6 +888,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
         <div className="d-grid gap-4">
           {groups.map(group => {
             const items = itemsByGroup[group.id] || [];
+            const isItemCreatePending = itemCreatePendingByGroup[group.id] || false;
             const searchStateByItem = sourceSearch;
             const loadedGroupImageCount = items.reduce(
               (count, item) => count + ((itemImagesByItem[item.id] || []).length),
@@ -910,10 +933,23 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                     </span>
                   </button>
                   {isEditable && (
-                    <PlusActionButton
-                      title={t('profile.stash.itemCreate', 'Add item')}
-                      onClick={() => openCreateItem(group)}
-                    />
+                    <div className="d-flex align-items-center gap-2">
+                      <PlusActionButton
+                        title={t('profile.stash.itemCreate', 'Add item')}
+                        onClick={() => openCreateItem(group)}
+                      />
+                      <ConfirmingTrashButton
+                        title={t('profile.stash.groupDelete', 'Delete collection')}
+                        confirmTitle={t('profile.stash.groupDelete', 'Delete collection')}
+                        confirmMessage={t('profile.stash.groupDeleteConfirm', 'Delete this collection and all of its items?')}
+                        onConfirm={() => handleDeleteGroup(group)}
+                        borderColor="#c77d7d"
+                        color="#8e2323"
+                        backgroundColor="#fff"
+                        size="1.9rem"
+                        fontSize="0.9rem"
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -953,8 +989,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                       {t('profile.stash.itemsTitle', 'Items')}
                     </div>
 
-                    {itemsLoading[group.id] && <Spinner size="sm" />}
-                    {!itemsLoading[group.id] && !items.length && (
+                    {itemsLoading[group.id] && !isItemCreatePending && <Spinner size="sm" />}
+                    {!itemsLoading[group.id] && !isItemCreatePending && !items.length && (
                       <div className="py-4 px-3 text-center" style={{ backgroundColor: '#fffdf8', border: '1px dashed #e3d8c6' }}>
                         <div className="small fw-semibold mb-1">
                           {t('profile.stash.itemsEmptyTitle', 'No items yet')}
@@ -975,6 +1011,16 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                     )}
 
                     <Row className="g-3">
+                      {isItemCreatePending && (
+                        <Col lg={6}>
+                          <article className="stash-item-card stash-item-pending-card p-3 d-flex align-items-center justify-content-center">
+                            <div className="d-flex align-items-center gap-2 small text-muted">
+                              <Spinner size="sm" />
+                              <span>{t('profile.stash.itemAdding', 'Adding item...')}</span>
+                            </div>
+                          </article>
+                        </Col>
+                      )}
                       {items.map(item => {
                         const sourceState = searchStateByItem[item.id] || {};
                         const hasLoadedImages = Object.prototype.hasOwnProperty.call(itemImagesByItem, item.id);
@@ -990,17 +1036,17 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                             <article className="stash-item-card p-3 position-relative">
                             {isEditable && (
                               <div className="position-absolute top-0 end-0 mt-2 me-2">
-                                <IconActionButton
+                                <ConfirmingTrashButton
                                   title={t('profile.stash.delete', 'Delete')}
-                                  onClick={() => handleDeleteItem(item)}
+                                  confirmTitle={t('profile.stash.itemDelete', 'Delete item')}
+                                  confirmMessage={t('profile.stash.itemDeleteConfirm', 'Delete this item?')}
+                                  onConfirm={() => handleDeleteItem(item)}
                                   borderColor="#c77d7d"
                                   color="#8e2323"
                                   backgroundColor="#fff"
                                   size="1.9rem"
                                   fontSize="0.9rem"
-                                >
-                                  <TrashIcon />
-                                </IconActionButton>
+                                />
                               </div>
                             )}
 
@@ -1100,8 +1146,8 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     </div>
                                   </Col>
                                   <Col xs={12}>
-                                <div className="stash-subheading">
-                                  {t('profile.stash.sourcesTitle', 'Linked sources')}
+                                <div className="stash-subheading text-start">
+                                  {t('profile.stash.sourcesTitle', 'Sources')}
                                 </div>
 
                                 {(item.sources || []).length === 0 && (
@@ -1161,7 +1207,9 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                         {(sourceState.results || []).map(source => (
                                           <div key={source.id} className="d-flex align-items-center justify-content-between gap-2">
                                             <div className="small">
-                                              <div className="fw-semibold">{source.name}</div>
+                                              <Link to={`/library/source/${source.id}`} className="fw-semibold text-decoration-none">
+                                                {source.name}
+                                              </Link>
                                               <div className="text-muted">{getTypeLabel(intl, source.type)}</div>
                                             </div>
                                             <Button

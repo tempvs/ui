@@ -14,7 +14,8 @@ const PlusIcon = FaPlus as React.ComponentType<PlusIconProps>;
 export default function PlusActionButton({
   title,
   onClick,
-  size = '1.6rem',
+  size = '1.9rem',
+  fontSize = '0.9rem',
   borderColor = '#000',
   color = '#000',
   backgroundColor = '#fff',
@@ -27,6 +28,7 @@ export default function PlusActionButton({
       onClick={onClick}
       title={title}
       size={size}
+      fontSize={fontSize}
       borderColor={borderColor}
       color={color}
       backgroundColor={backgroundColor}

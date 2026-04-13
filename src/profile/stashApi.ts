@@ -85,6 +85,10 @@ export function updateStashGroupDescription(groupId: Id, description: string) {
   });
 }
 
+export function deleteStashGroup(groupId: Id) {
+  return requestJson<unknown>(`/api/stash/group/${groupId}`, { method: 'DELETE' });
+}
+
 export function createStashItem(groupId: Id, payload: JsonRecord) {
   return requestJson<StashItem>(`/api/stash/group/${groupId}/item`, {
     method: 'POST',

@@ -101,7 +101,8 @@ export default function StackedImageGallery({
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover',
+                    objectFit: 'contain',
+                    backgroundColor: '#f8faf8',
                     display: 'block',
                   }}
                 />
