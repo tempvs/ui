@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
-import { Link } from 'react-router-dom';
-import { FaLink, FaUnlink } from 'react-icons/fa';
 
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
+import EditableDescriptionField from '../component/EditableDescriptionField';
 import InlineEditableText from '../component/InlineEditableText';
-import PlusActionButton from '../component/PlusActionButton';
-import SearchActionButton from '../component/SearchActionButton';
 import Spinner from '../component/Spinner';
-import StackedImageGallery from '../component/StackedImageGallery';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { readFileAsBase64 } from '../util/fileUtils';
 import { clearAllTimers, clearTimer } from '../util/timers';
+import CollectionTabs from './components/stash/CollectionTabs';
+import LinkedSourcesPanel from './components/stash/LinkedSourcesPanel';
+import StashCollectionHeader from './components/stash/StashCollectionHeader';
+import StashItemMedia from './components/stash/StashItemMedia';
 import {
   createStashGroup,
   createStashItem,
@@ -35,7 +35,7 @@ import {
 } from './stashApi';
 import {
   DraftFields,
-  Feedback,
+  FieldName,
   Id,
   LibrarySourceSummary,
   ReplacingItemImage,
@@ -51,10 +51,7 @@ import { SaveStatus } from '../component/EditableFieldRow';
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 
 const emptyGroupForm = { name: '', description: '' };
-const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
-const UnlinkIcon = FaUnlink as React.ComponentType;
 
-type FieldName = keyof DraftFields;
 type FieldStatusMap = Partial<Record<FieldName, SaveStatus>>;
 type IdRecord<T> = Record<Id, T>;
 
@@ -79,9 +76,9 @@ function buildSourceLookupMap(sources: LibrarySourceSummary[]): IdRecord<Library
 
 export default function StashPanel({ profile, isEditable, t, getPeriodLabel, embedded = true }: StashPanelProps) {
   const intl = useIntl();
+  const setFeedback = (_feedback: unknown) => {};
   const [stash, setStash] = useState<Stash | null>(null);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [groupSubmitting, setGroupSubmitting] = useState(false);
   const [groupDrafts, setGroupDrafts] = useState<IdRecord<DraftFields>>({});
@@ -799,7 +796,6 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     <div className={embedded ? 'mt-4 pt-2' : ''}>
       <div className="stash-shell p-3 p-lg-4">
 
-        {feedback && <Alert variant={feedback.variant} className="py-2">{feedback.text}</Alert>}
         {loading && <Spinner size="sm" />}
 
         {!loading && (
@@ -849,42 +845,20 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
           </div>
         )}
 
-        {!loading && groups.length > 0 && (
-          <div className="stash-collection-tabs mb-3" role="tablist" aria-label={t('profile.stash.collectionsTitle', 'Collections')}>
-            {groups.map(group => {
-              const items = itemsByGroup[group.id] || [];
-              const sourceCount = items.reduce((count, item) => count + (item.sources || []).length, 0);
-              const isActive = group.id === activeGroup?.id;
-
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`stash-collection-tab ${isActive ? 'stash-collection-tab-active' : ''}`.trim()}
-                  onClick={() => setActiveGroupId(group.id)}
-                >
-                  <span className="stash-collection-tab-name">{groupDrafts[group.id]?.name || group.name}</span>
-                  <span className="stash-collection-tab-meta">
-                    {items.length} {t('profile.stash.itemsCount', 'item(s)')} - {sourceCount} {t('profile.stash.sourcesCount', 'source(s)')}
-                  </span>
-                </button>
-              );
-            })}
-            {isEditable && (
-              <div className="stash-collection-tab-add">
-                <PlusActionButton
-                  title={t('profile.stash.groupCreate', 'Create collection')}
-                  onClick={() => {
-                    setFeedback(null);
-                    setGroupForm(emptyGroupForm);
-                    setGroupCreateVisible(true);
-                  }}
-                />
-              </div>
-            )}
-          </div>
+        {!loading && (
+          <CollectionTabs
+            groups={groups}
+            activeGroupId={activeGroup?.id}
+            groupDrafts={groupDrafts}
+            itemsByGroup={itemsByGroup}
+            editable={isEditable}
+            t={t}
+            onSelectGroup={setActiveGroupId}
+            onCreateGroup={() => {
+              setGroupForm(emptyGroupForm);
+              setGroupCreateVisible(true);
+            }}
+          />
         )}
 
         <div className="d-grid gap-4">
@@ -902,67 +876,24 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
               `${items.length} ${t('profile.stash.itemsCount', 'item(s)')}`,
               `${groupSourceCount} ${t('profile.stash.sourcesCount', 'source(s)')}`,
               hasLoadedGroupImages ? `${loadedGroupImageCount} ${t('profile.stash.imagesCount', 'image(s)')}` : null,
-            ].filter(Boolean);
-            const groupDescription = groupDrafts[group.id]?.description || group.description || '';
-            const groupDescriptionMissing = !groupDescription;
-            const groupDescriptionDisplay = groupDescription || t('profile.stash.noDescription', 'No description');
-
+            ].filter((value): value is string => Boolean(value));
             return (
               <section
                 key={group.id}
                 className="stash-collection-section stash-collection-shelf p-3 p-lg-4"
               >
-                <div className="stash-collection-header d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-                  <div className="stash-collection-heading">
-                    <span className="d-block stash-collection-copy" style={{ minWidth: 0 }}>
-                      <InlineEditableText
-                        editable={isEditable}
-                        value={groupDrafts[group.id]?.name || ''}
-                        readOnlyValue={group.name}
-                        onChange={event => setGroupField(group.id, 'name', event.target.value)}
-                        onBlur={() => handleSaveGroupField(group, 'name')}
-                        status={groupStatuses[group.id]?.name}
-                        textClassName="stash-collection-title"
-                      />
-                      <InlineEditableText
-                        editable={isEditable}
-                        value={groupDrafts[group.id]?.description || ''}
-                        readOnlyValue={groupDescriptionDisplay}
-                        onChange={event => setGroupField(group.id, 'description', event.target.value)}
-                        onBlur={() => handleSaveGroupField(group, 'description')}
-                        status={groupStatuses[group.id]?.description}
-                        textClassName="stash-collection-description"
-                        placeholderDisplay={groupDescriptionMissing}
-                        placeholder={t('profile.stash.noDescription', 'No description')}
-                        className="mt-1"
-                      />
-                      <span className="stash-meta-row mt-2">
-                        {groupMetadata.map(value => (
-                          <span key={value} className="stash-meta-chip">{value}</span>
-                        ))}
-                      </span>
-                    </span>
-                  </div>
-                  {isEditable && (
-                    <div className="d-flex align-items-center gap-2">
-                      <PlusActionButton
-                        title={t('profile.stash.itemCreate', 'Add item')}
-                        onClick={() => openCreateItem(group)}
-                      />
-                      <ConfirmingTrashButton
-                        title={t('profile.stash.groupDelete', 'Delete collection')}
-                        confirmTitle={t('profile.stash.groupDelete', 'Delete collection')}
-                        confirmMessage={t('profile.stash.groupDeleteConfirm', 'Delete this collection and all of its items?')}
-                        onConfirm={() => handleDeleteGroup(group)}
-                        borderColor="#c77d7d"
-                        color="#8e2323"
-                        backgroundColor="#fff"
-                        size="1.9rem"
-                        fontSize="0.9rem"
-                      />
-                    </div>
-                  )}
-                </div>
+                <StashCollectionHeader
+                  group={group}
+                  draft={groupDrafts[group.id]}
+                  statuses={groupStatuses[group.id]}
+                  metadata={groupMetadata}
+                  editable={isEditable}
+                  t={t}
+                  onFieldChange={(field, value) => setGroupField(group.id, field, value)}
+                  onFieldBlur={field => handleSaveGroupField(group, field)}
+                  onAddItem={() => openCreateItem(group)}
+                  onDelete={() => handleDeleteGroup(group)}
+                />
 
                 <div>
                     {itemsLoading[group.id] && !isItemCreatePending && <Spinner size="sm" />}
@@ -1030,56 +961,23 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                               </div>
                             )}
 
-                            <div className="stash-item-media">
-                              {isEditable && (
-                                <div className="stash-item-media-action">
-                                  <PlusActionButton
-                                    title={t('profile.stash.itemImageUpload', 'Upload image')}
-                                    onClick={() => {
-                                      setFeedback(null);
-                                      setItemImageDescription('');
-                                      setItemImageUploadTarget(item);
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              {itemImagesLoading[item.id] && (
-                                <div className="stash-item-media-empty">
-                                  <Spinner size="sm" />
-                                </div>
-                              )}
-                              {!itemImagesLoading[item.id] && itemImages.length > 0 && (
-                                <StackedImageGallery
-                                  images={itemImages}
-                                  title={item.name || undefined}
-                                  emptyText={t('profile.stash.imagesEmpty', 'No images uploaded for this item yet.')}
-                                  previewSize="inventory"
-                                  editable={isEditable}
-                                  onDeleteImage={isEditable ? imageId => handleDeleteItemImage(item.id, imageId) : undefined}
-                                  onReplaceImage={isEditable ? image => handleOpenReplaceItemImagePicker(item, image) : undefined}
-                                  imageDrafts={itemImageDrafts}
-                                  imageStatuses={itemImageStatuses}
-                                  onDescriptionChange={(imageId, value) => handleItemImageDescriptionChange(item.id, imageId, value)}
-                                  onDescriptionBlur={imageId => handleItemImageDescriptionBlur(item.id, imageId)}
-                                />
-                              )}
-                              {!itemImagesLoading[item.id] && itemImages.length === 0 && (
-                                <button
-                                  type="button"
-                                  className="stash-item-media-empty"
-                                  onClick={() => {
-                                    if (isEditable) {
-                                      setFeedback(null);
-                                      setItemImageDescription('');
-                                      setItemImageUploadTarget(item);
-                                    }
-                                  }}
-                                  disabled={!isEditable}
-                                >
-                                  {t('profile.stash.imagesEmptyShort', 'No images')}
-                                </button>
-                              )}
-                            </div>
+                            <StashItemMedia
+                              item={item}
+                              images={itemImages}
+                              loading={itemImagesLoading[item.id] || false}
+                              editable={isEditable}
+                              imageDrafts={itemImageDrafts}
+                              imageStatuses={itemImageStatuses}
+                              t={t}
+                              onUpload={() => {
+                                setItemImageDescription('');
+                                setItemImageUploadTarget(item);
+                              }}
+                              onDeleteImage={imageId => handleDeleteItemImage(item.id, imageId)}
+                              onReplaceImage={image => handleOpenReplaceItemImagePicker(item, image)}
+                              onDescriptionChange={(imageId, value) => handleItemImageDescriptionChange(item.id, imageId, value)}
+                              onDescriptionBlur={imageId => handleItemImageDescriptionBlur(item.id, imageId)}
+                            />
 
                             <div className="stash-item-content stash-inventory-content">
                               <Row className="g-3 align-items-start">
@@ -1093,9 +991,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       onBlur={() => handleSaveItemField(item, 'name')}
                                       status={itemStatuses[item.id]?.name}
                                       textClassName="stash-item-title"
+                                      popoverValue={item.name}
+                                      truncateSingleLine
                                     />
                                     <div className="stash-item-description-slot">
-                                      <InlineEditableText
+                                      <EditableDescriptionField
                                         editable={isEditable}
                                         value={itemDrafts[item.id]?.description || ''}
                                         readOnlyValue={itemDescriptionDisplay}
@@ -1105,9 +1005,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                         textClassName="stash-item-description"
                                         placeholderDisplay={itemDescriptionMissing}
                                         placeholder={t('profile.stash.noDescription', 'No description')}
-                                        popoverValue={itemDescriptionMissing ? undefined : itemDescriptionDisplay}
-                                        multiline
-                                        multilineRows={4}
+                                        rows={4}
                                         className="mt-1"
                                       />
                                     </div>
@@ -1119,104 +1017,26 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                   </div>
                                 </Col>
                                 <Col xs={12}>
-                                      <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                        <div className="stash-subheading mb-0 text-start">
-                                          {t('profile.stash.sourcesTitle', 'Sources')}
-                                        </div>
-                                        {isEditable && (
-                                          <Button
-                                            type="button"
-                                            variant="link"
-                                            className="stash-text-action"
-                                            onClick={() => toggleSourceSearchVisible(item.id)}
-                                          >
-                                            {isSourceSearchVisible ? t('profile.action.done', 'Done') : t('profile.stash.sourceAdd', 'Add source')}
-                                          </Button>
-                                        )}
-                                      </div>
-
-                                      {(item.sources || []).length === 0 && (
-                                        <div className="small text-muted mb-2">
-                                          {t('profile.stash.sourcesEmpty', 'No supporting sources linked yet.')}
-                                        </div>
-                                      )}
-
-                                      <div className="stash-source-chip-row">
-                                        {(item.sources || []).map(sourceId => {
-                                          const source = sourceDetails[sourceId];
-                                          return (
-                                            <span key={sourceId} className="stash-source-chip">
-                                              {source ? (
-                                                <Link to={`/library/source/${sourceId}`} className="text-decoration-none">
-                                                  {source.name}
-                                                </Link>
-                                              ) : (
-                                                <span className="text-muted">#{sourceId}</span>
-                                              )}
-                                              {isEditable && (
-                                                <button
-                                                  type="button"
-                                                  className="stash-source-chip-remove"
-                                                  onClick={() => handleUnlinkSource(item, sourceId)}
-                                                  aria-label={t('profile.stash.sourceUnlink', 'Unlink source')}
-                                                >
-                                                  <UnlinkIcon />
-                                                </button>
-                                              )}
-                                            </span>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {isEditable && isSourceSearchVisible && (
-                                        <div className="stash-source-search-panel mt-3">
-                                          <div className="input-group input-group-sm mb-2">
-                                            <Form.Control
-                                              value={sourceState.query || ''}
-                                              onChange={event => setSourceSearch(prevState => ({
-                                                ...prevState,
-                                                [item.id]: {
-                                                  ...(prevState[item.id] || {}),
-                                                  query: event.target.value,
-                                                },
-                                              }))}
-                                              placeholder={t('profile.stash.sourceSearchPlaceholder', 'Find matching library sources')}
-                                            />
-                                            <SearchActionButton
-                                              title={t('profile.stash.search', 'Search')}
-                                              onClick={() => handleSearchSources(item)}
-                                              className="rounded-0 rounded-end"
-                                              borderColor="#ced4da"
-                                              color="#495057"
-                                            />
-                                          </div>
-                                          {sourceState.error && <div className="small text-danger mb-2">{sourceState.error}</div>}
-                                          {sourceState.loading && <Spinner size="sm" />}
-                                          {(sourceState.results || []).length > 0 && (
-                                            <div className="d-grid gap-2">
-                                              {(sourceState.results || []).map(source => (
-                                                <div key={source.id} className="stash-source-result">
-                                                  <div className="small">
-                                                    <Link to={`/library/source/${source.id}`} className="fw-semibold text-decoration-none">
-                                                      {source.name}
-                                                    </Link>
-                                                    <div className="text-muted">{getTypeLabel(intl, source.type)}</div>
-                                                  </div>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline-secondary"
-                                                    disabled={(item.sources || []).includes(source.id)}
-                                                    onClick={() => handleLinkSource(item, source.id)}
-                                                  >
-                                                    <LinkIcon className="me-2" />
-                                                    {t('profile.stash.link', 'Link')}
-                                                  </Button>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
+                                  <LinkedSourcesPanel
+                                    item={item}
+                                    editable={isEditable}
+                                    visible={isSourceSearchVisible}
+                                    sourceDetails={sourceDetails}
+                                    sourceState={sourceState}
+                                    t={t}
+                                    getTypeLabel={sourceType => getTypeLabel(intl, sourceType)}
+                                    onToggleSearch={() => toggleSourceSearchVisible(item.id)}
+                                    onQueryChange={value => setSourceSearch(prevState => ({
+                                      ...prevState,
+                                      [item.id]: {
+                                        ...(prevState[item.id] || {}),
+                                        query: value,
+                                      },
+                                    }))}
+                                    onSearch={() => handleSearchSources(item)}
+                                    onLinkSource={sourceId => handleLinkSource(item, sourceId)}
+                                    onUnlinkSource={sourceId => handleUnlinkSource(item, sourceId)}
+                                  />
                                 </Col>
                               </Row>
                             </div>

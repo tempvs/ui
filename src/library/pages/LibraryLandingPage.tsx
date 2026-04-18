@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Col, OverlayTrigger, Row } from 'react-bootstrap';
+import { Button, Col, OverlayTrigger, Row } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 import { Link } from 'react-router-dom';
 
@@ -107,7 +107,7 @@ export default function LibraryLandingPage() {
         variant="landing"
         middleContent={accessContent}
       />
-      {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+      {error && <div className="tempvs-plain-message text-danger mt-3">{error}</div>}
       <Row className="g-4 align-items-start">
         <Col lg={12}>
           <div className="d-flex flex-column gap-3">

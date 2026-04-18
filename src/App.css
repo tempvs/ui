@@ -65,6 +65,13 @@ h1, h2, h3 {
   margin-bottom: 0.55rem;
 }
 
+.tempvs-plain-message {
+  margin: 0.65rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
 .stash-shell {
   background:
     linear-gradient(180deg, rgba(248, 250, 248, 0.95) 0%, rgba(255, 254, 250, 0.95) 100%);
@@ -424,12 +431,35 @@ button.stash-item-media-empty:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  max-width: 100%;
   min-height: 1.7rem;
   padding: 0.2rem 0.55rem;
   background-color: rgba(109, 125, 140, 0.1);
   color: #343f48;
   font-size: 0.84rem;
   font-weight: 600;
+}
+
+.stash-source-name,
+.stash-source-result-name,
+.inline-editable-truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-source-name {
+  max-width: min(18rem, 100%);
+}
+
+.stash-source-result-copy {
+  min-width: 0;
+  max-width: min(20rem, 100%);
+}
+
+.stash-source-result-name {
+  max-width: 100%;
 }
 
 .stash-source-chip-remove {
@@ -507,6 +537,11 @@ button.stash-item-media-empty:disabled {
 .inline-editable-readonly .inline-editable-input.form-control,
 .inline-editable-readonly .inline-editable-input.form-select {
   pointer-events: none;
+}
+
+.inline-editable-readonly .inline-editable-input.form-select {
+  --bs-form-select-bg-img: none;
+  background-image: none;
 }
 
 .inline-editable-active .inline-editable-input.form-control,

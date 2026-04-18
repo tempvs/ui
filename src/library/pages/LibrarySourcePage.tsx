@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import IconActionButton from '../../component/IconActionButton';
+import EditableDescriptionField from '../../component/EditableDescriptionField';
 import InlineEditableText from '../../component/InlineEditableText';
 import PlusActionButton from '../../component/PlusActionButton';
 import StackedImageGallery from '../../component/StackedImageGallery';
@@ -384,7 +385,7 @@ export default function LibrarySourcePage() {
   if (!source) {
     return (
         <div className="px-4 px-xl-5 pb-4">
-        <Alert variant="danger">Source not found.</Alert>
+        <div className="tempvs-plain-message text-danger">Source not found.</div>
       </div>
     );
   }
@@ -433,7 +434,7 @@ export default function LibrarySourcePage() {
         </div>
       )}
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
 
       <div className="stash-shell p-3 p-lg-4">
         <Row className="g-3">
@@ -455,10 +456,12 @@ export default function LibrarySourcePage() {
                       readOnlyValue={source.name}
                       status={fieldStatuses.name}
                       textClassName="stash-item-title"
+                      popoverValue={source.name}
+                      truncateSingleLine
                       savingTitle="Saving"
                       errorTitle="Save failed"
                     />
-                    <InlineEditableText
+                    <EditableDescriptionField
                       editable={canEditSource(userInfo)}
                       value={draftDescription}
                       onValueChange={value => {
@@ -472,9 +475,7 @@ export default function LibrarySourcePage() {
                       textClassName="stash-item-description"
                       placeholderDisplay={sourceDescriptionMissing}
                       placeholder="No description"
-                      popoverValue={sourceDescriptionMissing ? undefined : sourceDescriptionDisplay}
-                      multiline
-                      multilineRows={5}
+                      rows={5}
                       savingTitle="Saving"
                       errorTitle="Save failed"
                     />

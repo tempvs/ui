@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
+import { Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -152,7 +152,7 @@ export default function LibraryPeriodPage() {
         </p>
       </div>
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
 
       <Row className="g-4 align-items-start">
         <Col lg={4}>
@@ -228,7 +228,7 @@ export default function LibraryPeriodPage() {
                 </div>
               </div>
               {sources.length === 0 && (
-                <Alert variant="light" className="border">No sources matched the current filters.</Alert>
+                <div className="tempvs-plain-message text-muted">No sources matched the current filters.</div>
               )}
               <Row className="g-3">
                 {sources.map(source => (

@@ -20,6 +20,7 @@ type InlineEditableTextProps = {
   textClassName?: string;
   placeholderDisplay?: boolean;
   popoverValue?: React.ReactNode;
+  truncateSingleLine?: boolean;
   multiline?: boolean;
   multilineRows?: number;
   savingTitle?: string;
@@ -41,6 +42,7 @@ export default function InlineEditableText({
   textClassName = '',
   placeholderDisplay = false,
   popoverValue,
+  truncateSingleLine = false,
   multiline = false,
   multilineRows = 3,
   savingTitle = 'Saving',
@@ -56,9 +58,12 @@ export default function InlineEditableText({
   const controlValue = editing ? value : (value || readOnlyDisplayValue);
   const isTruncated = useIsTruncated(controlRef, controlValue);
   const isReadOnlyTruncated = useIsTruncated(readOnlyRef, readOnlyValue);
-  const controlClassName = `inline-editable-input ${multiline ? 'inline-editable-multiline' : ''} ${textClassName} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim();
-  const shouldShowMultilinePopover = multiline && Boolean(popoverValue) && !editing;
-  const shouldShowReadOnlyMultilinePopover = multiline && Boolean(popoverValue);
+  const controlClassName = `inline-editable-input ${multiline ? 'inline-editable-multiline' : ''} ${truncateSingleLine && !editing ? 'inline-editable-truncate' : ''} ${textClassName} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim();
+  const shouldShowLocalPopover = Boolean(popoverValue) && !editing && (
+    (multiline && isTruncated)
+    || (truncateSingleLine && isTruncated)
+  );
+  const shouldShowReadOnlyMultilinePopover = multiline && Boolean(popoverValue) && isReadOnlyTruncated;
   const popoverConfig = {
     modifiers: [
       {
@@ -125,13 +130,13 @@ export default function InlineEditableText({
     const content = (
       <div
         ref={readOnlyRef}
-        className={`${textClassName} ${multiline ? 'inline-editable-multiline inline-editable-readonly-multiline' : ''} ${placeholderDisplay ? 'description-placeholder' : ''} text-start`.trim()}
+        className={`${textClassName} ${multiline ? 'inline-editable-multiline inline-editable-readonly-multiline' : ''} ${truncateSingleLine ? 'inline-editable-truncate' : ''} ${placeholderDisplay ? 'description-placeholder' : ''} text-start`.trim()}
       >
         {readOnlyValue}
       </div>
     );
 
-    if (shouldShowReadOnlyMultilinePopover) {
+    if (shouldShowReadOnlyMultilinePopover || (truncateSingleLine && popoverValue && isReadOnlyTruncated)) {
       return (
         <span className="inline-editable-popover-anchor">
           {content}
@@ -165,12 +170,12 @@ export default function InlineEditableText({
       }}
     >
       {multiline ? (
-        shouldShowMultilinePopover ? (
+        shouldShowLocalPopover ? (
           <span className="inline-editable-popover-anchor">
             <div
               ref={controlRef as React.RefObject<HTMLDivElement>}
               role="textbox"
-              aria-multiline="true"
+              aria-multiline={multiline}
               contentEditable={false}
               suppressContentEditableWarning
               tabIndex={0}
@@ -201,6 +206,24 @@ export default function InlineEditableText({
           {String(controlValue ?? '')}
         </div>
         )
+      ) : truncateSingleLine && !editing ? (
+        <span className="inline-editable-popover-anchor">
+          <Form.Control
+            ref={controlRef as React.RefObject<HTMLInputElement>}
+            type="text"
+            readOnly
+            className={controlClassName}
+            value={controlValue ?? ''}
+            onChange={onChange}
+            onBlur={handleInputBlur}
+            placeholder={placeholder}
+          />
+          {popoverValue && isTruncated && (
+            <span className="inline-editable-description-popover" role="tooltip">
+              {popoverValue}
+            </span>
+          )}
+        </span>
       ) : (
         <Form.Control
           ref={controlRef as React.RefObject<HTMLInputElement>}
@@ -228,7 +251,7 @@ export default function InlineEditableText({
 
   return (
     <div className={`inline-editable-text ${className}`.trim()}>
-      {!editing && !multiline && popoverValue && isTruncated ? (
+      {!editing && !multiline && !truncateSingleLine && popoverValue && isTruncated ? (
         <OverlayTrigger
           trigger={['hover', 'focus']}
           placement="top"

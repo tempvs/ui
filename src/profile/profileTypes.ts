@@ -104,6 +104,8 @@ export type DraftFields = {
   description: string;
 };
 
+export type FieldName = keyof DraftFields;
+
 export type StashGroup = {
   id: Id;
   name?: string | null;

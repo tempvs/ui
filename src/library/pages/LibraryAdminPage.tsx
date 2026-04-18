@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card } from 'react-bootstrap';
+import { Button, Card } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import SectionBreadcrumb from '../../component/SectionBreadcrumb';
@@ -69,12 +69,12 @@ export default function LibraryAdminPage() {
         )}
       />
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {loading && <Spinner />}
       {!loading && (
         <div className="d-flex flex-column gap-3">
           {roleRequests.length === 0 && (
-            <Alert variant="light" className="border mb-0">No pending role requests.</Alert>
+            <div className="tempvs-plain-message text-muted mb-0">No pending role requests.</div>
           )}
           {roleRequests.map(request => (
             <Card key={`${request.userId}-${request.role}`} className="border-0 shadow-sm">
