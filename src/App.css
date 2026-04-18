@@ -74,17 +74,106 @@ h1, h2, h3 {
   padding-bottom: 0.35rem;
 }
 
+.stash-collection-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.45rem 0;
+  scrollbar-width: thin;
+}
+
+.stash-collection-tab {
+  flex: 0 0 auto;
+  min-width: min(14rem, 78vw);
+  max-width: 18rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(109, 125, 140, 0.18);
+  background: rgba(255, 255, 255, 0.68);
+  color: #4b5651;
+  text-align: left;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.stash-collection-tab:hover,
+.stash-collection-tab:focus {
+  background: #ffffff;
+  border-color: rgba(79, 117, 103, 0.34);
+}
+
+.stash-collection-tab-active {
+  background: #ffffff;
+  border-color: rgba(79, 117, 103, 0.44);
+  box-shadow: inset 0 -2px 0 rgba(79, 117, 103, 0.46), 0 0.2rem 0.75rem rgba(31, 38, 35, 0.08);
+  color: #1f2623;
+}
+
+.stash-collection-tab-name {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-collection-tab-meta {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.2rem;
+  color: #748078;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stash-collection-tab-add {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 0.15rem;
+}
+
 .stash-collection-section {
-  background: linear-gradient(180deg, #fffefa 0%, #f7faf8 100%);
-  box-shadow: 0 0.3rem 1.1rem rgba(31, 38, 35, 0.08);
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(79, 117, 103, 0.12);
+}
+
+.stash-collection-shelf {
+  padding-top: 1.25rem !important;
+}
+
+.stash-collection-heading {
+  display: block;
+  flex: 1 1 20rem;
+  min-width: 0;
+  text-align: left;
+}
+
+.stash-collection-copy {
+  max-width: 34rem;
+}
+
+.stash-collection-title {
+  color: #1f2623;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.stash-collection-description {
+  color: #68736d;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .stash-item-card {
-  background:
-    linear-gradient(90deg, rgba(79, 117, 103, 0.12), transparent 34%),
-    #ffffff;
-  box-shadow: 0 0.24rem 0.85rem rgba(31, 38, 35, 0.08);
+  background: #ffffff;
+  box-shadow: 0 0.22rem 0.9rem rgba(31, 38, 35, 0.08);
   transition: box-shadow 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+  overflow: hidden;
 }
 
 .stash-item-card:hover {
@@ -96,34 +185,53 @@ h1, h2, h3 {
   min-height: 9rem;
 }
 
-.stash-heading-toggle {
+.stash-inventory-card {
+  min-height: 100%;
+}
+
+.stash-item-media {
+  position: relative;
+  min-height: 12rem;
+  padding: 0.7rem 0.9rem 1.05rem 0.9rem;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 248, 0.96), rgba(236, 242, 238, 0.72)),
+    #f8faf8;
+}
+
+.stash-item-media-action,
+.stash-item-delete-action {
+  position: absolute;
+  top: 0.65rem;
+  z-index: 5;
+}
+
+.stash-item-media-action {
+  left: 0.65rem;
+}
+
+.stash-item-delete-action {
+  right: 0.65rem;
+}
+
+.stash-item-media-empty {
   display: flex;
-  flex: 1 1 20rem;
-  align-items: flex-start;
-  gap: 0.35rem;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-}
-
-.stash-heading-toggle:focus {
-  outline: 2px solid rgba(79, 117, 103, 0.34);
-  outline-offset: 3px;
-}
-
-.stash-chevron {
-  flex: 0 0 0.8rem;
-  width: 0.8rem;
-  padding-top: 0.18rem;
-  color: #4f5f58;
-}
-
-.stash-item-toggle {
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  padding-right: 2.6rem;
+  min-height: 11rem;
+  border: 1px dashed rgba(109, 125, 140, 0.34);
+  background: rgba(255, 255, 255, 0.62);
+  color: #9aa1a6;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+button.stash-item-media-empty {
+  cursor: pointer;
+}
+
+button.stash-item-media-empty:disabled {
+  cursor: default;
 }
 
 .stash-meta-row {
@@ -148,12 +256,6 @@ h1, h2, h3 {
   color: #48545f;
 }
 
-.stash-edit-strip {
-  background-color: rgba(255, 255, 255, 0.62);
-  box-shadow: inset 0 0 0 1px rgba(79, 117, 103, 0.1);
-  padding: 0.35rem 0.2rem;
-}
-
 .stash-detail-panel {
   background-color: rgba(248, 250, 248, 0.8);
   box-shadow: inset 0 1px 0 rgba(79, 117, 103, 0.12);
@@ -162,6 +264,10 @@ h1, h2, h3 {
 
 .stash-item-content {
   padding-left: 1.15rem;
+}
+
+.stash-inventory-content {
+  padding: 0 0.95rem 0.95rem 2.1rem;
 }
 
 .stash-item-display-copy {
@@ -180,6 +286,17 @@ h1, h2, h3 {
   color: #616c67;
   font-size: 0.92rem;
   line-height: 1.45;
+}
+
+.stash-item-description-slot {
+  min-height: 4.1rem;
+}
+
+.stash-item-description.inline-editable-input.form-control {
+  min-height: 3.55rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  text-overflow: ellipsis;
 }
 
 .description-placeholder {
