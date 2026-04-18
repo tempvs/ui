@@ -461,8 +461,7 @@ export default function LibrarySourcePage() {
                     <InlineEditableText
                       editable={canEditSource(userInfo)}
                       value={draftDescription}
-                      onChange={event => {
-                        const value = event.target.value;
+                      onValueChange={value => {
                         setDraftDescription(value);
                         scheduleFieldSave('description', value);
                       }}
@@ -473,6 +472,9 @@ export default function LibrarySourcePage() {
                       textClassName="stash-item-description"
                       placeholderDisplay={sourceDescriptionMissing}
                       placeholder="No description"
+                      popoverValue={sourceDescriptionMissing ? undefined : sourceDescriptionDisplay}
+                      multiline
+                      multilineRows={5}
                       savingTitle="Saving"
                       errorTitle="Save failed"
                     />

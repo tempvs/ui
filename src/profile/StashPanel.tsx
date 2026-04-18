@@ -504,10 +504,6 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
           [field]: 'error',
         },
       }));
-      setFeedback({
-        variant: 'danger',
-        text: t('profile.stash.itemSaveFailed', 'Unable to save item changes.'),
-      });
     }
   }
 
@@ -1103,13 +1099,15 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                         editable={isEditable}
                                         value={itemDrafts[item.id]?.description || ''}
                                         readOnlyValue={itemDescriptionDisplay}
-                                        onChange={event => setItemField(item, 'description', event.target.value)}
+                                        onValueChange={value => setItemField(item, 'description', value)}
                                         onBlur={() => handleSaveItemField(item, 'description')}
                                         status={itemStatuses[item.id]?.description}
                                         textClassName="stash-item-description"
                                         placeholderDisplay={itemDescriptionMissing}
                                         placeholder={t('profile.stash.noDescription', 'No description')}
                                         popoverValue={itemDescriptionMissing ? undefined : itemDescriptionDisplay}
+                                        multiline
+                                        multilineRows={4}
                                         className="mt-1"
                                       />
                                     </div>

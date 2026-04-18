@@ -12,13 +12,16 @@ type InlineEditableTextProps = {
   value?: string | number | string[];
   readOnlyValue?: React.ReactNode;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onValueChange?: (value: string) => void;
+  onBlur?: (event: React.FocusEvent<HTMLInputElement | HTMLDivElement>) => void;
   status?: SaveStatus;
   placeholder?: string;
   className?: string;
   textClassName?: string;
   placeholderDisplay?: boolean;
   popoverValue?: React.ReactNode;
+  multiline?: boolean;
+  multilineRows?: number;
   savingTitle?: string;
   errorTitle?: string;
 };
@@ -30,6 +33,7 @@ export default function InlineEditableText({
   value,
   readOnlyValue,
   onChange,
+  onValueChange,
   onBlur,
   status = null,
   placeholder,
@@ -37,23 +41,51 @@ export default function InlineEditableText({
   textClassName = '',
   placeholderDisplay = false,
   popoverValue,
+  multiline = false,
+  multilineRows = 3,
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: InlineEditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [blurredAfterEdit, setBlurredAfterEdit] = useState(false);
-  const controlRef = useRef<HTMLInputElement | null>(null);
+  const controlRef = useRef<HTMLElement | null>(null);
+  const readOnlyRef = useRef<HTMLDivElement | null>(null);
   const readOnlyDisplayValue = typeof readOnlyValue === 'string' || typeof readOnlyValue === 'number'
     ? String(readOnlyValue)
     : '';
   const controlValue = editing ? value : (value || readOnlyDisplayValue);
   const isTruncated = useIsTruncated(controlRef, controlValue);
+  const isReadOnlyTruncated = useIsTruncated(readOnlyRef, readOnlyValue);
+  const controlClassName = `inline-editable-input ${multiline ? 'inline-editable-multiline' : ''} ${textClassName} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim();
+  const shouldShowMultilinePopover = multiline && Boolean(popoverValue) && !editing;
+  const shouldShowReadOnlyMultilinePopover = multiline && Boolean(popoverValue);
+  const popoverConfig = {
+    modifiers: [
+      {
+        name: 'offset',
+        options: {
+          offset: [18, 8],
+        },
+      },
+    ],
+  };
 
   useEffect(() => {
     if (editing) {
       controlRef.current?.focus();
     }
   }, [editing]);
+
+  useEffect(() => {
+    if (!multiline) {
+      return;
+    }
+    const control = controlRef.current;
+    if (!control || document.activeElement === control) {
+      return;
+    }
+    control.textContent = String(controlValue ?? '');
+  }, [controlValue, multiline]);
 
   useEffect(() => {
     if (!editing || !blurredAfterEdit) {
@@ -75,17 +107,51 @@ export default function InlineEditableText({
     return undefined;
   }, [blurredAfterEdit, editing, status]);
 
-  const handleBlur: React.FocusEventHandler<HTMLInputElement> = event => {
+  const handleInputBlur: React.FocusEventHandler<HTMLInputElement> = event => {
     onBlur?.(event);
     setBlurredAfterEdit(true);
   };
 
+  const handleCustomBlur: React.FocusEventHandler<HTMLDivElement> = event => {
+    onBlur?.(event);
+    setBlurredAfterEdit(true);
+  };
+
+  const handleCustomInput: React.FormEventHandler<HTMLDivElement> = event => {
+    onValueChange?.(event.currentTarget.textContent || '');
+  };
+
   if (!editable) {
-    return (
-      <div className={`${textClassName} ${placeholderDisplay ? 'description-placeholder' : ''} text-start`.trim()}>
+    const content = (
+      <div
+        ref={readOnlyRef}
+        className={`${textClassName} ${multiline ? 'inline-editable-multiline inline-editable-readonly-multiline' : ''} ${placeholderDisplay ? 'description-placeholder' : ''} text-start`.trim()}
+      >
         {readOnlyValue}
       </div>
     );
+
+    if (shouldShowReadOnlyMultilinePopover) {
+      return (
+        <span className="inline-editable-popover-anchor">
+          {content}
+          <span className="inline-editable-description-popover" role="tooltip">
+            {popoverValue}
+          </span>
+        </span>
+      );
+    }
+
+    return !multiline && popoverValue && isReadOnlyTruncated ? (
+      <OverlayTrigger
+        trigger={['hover', 'focus']}
+        placement="top"
+        popperConfig={popoverConfig}
+        overlay={<HoverPopover text="" default={popoverValue} style={{ maxWidth: '24rem' }} />}
+      >
+        {content}
+      </OverlayTrigger>
+    ) : content;
   }
 
   const control = (
@@ -98,16 +164,55 @@ export default function InlineEditableText({
         }
       }}
     >
-      <Form.Control
-        ref={controlRef}
-        type="text"
-        readOnly={!editing}
-        className={`inline-editable-input ${textClassName} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim()}
-        value={controlValue ?? ''}
-        onChange={onChange}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-      />
+      {multiline ? (
+        shouldShowMultilinePopover ? (
+          <span className="inline-editable-popover-anchor">
+            <div
+              ref={controlRef as React.RefObject<HTMLDivElement>}
+              role="textbox"
+              aria-multiline="true"
+              contentEditable={false}
+              suppressContentEditableWarning
+              tabIndex={0}
+              className={`inline-editable-custom-field ${controlClassName}`.trim()}
+              data-placeholder={placeholder}
+              onInput={handleCustomInput}
+              onBlur={handleCustomBlur}
+            >
+              {String(controlValue ?? '')}
+            </div>
+            <span className="inline-editable-description-popover" role="tooltip">
+              {popoverValue}
+            </span>
+          </span>
+        ) : (
+        <div
+          ref={controlRef as React.RefObject<HTMLDivElement>}
+          role="textbox"
+          aria-multiline="true"
+          contentEditable={editing}
+          suppressContentEditableWarning
+          tabIndex={0}
+          className={`inline-editable-custom-field ${controlClassName}`.trim()}
+          data-placeholder={placeholder}
+          onInput={handleCustomInput}
+          onBlur={handleCustomBlur}
+        >
+          {String(controlValue ?? '')}
+        </div>
+        )
+      ) : (
+        <Form.Control
+          ref={controlRef as React.RefObject<HTMLInputElement>}
+          type="text"
+          readOnly={!editing}
+          className={controlClassName}
+          value={controlValue ?? ''}
+          onChange={onChange}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+        />
+      )}
       {!editing && (
         <span className="inline-editable-glyph" aria-hidden="true">
           <PenIcon />
@@ -123,10 +228,11 @@ export default function InlineEditableText({
 
   return (
     <div className={`inline-editable-text ${className}`.trim()}>
-      {!editing && popoverValue && isTruncated ? (
+      {!editing && !multiline && popoverValue && isTruncated ? (
         <OverlayTrigger
           trigger={['hover', 'focus']}
-          placement="bottom"
+          placement="top"
+          popperConfig={popoverConfig}
           overlay={<HoverPopover text="" default={popoverValue} style={{ maxWidth: '24rem' }} />}
         >
           {control}
