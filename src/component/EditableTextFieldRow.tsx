@@ -8,6 +8,8 @@ type EditableTextFieldRowProps = {
   editable: boolean;
   value?: string | number | string[];
   readOnlyValue?: React.ReactNode;
+  readOnlyInputValue?: string | number | string[];
+  placeholderDisplay?: boolean;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   status?: SaveStatus;
@@ -24,6 +26,8 @@ export default function EditableTextFieldRow({
   editable,
   value,
   readOnlyValue,
+  readOnlyInputValue,
+  placeholderDisplay = false,
   onChange,
   onBlur,
   status = null,
@@ -48,6 +52,8 @@ export default function EditableTextFieldRow({
         />
       )}
       readOnlyValue={readOnlyValue}
+      readOnlyInputValue={readOnlyInputValue}
+      placeholderDisplay={placeholderDisplay}
       status={status}
       fieldMaxWidth={fieldMaxWidth}
       className={className}

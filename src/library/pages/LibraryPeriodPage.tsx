@@ -272,8 +272,6 @@ export default function LibraryPeriodPage() {
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control
-                  as="textarea"
-                  rows={3}
                   value={draftSource.description}
                   onChange={event => setDraftSource(prev => ({ ...prev, description: event.target.value }))}
                 />

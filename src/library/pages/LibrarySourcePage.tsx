@@ -4,9 +4,8 @@ import { FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import EditableTextFieldRow from '../../component/EditableTextFieldRow';
-import EditableTextareaFieldRow from '../../component/EditableTextareaFieldRow';
 import IconActionButton from '../../component/IconActionButton';
+import InlineEditableText from '../../component/InlineEditableText';
 import PlusActionButton from '../../component/PlusActionButton';
 import StackedImageGallery from '../../component/StackedImageGallery';
 import Spinner from '../../component/Spinner';
@@ -395,6 +394,9 @@ export default function LibrarySourcePage() {
     getClassificationLabel(intl, source.classification),
     getTypeLabel(intl, source.type),
   ].filter(Boolean).join(' \u2022 ');
+  const sourceDescription = draftDescription || source.description || '';
+  const sourceDescriptionMissing = !sourceDescription;
+  const sourceDescriptionDisplay = sourceDescription || 'No description';
 
   return (
     <div className="px-4 px-xl-5 pb-4">
@@ -440,9 +442,8 @@ export default function LibrarySourcePage() {
               <Row className="g-3">
                 <Col md={7}>
                   <div className="stash-subheading">Source details</div>
-                  <div className="stash-source-copy">
-                    <EditableTextFieldRow
-                      label=""
+                  <div className="stash-source-copy stash-item-display-copy">
+                    <InlineEditableText
                       editable={canEditSource(userInfo)}
                       value={draftName}
                       onChange={event => {
@@ -453,13 +454,11 @@ export default function LibrarySourcePage() {
                       onBlur={() => handleFieldBlur('name')}
                       readOnlyValue={source.name}
                       status={fieldStatuses.name}
-                      className="mb-2"
-                      fieldMaxWidth="100%"
+                      textClassName="stash-item-title"
                       savingTitle="Saving"
                       errorTitle="Save failed"
                     />
-                    <EditableTextareaFieldRow
-                      label=""
+                    <InlineEditableText
                       editable={canEditSource(userInfo)}
                       value={draftDescription}
                       onChange={event => {
@@ -468,10 +467,12 @@ export default function LibrarySourcePage() {
                         scheduleFieldSave('description', value);
                       }}
                       onBlur={() => handleFieldBlur('description')}
-                      readOnlyValue={source.description || '-'}
+                      readOnlyValue={sourceDescriptionDisplay}
                       status={fieldStatuses.description}
-                      className=""
-                      fieldMaxWidth="100%"
+                      className="mt-1"
+                      textClassName="stash-item-description"
+                      placeholderDisplay={sourceDescriptionMissing}
+                      placeholder="No description"
                       savingTitle="Saving"
                       errorTitle="Save failed"
                     />
