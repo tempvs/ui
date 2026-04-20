@@ -114,7 +114,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
             <Col sm={1}>
               {this.state.loggedIn
                 ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
-                : <LoginRegisterButton />}
+                : <LoginRegisterButton logIn={this.logIn} />}
             </Col>
           </Row>
         </Container>

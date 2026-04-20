@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { FaGoogle, FaSignInAlt } from 'react-icons/fa';
-import { Button, Modal } from 'react-bootstrap';
+import { Button, Modal, Tab, Tabs } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 
 import HeaderIconPopover from '../component/HeaderIconPopover';
+import LoginForm from './LoginForm';
+import RegistrationForm from './RegistrationForm';
 
 type IconProps = {
   className?: string;
@@ -12,8 +14,17 @@ type IconProps = {
 const GoogleIcon = FaGoogle as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType;
 
-export default function LoginRegisterButton() {
+type LoginRegisterButtonProps = {
+  logIn: () => void;
+};
+
+export default function LoginRegisterButton({ logIn }: LoginRegisterButtonProps) {
   const [show, setShow] = useState(false);
+  const close = () => setShow(false);
+  const handleLogIn = () => {
+    close();
+    logIn();
+  };
 
   return (
     <>
@@ -23,8 +34,16 @@ export default function LoginRegisterButton() {
         </Button>
       </HeaderIconPopover>
 
-      <Modal show={show} onHide={() => setShow(false)}>
+      <Modal show={show} onHide={close}>
         <Modal.Body>
+          <Tabs defaultActiveKey="login" className="mb-3">
+            <Tab eventKey="login" title={<FormattedMessage id="login.tab" defaultMessage="Log in" />}>
+              <LoginForm logIn={handleLogIn} />
+            </Tab>
+            <Tab eventKey="register" title={<FormattedMessage id="register.tab" defaultMessage="Register" />}>
+              <RegistrationForm />
+            </Tab>
+          </Tabs>
           <div className="d-grid gap-2">
             <Button
               as="a"

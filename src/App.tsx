@@ -9,6 +9,7 @@ import ProfilePage from './profile/ProfilePage';
 import StashPage from './profile/StashPage';
 import LibraryPage from './library/LibraryPage';
 import HomePage from './HomePage';
+import CompleteRegistrationPage from './auth/CompleteRegistrationPage';
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -41,6 +42,7 @@ function App() {
           <Route path="/library/admin" element={<LibraryAdminPage />} />
           <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
           <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
+          <Route path="/user/registration/:verificationId" element={<CompleteRegistrationPage />} />
         </Routes>
       </BrowserRouter>
     </div>

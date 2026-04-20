@@ -5,7 +5,7 @@ import { FormattedMessage } from 'react-intl';
 
 import { doFetch } from '../util/Fetcher';
 
-const initialState = { messageShown: false, messageText: '' };
+const initialState = { messageShown: false, messageText: '', successShown: false };
 
 type RegistrationFormState = typeof initialState;
 
@@ -21,13 +21,18 @@ class RegistrationForm extends Component<Record<string, never>, RegistrationForm
 
     const actions = {
       409: () => this.showMessage('user.alreadyRegistered.message'),
+      200: () => this.showSuccess(),
     };
 
     doFetch('/api/user/register', 'POST', event, actions);
   };
 
   showMessage = (text: string) => {
-    this.setState({ messageShown: true, messageText: text });
+    this.setState({ messageShown: true, messageText: text, successShown: false });
+  };
+
+  showSuccess = () => {
+    this.setState({ messageShown: false, messageText: '', successShown: true });
   };
 
   render() {
@@ -40,6 +45,11 @@ class RegistrationForm extends Component<Record<string, never>, RegistrationForm
         {this.state.messageShown && (
           <div>
             <FormattedMessage id={this.state.messageText} defaultMessage="User with this email has already been registered" />
+          </div>
+        )}
+        {this.state.successShown && (
+          <div>
+            <FormattedMessage id="registration.requested.message" defaultMessage="Check your email to finish registration." />
           </div>
         )}
         <Button variant="secondary" type="submit">
