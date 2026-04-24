@@ -72,6 +72,258 @@ h1, h2, h3 {
   text-align: left;
 }
 
+.profile-create-shell {
+  padding-top: 2rem;
+  padding-bottom: 2.5rem;
+}
+
+.profile-create-hero {
+  max-width: 38rem;
+  margin: 0 auto 1.1rem auto;
+  text-align: left;
+}
+
+.profile-create-kicker,
+.profile-entry-modal-kicker {
+  display: block;
+  color: #7d7050;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.profile-create-title,
+.profile-entry-modal-title {
+  margin-top: 0.2rem;
+  color: #1f2623;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.profile-create-copy,
+.profile-entry-copy,
+.profile-club-section-copy,
+.profile-club-button-meta {
+  color: #756a52;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.profile-create-panel,
+.profile-entry-modal {
+  border: 1px solid rgba(87, 102, 98, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 244, 0.98) 0%, rgba(251, 247, 236, 0.98) 100%);
+  box-shadow: 0 0.85rem 2.4rem rgba(31, 38, 35, 0.12);
+}
+
+.profile-create-panel {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.profile-entry-dialog {
+  max-width: 36rem;
+}
+
+.profile-entry-dialog-compact {
+  max-width: 30rem;
+}
+
+.profile-entry-modal-header {
+  padding: 1rem 1rem 0.35rem 1rem;
+  border-bottom: 0;
+  align-items: start;
+}
+
+.profile-entry-modal-title-block {
+  text-align: left;
+}
+
+.profile-entry-modal-body {
+  padding: 0.6rem 1rem 1rem 1rem;
+}
+
+.profile-entry-form {
+  text-align: left;
+}
+
+.profile-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 0.9rem;
+}
+
+.profile-entry-group {
+  margin: 0;
+  padding: 0;
+}
+
+.profile-entry-group-full {
+  grid-column: 1 / -1;
+}
+
+.profile-entry-label {
+  display: block;
+  margin-bottom: 0.32rem;
+  color: #4a4335;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.profile-entry-input {
+  min-height: 2.7rem;
+  border: 1px solid rgba(149, 129, 84, 0.2);
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.profile-entry-input:focus {
+  border-color: rgba(176, 146, 82, 0.42);
+  box-shadow: 0 0 0 0.15rem rgba(176, 146, 82, 0.14);
+}
+
+.profile-entry-message {
+  margin: 0.95rem 0 0 0;
+  padding: 0.65rem 0.8rem;
+}
+
+.profile-entry-message-error {
+  background: rgba(179, 57, 57, 0.08);
+  color: #8a2c2c;
+}
+
+.profile-entry-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.profile-entry-actions-end {
+  justify-content: flex-end;
+}
+
+.profile-entry-submit,
+.profile-entry-secondary,
+.profile-entry-danger {
+  min-height: 2.7rem;
+  font-weight: 700;
+}
+
+.profile-entry-submit {
+  min-width: 12rem;
+  border: 1px solid rgba(156, 127, 68, 0.3);
+  background: #b48a43;
+}
+
+.profile-entry-submit:hover,
+.profile-entry-submit:focus,
+.profile-entry-submit:active {
+  border-color: rgba(136, 110, 58, 0.34);
+  background: #9e7837;
+}
+
+.profile-entry-secondary {
+  border: 1px solid rgba(149, 129, 84, 0.18);
+  color: #5a503d;
+  background: rgba(255, 251, 243, 0.84);
+}
+
+.profile-entry-secondary:hover,
+.profile-entry-secondary:focus,
+.profile-entry-secondary:active {
+  border-color: rgba(176, 146, 82, 0.24);
+  background: #ffffff;
+  color: #1f2623;
+}
+
+.profile-club-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.profile-club-section-title {
+  margin: 0;
+  color: #3d3527;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.profile-club-section-copy {
+  margin: 0.25rem 0 0 0;
+  max-width: 21rem;
+  text-align: left;
+}
+
+.profile-club-empty {
+  padding: 0.8rem 0.9rem;
+  background: rgba(255, 251, 242, 0.86);
+  color: #756a52;
+  text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(149, 129, 84, 0.14);
+}
+
+.profile-club-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.profile-club-list-item {
+  display: block;
+}
+
+.profile-club-button.btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border-color: rgba(149, 129, 84, 0.2);
+  background: rgba(255, 251, 243, 0.78);
+}
+
+.profile-club-button.btn:hover,
+.profile-club-button.btn:focus,
+.profile-club-button.btn:active {
+  border-color: rgba(176, 146, 82, 0.32);
+  background: #ffffff;
+}
+
+.profile-club-button-name {
+  color: #3d3527;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.profile-club-button-meta {
+  text-align: left;
+}
+
+@media (max-width: 767.98px) {
+  .profile-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-create-shell {
+    padding-top: 1.25rem;
+  }
+
+  .profile-create-panel {
+    padding: 0.9rem;
+  }
+
+  .profile-club-section-header {
+    align-items: stretch;
+  }
+}
+
 .stash-shell {
   background:
     linear-gradient(180deg, rgba(248, 250, 248, 0.95) 0%, rgba(255, 254, 250, 0.95) 100%);
