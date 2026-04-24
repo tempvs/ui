@@ -37,21 +37,28 @@ class LoginForm extends Component<LoginFormProps, LoginFormState> {
 
   render() {
     return (
-      <Form onSubmit={this.handleSubmit}>
-        <Form.Group controlId="email" className="row">
-          <Form.Label className="col-sm-4"><FormattedMessage id="email.label" defaultMessage="Email" /> *</Form.Label>
-          <Form.Control className="col-sm-8" name="email" type="email" required />
+      <Form onSubmit={this.handleSubmit} className="auth-form">
+        <div className="auth-form-copy">
+          <FormattedMessage id="auth.login.subtitle" defaultMessage="Use your email and password to continue." />
+        </div>
+        <Form.Group controlId="email" className="auth-form-group">
+          <Form.Label className="auth-form-label">
+            <FormattedMessage id="email.label" defaultMessage="Email" />
+          </Form.Label>
+          <Form.Control className="auth-form-input" name="email" type="email" required />
         </Form.Group>
-        <Form.Group controlId="password" className="row">
-          <Form.Label className="col-sm-4"><FormattedMessage id="password.label" defaultMessage="Password" /> *</Form.Label>
-          <Form.Control className="col-sm-8" name="password" type="password" required />
+        <Form.Group controlId="password" className="auth-form-group">
+          <Form.Label className="auth-form-label">
+            <FormattedMessage id="password.label" defaultMessage="Password" />
+          </Form.Label>
+          <Form.Control className="auth-form-input" name="password" type="password" required />
         </Form.Group>
         {this.state.messageShown && (
-          <div>
+          <div className="tempvs-plain-message auth-message auth-message-error">
             <FormattedMessage id={this.state.messageText} defaultMessage="Wrong login or password" />
           </div>
         )}
-        <Button variant="secondary" type="submit">
+        <Button variant="secondary" type="submit" className="auth-submit-button">
           <FormattedMessage id="login.button" defaultMessage="Log in" />
         </Button>
       </Form>

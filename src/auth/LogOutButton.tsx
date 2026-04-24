@@ -50,17 +50,27 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
         </Button>
       </HeaderIconPopover>
 
-      <Modal show={showModal} onHide={handleClose}>
-        <Modal.Body>
-          <div className="text-center">
+      <Modal show={showModal} onHide={handleClose} centered dialogClassName="auth-modal-dialog auth-logout-dialog" contentClassName="auth-modal-content">
+        <Modal.Header closeButton className="auth-modal-header">
+          <div className="auth-modal-title-block">
+            <span className="auth-modal-kicker">
+              <FormattedMessage id="logout.popover" defaultMessage="Log out" />
+            </span>
+            <Modal.Title className="auth-modal-title">
+              <FormattedMessage id="auth.logout.title" defaultMessage="Leave this session?" />
+            </Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body className="auth-modal-body">
+          <div className="auth-logout-copy">
             <FormattedMessage id="logout.confirmation" defaultMessage="Are you sure you want to log out?" />
           </div>
-          <div>
-            <Button variant="secondary" type="submit" className="float-sm-left" onClick={handleLogOut}>
-              <FormattedMessage id="yes" defaultMessage="Yes" />
-            </Button>
-            <Button variant="secondary" type="submit" className="float-sm-right" onClick={handleClose}>
+          <div className="auth-logout-actions">
+            <Button variant="light" type="button" className="auth-secondary-button" onClick={handleClose}>
               <FormattedMessage id="no" defaultMessage="No" />
+            </Button>
+            <Button variant="secondary" type="button" className="auth-submit-button" onClick={handleLogOut}>
+              <FormattedMessage id="yes" defaultMessage="Yes" />
             </Button>
           </div>
         </Modal.Body>
