@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.css';
 
 import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
@@ -10,6 +10,18 @@ import StashPage from './profile/StashPage';
 import LibraryPage from './library/LibraryPage';
 import HomePage from './HomePage';
 import CompleteRegistrationPage from './auth/CompleteRegistrationPage';
+
+const WARMUP_URLS = [
+  'https://tempvs-image-1.onrender.com/',
+  'https://stash-service-iri9.onrender.com/',
+  'https://email-service-ova5.onrender.com/',
+  'https://user-service-d4or.onrender.com/',
+  'https://tempvs-library.onrender.com/',
+  'https://profile-service-ynnk.onrender.com/',
+  'https://api-gateway-t7bp.onrender.com/',
+];
+
+const WARMUP_SESSION_KEY = 'tempvs-render-warmup-v1';
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -29,6 +41,26 @@ function LibraryAdminPage() {
 }
 
 function App() {
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (window.sessionStorage.getItem(WARMUP_SESSION_KEY)) {
+      return;
+    }
+
+    window.sessionStorage.setItem(WARMUP_SESSION_KEY, '1');
+
+    WARMUP_URLS.forEach(url => {
+      window.fetch(url, {
+        method: 'GET',
+        mode: 'no-cors',
+        cache: 'no-store',
+      }).catch(() => {});
+    });
+  }, []);
+
   return (
     <div className="App">
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
