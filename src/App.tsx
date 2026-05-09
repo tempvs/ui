@@ -21,7 +21,7 @@ const WARMUP_URLS = [
   'https://api-gateway-t7bp.onrender.com/',
 ];
 
-const WARMUP_SESSION_KEY = 'tempvs-render-warmup-v1';
+const WARMUP_INTERVAL_MS = 14 * 60 * 1000;
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -40,25 +40,31 @@ function LibraryAdminPage() {
   return <LibraryPage view="admin" />;
 }
 
+function pingRenderServices() {
+  WARMUP_URLS.forEach(url => {
+    window.fetch(url, {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+    }).catch(() => {});
+  });
+}
+
 function App() {
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    if (window.sessionStorage.getItem(WARMUP_SESSION_KEY)) {
-      return;
-    }
+    pingRenderServices();
 
-    window.sessionStorage.setItem(WARMUP_SESSION_KEY, '1');
+    const intervalId = window.setInterval(() => {
+      pingRenderServices();
+    }, WARMUP_INTERVAL_MS);
 
-    WARMUP_URLS.forEach(url => {
-      window.fetch(url, {
-        method: 'GET',
-        mode: 'no-cors',
-        cache: 'no-store',
-      }).catch(() => {});
-    });
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
