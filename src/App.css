@@ -446,6 +446,9 @@ h1, h2, h3 {
 
 .stash-inventory-card {
   min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .stash-item-media {
@@ -526,11 +529,12 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-inventory-content {
-  padding: 0 0.95rem 0.95rem 2.1rem;
+  padding: 0.95rem 1.1rem 1rem 1.35rem;
+  min-width: 0;
 }
 
 .stash-item-display-copy {
-  max-width: 28rem;
+  max-width: none;
 }
 
 .stash-item-title {
@@ -854,6 +858,14 @@ button.stash-item-media-empty:disabled {
 }
 
 @media (max-width: 575.98px) {
+  .stash-inventory-card {
+    grid-template-columns: 1fr;
+  }
+
+  .stash-inventory-content {
+    padding: 0.9rem;
+  }
+
   .source-card-body {
     flex-direction: column;
   }

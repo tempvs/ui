@@ -919,7 +919,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
                     <Row className="g-3 stash-inventory-grid">
                       {isItemCreatePending && (
-                        <Col xl={4} lg={6}>
+                        <Col xs={12}>
                           <article className="stash-item-card stash-item-pending-card p-3 d-flex align-items-center justify-content-center">
                             <div className="d-flex align-items-center gap-2 small text-muted">
                               <Spinner size="sm" />
@@ -943,7 +943,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                         const itemImages = itemImagesByItem[item.id] || [];
 
                         return (
-                          <Col xl={4} lg={6} key={item.id}>
+                          <Col xs={12} key={item.id}>
                             <article className="stash-item-card stash-inventory-card position-relative">
                             {isEditable && (
                               <div className="stash-item-delete-action">
@@ -981,7 +981,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
                             <div className="stash-item-content stash-inventory-content">
                               <Row className="g-3 align-items-start">
-                                <Col xs={12}>
+                                <Col lg={6} xs={12}>
                                   <div className="stash-item-display-copy">
                                     <InlineEditableText
                                       editable={isEditable}
@@ -1016,7 +1016,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                     </span>
                                   </div>
                                 </Col>
-                                <Col xs={12}>
+                                <Col lg={6} xs={12}>
                                   <LinkedSourcesPanel
                                     item={item}
                                     editable={isEditable}
