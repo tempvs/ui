@@ -11,6 +11,36 @@
   text-align: center;
 }
 
+.home-shell {
+  padding-top: 2.5rem;
+}
+
+.home-message-panel {
+  padding: 1.4rem 1.5rem;
+  text-align: center;
+}
+
+.home-message {
+  margin: 0;
+  color: #4a4335;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.home-inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  margin: 0 0.12rem;
+  vertical-align: middle;
+  background: rgba(255, 251, 243, 0.92);
+  color: #8f6b2d;
+  box-shadow: inset 0 0 0 1px rgba(156, 127, 68, 0.24);
+}
+
 a {
   color: black;
 }
