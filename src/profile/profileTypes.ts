@@ -60,6 +60,7 @@ export type ProfileField = 'firstName' | 'lastName' | 'nickName' | 'profileEmail
 
 export type ProfilePageProps = {
   id?: string | null;
+  userId?: string | null;
   intl: IntlShape;
 };
 

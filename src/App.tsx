@@ -28,6 +28,11 @@ function ProfilePageWithParam() {
   return <ProfilePage id={id} />;
 }
 
+function UserProfilePageWithParam() {
+  const { userId } = useParams();
+  return <ProfilePage userId={userId} />;
+}
+
 function LibraryPeriodPage() {
   return <LibraryPage view="period" />;
 }
@@ -74,6 +79,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/user/:userId" element={<UserProfilePageWithParam />} />
           <Route path="/profile/:id" element={<ProfilePageWithParam />} />
           <Route path="/stash/:id" element={<StashPage />} />
           <Route path="/library" element={<LibraryPage />} />

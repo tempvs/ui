@@ -15,12 +15,14 @@ type OAuthProfile = {
   picture?: string | null;
   name?: string | null;
   email?: string | null;
+  userId?: number | null;
 };
 
 type HeaderState = {
   loggedIn: string | boolean | undefined;
   avatarUrl: string | null;
   avatarText: string | null;
+  currentUserId: number | null;
 };
 
 class Header extends Component<Record<string, never>, HeaderState> {
@@ -31,6 +33,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
       loggedIn,
       avatarUrl: null,
       avatarText: null,
+      currentUserId: null,
     };
     this.logIn = this.logIn.bind(this);
     this.logOut = this.logOut.bind(this);
@@ -48,7 +51,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
   }
 
   logOut() {
-    this.setState({ loggedIn: false, avatarUrl: null, avatarText: null });
+    this.setState({ loggedIn: false, avatarUrl: null, avatarText: null, currentUserId: null });
   }
 
   loadOAuthProfile() {
@@ -59,6 +62,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
         this.setState({
           avatarUrl: oauthProfile?.picture || null,
           avatarText: this.buildAvatarText(oauthProfile),
+          currentUserId: oauthProfile?.userId || null,
         });
       },
       401: clearAvatar,
@@ -100,7 +104,10 @@ class Header extends Component<Record<string, never>, HeaderState> {
           <Row className="show-grid">
             <Col sm={3}>
               {this.state.loggedIn && (
-                <Link to="/profile">
+                <Link
+                  to={this.state.currentUserId != null ? `/profile/user/${this.state.currentUserId}` : '/profile'}
+                  reloadDocument
+                >
                   <ProfileButton />
                 </Link>
               )}

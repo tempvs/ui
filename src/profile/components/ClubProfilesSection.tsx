@@ -171,9 +171,6 @@ export default function ClubProfilesSection({
                 <span className="profile-club-button-name">
                   {clubProfile.firstName} {clubProfile.lastName}{clubProfile.nickName ? ` ${clubProfile.nickName}` : ''}
                 </span>
-                <span className="profile-club-button-meta">
-                  {t('profile.clubProfiles.open', 'Open profile')}
-                </span>
               </Button>
             </div>
           ))}

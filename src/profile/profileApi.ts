@@ -50,6 +50,14 @@ export function fetchProfileById(id: Id | null | undefined, handlers: ProfileHan
   });
 }
 
+export function fetchUserProfileByUserId(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
+  doFetch(`/api/profile/user-profile?userId=${userId}`, 'GET', null, {
+    200: profile => handlers.onSuccess((profile as Profile | null) || null),
+    404: () => handlers.onMissing?.(),
+    default: () => handlers.onError?.(),
+  });
+}
+
 export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): void {
   doFetch(`/api/image/image/profile/${profileId}`, 'GET', null, {
     200: avatars => {
@@ -74,10 +82,7 @@ export function fetchClubProfiles(userId: Id, handlers: ProfileHandlers<Profile[
 }
 
 export function fetchOwnerUserProfile(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
-  doFetch(`/api/profile/user-profile?userId=${userId}`, 'GET', null, {
-    200: profile => handlers.onSuccess((profile as Profile | null) || null),
-    default: () => handlers.onError?.(),
-  });
+  fetchUserProfileByUserId(userId, handlers);
 }
 
 type FetchFormEvent = {

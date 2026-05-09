@@ -308,32 +308,42 @@ h1, h2, h3 {
 }
 
 .profile-club-button.btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
   padding: 0.75rem 0.85rem;
-  border-color: rgba(149, 129, 84, 0.2);
-  background: rgba(255, 251, 243, 0.78);
+  border-width: 1px;
+  border-style: solid;
+  border-color: #6c757d;
+  background: #ffffff;
+  color: #6c757d;
+  box-shadow: none;
 }
 
 .profile-club-button.btn:hover,
 .profile-club-button.btn:focus,
 .profile-club-button.btn:active {
-  border-color: rgba(176, 146, 82, 0.32);
-  background: #ffffff;
+  border-color: #6c757d;
+  background: #6c757d;
+  color: #ffffff;
+  box-shadow: none;
 }
 
 .profile-club-button-name {
-  color: #3d3527;
+  color: inherit;
   font-size: 0.95rem;
   font-weight: 700;
   text-align: left;
+  width: 100%;
 }
 
-.profile-club-button-meta {
-  text-align: left;
+.profile-stash-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.7rem;
 }
 
 @media (max-width: 767.98px) {

@@ -26,6 +26,7 @@ import {
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
   fetchProfileById,
+  fetchUserProfileByUserId,
   updateAvatarDescription,
   updateProfile,
   uploadAvatar,
@@ -62,15 +63,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   componentDidMount() {
     this.loadCurrentUserInfo();
-    this.fetchProfile(this.props.id);
+    this.loadRequestedProfile();
   }
 
   componentDidUpdate(prevProps: ProfilePageProps) {
-    if (prevProps.id !== this.props.id) {
+    if (prevProps.id !== this.props.id || prevProps.userId !== this.props.userId) {
       this.clearAutoSaveTimers();
       this.setState(this.buildInitialState(), () => {
         this.loadCurrentUserInfo();
-        this.fetchProfile(this.props.id);
+        this.loadRequestedProfile();
       });
     }
   }
@@ -145,6 +146,19 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       onSuccess: profile => this.renderProfile(profile),
       onMissing: () => this.handleMissingProfile(id),
     });
+  }
+
+  loadRequestedProfile() {
+    if (this.props.userId) {
+      fetchUserProfileByUserId(this.props.userId, {
+        onSuccess: profile => profile ? this.renderProfile(profile) : this.handleMissingProfile(this.props.userId),
+        onMissing: () => this.handleMissingProfile(this.props.userId),
+        onError: () => this.handleMissingProfile(this.props.userId),
+      });
+      return;
+    }
+
+    this.fetchProfile(this.props.id);
   }
 
   fetchClubProfiles(userId: Id | null | undefined) {
@@ -938,8 +952,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 <div className="d-flex justify-content-start">
                   <Link
                     to={`/stash/${this.state.alias || this.state.profileId}`}
-                    className="btn btn-outline-secondary"
-                    style={{ minWidth: '9.5rem' }}
+                    className="btn btn-outline-secondary profile-stash-button"
                   >
                     {this.t('profile.stash.button', 'Stash')}
                   </Link>
