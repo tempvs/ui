@@ -13,6 +13,14 @@ type RequestOptions = RequestInit & {
   headers?: HeadersInit;
 };
 
+type ProfileSearchParams = {
+  query?: string;
+  period?: string | null;
+  type?: string | null;
+  page?: number;
+  size?: number;
+};
+
 type ProfileHandlers<TData> = {
   onSuccess: (data: TData) => void;
   onMissing?: () => void;
@@ -74,11 +82,58 @@ export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): v
   });
 }
 
+export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
+  const response = await requestJson(`/api/image/image/profile/${profileId}`);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok || !Array.isArray(data) || !data.length) {
+    return null;
+  }
+
+  return data[0] as Avatar;
+}
+
 export function fetchClubProfiles(userId: Id, handlers: ProfileHandlers<Profile[]>): void {
   doFetch(`/api/profile/club-profile?userId=${userId}`, 'GET', null, {
     200: profiles => handlers.onSuccess(Array.isArray(profiles) ? profiles : []),
     default: () => handlers.onError?.(),
   });
+}
+
+export async function searchProfiles({ query, period, type, page = 0, size = 20 }: ProfileSearchParams) {
+  const params = new URLSearchParams();
+
+  if (query) {
+    params.set('query', query);
+  }
+
+  if (period) {
+    params.set('period', period);
+  }
+
+  if (type) {
+    params.set('type', type);
+  }
+
+  params.set('page', String(page));
+  params.set('size', String(size));
+
+  const response = await requestJson(`/api/profile/profile/search?${params.toString()}`);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : [];
+
+  if (!response.ok) {
+    const error = new Error(`Request failed with status ${response.status}`) as Error & {
+      status?: number;
+      data?: unknown;
+    };
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return Array.isArray(data) ? data as Profile[] : [];
 }
 
 export function fetchOwnerUserProfile(userId: Id, handlers: ProfileHandlers<Profile | null>): void {

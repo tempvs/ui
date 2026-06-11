@@ -4,6 +4,10 @@
   max-width: 95%;
 }
 
+.Header .show-grid {
+  align-items: center;
+}
+
 .auth-avatar-badge {
   display: inline-grid;
   place-items: center;
@@ -89,6 +93,67 @@
 .header-icon-popover-anchor:hover .tempvs-header-popover,
 .header-icon-popover-anchor:focus-within .tempvs-header-popover {
   opacity: 1;
+}
+
+.header-search-trigger {
+  display: flex;
+  align-items: center;
+  min-height: 2.2rem;
+  max-width: 18rem;
+  border: 1px solid rgba(111, 116, 121, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0.1rem 0.45rem rgba(31, 38, 35, 0.06);
+}
+
+.header-search-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  background: transparent;
+  color: #5f6970;
+  font-size: 0.88rem;
+}
+
+.header-search-icon-button:hover,
+.header-search-icon-button:focus {
+  background: rgba(63, 71, 79, 0.08);
+  color: #2f3940;
+}
+
+.header-search-input.form-control {
+  min-height: 2.2rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #2f3940;
+  padding: 0.25rem 0.45rem 0.25rem 0.1rem;
+  font-size: 0.88rem;
+}
+
+.header-search-input.form-control:focus {
+  box-shadow: none;
+}
+
+.header-search-shell {
+  position: relative;
+}
+
+.search-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 50;
+  width: min(42rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.55rem 0.65rem 0.55rem;
+  border: 1px solid rgba(87, 102, 98, 0.14);
+  background:
+    linear-gradient(180deg, rgba(252, 253, 250, 0.99) 0%, rgba(246, 249, 244, 0.99) 100%);
+  box-shadow: 0 1rem 2.4rem rgba(31, 38, 35, 0.18);
+  font-size: 0.9rem;
 }
 
 .auth-control-button {

@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 
 import ProfileButton from '../profile/ProfileButton';
 import LibraryButton from '../library/LibraryButton';
+import SearchDialog from '../search/SearchDialog';
 import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
 import { doFetch } from '../util/Fetcher';
@@ -102,7 +103,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
       <div className="Header">
         <Container>
           <Row className="show-grid">
-            <Col sm={3}>
+            <Col sm={2}>
               {this.state.loggedIn && (
                 <Link
                   to={this.state.currentUserId != null ? `/profile/user/${this.state.currentUserId}` : '/profile'}
@@ -112,12 +113,14 @@ class Header extends Component<Record<string, never>, HeaderState> {
                 </Link>
               )}
             </Col>
-            <Col sm={6}>
+            <Col sm={4}>
+              <SearchDialog />
+            </Col>
+            <Col sm={5}>
               <Link to="/library">
                 <LibraryButton />
               </Link>
             </Col>
-            <Col sm={2} />
             <Col sm={1}>
               {this.state.loggedIn
                 ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
