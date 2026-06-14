@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 
 import ProfileButton from '../profile/ProfileButton';
 import LibraryButton from '../library/LibraryButton';
+import ChatButton from '../chat/ChatButton';
 import SearchDialog from '../search/SearchDialog';
 import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
@@ -116,7 +117,14 @@ class Header extends Component<Record<string, never>, HeaderState> {
             <Col sm={4}>
               <SearchDialog />
             </Col>
-            <Col sm={5}>
+            <Col sm={1}>
+              {this.state.loggedIn && (
+                <Link to="/chat">
+                  <ChatButton />
+                </Link>
+              )}
+            </Col>
+            <Col sm={4}>
               <Link to="/library">
                 <LibraryButton />
               </Link>

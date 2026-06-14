@@ -10,6 +10,7 @@ import StashPage from './profile/StashPage';
 import LibraryPage from './library/LibraryPage';
 import HomePage from './HomePage';
 import CompleteRegistrationPage from './auth/CompleteRegistrationPage';
+import ChatPage from './chat/ChatPage';
 
 const WARMUP_URLS = [
   'https://tempvs-image-1.onrender.com/',
@@ -43,6 +44,10 @@ function LibrarySourcePage() {
 
 function LibraryAdminPage() {
   return <LibraryPage view="admin" />;
+}
+
+function ChatConversationPage() {
+  return <ChatPage />;
 }
 
 function pingRenderServices() {
@@ -86,6 +91,8 @@ function App() {
           <Route path="/library/admin" element={<LibraryAdminPage />} />
           <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
           <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
           <Route path="/user/registration/:verificationId" element={<CompleteRegistrationPage />} />
         </Routes>
       </BrowserRouter>
