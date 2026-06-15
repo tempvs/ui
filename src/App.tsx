@@ -15,6 +15,7 @@ import ChatPage from './chat/ChatPage';
 const WARMUP_URLS = [
   'https://tempvs-image-1.onrender.com/',
   'https://stash-service-iri9.onrender.com/',
+  'https://chat-service-icu0.onrender.com/',
   'https://email-service-ova5.onrender.com/',
   'https://user-service-d4or.onrender.com/',
   'https://tempvs-library.onrender.com/',

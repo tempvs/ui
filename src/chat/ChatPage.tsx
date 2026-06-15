@@ -1,13 +1,21 @@
 import React, { FormEvent, useEffect, useState } from 'react';
-import { Alert, Badge, Button, Container, Form, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Container, Form, Modal, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { FaChevronDown, FaPlus } from 'react-icons/fa';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId, searchProfiles } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { createConversation, getConversation, listConversations, sendMessage } from './chatApi';
 import { ChatConversationDetails, ChatConversationSummary } from './chatTypes';
+
+type IconProps = {
+  className?: string;
+};
+
+const PlusIcon = FaPlus as React.ComponentType<IconProps>;
+const ChevronDownIcon = FaChevronDown as React.ComponentType<IconProps>;
 
 function buildProfileLabel(profile: Profile | null | undefined) {
   if (!profile) {
@@ -70,6 +78,7 @@ export default function ChatPage() {
   const [groupTitle, setGroupTitle] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   useEffect(() => {
     fetchCurrentUserInfo(result => {
@@ -168,6 +177,47 @@ export default function ChatPage() {
   }, [senderProfiles, intl]);
 
   useEffect(() => {
+    if (!createModalVisible) {
+      return;
+    }
+
+    const query = participantQuery.trim();
+    if (!query) {
+      setParticipantResults([]);
+      setParticipantLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setParticipantLoading(true);
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const results = await searchProfiles({ query, size: 12 });
+        if (!cancelled) {
+          setParticipantResults(results.filter(profile => Number(profile.id) !== selectedSenderId));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFeedback(intl.formatMessage({
+            id: 'chat.participantSearch.failed',
+            defaultMessage: 'Unable to search profiles right now.',
+          }));
+        }
+      } finally {
+        if (!cancelled) {
+          setParticipantLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [createModalVisible, participantQuery, selectedSenderId, intl]);
+
+  useEffect(() => {
     if (!conversationId) {
       setSelectedConversation(null);
       return;
@@ -224,29 +274,6 @@ export default function ChatPage() {
     }
   }
 
-  async function handleParticipantSearch(event: FormEvent) {
-    event.preventDefault();
-    const query = participantQuery.trim();
-    if (!query) {
-      setParticipantResults([]);
-      return;
-    }
-
-    setParticipantLoading(true);
-    setFeedback(null);
-    try {
-      const results = await searchProfiles({ query, size: 12 });
-      setParticipantResults(results.filter(profile => Number(profile.id) !== selectedSenderId));
-    } catch (error) {
-      setFeedback(intl.formatMessage({
-        id: 'chat.participantSearch.failed',
-        defaultMessage: 'Unable to search profiles right now.',
-      }));
-    } finally {
-      setParticipantLoading(false);
-    }
-  }
-
   async function handleCreateConversation(event: FormEvent) {
     event.preventDefault();
     if (selectedSenderId == null) {
@@ -275,6 +302,7 @@ export default function ChatPage() {
       setParticipantResults([]);
       setParticipantQuery('');
       setGroupTitle('');
+      setCreateModalVisible(false);
       setFeedback(null);
       await refreshConversations(details.id);
       setSelectedConversation(details);
@@ -329,6 +357,25 @@ export default function ChatPage() {
     setSelectedParticipants(current => current.filter(profile => Number(profile.id) !== profileId));
   }
 
+  function resetCreateConversationState() {
+    setParticipantQuery('');
+    setParticipantResults([]);
+    setSelectedParticipants([]);
+    setGroupTitle('');
+    setParticipantLoading(false);
+  }
+
+  function openCreateConversationModal() {
+    resetCreateConversationState();
+    setFeedback(null);
+    setCreateModalVisible(true);
+  }
+
+  function closeCreateConversationModal() {
+    setCreateModalVisible(false);
+    resetCreateConversationState();
+  }
+
   if (signedOut) {
     return (
       <Container fluid className="chat-shell px-3 px-xl-4">
@@ -355,100 +402,13 @@ export default function ChatPage() {
               id: 'chat.subtitle',
               defaultMessage: 'Switch sender identities, start direct chats, and keep group conversations in one place.',
             })}
+            rightContent={(
+              <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal}>
+                <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+              </Button>
+            )}
           />
           {feedback && <Alert variant="warning" className="chat-feedback">{feedback}</Alert>}
-          <div className="chat-create-panel mt-3">
-            <div className="chat-panel-heading">
-              <FormattedMessage id="chat.newConversation" defaultMessage="New conversation" />
-            </div>
-            <Form onSubmit={handleCreateConversation} className="chat-create-form">
-              <Form.Group className="chat-form-group">
-                <Form.Label className="chat-form-label">
-                  <FormattedMessage id="chat.sender" defaultMessage="Send as" />
-                </Form.Label>
-                <Form.Select
-                  className="chat-form-input"
-                  value={selectedSenderId ?? ''}
-                  onChange={event => setSelectedSenderId(Number(event.target.value))}
-                  disabled={loadingProfiles || !senderProfiles.length}
-                >
-                  {senderProfiles.map(profile => (
-                    <option key={profile.id} value={profile.id}>
-                      {buildProfileLabel(profile)}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="chat-form-group">
-                <Form.Label className="chat-form-label">
-                  <FormattedMessage id="chat.participantSearch" defaultMessage="Find participants" />
-                </Form.Label>
-                <div className="chat-search-row">
-                  <Form.Control
-                    className="chat-form-input"
-                    value={participantQuery}
-                    onChange={event => setParticipantQuery(event.target.value)}
-                    placeholder={intl.formatMessage({
-                      id: 'chat.participantSearch.placeholder',
-                      defaultMessage: 'Search profiles by name or alias',
-                    })}
-                  />
-                  <Button type="button" className="chat-action-button" onClick={handleParticipantSearch}>
-                    <FormattedMessage id="chat.searchButton" defaultMessage="Search" />
-                  </Button>
-                </div>
-              </Form.Group>
-              {participantLoading && <Spinner animation="border" size="sm" />}
-              {selectedParticipants.length > 0 && (
-                <div className="chat-chip-row">
-                  {selectedParticipants.map(profile => (
-                    <button
-                      key={profile.id}
-                      type="button"
-                      className="chat-chip"
-                      onClick={() => removeParticipant(Number(profile.id))}
-                    >
-                      {buildProfileLabel(profile)} <span>x</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedParticipants.length > 1 && (
-                <Form.Group className="chat-form-group">
-                  <Form.Label className="chat-form-label">
-                    <FormattedMessage id="chat.groupTitle" defaultMessage="Group title" />
-                  </Form.Label>
-                  <Form.Control
-                    className="chat-form-input"
-                    value={groupTitle}
-                    onChange={event => setGroupTitle(event.target.value)}
-                    placeholder={intl.formatMessage({
-                      id: 'chat.groupTitle.placeholder',
-                      defaultMessage: 'Optional name for this group',
-                    })}
-                  />
-                </Form.Group>
-              )}
-              {participantResults.length > 0 && (
-                <div className="chat-search-results">
-                  {participantResults.map(profile => (
-                    <button
-                      key={profile.id}
-                      type="button"
-                      className="chat-search-result"
-                      onClick={() => addParticipant(profile)}
-                    >
-                      <span className="chat-search-result-name">{buildProfileLabel(profile)}</span>
-                      <Badge bg="light" text="dark">{profile.type || 'PROFILE'}</Badge>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <Button className="chat-action-button mt-3" type="submit" disabled={loadingProfiles}>
-                <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
-              </Button>
-            </Form>
-          </div>
           <div className="chat-list-panel mt-3">
             <div className="chat-panel-heading">
               <FormattedMessage id="chat.conversations" defaultMessage="Conversations" />
@@ -504,19 +464,22 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="chat-thread-controls">
-                  <Form.Select
-                    className="chat-form-input chat-thread-sender-select"
-                    value={selectedSenderId ?? ''}
-                    onChange={event => setSelectedSenderId(Number(event.target.value))}
-                  >
-                    {senderProfiles
-                      .filter(profile => selectedConversation.participants.some(participant => participant.profileId === Number(profile.id)))
-                      .map(profile => (
-                        <option key={profile.id} value={profile.id}>
-                          {buildProfileLabel(profile)}
-                        </option>
-                      ))}
-                  </Form.Select>
+                  <div className="chat-select-shell">
+                    <Form.Select
+                      className="chat-form-input chat-thread-sender-select chat-select-input"
+                      value={selectedSenderId ?? ''}
+                      onChange={event => setSelectedSenderId(Number(event.target.value))}
+                    >
+                      {senderProfiles
+                        .filter(profile => selectedConversation.participants.some(participant => participant.profileId === Number(profile.id)))
+                        .map(profile => (
+                          <option key={profile.id} value={profile.id}>
+                            {buildProfileLabel(profile)}
+                          </option>
+                        ))}
+                    </Form.Select>
+                    <ChevronDownIcon className="chat-select-caret" />
+                  </div>
                 </div>
               </div>
               <div className="chat-message-list">
@@ -567,6 +530,118 @@ export default function ChatPage() {
           )}
         </section>
       </div>
+      <Modal show={createModalVisible} onHide={closeCreateConversationModal} centered dialogClassName="chat-create-dialog">
+        <Modal.Header closeButton className="chat-create-modal-header">
+          <div className="chat-create-modal-title-block">
+            <span className="chat-create-modal-kicker">
+              <FormattedMessage id="chat.newConversation" defaultMessage="New conversation" />
+            </span>
+            <Modal.Title className="chat-create-modal-title">
+              <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+            </Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body className="chat-create-modal-body">
+          <Form onSubmit={handleCreateConversation} className="chat-create-form">
+            <Form.Group className="chat-form-group">
+              <Form.Label className="chat-form-label">
+                <FormattedMessage id="chat.sender" defaultMessage="Send as" />
+              </Form.Label>
+              <div className="chat-select-shell">
+                <Form.Select
+                  className="chat-form-input chat-select-input"
+                  value={selectedSenderId ?? ''}
+                  onChange={event => setSelectedSenderId(Number(event.target.value))}
+                  disabled={loadingProfiles || !senderProfiles.length}
+                >
+                  {senderProfiles.map(profile => (
+                    <option key={profile.id} value={profile.id}>
+                      {buildProfileLabel(profile)}
+                    </option>
+                  ))}
+                </Form.Select>
+                <ChevronDownIcon className="chat-select-caret" />
+              </div>
+            </Form.Group>
+            <Form.Group className="chat-form-group">
+              <Form.Label className="chat-form-label">
+                <FormattedMessage id="chat.participantSearch" defaultMessage="Find participants" />
+              </Form.Label>
+              <Form.Control
+                className="chat-form-input"
+                value={participantQuery}
+                onChange={event => {
+                  setParticipantQuery(event.target.value);
+                  setFeedback(null);
+                }}
+                placeholder={intl.formatMessage({
+                  id: 'chat.participantSearch.placeholder',
+                  defaultMessage: 'Search profiles by name or alias',
+                })}
+              />
+            </Form.Group>
+            {participantLoading && <Spinner animation="border" size="sm" className="mt-2" />}
+            {selectedParticipants.length > 0 && (
+              <div className="chat-chip-row">
+                {selectedParticipants.map(profile => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    className="chat-chip"
+                    onClick={() => removeParticipant(Number(profile.id))}
+                  >
+                    {buildProfileLabel(profile)} <span>x</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {selectedParticipants.length > 1 && (
+              <Form.Group className="chat-form-group">
+                <Form.Label className="chat-form-label">
+                  <FormattedMessage id="chat.groupTitle" defaultMessage="Group title" />
+                </Form.Label>
+                <Form.Control
+                  className="chat-form-input"
+                  value={groupTitle}
+                  onChange={event => setGroupTitle(event.target.value)}
+                  placeholder={intl.formatMessage({
+                    id: 'chat.groupTitle.placeholder',
+                    defaultMessage: 'Optional name for this group',
+                  })}
+                />
+              </Form.Group>
+            )}
+            {participantQuery.trim() && !participantLoading && participantResults.length === 0 && (
+              <div className="chat-empty-state">
+                <FormattedMessage id="chat.participantSearch.empty" defaultMessage="No matching profiles." />
+              </div>
+            )}
+            {participantResults.length > 0 && (
+              <div className="chat-search-results">
+                {participantResults.map(profile => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    className="chat-search-result"
+                    onClick={() => addParticipant(profile)}
+                  >
+                    <span className="chat-search-result-name">{buildProfileLabel(profile)}</span>
+                    <Badge bg="light" text="dark">{profile.type || 'PROFILE'}</Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="chat-create-actions">
+              <Button type="button" className="chat-secondary-button" onClick={closeCreateConversationModal}>
+                <FormattedMessage id="profile.action.cancel" defaultMessage="Cancel" />
+              </Button>
+              <Button className="chat-action-button" type="submit" disabled={loadingProfiles}>
+                <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 }

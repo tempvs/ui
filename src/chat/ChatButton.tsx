@@ -13,7 +13,7 @@ const CommentsIcon = FaComments as React.ComponentType<IconProps>;
 export default function ChatButton() {
   return (
     <HeaderIconPopover text="chat.popover" defaultMessage="Chat">
-      <Button variant="link" className="header-icon-button" aria-label="Chat">
+      <Button variant="link" className="header-icon-button chat-nav-button" aria-label="Chat">
         <CommentsIcon />
       </Button>
     </HeaderIconPopover>
