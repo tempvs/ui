@@ -57,6 +57,32 @@ function toPromiseClubProfiles(userId: number) {
   });
 }
 
+function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number | null) {
+  const seenUserIds = new Set<number>();
+
+  return profiles.filter(profile => {
+    const profileId = Number(profile.id);
+    if (!Number.isFinite(profileId)) {
+      return false;
+    }
+
+    const userId = profile.userId != null ? Number(profile.userId) : null;
+    if (userId != null && Number.isFinite(userId)) {
+      if (excludedUserId != null && userId === excludedUserId) {
+        return false;
+      }
+
+      if (seenUserIds.has(userId)) {
+        return false;
+      }
+
+      seenUserIds.add(userId);
+    }
+
+    return true;
+  });
+}
+
 export default function ChatPage() {
   const intl = useIntl();
   const navigate = useNavigate();
@@ -195,7 +221,20 @@ export default function ChatPage() {
       try {
         const results = await searchProfiles({ query, size: 12 });
         if (!cancelled) {
-          setParticipantResults(results.filter(profile => Number(profile.id) !== selectedSenderId));
+          const selectedUserIds = new Set(
+            selectedParticipants
+              .map(profile => profile.userId != null ? Number(profile.userId) : null)
+              .filter((userId): userId is number => userId != null && Number.isFinite(userId))
+          );
+
+          const filteredResults = deduplicateProfilesByUser(results, currentUserId)
+            .filter(profile => Number(profile.id) !== selectedSenderId)
+            .filter(profile => {
+              const userId = profile.userId != null ? Number(profile.userId) : null;
+              return userId == null || !selectedUserIds.has(userId);
+            });
+
+          setParticipantResults(filteredResults);
         }
       } catch (error) {
         if (!cancelled) {
@@ -215,7 +254,7 @@ export default function ChatPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [createModalVisible, participantQuery, selectedSenderId, intl]);
+  }, [createModalVisible, currentUserId, intl, participantQuery, selectedParticipants, selectedSenderId]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -398,10 +437,7 @@ export default function ChatPage() {
         <aside className="chat-sidebar-panel">
           <SectionHeaderBar
             title={intl.formatMessage({ id: 'chat.title', defaultMessage: 'Chat' })}
-            subtitle={intl.formatMessage({
-              id: 'chat.subtitle',
-              defaultMessage: 'Switch sender identities, start direct chats, and keep group conversations in one place.',
-            })}
+            subtitle={null}
             rightContent={(
               <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal}>
                 <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
@@ -461,24 +497,6 @@ export default function ChatPage() {
                   <div className="chat-thread-title">{selectedConversation.displayName}</div>
                   <div className="chat-thread-subtitle">
                     {selectedConversation.participants.map(participant => participant.name).join(', ')}
-                  </div>
-                </div>
-                <div className="chat-thread-controls">
-                  <div className="chat-select-shell">
-                    <Form.Select
-                      className="chat-form-input chat-thread-sender-select chat-select-input"
-                      value={selectedSenderId ?? ''}
-                      onChange={event => setSelectedSenderId(Number(event.target.value))}
-                    >
-                      {senderProfiles
-                        .filter(profile => selectedConversation.participants.some(participant => participant.profileId === Number(profile.id)))
-                        .map(profile => (
-                          <option key={profile.id} value={profile.id}>
-                            {buildProfileLabel(profile)}
-                          </option>
-                        ))}
-                    </Form.Select>
-                    <ChevronDownIcon className="chat-select-caret" />
                   </div>
                 </div>
               </div>
