@@ -45,15 +45,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.25rem;
+  min-height: 2.1rem;
+  font-size: 0.9rem;
 }
 
 .header-icon-button {
   border: 0;
   background: transparent;
   box-shadow: none;
-  min-width: 2.25rem;
-  padding: 0.25rem 0.45rem;
+  min-width: 2.1rem;
+  padding: 0.2rem 0.35rem;
 }
 
 .header-icon-button:hover,
@@ -98,7 +99,7 @@
 .header-search-trigger {
   display: flex;
   align-items: center;
-  min-height: 2.2rem;
+  min-height: 2.05rem;
   max-width: 18rem;
   border: 1px solid rgba(111, 116, 121, 0.22);
   background: rgba(255, 255, 255, 0.96);
@@ -109,13 +110,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.2rem;
-  min-width: 2.2rem;
-  height: 2.2rem;
+  width: 2.05rem;
+  min-width: 2.05rem;
+  height: 2.05rem;
   border: 0;
   background: transparent;
   color: #5f6970;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
 }
 
 .header-search-icon-button:hover,
@@ -125,13 +126,13 @@
 }
 
 .header-search-input.form-control {
-  min-height: 2.2rem;
+  min-height: 2.05rem;
   border: 0;
   background: transparent;
   box-shadow: none;
   color: #2f3940;
-  padding: 0.25rem 0.45rem 0.25rem 0.1rem;
-  font-size: 0.88rem;
+  padding: 0.2rem 0.38rem 0.2rem 0.08rem;
+  font-size: 0.84rem;
 }
 
 .header-search-input.form-control:focus {
@@ -148,16 +149,16 @@
   left: 0;
   z-index: 50;
   width: min(42rem, calc(100vw - 2rem));
-  padding: 0.5rem 0.55rem 0.65rem 0.55rem;
+  padding: 0.42rem 0.46rem 0.55rem 0.46rem;
   border: 1px solid rgba(87, 102, 98, 0.14);
   background:
     linear-gradient(180deg, rgba(252, 253, 250, 0.99) 0%, rgba(246, 249, 244, 0.99) 100%);
   box-shadow: 0 1rem 2.4rem rgba(31, 38, 35, 0.18);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .auth-control-button {
-  padding: 0.25rem 0.35rem;
+  padding: 0.2rem 0.3rem;
   border: 0;
   background: transparent;
   box-shadow: none;

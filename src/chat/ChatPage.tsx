@@ -25,6 +25,25 @@ function buildProfileLabel(profile: Profile | null | undefined) {
   return fullName || profile.alias || `Profile ${profile.id}`;
 }
 
+function buildProfileMeta(profile: Profile | null | undefined) {
+  if (!profile) {
+    return '';
+  }
+
+  const alias = (profile.alias || '').trim();
+  const email = (profile.profileEmail || '').trim();
+
+  if (alias && email) {
+    return `@${alias} • ${email}`;
+  }
+
+  if (alias) {
+    return `@${alias}`;
+  }
+
+  return email;
+}
+
 function formatDate(value?: string | null) {
   if (!value) {
     return '';
@@ -390,6 +409,8 @@ export default function ChatPage() {
       }
       return [...current, profile];
     });
+    setParticipantQuery('');
+    setParticipantResults([]);
   }
 
   function removeParticipant(profileId: number) {
@@ -440,7 +461,7 @@ export default function ChatPage() {
             subtitle={null}
             rightContent={(
               <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal}>
-                <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+                <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
               </Button>
             )}
           />
@@ -555,7 +576,7 @@ export default function ChatPage() {
               <FormattedMessage id="chat.newConversation" defaultMessage="New conversation" />
             </span>
             <Modal.Title className="chat-create-modal-title">
-              <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+              <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
             </Modal.Title>
           </div>
         </Modal.Header>
@@ -585,20 +606,55 @@ export default function ChatPage() {
               <Form.Label className="chat-form-label">
                 <FormattedMessage id="chat.participantSearch" defaultMessage="Find participants" />
               </Form.Label>
-              <Form.Control
-                className="chat-form-input"
-                value={participantQuery}
-                onChange={event => {
-                  setParticipantQuery(event.target.value);
-                  setFeedback(null);
-                }}
-                placeholder={intl.formatMessage({
-                  id: 'chat.participantSearch.placeholder',
-                  defaultMessage: 'Search profiles by name or alias',
-                })}
-              />
+              <div className="chat-participant-search-shell">
+                <Form.Control
+                  className="chat-form-input"
+                  value={participantQuery}
+                  onChange={event => {
+                    setParticipantQuery(event.target.value);
+                    setFeedback(null);
+                  }}
+                  placeholder={intl.formatMessage({
+                    id: 'chat.participantSearch.placeholder',
+                    defaultMessage: 'Search profiles by name or alias',
+                  })}
+                />
+                {participantQuery.trim() && (
+                  <div className="chat-search-popover">
+                    {participantLoading && (
+                      <div className="chat-search-popover-status">
+                        <Spinner animation="border" size="sm" />
+                      </div>
+                    )}
+                    {!participantLoading && participantResults.length === 0 && (
+                      <div className="chat-search-popover-empty">
+                        <FormattedMessage id="chat.participantSearch.empty" defaultMessage="No matching profiles." />
+                      </div>
+                    )}
+                    {!participantLoading && participantResults.length > 0 && (
+                      <div className="chat-search-results">
+                        {participantResults.map(profile => (
+                          <button
+                            key={profile.id}
+                            type="button"
+                            className="chat-search-result"
+                            onClick={() => addParticipant(profile)}
+                          >
+                            <span className="chat-search-result-copy">
+                              <span className="chat-search-result-name">{buildProfileLabel(profile)}</span>
+                              {buildProfileMeta(profile) && (
+                                <span className="chat-search-result-meta">{buildProfileMeta(profile)}</span>
+                              )}
+                            </span>
+                            <Badge bg="light" text="dark">{profile.type || 'PROFILE'}</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </Form.Group>
-            {participantLoading && <Spinner animation="border" size="sm" className="mt-2" />}
             {selectedParticipants.length > 0 && (
               <div className="chat-chip-row">
                 {selectedParticipants.map(profile => (
@@ -629,32 +685,12 @@ export default function ChatPage() {
                 />
               </Form.Group>
             )}
-            {participantQuery.trim() && !participantLoading && participantResults.length === 0 && (
-              <div className="chat-empty-state">
-                <FormattedMessage id="chat.participantSearch.empty" defaultMessage="No matching profiles." />
-              </div>
-            )}
-            {participantResults.length > 0 && (
-              <div className="chat-search-results">
-                {participantResults.map(profile => (
-                  <button
-                    key={profile.id}
-                    type="button"
-                    className="chat-search-result"
-                    onClick={() => addParticipant(profile)}
-                  >
-                    <span className="chat-search-result-name">{buildProfileLabel(profile)}</span>
-                    <Badge bg="light" text="dark">{profile.type || 'PROFILE'}</Badge>
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="chat-create-actions">
               <Button type="button" className="chat-secondary-button" onClick={closeCreateConversationModal}>
                 <FormattedMessage id="profile.action.cancel" defaultMessage="Cancel" />
               </Button>
               <Button className="chat-action-button" type="submit" disabled={loadingProfiles}>
-                <FormattedMessage id="chat.createButton" defaultMessage="Create conversation" />
+                <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
               </Button>
             </div>
           </Form>
