@@ -2,9 +2,10 @@ import React, { FormEvent, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Container, Form, Modal, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { FaChevronDown, FaPlus } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
+import { resolveCurrentOwnedProfileId } from '../profile/currentProfile';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId, searchProfiles } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { createConversation, getConversation, listConversations, sendMessage } from './chatApi';
@@ -15,7 +16,6 @@ type IconProps = {
 };
 
 const PlusIcon = FaPlus as React.ComponentType<IconProps>;
-const ChevronDownIcon = FaChevronDown as React.ComponentType<IconProps>;
 
 function buildProfileLabel(profile: Profile | null | undefined) {
   if (!profile) {
@@ -102,12 +102,20 @@ function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number 
   });
 }
 
+function conversationIncludesProfile(
+  conversation: Pick<ChatConversationSummary, 'participants'> | Pick<ChatConversationDetails, 'participants'>,
+  profileId: number
+) {
+  return conversation.participants.some(participant => participant.profileId === profileId);
+}
+
 export default function ChatPage() {
   const intl = useIntl();
   const navigate = useNavigate();
   const { conversationId } = useParams();
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<number | null>(null);
   const [senderProfiles, setSenderProfiles] = useState<Profile[]>([]);
   const [selectedSenderId, setSelectedSenderId] = useState<number | null>(null);
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
@@ -121,6 +129,7 @@ export default function ChatPage() {
   const [participantLoading, setParticipantLoading] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState<Profile[]>([]);
   const [groupTitle, setGroupTitle] = useState('');
+  const [initialMessage, setInitialMessage] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -161,11 +170,16 @@ export default function ChatPage() {
         const profiles = [userProfile, ...clubProfiles]
           .filter((profile): profile is Profile => Boolean(profile && profile.id != null));
         setSenderProfiles(profiles);
+        const currentProfileId = resolveCurrentOwnedProfileId(profiles);
+        setCurrentProfileId(currentProfileId);
         setSelectedSenderId(prev => {
           if (prev && profiles.some(profile => Number(profile.id) === prev)) {
             return prev;
           }
-          return profiles.length ? Number(profiles[0].id) : null;
+          if (currentProfileId != null && profiles.some(profile => Number(profile.id) === currentProfileId)) {
+            return currentProfileId;
+          }
+          return null;
         });
       } catch (error) {
         if (!cancelled) {
@@ -188,18 +202,23 @@ export default function ChatPage() {
   }, [currentUserId, intl]);
 
   useEffect(() => {
-    if (!senderProfiles.length) {
+    if (!senderProfiles.length || currentProfileId == null) {
+      setConversations([]);
+      setLoadingConversations(false);
       return;
     }
 
     let cancelled = false;
+    const resolvedCurrentProfileId = currentProfileId;
 
     async function loadConversationsList() {
       setLoadingConversations(true);
       try {
-        const data = await listConversations();
+        const data = await listConversations(resolvedCurrentProfileId);
         if (!cancelled) {
-          setConversations(Array.isArray(data) ? data : []);
+          const visibleConversations = (Array.isArray(data) ? data : [])
+            .filter(conversation => conversationIncludesProfile(conversation, resolvedCurrentProfileId));
+          setConversations(visibleConversations);
         }
       } catch (error) {
         if (!cancelled) {
@@ -219,7 +238,71 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [senderProfiles, intl]);
+  }, [currentProfileId, senderProfiles, intl]);
+
+  useEffect(() => {
+    if (!conversationId || currentProfileId == null) {
+      setSelectedConversation(null);
+      setLoadingConversation(false);
+      return;
+    }
+
+    let cancelled = false;
+    const resolvedConversationId = conversationId;
+    const resolvedCurrentProfileId = currentProfileId;
+
+    async function loadConversationDetails() {
+      setLoadingConversation(true);
+      setFeedback(null);
+      try {
+        const data = await getConversation(resolvedConversationId, resolvedCurrentProfileId);
+        if (cancelled) {
+          return;
+        }
+        if (!conversationIncludesProfile(data, resolvedCurrentProfileId)) {
+          setSelectedConversation(null);
+          setFeedback(intl.formatMessage({
+            id: 'chat.conversation.failed',
+            defaultMessage: 'Unable to open that conversation.',
+          }));
+          navigate('/chat', { replace: true });
+          return;
+        }
+        setSelectedConversation(data);
+        setSelectedSenderId(prev => {
+          if (prev && data.participants.some(participant => participant.profileId === prev)) {
+            return prev;
+          }
+          const currentParticipant = data.participants.find(participant => participant.profileId === resolvedCurrentProfileId);
+          if (currentParticipant) {
+            return resolvedCurrentProfileId;
+          }
+          const ownedParticipant = data.participants.find(participant =>
+            senderProfiles.some(profile => Number(profile.id) === participant.profileId)
+          );
+          return ownedParticipant ? ownedParticipant.profileId : prev;
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedConversation(null);
+          setFeedback(intl.formatMessage({
+            id: 'chat.conversation.failed',
+            defaultMessage: 'Unable to open that conversation.',
+          }));
+          navigate('/chat', { replace: true });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingConversation(false);
+        }
+      }
+    }
+
+    loadConversationDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, currentProfileId, senderProfiles, intl, navigate]);
 
   useEffect(() => {
     if (!createModalVisible) {
@@ -275,57 +358,19 @@ export default function ChatPage() {
     };
   }, [createModalVisible, currentUserId, intl, participantQuery, selectedParticipants, selectedSenderId]);
 
-  useEffect(() => {
-    if (!conversationId) {
-      setSelectedConversation(null);
+  async function refreshConversations(selectedId?: number) {
+    if (currentProfileId == null) {
+      setConversations([]);
+      if (selectedId != null) {
+        navigate('/chat');
+      }
       return;
     }
 
-    let cancelled = false;
-    const resolvedConversationId = conversationId;
-
-    async function loadConversationDetails() {
-      setLoadingConversation(true);
-      setFeedback(null);
-      try {
-        const data = await getConversation(resolvedConversationId);
-        if (cancelled) {
-          return;
-        }
-        setSelectedConversation(data);
-        setSelectedSenderId(prev => {
-          if (prev && data.participants.some(participant => participant.profileId === prev)) {
-            return prev;
-          }
-          const ownedParticipant = data.participants.find(participant =>
-            senderProfiles.some(profile => Number(profile.id) === participant.profileId)
-          );
-          return ownedParticipant ? ownedParticipant.profileId : prev;
-        });
-      } catch (error) {
-        if (!cancelled) {
-          setSelectedConversation(null);
-          setFeedback(intl.formatMessage({
-            id: 'chat.conversation.failed',
-            defaultMessage: 'Unable to open that conversation.',
-          }));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingConversation(false);
-        }
-      }
-    }
-
-    loadConversationDetails();
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationId, senderProfiles, intl]);
-
-  async function refreshConversations(selectedId?: number) {
-    const data = await listConversations();
-    setConversations(Array.isArray(data) ? data : []);
+    const data = await listConversations(currentProfileId);
+    const visibleConversations = (Array.isArray(data) ? data : [])
+      .filter(conversation => conversationIncludesProfile(conversation, currentProfileId));
+    setConversations(visibleConversations);
 
     if (selectedId != null) {
       navigate(`/chat/${selectedId}`);
@@ -334,13 +379,20 @@ export default function ChatPage() {
 
   async function handleCreateConversation(event: FormEvent) {
     event.preventDefault();
-    if (selectedSenderId == null) {
+    if (currentProfileId == null) {
+      return;
+    }
+    if (!initialMessage.trim()) {
+      setFeedback(intl.formatMessage({
+        id: 'chat.initialMessage.required',
+        defaultMessage: 'Write the first message before creating a conversation.',
+      }));
       return;
     }
 
     const participantIds = selectedParticipants
       .map(profile => Number(profile.id))
-      .filter(profileId => profileId !== selectedSenderId);
+      .filter(profileId => profileId !== currentProfileId);
 
     if (!participantIds.length) {
       setFeedback(intl.formatMessage({
@@ -352,14 +404,16 @@ export default function ChatPage() {
 
     try {
       const details = await createConversation({
-        senderProfileId: selectedSenderId,
+        senderProfileId: currentProfileId,
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
+        initialMessage: initialMessage.trim(),
       });
       setSelectedParticipants([]);
       setParticipantResults([]);
       setParticipantQuery('');
       setGroupTitle('');
+      setInitialMessage('');
       setCreateModalVisible(false);
       setFeedback(null);
       await refreshConversations(details.id);
@@ -422,6 +476,7 @@ export default function ChatPage() {
     setParticipantResults([]);
     setSelectedParticipants([]);
     setGroupTitle('');
+    setInitialMessage('');
     setParticipantLoading(false);
   }
 
@@ -451,6 +506,10 @@ export default function ChatPage() {
     selectedSenderId != null &&
     selectedConversation.participants.some(participant => participant.profileId === selectedSenderId)
   );
+  const noCurrentProfile = !loadingProfiles && currentProfileId == null;
+  const currentProfile = senderProfiles.find(profile => Number(profile.id) === currentProfileId) || null;
+  const currentProfileName = buildProfileLabel(currentProfile);
+  const canCreateConversation = !loadingProfiles && Boolean(initialMessage.trim());
 
   return (
     <Container fluid className="chat-shell px-3 px-xl-4 py-3 py-xl-4">
@@ -460,7 +519,7 @@ export default function ChatPage() {
             title={intl.formatMessage({ id: 'chat.title', defaultMessage: 'Chat' })}
             subtitle={null}
             rightContent={(
-              <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal}>
+              <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal} disabled={noCurrentProfile}>
                 <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
               </Button>
             )}
@@ -471,7 +530,15 @@ export default function ChatPage() {
               <FormattedMessage id="chat.conversations" defaultMessage="Conversations" />
             </div>
             {loadingConversations && <Spinner animation="border" size="sm" />}
-            {!loadingConversations && conversations.length === 0 && (
+            {noCurrentProfile && (
+              <div className="chat-empty-state">
+                <FormattedMessage
+                  id="chat.currentProfile.required"
+                  defaultMessage="Choose or create a current profile to use chat."
+                />
+              </div>
+            )}
+            {!loadingConversations && !noCurrentProfile && conversations.length === 0 && (
               <div className="chat-empty-state">
                 <FormattedMessage id="chat.empty" defaultMessage="No conversations yet." />
               </div>
@@ -493,7 +560,20 @@ export default function ChatPage() {
           </div>
         </aside>
         <section className="chat-main-panel">
-          {!conversationId && (
+          {noCurrentProfile && !conversationId && (
+            <div className="chat-empty-workspace">
+              <h2 className="chat-workspace-title">
+                <FormattedMessage id="chat.profileRequired.title" defaultMessage="Choose a current profile" />
+              </h2>
+              <p className="chat-workspace-copy">
+                <FormattedMessage
+                  id="chat.profileRequired.copy"
+                  defaultMessage="Chat is scoped to the current profile. Pick one from the header to see conversations."
+                />
+              </p>
+            </div>
+          )}
+          {!conversationId && !noCurrentProfile && (
             <div className="chat-empty-workspace">
               <h2 className="chat-workspace-title">
                 <FormattedMessage id="chat.workspace.title" defaultMessage="Choose a conversation" />
@@ -506,7 +586,7 @@ export default function ChatPage() {
               </p>
             </div>
           )}
-          {conversationId && loadingConversation && (
+          {conversationId && !noCurrentProfile && loadingConversation && (
             <div className="chat-empty-workspace">
               <Spinner animation="border" />
             </div>
@@ -576,32 +656,12 @@ export default function ChatPage() {
               <FormattedMessage id="chat.newConversation" defaultMessage="New conversation" />
             </span>
             <Modal.Title className="chat-create-modal-title">
-              <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
+              {currentProfileName ? `As ${currentProfileName}` : 'As current profile'}
             </Modal.Title>
           </div>
         </Modal.Header>
         <Modal.Body className="chat-create-modal-body">
           <Form onSubmit={handleCreateConversation} className="chat-create-form">
-            <Form.Group className="chat-form-group">
-              <Form.Label className="chat-form-label">
-                <FormattedMessage id="chat.sender" defaultMessage="Send as" />
-              </Form.Label>
-              <div className="chat-select-shell">
-                <Form.Select
-                  className="chat-form-input chat-select-input"
-                  value={selectedSenderId ?? ''}
-                  onChange={event => setSelectedSenderId(Number(event.target.value))}
-                  disabled={loadingProfiles || !senderProfiles.length}
-                >
-                  {senderProfiles.map(profile => (
-                    <option key={profile.id} value={profile.id}>
-                      {buildProfileLabel(profile)}
-                    </option>
-                  ))}
-                </Form.Select>
-                <ChevronDownIcon className="chat-select-caret" />
-              </div>
-            </Form.Group>
             <Form.Group className="chat-form-group">
               <Form.Label className="chat-form-label">
                 <FormattedMessage id="chat.participantSearch" defaultMessage="Find participants" />
@@ -685,12 +745,28 @@ export default function ChatPage() {
                 />
               </Form.Group>
             )}
+            <Form.Group className="chat-form-group">
+              <Form.Label className="chat-form-label">
+                <FormattedMessage id="chat.initialMessage" defaultMessage="Message" />
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                className="chat-form-input"
+                value={initialMessage}
+                onChange={event => setInitialMessage(event.target.value)}
+                placeholder={intl.formatMessage({
+                  id: 'chat.initialMessage.placeholder',
+                  defaultMessage: 'Write the first message',
+                })}
+              />
+            </Form.Group>
             <div className="chat-create-actions">
               <Button type="button" className="chat-secondary-button" onClick={closeCreateConversationModal}>
                 <FormattedMessage id="profile.action.cancel" defaultMessage="Cancel" />
               </Button>
-              <Button className="chat-action-button" type="submit" disabled={loadingProfiles}>
-                <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
+              <Button className="chat-action-button" type="submit" disabled={!canCreateConversation}>
+                <FormattedMessage id="chat.sendButton" defaultMessage="Send" />
               </Button>
             </div>
           </Form>

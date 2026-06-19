@@ -1,8 +1,6 @@
 import React from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { FaBook, FaSignInAlt } from 'react-icons/fa';
-import Cookies from 'js-cookie';
-import { Navigate } from 'react-router-dom';
 
 type IconProps = {
   className?: string;
@@ -12,12 +10,6 @@ const BookIcon = FaBook as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType<IconProps>;
 
 export default function HomePage() {
-  const loggedIn = Cookies.get('TEMPVS_LOGGED_IN');
-
-  if (loggedIn) {
-    return <Navigate to="/profile" replace />;
-  }
-
   return (
     <Container fluid className="home-shell px-4 px-xl-5">
       <Row className="justify-content-center">

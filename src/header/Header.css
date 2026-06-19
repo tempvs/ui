@@ -71,6 +71,28 @@
   justify-content: center;
 }
 
+.header-profile-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.header-profile-select.form-select {
+  min-height: 2.1rem;
+  max-width: 10.5rem;
+  padding: 0.2rem 1.85rem 0.2rem 0.45rem;
+  border: 1px solid rgba(111, 116, 121, 0.22);
+  background-color: rgba(255, 255, 255, 0.96);
+  font-size: 0.82rem;
+  box-shadow: 0 0.1rem 0.45rem rgba(31, 38, 35, 0.06);
+}
+
+.header-profile-select.form-select:focus {
+  border-color: rgba(63, 71, 79, 0.3);
+  box-shadow: 0 0 0 0.12rem rgba(63, 71, 79, 0.1);
+}
+
 .tempvs-header-popover {
   position: absolute;
   top: 50%;

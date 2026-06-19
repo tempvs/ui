@@ -34,12 +34,12 @@ async function requestJson<T>(url: string, options: RequestOptions = {}) {
   return data as T;
 }
 
-export function listConversations(page = 0, size = 30) {
-  return requestJson<ChatConversationSummary[]>(`/api/chat/conversations?page=${page}&size=${size}`);
+export function listConversations(profileId: number, page = 0, size = 30) {
+  return requestJson<ChatConversationSummary[]>(`/api/chat/conversations?profileId=${profileId}&page=${page}&size=${size}`);
 }
 
-export function getConversation(conversationId: number | string, page = 0, size = 40) {
-  return requestJson<ChatConversationDetails>(`/api/chat/conversations/${conversationId}?page=${page}&size=${size}`);
+export function getConversation(conversationId: number | string, profileId: number, page = 0, size = 40) {
+  return requestJson<ChatConversationDetails>(`/api/chat/conversations/${conversationId}?profileId=${profileId}&page=${page}&size=${size}`);
 }
 
 export function createConversation(payload: CreateChatConversationPayload) {

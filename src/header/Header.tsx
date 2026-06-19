@@ -1,15 +1,24 @@
 import React, { Component } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
+import { Col, Container, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
+import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
 import LibraryButton from '../library/LibraryButton';
 import ChatButton from '../chat/ChatButton';
 import SearchDialog from '../search/SearchDialog';
 import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
-import { doFetch } from '../util/Fetcher';
+import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
+import {
+  buildOwnedProfileOptions,
+  clearStoredCurrentProfileValue,
+  CurrentProfileOption,
+  resolveCurrentProfileOption,
+  setStoredCurrentProfileValue,
+} from '../profile/currentProfile';
+import { Profile } from '../profile/profileTypes';
 
 import './Header.css';
 
@@ -25,6 +34,9 @@ type HeaderState = {
   avatarUrl: string | null;
   avatarText: string | null;
   currentUserId: number | null;
+  currentProfileValue: string | null;
+  currentProfilePath: string;
+  profileOptions: CurrentProfileOption[];
 };
 
 class Header extends Component<Record<string, never>, HeaderState> {
@@ -36,10 +48,14 @@ class Header extends Component<Record<string, never>, HeaderState> {
       avatarUrl: null,
       avatarText: null,
       currentUserId: null,
+      currentProfileValue: null,
+      currentProfilePath: '/profile',
+      profileOptions: [],
     };
     this.logIn = this.logIn.bind(this);
     this.logOut = this.logOut.bind(this);
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
+    this.handleCurrentProfileChange = this.handleCurrentProfileChange.bind(this);
   }
 
   componentDidMount() {
@@ -53,24 +69,92 @@ class Header extends Component<Record<string, never>, HeaderState> {
   }
 
   logOut() {
-    this.setState({ loggedIn: false, avatarUrl: null, avatarText: null, currentUserId: null });
+    clearStoredCurrentProfileValue();
+    this.setState({
+      loggedIn: false,
+      avatarUrl: null,
+      avatarText: null,
+      currentUserId: null,
+      currentProfileValue: null,
+      currentProfilePath: '/profile',
+      profileOptions: [],
+    });
   }
 
   loadOAuthProfile() {
-    const clearAvatar = () => this.setState({ avatarUrl: null, avatarText: null });
-    doFetch('/api/user/oauth/me', 'GET', null, {
-      200: profile => {
-        const oauthProfile = profile as OAuthProfile;
+    const clearAvatar = () => this.setState({
+      avatarUrl: null,
+      avatarText: null,
+      currentUserId: null,
+      currentProfileValue: null,
+      currentProfilePath: '/profile',
+      profileOptions: [],
+    });
+    fetchCurrentUserInfo(result => {
+      if (!result.currentUserId) {
+        clearAvatar();
+        return;
+      }
+
+      const oauthProfile = (result.oauthProfile || null) as OAuthProfile | null;
+      this.setState({
+        avatarUrl: oauthProfile?.picture || null,
+        avatarText: this.buildAvatarText(oauthProfile),
+        currentUserId: Number(result.currentUserId),
+      }, () => {
+        this.loadOwnedProfiles(Number(result.currentUserId));
+      });
+    });
+  }
+
+  loadOwnedProfiles(userId: number) {
+    const toPromiseUserProfile = () => new Promise<Profile | null>(resolve => {
+      fetchUserProfileByUserId(userId, {
+        onSuccess: profile => resolve(profile || null),
+        onMissing: () => resolve(null),
+        onError: () => resolve(null),
+      });
+    });
+
+    const toPromiseClubProfiles = () => new Promise<Profile[]>(resolve => {
+      fetchClubProfiles(userId, {
+        onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
+        onError: () => resolve([]),
+      });
+    });
+
+    Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
+      .then(([userProfile, clubProfiles]) => {
+        const profileOptions = buildOwnedProfileOptions(userProfile, clubProfiles);
+        const currentProfile = resolveCurrentProfileOption(profileOptions);
         this.setState({
-          avatarUrl: oauthProfile?.picture || null,
-          avatarText: this.buildAvatarText(oauthProfile),
-          currentUserId: oauthProfile?.userId || null,
+          profileOptions,
+          currentProfileValue: currentProfile?.value || null,
+          currentProfilePath: currentProfile?.path || '/profile',
         });
-      },
-      401: clearAvatar,
-      403: clearAvatar,
-      404: clearAvatar,
-      default: clearAvatar,
+      })
+      .catch(() => {
+        this.setState({
+          profileOptions: buildOwnedProfileOptions(null, []),
+          currentProfileValue: null,
+          currentProfilePath: '/profile',
+        });
+      });
+  }
+
+  handleCurrentProfileChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const nextValue = event.target.value;
+    if (!nextValue || nextValue === this.state.currentProfileValue) {
+      return;
+    }
+
+    const selectedOption = this.state.profileOptions.find(option => option.value === nextValue);
+    setStoredCurrentProfileValue(nextValue);
+    this.setState({
+      currentProfileValue: nextValue,
+      currentProfilePath: selectedOption?.path || '/profile',
+    }, () => {
+      window.location.reload();
     });
   }
 
@@ -106,12 +190,25 @@ class Header extends Component<Record<string, never>, HeaderState> {
           <Row className="show-grid">
             <Col sm={2}>
               {this.state.loggedIn && (
-                <Link
-                  to={this.state.currentUserId != null ? `/profile/user/${this.state.currentUserId}` : '/profile'}
-                  reloadDocument
-                >
-                  <ProfileButton />
-                </Link>
+                <div className="header-profile-switcher">
+                  <Link to="/">
+                    <HomeButton />
+                  </Link>
+                  <Link to={this.state.currentProfilePath} reloadDocument>
+                    <ProfileButton />
+                  </Link>
+                  <Form.Select
+                    className="header-profile-select"
+                    value={this.state.currentProfileValue || ''}
+                    onChange={this.handleCurrentProfileChange}
+                  >
+                    {this.state.profileOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </div>
               )}
             </Col>
             <Col sm={4}>
