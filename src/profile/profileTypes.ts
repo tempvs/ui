@@ -82,6 +82,13 @@ export type ProfilePageState = PersistedProfile & {
   clubProfilesMessage: string | null;
   ownerUserProfile: Profile | null;
   ownerUserProfileLoaded: boolean;
+  currentOwnedProfiles: Profile[];
+  currentProfileId: Id | null;
+  followingProfiles: Profile[];
+  followingProfilesLoaded: boolean;
+  followingProfileAvatars: Record<string, Avatar | null>;
+  followStateLoaded: boolean;
+  isFollowingCurrentProfile: boolean;
   clubProfileCreateVisible: boolean;
   clubProfileCreateError: boolean;
   clubProfileDeleteTarget: Profile | null;

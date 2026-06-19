@@ -516,6 +516,70 @@ h1, h2, h3 {
   min-height: 2.7rem;
 }
 
+.profile-following-panel {
+  padding: 0.7rem;
+  border: 1px solid rgba(87, 102, 98, 0.14);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 0.45rem 1.1rem rgba(31, 38, 35, 0.06);
+}
+
+.profile-following-heading {
+  margin-bottom: 0.5rem;
+  color: #3d3527;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.profile-following-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.profile-following-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  background: rgba(248, 250, 248, 0.92);
+  color: #25332f;
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgba(109, 125, 140, 0.12);
+}
+
+.profile-following-item:hover,
+.profile-following-item:focus {
+  color: #1f2623;
+  background: #ffffff;
+}
+
+.profile-following-thumb {
+  display: inline-flex;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  overflow: hidden;
+  background: rgba(248, 250, 248, 0.9);
+}
+
+.profile-following-thumb-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-following-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.profile-following-empty {
+  color: #66726c;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 767.98px) {
   .profile-entry-grid {
     grid-template-columns: 1fr;

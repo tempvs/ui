@@ -14,6 +14,7 @@ import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods
 import ClubProfilesSection from "./components/ClubProfilesSection";
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
+import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
 import {
@@ -26,11 +27,17 @@ import {
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
   fetchProfileById,
+  followProfile,
+  getFollowState,
+  getFollowingProfiles,
+  getProfileAvatar,
   fetchUserProfileByUserId,
+  unfollowProfile,
   updateAvatarDescription,
   updateProfile,
   uploadAvatar,
 } from "./profileApi";
+import { resolveCurrentOwnedProfileId } from './currentProfile';
 import {
   Avatar,
   Id,
@@ -107,6 +114,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       clubProfilesMessage: null,
       ownerUserProfile: null,
       ownerUserProfileLoaded: true,
+      currentOwnedProfiles: [],
+      currentProfileId: null,
+      followingProfiles: [],
+      followingProfilesLoaded: false,
+      followingProfileAvatars: {},
+      followStateLoaded: false,
+      isFollowingCurrentProfile: false,
       clubProfileCreateVisible: false,
       clubProfileCreateError: false,
       clubProfileDeleteTarget: null,
@@ -131,7 +145,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   loadCurrentUserInfo() {
-    fetchCurrentUserInfo(result => this.setState(result));
+    fetchCurrentUserInfo(result => this.setState(result, () => {
+      if (result.currentUserId) {
+        this.fetchCurrentOwnedProfiles(result.currentUserId);
+      } else {
+        this.setState({
+          currentOwnedProfiles: [],
+          currentProfileId: null,
+          followStateLoaded: true,
+          isFollowingCurrentProfile: false,
+        });
+      }
+    }));
   }
 
   fetchAvatar(profileId: Id) {
@@ -193,6 +218,77 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       onSuccess: profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }),
       onError: () => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
     });
+  }
+
+  fetchCurrentOwnedProfiles(userId: Id | null | undefined) {
+    if (!userId) {
+      this.setState({ currentOwnedProfiles: [], currentProfileId: null });
+      return;
+    }
+
+    Promise.all([
+      new Promise<Profile | null>(resolve => {
+        fetchUserProfileByUserId(userId, {
+          onSuccess: profile => resolve(profile || null),
+          onMissing: () => resolve(null),
+          onError: () => resolve(null),
+        });
+      }),
+      new Promise<Profile[]>(resolve => {
+        fetchClubProfiles(userId, {
+          onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
+          onError: () => resolve([]),
+        });
+      }),
+    ]).then(([userProfile, clubProfiles]) => {
+      const currentOwnedProfiles = [userProfile, ...clubProfiles]
+        .filter((profile): profile is Profile => Boolean(profile && profile.id != null));
+      const currentProfileId = resolveCurrentOwnedProfileId(currentOwnedProfiles);
+      this.setState({ currentOwnedProfiles, currentProfileId }, () => this.refreshFollowState());
+    });
+  }
+
+  fetchFollowingProfiles(profileId: Id | null | undefined) {
+    if (!profileId) {
+      this.setState({ followingProfiles: [], followingProfilesLoaded: true, followingProfileAvatars: {} });
+      return;
+    }
+
+    this.setState({ followingProfilesLoaded: false, followingProfileAvatars: {} });
+    getFollowingProfiles(profileId)
+      .then(followingProfiles => {
+        this.setState({ followingProfiles, followingProfilesLoaded: true });
+        return Promise.all(followingProfiles.map(async profile => ({
+          id: String(profile.id),
+          avatar: await getProfileAvatar(profile.id),
+        })));
+      })
+      .then(avatars => {
+        const followingProfileAvatars = avatars.reduce<Record<string, Avatar | null>>((accumulator, entry) => {
+          accumulator[entry.id] = entry.avatar;
+          return accumulator;
+        }, {});
+        this.setState({ followingProfileAvatars });
+      })
+      .catch(() => {
+        this.setState({ followingProfiles: [], followingProfilesLoaded: true, followingProfileAvatars: {} });
+      });
+  }
+
+  refreshFollowState() {
+    const targetProfileId = this.state.profileId;
+    const currentProfileId = this.state.currentProfileId;
+    const currentProfile = this.state.currentOwnedProfiles.find(profile => Number(profile.id) === Number(currentProfileId)) || null;
+
+    if (!targetProfileId || !currentProfileId || !currentProfile || currentProfileId === targetProfileId || currentProfile.userId === this.state.userId) {
+      this.setState({ followStateLoaded: true, isFollowingCurrentProfile: false });
+      return;
+    }
+
+    this.setState({ followStateLoaded: false });
+    getFollowState(targetProfileId, currentProfileId)
+      .then(isFollowingCurrentProfile => this.setState({ isFollowingCurrentProfile, followStateLoaded: true }))
+      .catch(() => this.setState({ isFollowingCurrentProfile: false, followStateLoaded: true }));
   }
 
   handleMissingProfile(id: string | null | undefined) {
@@ -545,7 +641,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         : {},
       clubProfileCreateVisible: profile.type === 'USER' ? prevState.clubProfileCreateVisible : false,
       clubProfileCreateError: false,
-    }));
+    }), () => {
+      this.fetchFollowingProfiles(profile.id);
+      this.refreshFollowState();
+    });
 
     const canonicalPath = this.getCanonicalProfilePath(profile);
     if (window.location.pathname !== canonicalPath) {
@@ -564,6 +663,30 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   renderProfile(profile: Profile) {
     this.applyProfile(profile, true);
   }
+
+  handleToggleFollow = async () => {
+    if (!this.state.profileId || !this.state.currentProfileId) {
+      return;
+    }
+
+    try {
+      const response = this.state.isFollowingCurrentProfile
+        ? await unfollowProfile(this.state.profileId, this.state.currentProfileId)
+        : await followProfile(this.state.profileId, this.state.currentProfileId);
+
+      if (response.status !== 200) {
+        throw new Error('Follow request failed');
+      }
+
+      this.fetchFollowingProfiles(this.state.profileId);
+      this.refreshFollowState();
+    } catch (error) {
+      this.setState({
+        message: this.t('profile.follow.failed', 'Unable to update follow state right now.'),
+        messageVariant: 'error',
+      });
+    }
+  };
 
   renderAvatar(avatar: Avatar) {
     this.setState({
@@ -865,6 +988,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     });
     const showEmptyClubProfiles = this.state.type === 'USER' && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
     const profileInitials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
+    const currentProfile = this.state.currentOwnedProfiles.find(profile => Number(profile.id) === Number(this.state.currentProfileId)) || null;
+    const canFollow = Boolean(
+      this.state.currentProfileId &&
+      this.state.profileId &&
+      this.state.currentProfileId !== this.state.profileId &&
+      currentProfile &&
+      currentProfile.userId !== this.state.userId
+    );
 
     return (
       <Container fluid className="px-4 px-xl-5">
@@ -916,6 +1047,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDescriptionChange={this.handleAvatarDescriptionChange}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
+            <div className="mt-3">
+              <ProfileFollowingPanel
+                profiles={this.state.followingProfiles}
+                avatars={this.state.followingProfileAvatars}
+                loaded={this.state.followingProfilesLoaded}
+                canFollow={canFollow}
+                isFollowing={this.state.isFollowingCurrentProfile}
+                followActionBusy={!this.state.followStateLoaded}
+                t={this.t.bind(this)}
+                onToggleFollow={this.handleToggleFollow}
+              />
+            </div>
           </Col>
           <Col lg={5} md={8}>
             <ProfileFieldsPanel

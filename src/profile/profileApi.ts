@@ -136,6 +136,42 @@ export async function searchProfiles({ query, period, type, page = 0, size = 20 
   return Array.isArray(data) ? data as Profile[] : [];
 }
 
+export async function getFollowingProfiles(profileId: Id) {
+  const response = await requestJson(`/api/profile/profile/${profileId}/following`);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : [];
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return Array.isArray(data) ? data as Profile[] : [];
+}
+
+export async function getFollowState(targetProfileId: Id, asProfileId: Id) {
+  const response = await requestJson(`/api/profile/profile/${targetProfileId}/follow-state?asProfileId=${asProfileId}`);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return Boolean(data?.following);
+}
+
+export function followProfile(targetProfileId: Id, asProfileId: Id) {
+  return requestJson(`/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`, {
+    method: 'POST',
+  });
+}
+
+export function unfollowProfile(targetProfileId: Id, asProfileId: Id) {
+  return requestJson(`/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function fetchOwnerUserProfile(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
   fetchUserProfileByUserId(userId, handlers);
 }
