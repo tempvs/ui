@@ -1173,6 +1173,445 @@ button.stash-item-media-empty:disabled {
   text-transform: uppercase;
 }
 
+.stash-overview-shell,
+.stash-item-page-shell {
+  border: 1px solid rgba(120, 110, 84, 0.16);
+  background: linear-gradient(180deg, rgba(251, 249, 244, 0.98), rgba(246, 243, 236, 0.98));
+  box-shadow: 0 0.8rem 2rem rgba(31, 38, 35, 0.08);
+  padding: 1rem;
+}
+
+.stash-overview-header,
+.stash-source-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.stash-overview-title,
+.stash-source-list-title {
+  margin: 0;
+  color: #1f2623;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stash-overview-copy {
+  margin-top: 0.2rem;
+  color: #6f6657;
+  font-size: 0.82rem;
+}
+
+.stash-feedback-note {
+  margin-bottom: 0.75rem;
+  color: #8e2323;
+  font-size: 0.8rem;
+}
+
+.stash-empty-state {
+  padding: 2.4rem 1rem;
+  text-align: center;
+  border: 1px dashed rgba(150, 135, 103, 0.26);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.stash-empty-state--compact {
+  padding: 1.5rem 1rem;
+}
+
+.stash-collection-tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 0.95rem;
+}
+
+.stash-collection-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  flex: 0 1 auto;
+}
+
+.stash-collection-tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 11rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(138, 123, 91, 0.18);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  text-align: left;
+}
+
+.stash-collection-tab.is-active {
+  border-color: rgba(96, 129, 115, 0.38);
+  background: rgba(237, 246, 240, 0.9);
+}
+
+.stash-collection-tab-name {
+  color: #1f2623;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.stash-collection-tab-meta {
+  color: #706756;
+  font-size: 0.72rem;
+}
+
+.stash-overview-layout {
+  display: grid;
+  grid-template-columns: minmax(18rem, 28rem) minmax(0, 1fr);
+  gap: 0.95rem;
+  align-items: start;
+  position: relative;
+}
+
+.stash-overview-layout--annotated {
+  isolation: isolate;
+}
+
+.stash-arrow-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.stash-hero-panel {
+  position: sticky;
+  top: 4.8rem;
+  z-index: 1;
+}
+
+.stash-hero-image-shell,
+.stash-item-page-main-image-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(138, 123, 91, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.stash-hero-image-shell {
+  display: inline-block;
+  width: 100%;
+  min-height: 0;
+}
+
+.stash-hero-image-shell.is-marker-placing {
+  cursor: crosshair;
+}
+
+.stash-hero-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.stash-item-page-main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.stash-hero-image--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 14rem;
+  color: #756b5a;
+  font-size: 0.82rem;
+  background:
+    linear-gradient(135deg, rgba(229, 222, 205, 0.58), rgba(246, 242, 235, 0.92));
+}
+
+.stash-hero-copy,
+.stash-item-page-copy {
+  margin-top: 0.75rem;
+}
+
+.stash-marker-helper {
+  margin-top: 0.7rem;
+  color: #567565;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stash-hero-title,
+.stash-item-page-title {
+  margin: 0;
+  color: #1f2623;
+  font-size: 1.22rem;
+  font-weight: 700;
+}
+
+.stash-hero-description,
+.stash-item-page-description,
+.stash-item-list-description,
+.stash-source-description {
+  margin: 0.4rem 0 0 0;
+  color: #5f584b;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.stash-hero-manage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.stash-items-pane,
+.stash-source-list-shell {
+  display: grid;
+  gap: 0.7rem;
+  position: relative;
+  z-index: 1;
+}
+
+.stash-item-list-card,
+.stash-source-card {
+  display: grid;
+  gap: 0.8rem;
+  align-items: start;
+  width: 100%;
+  padding: 0.78rem;
+  border: 1px solid rgba(138, 123, 91, 0.15);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 0.35rem 1rem rgba(31, 38, 35, 0.05);
+  text-align: left;
+  text-decoration: none;
+}
+
+.stash-item-list-card {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.stash-source-card {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.stash-item-delete-trigger,
+.stash-inline-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.stash-item-delete-trigger {
+  grid-column: 3;
+  grid-row: 1;
+  border: 1px solid rgba(160, 68, 68, 0.24);
+  background: rgba(252, 241, 241, 0.92);
+  color: #9c3b3b;
+  flex: 0 0 2rem;
+  align-self: center;
+}
+
+.stash-inline-icon-button {
+  border: 1px solid rgba(96, 129, 115, 0.24);
+  background: rgba(244, 248, 245, 0.92);
+  color: #567565;
+}
+
+.stash-item-media-column {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.stash-item-marker-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: center;
+}
+
+.stash-item-arrow-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(96, 129, 115, 0.24);
+  border-radius: 999px;
+  background: rgba(244, 248, 245, 0.92);
+  color: #567565;
+  flex: 0 0 2rem;
+}
+
+.stash-item-arrow-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(160, 68, 68, 0.24);
+  border-radius: 999px;
+  background: rgba(252, 241, 241, 0.92);
+  color: #9c3b3b;
+  flex: 0 0 2rem;
+}
+
+.stash-item-arrow-trigger.is-active {
+  border-color: rgba(156, 81, 55, 0.4);
+  background: rgba(248, 236, 231, 0.94);
+  color: #9c5137;
+}
+
+.stash-item-list-card:hover,
+.stash-source-card:hover {
+  border-color: rgba(96, 129, 115, 0.24);
+  background: #ffffff;
+}
+
+.stash-item-thumb-shell,
+.stash-source-thumb-shell {
+  width: 6rem;
+  height: 6rem;
+  overflow: hidden;
+  background: rgba(247, 249, 247, 0.94);
+}
+
+.stash-item-thumb,
+.stash-source-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.stash-item-list-copy,
+.stash-source-copy {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.stash-item-list-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.stash-item-list-title,
+.stash-source-title {
+  color: #1f2623;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.stash-item-page-hero {
+  display: grid;
+  grid-template-columns: minmax(18rem, 28rem) minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stash-item-add-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.1rem;
+}
+
+.stash-item-page-main-image-shell {
+  min-height: 22rem;
+}
+
+.stash-inline-link {
+  color: #5b6f66;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stash-inline-link:hover,
+.stash-inline-link:focus {
+  color: #1f2623;
+}
+
+.stash-marker-dot {
+  position: absolute;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.stash-marker-dot.is-active {
+  background: transparent;
+}
+
+@media (max-width: 991.98px) {
+  .stash-overview-layout,
+  .stash-item-page-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .stash-arrow-layer {
+    display: none;
+  }
+
+  .stash-hero-panel {
+    position: static;
+  }
+
+  .stash-hero-image-shell,
+  .stash-hero-image--empty {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .stash-overview-shell,
+  .stash-item-page-shell {
+    padding: 0.8rem;
+  }
+
+  .stash-item-list-card,
+  .stash-source-card {
+    grid-template-columns: 1fr;
+  }
+
+  .stash-collection-tab-row {
+    align-items: flex-start;
+  }
+
+  .stash-item-media-column {
+    width: 100%;
+  }
+
+  .stash-item-thumb-shell,
+  .stash-source-thumb-shell {
+    width: 100%;
+    height: 9rem;
+  }
+}
+
 .chat-shell {
   background:
     radial-gradient(circle at top left, rgba(178, 200, 188, 0.18), transparent 28%),

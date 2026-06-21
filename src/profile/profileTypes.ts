@@ -130,6 +130,15 @@ export type StashItem = {
   sources?: Id[] | null;
   itemGroup: {
     id: Id;
+    name?: string | null;
+    description?: string | null;
+    profile?: {
+      id: Id;
+      userId?: Id | null;
+      name?: string | null;
+      alias?: string | null;
+      period?: string | null;
+    } | null;
   };
 };
 
@@ -140,9 +149,22 @@ export type Stash = {
 export type LibrarySourceSummary = {
   id: Id;
   name?: string | null;
+  description?: string | null;
   type?: string | null;
   classification?: string | null;
   period?: string | null;
+};
+
+export type EntityImage = GalleryImage & {
+  entityId?: string | null;
+  belongsTo?: string | null;
+};
+
+export type StashItemMarker = {
+  id?: Id | null;
+  itemId: Id;
+  x: number;
+  y: number;
 };
 
 export type SourceSearchState = {

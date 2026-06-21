@@ -1,9 +1,11 @@
 import {
+  EntityImage,
   Id,
   LibrarySourceSummary,
   Stash,
   StashGroup,
   StashItem,
+  StashItemMarker,
   StashItemImage,
 } from './profileTypes';
 
@@ -54,6 +56,10 @@ async function requestJson<TData = unknown>(url: string, options: RequestOptions
   }
 
   return data;
+}
+
+function buildEntityIdsQuery(entityIds: Id[]) {
+  return entityIds.map(entityId => `entityIds=${encodeURIComponent(String(entityId))}`).join('&');
 }
 
 export function getProfileStash(profileId: Id) {
@@ -114,6 +120,14 @@ export function getStashItemImages(itemId: Id) {
   return requestJson<StashItemImage[]>(`/api/image/image/item/${itemId}`);
 }
 
+export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
+  if (!entityIds.length) {
+    return Promise.resolve([] as EntityImage[]);
+  }
+
+  return requestJson<EntityImage[]>(`/api/image/image/${belongsTo}?${buildEntityIdsQuery(entityIds)}`);
+}
+
 export function uploadStashItemImage(itemId: Id, payload: JsonRecord) {
   return requestJson<StashItemImage>(`/api/stash/item/${itemId}/images`, {
     method: 'POST',
@@ -138,6 +152,19 @@ export function deleteStashItem(itemId: Id) {
   return requestJson<unknown>(`/api/stash/item/${itemId}`, { method: 'DELETE' });
 }
 
+export function uploadStashGroupImage(groupId: Id, payload: JsonRecord) {
+  return requestJson<unknown>(`/api/stash/group/${groupId}/images`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStashGroupImage(groupId: Id) {
+  return requestJson<unknown>(`/api/stash/group/${groupId}/images`, {
+    method: 'DELETE',
+  });
+}
+
 export function searchLibrarySources({ query, period, classifications, types, page = 0, size = 20 }: SourceSearchParams) {
   const encodedQuery = encodeURIComponent(encodeLibraryQuery({
     query,
@@ -149,8 +176,40 @@ export function searchLibrarySources({ query, period, classifications, types, pa
 }
 
 export function getLibrarySourcesByIds(ids: Id[]) {
+  if (!ids.length) {
+    return Promise.resolve([] as LibrarySourceSummary[]);
+  }
+
   const query = encodeURIComponent(encodeLibraryQuery({ ids }));
   return requestJson<LibrarySourceSummary[]>(`/api/library/source?q=${query}`);
+}
+
+export function getStashItem(itemId: Id) {
+  return requestJson<StashItem>(`/api/stash/item/${itemId}`);
+}
+
+export function getStashItemMarkers(groupId: Id) {
+  return requestJson<StashItemMarker[]>(`/api/stash/group/${groupId}/marker`);
+}
+
+export function createStashItemMarker(groupId: Id, payload: StashItemMarker) {
+  return requestJson<StashItemMarker>(`/api/stash/group/${groupId}/marker`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateStashItemMarker(groupId: Id, markerId: Id, payload: StashItemMarker) {
+  return requestJson<StashItemMarker>(`/api/stash/group/${groupId}/marker/${markerId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStashItemMarker(groupId: Id, markerId: Id) {
+  return requestJson<unknown>(`/api/stash/group/${groupId}/marker/${markerId}`, {
+    method: 'DELETE',
+  });
 }
 
 export function linkStashItemSource(itemId: Id, sourceId: Id) {

@@ -7,7 +7,7 @@ import SectionHeaderBar from '../component/SectionHeaderBar';
 import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import Spinner from '../component/Spinner';
 import { getPeriodLabel as getSharedPeriodLabel } from '../util/periods';
-import StashPanel from './StashPanel';
+import StashOverview from './StashOverview';
 import { buildClubProfileLabel, buildProfileLabel } from './profileLabels';
 import {
   fetchClubProfiles,
@@ -129,7 +129,7 @@ function StashPage({ intl }: StashPageProps) {
       </Row>
       <Row>
         <Col sm={12}>
-          <StashPanel
+          <StashOverview
             profile={{
               id: profile.id,
               userId: profile.userId,

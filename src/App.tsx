@@ -7,6 +7,7 @@ import './App.css';
 import Header from './header/Header';
 import ProfilePage from './profile/ProfilePage';
 import StashPage from './profile/StashPage';
+import StashItemPage from './profile/StashItemPage';
 import LibraryPage from './library/LibraryPage';
 import HomePage from './HomePage';
 import CompleteRegistrationPage from './auth/CompleteRegistrationPage';
@@ -88,6 +89,7 @@ function App() {
           <Route path="/profile/user/:userId" element={<UserProfilePageWithParam />} />
           <Route path="/profile/:id" element={<ProfilePageWithParam />} />
           <Route path="/stash/:id" element={<StashPage />} />
+          <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/library/admin" element={<LibraryAdminPage />} />
           <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
