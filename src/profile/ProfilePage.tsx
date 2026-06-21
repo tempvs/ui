@@ -30,7 +30,6 @@ import {
   followProfile,
   getFollowState,
   getFollowingProfiles,
-  getProfileAvatar,
   fetchUserProfileByUserId,
   unfollowProfile,
   updateAvatarDescription,
@@ -118,7 +117,6 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       currentProfileId: null,
       followingProfiles: [],
       followingProfilesLoaded: false,
-      followingProfileAvatars: {},
       followStateLoaded: false,
       isFollowingCurrentProfile: false,
       clubProfileCreateVisible: false,
@@ -250,28 +248,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   fetchFollowingProfiles(profileId: Id | null | undefined) {
     if (!profileId) {
-      this.setState({ followingProfiles: [], followingProfilesLoaded: true, followingProfileAvatars: {} });
+      this.setState({ followingProfiles: [], followingProfilesLoaded: true });
       return;
     }
 
-    this.setState({ followingProfilesLoaded: false, followingProfileAvatars: {} });
+    this.setState({ followingProfilesLoaded: false });
     getFollowingProfiles(profileId)
-      .then(followingProfiles => {
-        this.setState({ followingProfiles, followingProfilesLoaded: true });
-        return Promise.all(followingProfiles.map(async profile => ({
-          id: String(profile.id),
-          avatar: await getProfileAvatar(profile.id),
-        })));
-      })
-      .then(avatars => {
-        const followingProfileAvatars = avatars.reduce<Record<string, Avatar | null>>((accumulator, entry) => {
-          accumulator[entry.id] = entry.avatar;
-          return accumulator;
-        }, {});
-        this.setState({ followingProfileAvatars });
-      })
+      .then(followingProfiles => this.setState({ followingProfiles, followingProfilesLoaded: true }))
       .catch(() => {
-        this.setState({ followingProfiles: [], followingProfilesLoaded: true, followingProfileAvatars: {} });
+        this.setState({ followingProfiles: [], followingProfilesLoaded: true });
       });
   }
 
@@ -1050,7 +1035,6 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             <div className="mt-3">
               <ProfileFollowingPanel
                 profiles={this.state.followingProfiles}
-                avatars={this.state.followingProfileAvatars}
                 loaded={this.state.followingProfilesLoaded}
                 canFollow={canFollow}
                 isFollowing={this.state.isFollowingCurrentProfile}

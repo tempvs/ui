@@ -24,6 +24,7 @@ export type Profile = {
   location?: string | null;
   alias?: string | null;
   period?: string | null;
+  avatarUrl?: string | null;
 };
 
 export type PersistedProfile = {
@@ -86,7 +87,6 @@ export type ProfilePageState = PersistedProfile & {
   currentProfileId: Id | null;
   followingProfiles: Profile[];
   followingProfilesLoaded: boolean;
-  followingProfileAvatars: Record<string, Avatar | null>;
   followStateLoaded: boolean;
   isFollowingCurrentProfile: boolean;
   clubProfileCreateVisible: boolean;

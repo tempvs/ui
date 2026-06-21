@@ -2,11 +2,10 @@ import React from 'react';
 import { Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
-import { Avatar, MessageFormatter, Profile } from '../profileTypes';
+import { MessageFormatter, Profile } from '../profileTypes';
 
 type ProfileFollowingPanelProps = {
   profiles: Profile[];
-  avatars: Record<string, Avatar | null>;
   loaded: boolean;
   canFollow: boolean;
   isFollowing: boolean;
@@ -26,7 +25,6 @@ function getProfileLink(profile: Profile) {
 
 export default function ProfileFollowingPanel({
   profiles,
-  avatars,
   loaded,
   canFollow,
   isFollowing,
@@ -62,12 +60,11 @@ export default function ProfileFollowingPanel({
       {loaded && profiles.length > 0 && (
         <div className="profile-following-list">
           {profiles.map(profile => {
-            const avatar = avatars[String(profile.id)] || null;
             return (
               <Link key={String(profile.id)} to={getProfileLink(profile)} className="profile-following-item">
-                {avatar?.url && (
+                {profile.avatarUrl && (
                   <span className="profile-following-thumb">
-                    <img src={avatar.url} alt={buildProfileLabel(profile)} className="profile-following-thumb-image" />
+                    <img src={profile.avatarUrl} alt={buildProfileLabel(profile)} className="profile-following-thumb-image" />
                   </span>
                 )}
                 <span className="profile-following-name">{buildProfileLabel(profile)}</span>
