@@ -52,6 +52,11 @@ type MarkerPlacementState = {
   markerId?: Id | null;
 } | null;
 
+type MarkerPreviewPosition = {
+  x: number;
+  y: number;
+} | null;
+
 type ArrowLayout = {
   itemId: Id;
   x1: number;
@@ -170,6 +175,7 @@ export default function StashOverview({
   const [groupImageUploading, setGroupImageUploading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markerPlacement, setMarkerPlacement] = useState<MarkerPlacementState>(null);
+  const [markerPreviewPosition, setMarkerPreviewPosition] = useState<MarkerPreviewPosition>(null);
   const [markerBusy, setMarkerBusy] = useState(false);
   const [arrowLayouts, setArrowLayouts] = useState<ArrowLayout[]>([]);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
@@ -234,6 +240,7 @@ export default function StashOverview({
     setMarkersByGroup({});
     setActiveGroupId(null);
     setMarkerPlacement(null);
+    setMarkerPreviewPosition(null);
   }, [profile?.id]);
 
   useEffect(() => {
@@ -286,11 +293,24 @@ export default function StashOverview({
     `${activeGroupImageCount} ${t('profile.stash.imagesCount', 'image(s)')}`,
   ], [activeGroupImageCount, activeGroupSourceCount, activeItems.length, groups.length, t]);
 
+  const activePreviewMarker = useMemo(() => {
+    if (!markerPlacement || !markerPreviewPosition) {
+      return null;
+    }
+
+    return {
+      itemId: markerPlacement.itemId,
+      markerId: markerPlacement.markerId || null,
+      x: markerPreviewPosition.x,
+      y: markerPreviewPosition.y,
+    };
+  }, [markerPlacement, markerPreviewPosition]);
+
   const recalculateArrows = useCallback(() => {
     const layoutElement = layoutRef.current;
     const imageShellElement = imageShellRef.current;
 
-    if (!layoutElement || !imageShellElement || !activeGroupImageSrc || !activeMarkers.length) {
+    if (!layoutElement || !imageShellElement || !activeGroupImageSrc) {
       setArrowLayouts([]);
       return;
     }
@@ -299,7 +319,9 @@ export default function StashOverview({
     const imageBounds = imageShellElement.getBoundingClientRect();
 
     const nextArrowLayouts = activeItems.flatMap(item => {
-      const marker = activeMarkersByItemId[toRecordKey(item.id)];
+      const marker = activePreviewMarker?.itemId === item.id
+        ? activePreviewMarker
+        : activeMarkersByItemId[toRecordKey(item.id)];
       const itemRowElement = itemRowRefs.current[toRecordKey(item.id)];
 
       if (!marker || !itemRowElement) {
@@ -317,7 +339,7 @@ export default function StashOverview({
     });
 
     setArrowLayouts(nextArrowLayouts);
-  }, [activeGroupImageSrc, activeItems, activeMarkers, activeMarkersByItemId]);
+  }, [activeGroupImageSrc, activeItems, activeMarkersByItemId, activePreviewMarker]);
 
   useLayoutEffect(() => {
     recalculateArrows();
@@ -343,6 +365,31 @@ export default function StashOverview({
     window.addEventListener('resize', handleWindowResize);
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [recalculateArrows]);
+
+  useEffect(() => {
+    if (!markerPlacement) {
+      return;
+    }
+
+    const handleDocumentMouseDown = (event: MouseEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      const imageShellElement = imageShellRef.current;
+      if (imageShellElement?.contains(event.target as Node)) {
+        return;
+      }
+
+      setMarkerPlacement(null);
+      setMarkerPreviewPosition(null);
+    };
+
+    document.addEventListener('mousedown', handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentMouseDown);
+    };
+  }, [markerPlacement]);
 
   async function handleCreateGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -406,6 +453,9 @@ export default function StashOverview({
       setMarkerPlacement(previousState => (
         previousState?.itemId === itemId ? null : previousState
       ));
+      setMarkerPreviewPosition(previousState => (
+        markerPlacement?.itemId === itemId ? null : previousState
+      ));
       await loadStash();
     } catch (error) {
       setFeedback(t('profile.stash.itemDeleteFailed', 'Unable to delete this item.'));
@@ -436,6 +486,7 @@ export default function StashOverview({
       }
       setGroupImageTarget(null);
       setMarkerPlacement(null);
+      setMarkerPreviewPosition(null);
       await loadStash();
     } catch (error) {
       setFeedback(t('profile.stash.itemImageUploadFailed', 'Unable to upload this image.'));
@@ -448,6 +499,7 @@ export default function StashOverview({
     try {
       await deleteStashGroupImage(groupId);
       setMarkerPlacement(null);
+      setMarkerPreviewPosition(null);
       await loadStash();
     } catch (error) {
       setFeedback(t('profile.stash.itemImageDeleteFailed', 'Unable to delete this image.'));
@@ -463,10 +515,27 @@ export default function StashOverview({
       }));
       await deleteStashItemMarker(groupId, markerId);
       setMarkerPlacement(null);
+      setMarkerPreviewPosition(null);
     } catch (error) {
       await loadStash();
       setFeedback(t('profile.stash.markerDeleteFailed', 'Unable to delete this marker.'));
     }
+  }
+
+  function getNormalizedMarkerPosition(event: React.MouseEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height)),
+    };
+  }
+
+  function handleImageMouseMove(event: React.MouseEvent<HTMLDivElement>) {
+    if (!activeGroup || !markerPlacement || !activeGroupImageSrc || markerBusy) {
+      return;
+    }
+
+    setMarkerPreviewPosition(getNormalizedMarkerPosition(event));
   }
 
   async function handleImageClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -474,15 +543,14 @@ export default function StashOverview({
       return;
     }
 
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
-    const y = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+    const { x, y } = markerPreviewPosition || getNormalizedMarkerPosition(event);
 
     setMarkerBusy(true);
     setFeedback(null);
+    const groupKey = toRecordKey(activeGroup.id);
+    const previousMarkers = markersByGroup[groupKey] || [];
 
     try {
-      const groupKey = toRecordKey(activeGroup.id);
       const payload = {
         itemId: markerPlacement.itemId,
         x,
@@ -497,7 +565,13 @@ export default function StashOverview({
           )),
         }));
         scheduleArrowRefresh(recalculateArrows);
-        await updateStashItemMarker(activeGroup.id, markerPlacement.markerId, payload);
+        const updatedMarker = await updateStashItemMarker(activeGroup.id, markerPlacement.markerId, payload);
+        setMarkersByGroup(previousState => ({
+          ...previousState,
+          [groupKey]: (previousState[groupKey] || []).map(marker => (
+            marker.id === markerPlacement.markerId ? updatedMarker : marker
+          )),
+        }));
       } else {
         const tempMarkerId = `temp-${markerPlacement.itemId}`;
         setMarkersByGroup(previousState => ({
@@ -508,12 +582,23 @@ export default function StashOverview({
           ],
         }));
         scheduleArrowRefresh(recalculateArrows);
-        await createStashItemMarker(activeGroup.id, payload);
+        const createdMarker = await createStashItemMarker(activeGroup.id, payload);
+        setMarkersByGroup(previousState => ({
+          ...previousState,
+          [groupKey]: (previousState[groupKey] || []).map(marker => (
+            marker.id === tempMarkerId ? createdMarker : marker
+          )),
+        }));
       }
 
       setMarkerPlacement(null);
-      await loadStash();
+      setMarkerPreviewPosition(null);
     } catch (error) {
+      setMarkersByGroup(previousState => ({
+        ...previousState,
+        [groupKey]: previousMarkers,
+      }));
+      setMarkerPreviewPosition(null);
       setFeedback(t('profile.stash.markerSaveFailed', 'Unable to save this marker.'));
     } finally {
       setMarkerBusy(false);
@@ -566,6 +651,7 @@ export default function StashOverview({
                       onClick={() => {
                         setActiveGroupId(group.id);
                         setMarkerPlacement(null);
+                        setMarkerPreviewPosition(null);
                       }}
                     >
                       <span className="stash-collection-tab-name">{group.name || t('profile.stash.groupName', 'Collection')}</span>
@@ -614,6 +700,7 @@ export default function StashOverview({
                   <div
                     className={`stash-hero-image-shell${markerPlacement ? ' is-marker-placing' : ''}`}
                     ref={imageShellRef}
+                    onMouseMove={handleImageMouseMove}
                     onClick={handleImageClick}
                   >
                     {activeGroupImageSrc ? (
@@ -635,8 +722,17 @@ export default function StashOverview({
                         type="button"
                         className={`stash-marker-dot${markerPlacement?.markerId === marker.id ? ' is-active' : ''}`}
                         style={{
-                          left: `${marker.x * 100}%`,
-                          top: `${marker.y * 100}%`,
+                          left: `${(
+                            markerPlacement?.markerId === marker.id && activePreviewMarker
+                              ? activePreviewMarker.x
+                              : marker.x
+                          ) * 100}%`,
+                          top: `${(
+                            markerPlacement?.markerId === marker.id && activePreviewMarker
+                              ? activePreviewMarker.y
+                              : marker.y
+                          ) * 100}%`,
+                          pointerEvents: markerPlacement?.markerId === marker.id ? 'none' : undefined,
                         }}
                         onClick={event => {
                           event.stopPropagation();
@@ -647,6 +743,10 @@ export default function StashOverview({
                           setMarkerPlacement({
                             itemId: marker.itemId,
                             markerId: marker.id || null,
+                          });
+                          setMarkerPreviewPosition({
+                            x: marker.x,
+                            y: marker.y,
                           });
                         }}
                       />
@@ -776,6 +876,7 @@ export default function StashOverview({
                                     itemId: item.id,
                                     markerId: marker?.id || null,
                                   });
+                                  setMarkerPreviewPosition(marker ? { x: marker.x, y: marker.y } : null);
                                 }}
                               >
                                 <ArrowLeftIcon />
