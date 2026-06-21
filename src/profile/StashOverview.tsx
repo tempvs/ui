@@ -69,6 +69,14 @@ function toRecordKey(value: Id) {
   return String(value);
 }
 
+function idsEqual(left: Id | null | undefined, right: Id | null | undefined) {
+  if (left == null || right == null) {
+    return false;
+  }
+
+  return String(left) === String(right);
+}
+
 function buildFirstImageMap(images: EntityImage[]) {
   return images.reduce<IdRecord<EntityImage>>((accumulator, image) => {
     const entityId = image.entityId || '';
@@ -291,6 +299,7 @@ export default function StashOverview({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markerPlacement, setMarkerPlacement] = useState<MarkerPlacementState>(null);
   const [markerPreviewPosition, setMarkerPreviewPosition] = useState<MarkerPreviewPosition>(null);
+  const [hoveredMarkerItemId, setHoveredMarkerItemId] = useState<Id | null>(null);
   const [markerBusy, setMarkerBusy] = useState(false);
   const [arrowLayouts, setArrowLayouts] = useState<ArrowLayout[]>([]);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
@@ -314,7 +323,7 @@ export default function StashOverview({
       const groups = nextStash?.groups || [];
       setStash(nextStash);
       setActiveGroupId(previousGroupId => (
-        groups.some(group => group.id === previousGroupId) ? previousGroupId : (groups[0]?.id ?? null)
+        groups.some(group => idsEqual(group.id, previousGroupId)) ? previousGroupId : (groups[0]?.id ?? null)
       ));
 
       const groupImageList = await getStashEntityImages('item-group', groups.map(group => group.id));
@@ -357,6 +366,7 @@ export default function StashOverview({
     setActiveGroupId(null);
     setMarkerPlacement(null);
     setMarkerPreviewPosition(null);
+    setHoveredMarkerItemId(null);
   }, [profile?.id]);
 
   useEffect(() => {
@@ -374,7 +384,7 @@ export default function StashOverview({
   }, [loadStash, profileId, profile?.type]);
 
   const groups = stash?.groups || [];
-  const activeGroup = groups.find(group => group.id === activeGroupId) || groups[0] || null;
+  const activeGroup = groups.find(group => idsEqual(group.id, activeGroupId)) || groups[0] || null;
   useEffect(() => {
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
@@ -877,23 +887,35 @@ export default function StashOverview({
             {activeGroup && (
               <div className="stash-overview-layout stash-overview-layout--annotated" ref={layoutRef}>
                 {arrowLayouts.length > 0 && (
-                  <svg className="stash-arrow-layer" aria-hidden="true">
+                  <svg className={`stash-arrow-layer${markerPlacement ? ' is-marker-placing' : ''}`} aria-hidden="true">
                     <defs>
-                      <marker id="stash-arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                        <path d="M0,0 L8,4 L0,8 z" fill="#567565" />
+                      <marker id="stash-arrow-head-fill" markerWidth="5.6" markerHeight="5.6" refX="4.4" refY="2.8" orient="auto">
+                        <path d="M0,0 L5.6,2.8 L0,5.6 z" fill="#c79a45" stroke="#1f1a14" strokeWidth="0.45" />
                       </marker>
                     </defs>
                     {arrowLayouts.map(arrow => (
-                      <line
-                        key={arrow.itemId}
-                        x1={arrow.x2}
-                        y1={arrow.y2}
-                        x2={arrow.x1}
-                        y2={arrow.y1}
-                        stroke="#567565"
-                        strokeWidth="1.8"
-                        markerEnd="url(#stash-arrow-head)"
-                      />
+                      <g key={arrow.itemId}>
+                        <line
+                          className={`stash-arrow-line-outline${hoveredMarkerItemId === arrow.itemId ? ' is-highlighted' : ''}`}
+                          x1={arrow.x2}
+                          y1={arrow.y2}
+                          x2={arrow.x1}
+                          y2={arrow.y1}
+                        />
+                        <line
+                          className={`stash-arrow-line${hoveredMarkerItemId === arrow.itemId ? ' is-highlighted' : ''}`}
+                          x1={arrow.x2}
+                          y1={arrow.y2}
+                          x2={arrow.x1}
+                          y2={arrow.y1}
+                          markerEnd="url(#stash-arrow-head-fill)"
+                          pointerEvents={markerPlacement ? 'none' : 'stroke'}
+                          onMouseEnter={() => setHoveredMarkerItemId(arrow.itemId)}
+                          onMouseLeave={() => setHoveredMarkerItemId(previousState => (
+                            previousState === arrow.itemId ? null : previousState
+                          ))}
+                        />
+                      </g>
                     ))}
                   </svg>
                 )}
@@ -922,7 +944,7 @@ export default function StashOverview({
                       <button
                         key={marker.id || marker.itemId}
                         type="button"
-                        className={`stash-marker-dot${markerPlacement?.markerId === marker.id ? ' is-active' : ''}`}
+                        className={`stash-marker-dot${markerPlacement?.markerId === marker.id ? ' is-active' : ''}${hoveredMarkerItemId === marker.itemId ? ' is-highlighted' : ''}`}
                         style={{
                           left: `${(
                             markerPlacement?.markerId === marker.id && activePreviewMarker
@@ -936,6 +958,10 @@ export default function StashOverview({
                           ) * 100}%`,
                           pointerEvents: markerPlacement?.markerId === marker.id ? 'none' : undefined,
                         }}
+                        onMouseEnter={() => setHoveredMarkerItemId(marker.itemId)}
+                        onMouseLeave={() => setHoveredMarkerItemId(previousState => (
+                          previousState === marker.itemId ? null : previousState
+                        ))}
                         onClick={event => {
                           event.stopPropagation();
                           if (!isEditable) {
@@ -1041,9 +1067,17 @@ export default function StashOverview({
                             scheduleArrowRefresh(recalculateArrows);
                           }
                         }}
-                        className={`stash-item-list-card${marker ? ' has-marker' : ''}`}
+                        className={`stash-item-list-card${marker ? ' has-marker' : ''}${hoveredMarkerItemId === item.id ? ' is-highlighted' : ''}`}
                         role="button"
                         tabIndex={0}
+                        onMouseEnter={() => {
+                          if (marker) {
+                            setHoveredMarkerItemId(item.id);
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredMarkerItemId(previousState => (
+                          previousState === item.id ? null : previousState
+                        ))}
                         onClick={() => navigate(`/stash/${profile?.alias || profile?.id}/items/${item.id}`)}
                         onKeyDown={event => {
                           if (event.key === 'Enter' || event.key === ' ') {
