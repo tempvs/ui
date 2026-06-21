@@ -140,6 +140,120 @@ function sortItemsByMarker(items: StashItem[], markersByItemId: IdRecord<StashIt
   });
 }
 
+type MarkerPoint = {
+  itemId: Id;
+  x: number;
+  y: number;
+};
+
+type SlotPoint = {
+  x: number;
+  y: number;
+};
+
+function getOrientation(ax: number, ay: number, bx: number, by: number, cx: number, cy: number) {
+  return ((bx - ax) * (cy - ay)) - ((by - ay) * (cx - ax));
+}
+
+function segmentsIntersect(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+) {
+  const epsilon = 0.0001;
+  const first = getOrientation(ax, ay, bx, by, cx, cy);
+  const second = getOrientation(ax, ay, bx, by, dx, dy);
+  const third = getOrientation(cx, cy, dx, dy, ax, ay);
+  const fourth = getOrientation(cx, cy, dx, dy, bx, by);
+
+  if (Math.abs(first) < epsilon || Math.abs(second) < epsilon || Math.abs(third) < epsilon || Math.abs(fourth) < epsilon) {
+    return false;
+  }
+
+  return (first > 0) !== (second > 0) && (third > 0) !== (fourth > 0);
+}
+
+function countLineIntersections(
+  orderedItemIds: Id[],
+  markerPoints: IdRecord<MarkerPoint>,
+  slotPoints: SlotPoint[],
+) {
+  let intersections = 0;
+
+  for (let leftIndex = 0; leftIndex < orderedItemIds.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < orderedItemIds.length; rightIndex += 1) {
+      const leftMarker = markerPoints[toRecordKey(orderedItemIds[leftIndex])];
+      const rightMarker = markerPoints[toRecordKey(orderedItemIds[rightIndex])];
+      const leftSlot = slotPoints[leftIndex];
+      const rightSlot = slotPoints[rightIndex];
+
+      if (!leftMarker || !rightMarker || !leftSlot || !rightSlot) {
+        continue;
+      }
+
+      if (segmentsIntersect(
+        leftMarker.x,
+        leftMarker.y,
+        leftSlot.x,
+        leftSlot.y,
+        rightMarker.x,
+        rightMarker.y,
+        rightSlot.x,
+        rightSlot.y,
+      )) {
+        intersections += 1;
+      }
+    }
+  }
+
+  return intersections;
+}
+
+function optimizeMarkedItemOrder(
+  orderedItemIds: Id[],
+  markerPoints: IdRecord<MarkerPoint>,
+  slotPoints: SlotPoint[],
+) {
+  let bestOrder = [...orderedItemIds];
+  let bestScore = countLineIntersections(bestOrder, markerPoints, slotPoints);
+  let improved = true;
+
+  while (improved) {
+    improved = false;
+
+    for (let fromIndex = 0; fromIndex < bestOrder.length; fromIndex += 1) {
+      for (let toIndex = 0; toIndex < bestOrder.length; toIndex += 1) {
+        if (fromIndex === toIndex) {
+          continue;
+        }
+
+        const candidate = [...bestOrder];
+        const [movedItemId] = candidate.splice(fromIndex, 1);
+        candidate.splice(toIndex, 0, movedItemId);
+        const candidateScore = countLineIntersections(candidate, markerPoints, slotPoints);
+
+        if (candidateScore < bestScore) {
+          bestOrder = candidate;
+          bestScore = candidateScore;
+          improved = true;
+          break;
+        }
+      }
+
+      if (improved) {
+        break;
+      }
+    }
+  }
+
+  return bestOrder;
+}
+
 function scheduleArrowRefresh(callback: () => void) {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(callback);
@@ -165,6 +279,7 @@ export default function StashOverview({
   const [itemImages, setItemImages] = useState<IdRecord<EntityImage>>({});
   const [itemImageCounts, setItemImageCounts] = useState<IdRecord<number>>({});
   const [markersByGroup, setMarkersByGroup] = useState<IdRecord<StashItemMarker[]>>({});
+  const [itemOrderByGroup, setItemOrderByGroup] = useState<IdRecord<Id[]>>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
   const [groupCreateSubmitting, setGroupCreateSubmitting] = useState(false);
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(null);
@@ -238,6 +353,7 @@ export default function StashOverview({
     setItemImages({});
     setItemImageCounts({});
     setMarkersByGroup({});
+    setItemOrderByGroup({});
     setActiveGroupId(null);
     setMarkerPlacement(null);
     setMarkerPreviewPosition(null);
@@ -275,10 +391,26 @@ export default function StashOverview({
     }), {}),
     [activeMarkers]
   );
+  const activeGroupKey = activeGroup ? toRecordKey(activeGroup.id) : null;
   const activeItems = useMemo(() => {
-    const rawItems = activeGroup ? (itemsByGroup[toRecordKey(activeGroup.id)] || []) : [];
-    return sortItemsByMarker(rawItems, activeMarkersByItemId);
-  }, [activeGroup, activeMarkersByItemId, itemsByGroup]);
+    const rawItems = activeGroupKey ? (itemsByGroup[activeGroupKey] || []) : [];
+    const fallbackItems = sortItemsByMarker(rawItems, activeMarkersByItemId);
+    const persistedOrder = activeGroupKey ? itemOrderByGroup[activeGroupKey] : null;
+
+    if (!persistedOrder?.length) {
+      return fallbackItems;
+    }
+
+    const itemsById = rawItems.reduce<IdRecord<StashItem>>((accumulator, item) => ({
+      ...accumulator,
+      [toRecordKey(item.id)]: item,
+    }), {});
+    const orderedItems = persistedOrder
+      .map(itemId => itemsById[toRecordKey(itemId)])
+      .filter(Boolean);
+    const remainingItems = fallbackItems.filter(item => !persistedOrder.includes(item.id));
+    return [...orderedItems, ...remainingItems];
+  }, [activeGroupKey, activeMarkersByItemId, itemOrderByGroup, itemsByGroup]);
 
   const activeGroupSourceCount = activeItems.reduce((count, item) => count + (item.sources || []).length, 0);
   const activeGroupImageCount = activeItems.reduce(
@@ -344,6 +476,76 @@ export default function StashOverview({
   useLayoutEffect(() => {
     recalculateArrows();
   }, [recalculateArrows]);
+
+  useLayoutEffect(() => {
+    if (!activeGroup || !activeGroupImageSrc) {
+      return;
+    }
+
+    const layoutElement = layoutRef.current;
+    const imageShellElement = imageShellRef.current;
+    if (!layoutElement || !imageShellElement) {
+      return;
+    }
+
+    const markedItems = activeItems.filter(item => activeMarkersByItemId[toRecordKey(item.id)]);
+    if (markedItems.length < 2) {
+      return;
+    }
+
+    const layoutBounds = layoutElement.getBoundingClientRect();
+    const imageBounds = imageShellElement.getBoundingClientRect();
+    const slotPoints = markedItems.map(item => {
+      const rowElement = itemRowRefs.current[toRecordKey(item.id)];
+      if (!rowElement) {
+        return null;
+      }
+
+      const rowBounds = rowElement.getBoundingClientRect();
+      return {
+        x: rowBounds.left - layoutBounds.left,
+        y: rowBounds.top - layoutBounds.top + (rowBounds.height / 2),
+      };
+    }).filter(Boolean) as SlotPoint[];
+
+    if (slotPoints.length !== markedItems.length) {
+      return;
+    }
+
+    const markerPoints = markedItems.reduce<IdRecord<MarkerPoint>>((accumulator, item) => {
+      const marker = activeMarkersByItemId[toRecordKey(item.id)];
+      if (!marker) {
+        return accumulator;
+      }
+
+      return {
+        ...accumulator,
+        [toRecordKey(item.id)]: {
+          itemId: item.id,
+          x: imageBounds.left - layoutBounds.left + (marker.x * imageBounds.width),
+          y: imageBounds.top - layoutBounds.top + (marker.y * imageBounds.height),
+        },
+      };
+    }, {});
+
+    const currentMarkedOrder = markedItems.map(item => item.id);
+    const optimizedMarkedOrder = optimizeMarkedItemOrder(currentMarkedOrder, markerPoints, slotPoints);
+    const currentUnmarkedOrder = activeItems
+      .filter(item => !activeMarkersByItemId[toRecordKey(item.id)])
+      .map(item => item.id);
+    const nextOrder = [...optimizedMarkedOrder, ...currentUnmarkedOrder];
+    const orderChanged = nextOrder.length === activeItems.length && nextOrder.some((itemId, index) => itemId !== activeItems[index]?.id);
+
+    if (!orderChanged) {
+      return;
+    }
+
+    const groupKey = toRecordKey(activeGroup.id);
+    setItemOrderByGroup(previousState => ({
+      ...previousState,
+      [groupKey]: nextOrder,
+    }));
+  }, [activeGroup, activeGroupImageSrc, activeItems, activeMarkersByItemId]);
 
   useEffect(() => {
     const layoutElement = layoutRef.current;
