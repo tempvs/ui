@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import Spinner from '../component/Spinner';
+import defaultImage from '../assets/default-image.gif';
 import { getClassificationLabel } from '../library/libraryShared';
 import { readFileAsBase64 } from '../util/fileUtils';
 import {
@@ -36,7 +37,7 @@ import {
 
 const emptyGroupForm = { name: '', description: '' };
 const emptyItemForm = { name: '', description: '', classification: 'OTHER' };
-const ALL_CLASSIFICATIONS = ['ARMOR', 'CLOTHING', 'FOOTWEAR', 'HOUSEHOLD', 'WEAPON', 'OTHER'];
+const ALL_CLASSIFICATIONS = ['ARMOR', 'CLOTHING', 'FOOTWEAR', 'ACCESSORY', 'WEAPON', 'OTHER'];
 const ArrowLeftIcon = FaArrowLeft as React.ComponentType<{ className?: string }>;
 const CloseIcon = FaTimes as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
@@ -140,7 +141,15 @@ function scheduleArrowRefresh(callback: () => void) {
   });
 }
 
-export default function StashOverview({ profile, isEditable, t, getPeriodLabel, embedded = true }: StashPanelProps) {
+export default function StashOverview({
+  profile,
+  isEditable,
+  t,
+  getPeriodLabel,
+  embedded = true,
+  initialGroupId = null,
+  onActiveGroupChange,
+}: StashPanelProps) {
   const intl = useIntl();
   const navigate = useNavigate();
   const [stash, setStash] = useState<Stash | null>(null);
@@ -228,6 +237,12 @@ export default function StashOverview({ profile, isEditable, t, getPeriodLabel, 
   }, [profile?.id]);
 
   useEffect(() => {
+    if (initialGroupId != null) {
+      setActiveGroupId(initialGroupId);
+    }
+  }, [initialGroupId]);
+
+  useEffect(() => {
     if (!profileId || profile?.type !== 'CLUB') {
       return;
     }
@@ -237,6 +252,9 @@ export default function StashOverview({ profile, isEditable, t, getPeriodLabel, 
 
   const groups = stash?.groups || [];
   const activeGroup = groups.find(group => group.id === activeGroupId) || groups[0] || null;
+  useEffect(() => {
+    onActiveGroupChange?.(activeGroup);
+  }, [activeGroup, onActiveGroupChange]);
   const activeGroupImage = activeGroup ? groupImages[toRecordKey(activeGroup.id)] : null;
   const activeGroupImageSrc = getImageSrc(activeGroupImage);
   const activeMarkers = useMemo(
@@ -607,7 +625,7 @@ export default function StashOverview({ profile, isEditable, t, getPeriodLabel, 
                       />
                     ) : (
                       <div className="stash-hero-image stash-hero-image--empty">
-                        {t('profile.stash.imagesEmptyShort', 'No images')}
+                        <img src={defaultImage} alt={t('profile.stash.imagesEmptyShort', 'No images')} className="stash-empty-image-art" />
                       </div>
                     )}
 

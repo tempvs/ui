@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
 import SectionBreadcrumb from '../component/SectionBreadcrumb';
@@ -27,17 +27,23 @@ type StashPageProps = {
 
 function StashPage({ intl }: StashPageProps) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(null);
   const [clubProfiles, setClubProfiles] = useState<Profile[]>([]);
   const [currentUserId, setCurrentUserId] = useState<Id | null>(null);
+  const [activeGroup, setActiveGroup] = useState<{ id: Id; name?: string | null } | null>(null);
 
-  const t = (messageId: string, defaultMessage: string, values?: Record<string, string | number | boolean | Date>) => (
+  const t = useCallback((
+    messageId: string,
+    defaultMessage: string,
+    values?: Record<string, string | number | boolean | Date>
+  ) => (
     intl.formatMessage({ id: messageId, defaultMessage }, values)
-  );
+  ), [intl]);
 
-  const getPeriodLabel = (period?: string | null) => getSharedPeriodLabel(intl, period);
+  const getPeriodLabel = useCallback((period?: string | null) => getSharedPeriodLabel(intl, period), [intl]);
 
   useEffect(() => {
     fetchCurrentUserInfo(result => {
@@ -79,9 +85,19 @@ function StashPage({ intl }: StashPageProps) {
     () => clubProfiles.filter(clubProfile => clubProfile.id !== profile?.id),
     [clubProfiles, profile?.id]
   );
+  const requestedGroupId = searchParams.get('group');
   const isEditable = profile?.type === 'CLUB' && currentUserId != null && currentUserId === profile?.userId;
   const ownerLabel = buildProfileLabel(ownerUserProfile);
   const clubLabel = buildClubProfileLabel(profile, getPeriodLabel);
+  const handleActiveGroupChange = useCallback((group: { id: Id; name?: string | null } | null) => {
+    setActiveGroup(previousState => {
+      if (previousState?.id === group?.id && previousState?.name === group?.name) {
+        return previousState;
+      }
+
+      return group;
+    });
+  }, []);
 
   if (!loaded) {
     return <Spinner />;
@@ -119,6 +135,7 @@ function StashPage({ intl }: StashPageProps) {
                     },
                   },
                   { label: 'Stash', to: `/stash/${profile.alias || profile.id}` },
+                  activeGroup ? { label: activeGroup.name || t('profile.stash.groupName', 'Collection'), to: `/stash/${profile.alias || profile.id}?group=${activeGroup.id}` } : null,
                 ]}
               />
             )}
@@ -143,6 +160,8 @@ function StashPage({ intl }: StashPageProps) {
             t={t}
             getPeriodLabel={getPeriodLabel}
             embedded={false}
+            initialGroupId={requestedGroupId}
+            onActiveGroupChange={group => handleActiveGroupChange(group ? { id: group.id, name: group.name } : null)}
           />
         </Col>
       </Row>

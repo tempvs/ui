@@ -3,7 +3,7 @@ import { IntlShape } from 'react-intl';
 export { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
 export type { Period } from '../util/periods';
 
-export const CLASSIFICATIONS = ['CLOTHING', 'FOOTWEAR', 'HOUSEHOLD', 'WEAPON', 'ARMOR', 'OTHER'] as const;
+export const CLASSIFICATIONS = ['CLOTHING', 'FOOTWEAR', 'ACCESSORY', 'WEAPON', 'ARMOR', 'OTHER'] as const;
 export const TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'] as const;
 export const PAGE_SIZE = 40;
 
@@ -13,7 +13,7 @@ export type SourceType = typeof TYPES[number];
 const CLASSIFICATION_DEFAULTS: Record<SourceClassification, string> = {
   CLOTHING: 'Clothing',
   FOOTWEAR: 'Footwear',
-  HOUSEHOLD: 'Household',
+  ACCESSORY: 'Accessory',
   WEAPON: 'Weapon',
   ARMOR: 'Armor',
   OTHER: 'Other',

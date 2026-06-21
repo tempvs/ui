@@ -1078,7 +1078,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                 value={itemCreateForm.classification}
                 onChange={event => setItemCreateForm(prevState => ({ ...prevState, classification: event.target.value }))}
               >
-                {['ARMOR', 'CLOTHING', 'FOOTWEAR', 'HOUSEHOLD', 'WEAPON', 'OTHER'].map(option => (
+                {['ARMOR', 'CLOTHING', 'FOOTWEAR', 'ACCESSORY', 'WEAPON', 'OTHER'].map(option => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </Form.Select>

@@ -1335,9 +1335,27 @@ button.stash-item-media-empty:disabled {
     linear-gradient(135deg, rgba(229, 222, 205, 0.58), rgba(246, 242, 235, 0.92));
 }
 
+.stash-empty-image-art {
+  display: block;
+  width: min(100%, 13rem);
+  height: auto;
+  opacity: 0.92;
+}
+
 .stash-hero-copy,
 .stash-item-page-copy {
   margin-top: 0.75rem;
+}
+
+.stash-item-page-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.stash-item-page-title-text {
+  min-width: 0;
 }
 
 .stash-marker-helper {
@@ -1400,7 +1418,7 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-source-card {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .stash-item-delete-trigger,
@@ -1504,6 +1522,21 @@ button.stash-item-media-empty:disabled {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
+}
+
+.stash-source-unlink-button {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(160, 68, 68, 0.24);
+  border-radius: 999px;
+  background: rgba(252, 241, 241, 0.92);
+  color: #9c3b3b;
 }
 
 .stash-item-list-head {

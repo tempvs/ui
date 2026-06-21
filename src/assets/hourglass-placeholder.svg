@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Missing image placeholder</title>
+  <g fill="none" stroke="#232e38" stroke-linecap="round" stroke-width="26">
+    <line x1="182" y1="88" x2="330" y2="88"/>
+    <line x1="182" y1="424" x2="330" y2="424"/>
+    <line x1="196" y1="100" x2="196" y2="196"/>
+    <line x1="316" y1="100" x2="316" y2="196"/>
+    <line x1="196" y1="316" x2="196" y2="412"/>
+    <line x1="316" y1="316" x2="316" y2="412"/>
+  </g>
+  <path d="M216 122h80c0 39-16 67-40 91-24-24-40-52-40-91Z" fill="#c59a43"/>
+  <path d="M256 216c18 23 35 48 35 84h-70c0-36 17-61 35-84Z" fill="#c59a43"/>
+  <path d="M216 390h80c0-39-16-67-40-91-24 24-40 52-40 91Z" fill="#c59a43"/>
+</svg>

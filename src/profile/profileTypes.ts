@@ -187,4 +187,6 @@ export type StashPanelProps = {
   t: MessageFormatter;
   getPeriodLabel: (period?: string | null) => string;
   embedded?: boolean;
+  initialGroupId?: Id | null;
+  onActiveGroupChange?: (group: StashGroup | null) => void;
 };
