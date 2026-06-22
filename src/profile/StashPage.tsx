@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
 import SectionBreadcrumb from '../component/SectionBreadcrumb';
@@ -27,6 +27,7 @@ type StashPageProps = {
 
 function StashPage({ intl }: StashPageProps) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -98,6 +99,21 @@ function StashPage({ intl }: StashPageProps) {
       return group;
     });
   }, []);
+
+  useEffect(() => {
+    if (!profile || !activeGroup) {
+      return;
+    }
+
+    const currentGroupId = searchParams.get('group');
+    const nextGroupId = String(activeGroup.id);
+
+    if (currentGroupId === nextGroupId) {
+      return;
+    }
+
+    navigate(`/stash/${profile.alias || profile.id}?group=${nextGroupId}`, { replace: true });
+  }, [activeGroup, navigate, profile, searchParams]);
 
   if (!loaded) {
     return <Spinner />;
