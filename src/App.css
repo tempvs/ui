@@ -1623,20 +1623,20 @@ button.stash-item-media-empty:disabled {
   height: 1rem;
   border: 0;
   border-radius: 999px;
-  background: rgba(199, 154, 69, 0.96);
-  box-shadow: 0 0 0 1.05px #1f1a14;
+  background: transparent;
+  box-shadow: none;
   transform: translate(-50%, -50%);
   z-index: 2;
   transition: box-shadow 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
 }
 
 .stash-marker-dot.is-active {
-  background: rgba(221, 176, 90, 0.98);
+  background: transparent;
 }
 
 .stash-marker-dot.is-highlighted {
-  background: rgba(221, 176, 90, 0.98);
-  box-shadow: 0 0 0 1.05px #1f1a14, 0 0 0 2.7px rgba(199, 154, 69, 0.24);
+  background: transparent;
+  box-shadow: none;
 }
 
 @media (max-width: 991.98px) {
