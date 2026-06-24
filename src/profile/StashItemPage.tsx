@@ -619,14 +619,14 @@ function StashItemPage({ intl }: StashItemPageProps) {
             return (
               <div key={source.id} className="stash-source-card">
                 {sourceImageSrc && (
-                  <div className="stash-source-thumb-shell">
+                  <Link to={`/library/source/${source.id}`} className="stash-source-thumb-shell">
                     <img src={sourceImageSrc} alt={source.name || 'Source'} className="stash-source-thumb" />
-                  </div>
-                )}
-                <div className="stash-source-copy">
-                  <Link to={`/library/source/${source.id}`} className="stash-source-title text-decoration-none">
-                    {source.name}
                   </Link>
+                )}
+                <Link to={`/library/source/${source.id}`} className="stash-source-copy text-decoration-none text-reset">
+                  <div className="stash-source-title">
+                    {source.name}
+                  </div>
                   <div className="stash-source-description">
                     {source.description || t('profile.stash.noDescription', 'No description')}
                   </div>
@@ -640,7 +640,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
                       </span>
                     )}
                   </div>
-                </div>
+                </Link>
                 {isEditable && (
                   <button
                     type="button"
