@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, Container, Form, Modal, Row } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -134,6 +134,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
   const getPeriodLabel = (period?: string | null) => getSharedPeriodLabel(intl, period);
   const isEditable = profile?.type === 'CLUB' && currentUserId != null && currentUserId === profile?.userId;
+  const availableSourceResults = (sourceSearch.results || []).filter(sourceResult => !((item?.sources || []).includes(sourceResult.id)));
+  const sourceSearchFailedMessage = intl.formatMessage({
+    id: 'profile.stash.sourceSearchFailed',
+    defaultMessage: 'Unable to search library sources.',
+  });
 
   useEffect(() => () => {
     clearAllTimers(itemSaveTimersRef.current);
@@ -428,7 +433,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     await refreshItemData();
   }
 
-  async function handleSearchSources() {
+  const handleSearchSources = useCallback(async () => {
     if (!item) {
       return;
     }
@@ -442,9 +447,21 @@ function StashItemPage({ intl }: StashItemPageProps) {
       });
       setSourceSearch(previousState => ({ ...previousState, loading: false, results, error: null }));
     } catch (error) {
-      setSourceSearch(previousState => ({ ...previousState, loading: false, results: [], error: t('profile.stash.sourceSearchFailed', 'Unable to search library sources.') }));
+      setSourceSearch(previousState => ({ ...previousState, loading: false, results: [], error: sourceSearchFailedMessage }));
     }
-  }
+  }, [item, sourceSearch.query, sourceSearchFailedMessage]);
+
+  useEffect(() => {
+    if (!sourceSearchVisible || !item) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      void handleSearchSources();
+    }, 250);
+
+    return () => window.clearTimeout(timerId);
+  }, [handleSearchSources, item, sourceSearch.query, sourceSearchVisible]);
 
   if (!loaded) {
     return <Spinner />;
@@ -644,7 +661,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 type="button"
                 className="stash-inline-icon-button"
                 title={t('profile.stash.sourceAdd', 'Add source')}
-                onClick={() => setSourceSearchVisible(previousState => !previousState)}
+                onClick={() => setSourceSearchVisible(previousState => {
+                  const nextVisible = !previousState;
+                  if (!nextVisible) {
+                    setSourceSearch({});
+                  }
+                  return nextVisible;
+                })}
               >
                 <LinkIcon />
               </button>
@@ -659,15 +682,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
                   onChange={event => setSourceSearch(previousState => ({ ...previousState, query: event.target.value }))}
                   placeholder={t('profile.stash.sourceSearchPlaceholder', 'Find matching library sources')}
                 />
-                <Button size="sm" variant="outline-secondary" onClick={() => { void handleSearchSources(); }}>
-                  {t('profile.stash.search', 'Search')}
-                </Button>
               </div>
               {sourceSearch.error && <div className="small text-danger mb-2">{sourceSearch.error}</div>}
               {sourceSearch.loading && <Spinner size="sm" />}
-              {(sourceSearch.results || []).length > 0 && (
+              {availableSourceResults.length > 0 && (
                 <div className="d-grid gap-2">
-                  {(sourceSearch.results || []).map(source => (
+                  {availableSourceResults.map(source => (
                     <div key={source.id} className="stash-source-result">
                       <div className="small stash-source-result-copy">
                         <Link to={`/library/source/${source.id}`} className="stash-source-result-name fw-semibold text-decoration-none">
@@ -686,6 +706,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+              {!sourceSearch.loading && !sourceSearch.error && sourceSearchVisible && availableSourceResults.length === 0 && (
+                <div className="small text-muted">
+                  {t('profile.stash.sourceSearchEmpty', 'No matching sources available to link.')}
                 </div>
               )}
             </div>
