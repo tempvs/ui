@@ -17,7 +17,7 @@ import { SaveStatus } from '../component/EditableFieldRow';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { clearAllTimers, clearTimer } from '../util/timers';
 import { getPeriodLabel as getSharedPeriodLabel } from '../util/periods';
-import { readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
 import { buildClubProfileLabel, buildProfileLabel } from './profileLabels';
 import {
   fetchCurrentUserInfo,
@@ -314,10 +314,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
     setImageUploading(true);
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       await uploadStashItemImage(item.id, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: imageDescription || null,
       });
       setImageUploadVisible(false);
@@ -357,10 +358,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
     setImageUploading(true);
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       await uploadStashItemImage(item.id, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: imageDrafts[toRecordKey(target.id)] ?? target.description ?? null,
       });
       await deleteStashItemImage(item.id, target.id);

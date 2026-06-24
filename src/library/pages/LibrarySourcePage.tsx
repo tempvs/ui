@@ -26,7 +26,7 @@ import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { getClassificationLabel, getTypeLabel } from '../libraryShared';
 import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
-import { readFileAsBase64 } from '../../util/fileUtils';
+import { prepareImageFile, readFileAsBase64 } from '../../util/fileUtils';
 import { getErrorMessage } from '../../util/errors';
 import { clearAllTimers, clearTimer } from '../../util/timers';
 import { SaveStatus } from '../../component/EditableFieldRow';
@@ -215,10 +215,11 @@ export default function LibrarySourcePage() {
     setError(null);
 
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       const result = await uploadSourceImage(sourceId, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: imageDescription || null,
       });
 
@@ -259,10 +260,11 @@ export default function LibrarySourcePage() {
     setError(null);
 
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       const uploadResult = await uploadSourceImage(sourceId, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: imageDrafts[targetImage.id] ?? targetImage.description ?? null,
       });
 

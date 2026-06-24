@@ -12,7 +12,7 @@ import defaultImage from '../assets/default-image.png';
 import { getClassificationLabel } from '../library/libraryShared';
 import { SaveStatus } from '../component/EditableFieldRow';
 import { clearAllTimers, clearTimer } from '../util/timers';
-import { readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
 import {
   createStashGroup,
   createStashItem,
@@ -762,10 +762,11 @@ export default function StashOverview({
     setFeedback(null);
 
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       await uploadStashGroupImage(groupImageTarget.id, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: groupImageTarget.name || null,
       });
       if (groupImageInputRef.current) {

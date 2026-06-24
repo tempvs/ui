@@ -7,7 +7,7 @@ import EditableDescriptionField from '../component/EditableDescriptionField';
 import InlineEditableText from '../component/InlineEditableText';
 import Spinner from '../component/Spinner';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
-import { readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
 import { clearAllTimers, clearTimer } from '../util/timers';
 import CollectionTabs from './components/stash/CollectionTabs';
 import LinkedSourcesPanel from './components/stash/LinkedSourcesPanel';
@@ -549,10 +549,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setFeedback(null);
 
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       await uploadStashItemImage(itemImageUploadTarget.id, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: itemImageDescription || null,
       });
       if (itemImageInputRef.current) {
@@ -591,10 +592,11 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     setFeedback(null);
 
     try {
-      const content = await readFileAsBase64(file);
+      const preparedFile = await prepareImageFile(file);
+      const content = await readFileAsBase64(preparedFile);
       await uploadStashItemImage(target.itemId, {
         content,
-        fileName: file.name,
+        fileName: preparedFile.name,
         description: itemImageDrafts[target.image.id] ?? target.image.description ?? null,
       });
       await deleteStashItemImage(target.itemId, target.image.id);
