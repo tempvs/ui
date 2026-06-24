@@ -8,7 +8,7 @@ import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import EditableDescriptionField from '../component/EditableDescriptionField';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import InlineEditableText from '../component/InlineEditableText';
-import defaultImage from '../assets/default-image.gif';
+import defaultImage from '../assets/default-image.png';
 import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import SectionHeaderBar from '../component/SectionHeaderBar';
 import Spinner from '../component/Spinner';
@@ -559,6 +559,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
               placeholderDisplay={!item.description}
               placeholder={t('profile.stash.noDescription', 'No description')}
               rows={4}
+              multilineUseContentEditable
               className="mt-2"
             />
             <div className="stash-meta-row mt-2">

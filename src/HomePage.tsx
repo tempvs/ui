@@ -16,8 +16,9 @@ export default function HomePage() {
         <Col xl={8} lg={9} md={10}>
           <div className="home-message-panel">
             <p className="home-message">
-              To see the library, press <span className="home-inline-icon"><BookIcon /></span>. To login/register, press the{' '}
-              <span className="home-inline-icon"><SignInIcon /></span>.
+              Welcome to Tempvs! To log in or register, press <span className="home-inline-icon"><SignInIcon /></span>. You can
+              create your reenactment profiles and associate them with your user account. To access the library, press{' '}
+              <span className="home-inline-icon"><BookIcon /></span>.
             </p>
           </div>
         </Col>

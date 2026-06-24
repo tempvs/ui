@@ -15,6 +15,7 @@ type EditableDescriptionFieldProps = {
   className?: string;
   textClassName?: string;
   rows?: number;
+  multilineUseContentEditable?: boolean;
   savingTitle?: string;
   errorTitle?: string;
 };
@@ -31,6 +32,7 @@ export default function EditableDescriptionField({
   className = '',
   textClassName = 'stash-item-description',
   rows = 4,
+  multilineUseContentEditable = false,
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: EditableDescriptionFieldProps) {
@@ -47,6 +49,7 @@ export default function EditableDescriptionField({
       placeholder={placeholder}
       popoverValue={placeholderDisplay ? undefined : readOnlyValue}
       multiline
+      multilineUseContentEditable={multilineUseContentEditable}
       multilineRows={rows}
       className={className}
       savingTitle={savingTitle}

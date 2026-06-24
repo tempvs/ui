@@ -5,10 +5,13 @@ import { useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
 
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
+import EditableDescriptionField from '../component/EditableDescriptionField';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import Spinner from '../component/Spinner';
-import defaultImage from '../assets/default-image.gif';
+import defaultImage from '../assets/default-image.png';
 import { getClassificationLabel } from '../library/libraryShared';
+import { SaveStatus } from '../component/EditableFieldRow';
+import { clearAllTimers, clearTimer } from '../util/timers';
 import { readFileAsBase64 } from '../util/fileUtils';
 import {
   createStashGroup,
@@ -22,6 +25,7 @@ import {
   getProfileStash,
   getStashEntityImages,
   getStashItemMarkers,
+  updateStashGroupDescription,
   updateStashItemMarker,
   uploadStashGroupImage,
 } from './stashApi';
@@ -297,6 +301,8 @@ export default function StashOverview({
   const [groupImageTarget, setGroupImageTarget] = useState<StashGroup | null>(null);
   const [groupImageUploading, setGroupImageUploading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [groupDescriptionDraft, setGroupDescriptionDraft] = useState('');
+  const [groupDescriptionStatus, setGroupDescriptionStatus] = useState<SaveStatus>(null);
   const [markerPlacement, setMarkerPlacement] = useState<MarkerPlacementState>(null);
   const [markerPreviewPosition, setMarkerPreviewPosition] = useState<MarkerPreviewPosition>(null);
   const [hoveredMarkerItemId, setHoveredMarkerItemId] = useState<Id | null>(null);
@@ -306,6 +312,7 @@ export default function StashOverview({
   const layoutRef = useRef<HTMLDivElement>(null);
   const imageShellRef = useRef<HTMLDivElement>(null);
   const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const groupDescriptionTimersRef = useRef<Record<string, number>>({});
 
   const profileId = profile?.id;
   const groupUploadControl = groupImageUploading ? <SavingIcon className="text-muted" /> : <UploadIcon />;
@@ -369,6 +376,10 @@ export default function StashOverview({
     setHoveredMarkerItemId(null);
   }, [profile?.id]);
 
+  useEffect(() => () => {
+    clearAllTimers(groupDescriptionTimersRef.current);
+  }, []);
+
   useEffect(() => {
     if (initialGroupId != null) {
       setActiveGroupId(initialGroupId);
@@ -385,6 +396,11 @@ export default function StashOverview({
 
   const groups = stash?.groups || [];
   const activeGroup = groups.find(group => idsEqual(group.id, activeGroupId)) || groups[0] || null;
+  useEffect(() => {
+    setGroupDescriptionDraft(activeGroup?.description || '');
+    setGroupDescriptionStatus(null);
+    clearTimer(groupDescriptionTimersRef.current, 'description');
+  }, [activeGroup?.id, activeGroup?.description]);
   useEffect(() => {
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
@@ -602,6 +618,65 @@ export default function StashOverview({
       document.removeEventListener('mousedown', handleDocumentMouseDown);
     };
   }, [markerPlacement]);
+
+  function setActiveGroupDescription(description: string) {
+    if (!activeGroup) {
+      return;
+    }
+
+    const groupKey = toRecordKey(activeGroup.id);
+    setStash(previousState => {
+      if (!previousState) {
+        return previousState;
+      }
+
+      return {
+        ...previousState,
+        groups: (previousState.groups || []).map(group => (
+          toRecordKey(group.id) === groupKey ? { ...group, description } : group
+        )),
+      };
+    });
+  }
+
+  function handleGroupDescriptionChange(value: string) {
+    const persisted = activeGroup?.description || '';
+    setGroupDescriptionDraft(value);
+    setGroupDescriptionStatus(value === persisted ? null : 'pending');
+    clearTimer(groupDescriptionTimersRef.current, 'description');
+    groupDescriptionTimersRef.current.description = window.setTimeout(() => {
+      void handleSaveGroupDescription();
+    }, 1800);
+  }
+
+  async function handleSaveGroupDescription() {
+    if (!activeGroup || !isEditable) {
+      return;
+    }
+
+    const persisted = activeGroup.description || '';
+    const draft = groupDescriptionDraft || '';
+    clearTimer(groupDescriptionTimersRef.current, 'description');
+
+    if (draft === persisted) {
+      setGroupDescriptionStatus(null);
+      return;
+    }
+
+    try {
+      setGroupDescriptionStatus('saving');
+      const updatedGroup = await updateStashGroupDescription(activeGroup.id, draft);
+      setActiveGroupDescription(updatedGroup?.description || '');
+      setGroupDescriptionDraft(updatedGroup?.description || '');
+      setGroupDescriptionStatus('saved');
+      window.setTimeout(() => {
+        setGroupDescriptionStatus(null);
+      }, 1000);
+    } catch (error) {
+      setGroupDescriptionDraft(persisted);
+      setGroupDescriptionStatus('error');
+    }
+  }
 
   async function handleCreateGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -890,7 +965,7 @@ export default function StashOverview({
                   <svg className={`stash-arrow-layer${markerPlacement ? ' is-marker-placing' : ''}`} aria-hidden="true">
                     <defs>
                       <marker id="stash-arrow-head-fill" markerWidth="5.6" markerHeight="5.6" refX="4.4" refY="2.8" orient="auto">
-                        <path d="M0,0 L5.6,2.8 L0,5.6 z" fill="#c79a45" stroke="#1f1a14" strokeWidth="0.45" />
+                        <path d="M0,0 L5.6,2.8 L0,5.6 z" fill="#d4aa5a" stroke="#1f1a14" strokeWidth="0.45" />
                       </marker>
                     </defs>
                     {arrowLayouts.map(arrow => (
@@ -1011,9 +1086,19 @@ export default function StashOverview({
 
                   <div className="stash-hero-copy">
                     <h2 className="stash-hero-title">{activeGroup.name}</h2>
-                    <p className="stash-hero-description">
-                      {activeGroup.description || t('profile.stash.noDescription', 'No description')}
-                    </p>
+                    <EditableDescriptionField
+                      editable={isEditable}
+                      value={groupDescriptionDraft}
+                      readOnlyValue={activeGroup.description || t('profile.stash.noDescription', 'No description')}
+                      onValueChange={handleGroupDescriptionChange}
+                      onBlur={() => { void handleSaveGroupDescription(); }}
+                      status={groupDescriptionStatus}
+                      textClassName="stash-hero-description"
+                      placeholderDisplay={!activeGroup.description}
+                      placeholder={t('profile.stash.noDescription', 'No description')}
+                      rows={3}
+                      multilineUseContentEditable
+                    />
                     <div className="stash-meta-row">
                       {headerStats.map(stat => (
                         <span key={stat} className="stash-meta-chip stash-meta-chip-soft">{stat}</span>

@@ -22,6 +22,7 @@ type InlineEditableTextProps = {
   popoverValue?: React.ReactNode;
   truncateSingleLine?: boolean;
   multiline?: boolean;
+  multilineUseContentEditable?: boolean;
   multilineRows?: number;
   savingTitle?: string;
   errorTitle?: string;
@@ -44,6 +45,7 @@ export default function InlineEditableText({
   popoverValue,
   truncateSingleLine = false,
   multiline = false,
+  multilineUseContentEditable = false,
   multilineRows = 3,
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
@@ -82,6 +84,26 @@ export default function InlineEditableText({
   }, [editing]);
 
   useEffect(() => {
+    if (!multiline || !multilineUseContentEditable) {
+      return;
+    }
+
+    const control = controlRef.current as HTMLDivElement | null;
+    if (!control) {
+      return;
+    }
+
+    if (editing && document.activeElement === control) {
+      return;
+    }
+
+    const nextValue = String(controlValue ?? '');
+    if (control.textContent !== nextValue) {
+      control.textContent = nextValue;
+    }
+  }, [controlValue, editing, multiline, multilineUseContentEditable]);
+
+  useEffect(() => {
     if (!editing || !blurredAfterEdit) {
       return undefined;
     }
@@ -107,6 +129,11 @@ export default function InlineEditableText({
   };
 
   const handleTextareaBlur: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
+    onBlur?.(event);
+    setBlurredAfterEdit(true);
+  };
+
+  const handleContentEditableBlur: React.FocusEventHandler<HTMLDivElement> = event => {
     onBlur?.(event);
     setBlurredAfterEdit(true);
   };
@@ -159,6 +186,40 @@ export default function InlineEditableText({
       }}
     >
       {multiline ? (
+        multilineUseContentEditable ? (
+          shouldShowLocalPopover ? (
+            <span className="inline-editable-popover-anchor">
+              <div
+                ref={controlRef as React.RefObject<HTMLDivElement>}
+                role="textbox"
+                aria-multiline="true"
+                contentEditable={editing}
+                suppressContentEditableWarning
+                tabIndex={0}
+                className={`inline-editable-custom-field ${controlClassName}`.trim()}
+                data-placeholder={placeholder}
+                onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
+                onBlur={handleContentEditableBlur}
+              />
+              <span className="inline-editable-description-popover" role="tooltip">
+                {popoverValue}
+              </span>
+            </span>
+          ) : (
+            <div
+              ref={controlRef as React.RefObject<HTMLDivElement>}
+              role="textbox"
+              aria-multiline="true"
+              contentEditable={editing}
+              suppressContentEditableWarning
+              tabIndex={0}
+              className={`inline-editable-custom-field ${controlClassName}`.trim()}
+              data-placeholder={placeholder}
+              onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
+              onBlur={handleContentEditableBlur}
+            />
+          )
+        ) : (
         shouldShowLocalPopover ? (
           <span className="inline-editable-popover-anchor">
             <Form.Control
@@ -188,6 +249,7 @@ export default function InlineEditableText({
           onBlur={handleTextareaBlur}
           placeholder={placeholder}
         />
+        )
         )
       ) : truncateSingleLine && !editing ? (
         <span className="inline-editable-popover-anchor">

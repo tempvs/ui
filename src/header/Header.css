@@ -78,6 +78,21 @@
   max-width: 100%;
 }
 
+.header-main-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.header-inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .header-profile-select.form-select {
   min-height: 2.1rem;
   max-width: 10.5rem;

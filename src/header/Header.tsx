@@ -211,20 +211,18 @@ class Header extends Component<Record<string, never>, HeaderState> {
                 </div>
               )}
             </Col>
-            <Col sm={4}>
-              <SearchDialog />
-            </Col>
-            <Col sm={1}>
-              {this.state.loggedIn && (
-                <Link to="/chat">
-                  <ChatButton />
+            <Col sm={9}>
+              <div className="header-main-actions">
+                <SearchDialog />
+                {this.state.loggedIn && (
+                  <Link to="/chat" className="header-inline-link">
+                    <ChatButton />
+                  </Link>
+                )}
+                <Link to="/library" className="header-inline-link">
+                  <LibraryButton />
                 </Link>
-              )}
-            </Col>
-            <Col sm={4}>
-              <Link to="/library">
-                <LibraryButton />
-              </Link>
+              </div>
             </Col>
             <Col sm={1}>
               {this.state.loggedIn

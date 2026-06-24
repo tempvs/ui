@@ -1291,7 +1291,7 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-arrow-line {
-  stroke: #c79a45;
+  stroke: #d4aa5a;
   stroke-width: 1.8;
   transition: stroke 0.14s ease, stroke-width 0.14s ease, filter 0.14s ease;
 }
@@ -1303,9 +1303,9 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-arrow-line.is-highlighted {
-  stroke: #ddb05a;
+  stroke: #e2bc74;
   stroke-width: 2.05;
-  filter: drop-shadow(0 0 0.16rem rgba(199, 154, 69, 0.26));
+  filter: drop-shadow(0 0 0.16rem rgba(212, 170, 90, 0.26));
 }
 
 .stash-arrow-line-outline.is-highlighted {
@@ -1409,6 +1409,7 @@ button.stash-item-media-empty:disabled {
   color: #5f584b;
   font-size: 0.84rem;
   line-height: 1.45;
+  text-align: left;
 }
 
 .stash-hero-manage {
