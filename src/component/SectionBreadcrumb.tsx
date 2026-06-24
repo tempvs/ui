@@ -21,6 +21,7 @@ export type SectionBreadcrumbSwitcher = {
 export type SectionBreadcrumbItem = {
   label?: React.ReactNode;
   to?: string;
+  href?: string;
   switcher?: SectionBreadcrumbSwitcher | null;
 };
 
@@ -61,11 +62,21 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
             >
               {entry.label}
             </Dropdown.Item>
+          ) : entry.href ? (
+            <Dropdown.Item
+              as="a"
+              key={entry.key || String(entry.label)}
+              href={entry.href}
+              active={entry.active}
+              aria-disabled={entry.disabled || undefined}
+              onClick={entry.onClick}
+            >
+              {entry.label}
+            </Dropdown.Item>
           ) : (
             <Dropdown.Item
               as="button"
               key={entry.key || String(entry.label)}
-              href={entry.href}
               active={entry.active}
               disabled={entry.disabled}
               onClick={entry.onClick}
@@ -98,6 +109,10 @@ export default function SectionBreadcrumb({ items = [], switcher = null, classNa
               <Link to={item.to} className="text-decoration-underline">
                 {item.label}
               </Link>
+            ) : item.href ? (
+              <a href={item.href} className="text-decoration-underline">
+                {item.label}
+              </a>
             ) : (
               <span>{item.label}</span>
             )}

@@ -28,12 +28,12 @@ const WARMUP_INTERVAL_MS = 14 * 60 * 1000;
 
 function ProfilePageWithParam() {
   const { id } = useParams();
-  return <ProfilePage id={id} />;
+  return <ProfilePage key={`profile:${id || ''}`} id={id} />;
 }
 
 function UserProfilePageWithParam() {
   const { userId } = useParams();
-  return <ProfilePage userId={userId} />;
+  return <ProfilePage key={`user-profile:${userId || ''}`} userId={userId} />;
 }
 
 function LibraryPeriodPage() {
