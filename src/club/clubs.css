@@ -1,0 +1,47 @@
+.clubs-page { text-align: left; padding-top: 2rem; padding-bottom: 3rem; }
+.club-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; }
+.club-page-heading h1 { margin-bottom: .4rem; }
+.club-page-heading p { color: #67635e; margin-bottom: 0; }
+.club-panel { background: #fff; border: 1px solid #ddd8d0; border-radius: .65rem; padding: 1.5rem; margin-bottom: 1.25rem; }
+.club-panel h2 { font-size: 1.4rem; }
+.club-panel a { color: #584732; }
+.club-search, .club-actions { display: flex; align-items: center; gap: .75rem; }
+.club-search { margin-bottom: 1.5rem; }
+.club-search select { max-width: 18rem; }
+.club-actions .btn { flex-shrink: 0; }
+.club-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 1rem; }
+.club-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+.club-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.club-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1rem; }
+.club-member-list { list-style: none; padding: 0; margin: 1rem 0; }
+.club-member-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #eee9e2; padding: .8rem 0; }
+.club-member-list li span, .club-page-heading h1 { overflow-wrap: anywhere; }
+.club-thumbnail-link { display: inline-flex; align-items: center; gap: .7rem; min-width: 0; }
+.club-list-thumbnail { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; object-fit: cover; border: 1px solid #ddd8d0; border-radius: .4rem; background: #f4f1ec; }
+.profile-club-list li { justify-content: flex-start; }
+.club-scroll-list { max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: .35rem; }
+.club-scroll-list .club-member-list { margin-top: 0; margin-bottom: 0; }
+.club-leave-button { display: inline-flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.profile-clubs-panel { padding-top: .8rem; }
+.profile-clubs-heading { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; }
+.profile-clubs-heading h2 { font-size: .9rem; line-height: 1.2; font-weight: 600; }
+.join-club-dialog { max-width: 680px; }
+.join-club-dialog .modal-content { height: min(32rem, calc(100dvh - 3.5rem)); }
+.join-club-dialog .modal-body { display: flex; flex-direction: column; gap: .75rem; min-height: 0; overflow: hidden; }
+.join-club-dialog .modal-title { font-size: 1.2rem; }
+.join-club-period { margin: 0; font-size: .875rem; color: #67635e; }
+.join-club-results { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.join-club-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-content: start; gap: .65rem; list-style: none; padding: 0; margin: 0; }
+.join-club-tile { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; padding: .8rem; border: 1px solid #ddd8d0; border-radius: .5rem; background: #faf8f4; min-width: 0; }
+.join-club-tile a { color: #584732; font-weight: 600; font-size: .95rem; overflow-wrap: anywhere; }
+.join-club-tile .btn { margin-top: auto; font-size: .8rem; }
+.join-club-photo { width: 100%; height: 80px; object-fit: cover; border-radius: .3rem; }
+.club-detail-photo { display: block; width: 100%; max-height: 24rem; object-fit: contain; border-radius: .4rem; }
+.clubs-load-sentinel { height: 1px; }
+.join-club-dialog .alert { padding: .55rem .75rem; margin: 0; font-size: .875rem; }
+@media (max-width: 575px) {
+  .club-page-heading, .club-search { align-items: stretch; flex-direction: column; }
+  .club-search select { max-width: none; }
+  .club-panel { padding: 1rem; }
+  .club-actions { flex-wrap: wrap; }
+}

@@ -1,0 +1,42 @@
+import React, { useState } from 'react';
+import { Alert, Button, Form } from 'react-bootstrap';
+import { useIntl } from 'react-intl';
+import { Club, removeClubPhoto, uploadClubPhoto } from './clubApi';
+
+export default function ClubPhotoPanel({ club, onChange }: { club: Club; onChange: (club: Club) => void }) {
+  const intl = useIntl();
+  const t = (id: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError(t('photoRequirements', 'Choose a JPEG or PNG photo up to 5 MB.')); return;
+    }
+    setBusy(true); setError('');
+    try { onChange(await uploadClubPhoto(club.id, file)); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  const remove = async () => {
+    setBusy(true); setError('');
+    try { onChange(await removeClubPhoto(club.id)); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  if (!club.photoUrl && !club.canManage) return null;
+  return <section className="club-panel club-photo-panel" aria-label={t('photo', 'Club photo')}>
+    {club.photoUrl && <img className="club-detail-photo" src={club.photoUrl} alt={club.name} />}
+    {club.canManage && <div className="mt-3">
+      <Form.Group controlId={`club-photo-${club.id}`}>
+        <Form.Label>{club.photoUrl ? t('replacePhoto', 'Replace club photo') : t('uploadPhoto', 'Upload club photo')}</Form.Label>
+        <Form.Control type="file" accept="image/jpeg,image/png" disabled={busy} onChange={upload} />
+        <Form.Text>{t('photoRequirements', 'Choose a JPEG or PNG photo up to 5 MB.')}</Form.Text>
+      </Form.Group>
+      {club.photoUrl && <Button variant="outline-danger" size="sm" className="mt-2" disabled={busy} onClick={remove}>{t('removePhoto', 'Remove photo')}</Button>}
+    </div>}
+    {busy && <p role="status" className="mt-2">{t('savingPhoto', 'Saving photo…')}</p>}
+    {error && <Alert variant="danger" className="mt-2">{error}</Alert>}
+  </section>;
+}
