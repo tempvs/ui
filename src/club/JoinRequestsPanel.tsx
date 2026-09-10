@@ -4,9 +4,11 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
-import { decideJoinRequest, getJoinRequests, JoinRequest } from './clubApi';
+import { decideJoinRequest, getJoinRequests, isClubServiceUnavailable, JoinRequest } from './clubApi';
 
-export default function JoinRequestsPanel({ clubId, onDecision }: { clubId: Id; onDecision: () => void }) {
+export default function JoinRequestsPanel({ clubId, onDecision, onUnavailable }: {
+  clubId: Id; onDecision: () => void; onUnavailable?: () => void;
+}) {
   const intl = useIntl();
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -34,7 +36,10 @@ export default function JoinRequestsPanel({ clubId, onDecision }: { clubId: Id; 
         nextPage += 1; more = data.length === 20; setHasMore(more);
       } catch (e) {
         failed = true;
-        if (active) setError((e as Error).message);
+        if (active) {
+          if (isClubServiceUnavailable(e)) onUnavailable?.();
+          else setError((e as Error).message);
+        }
       } finally {
         fetching = false;
         if (active) setLoading(false);
@@ -43,12 +48,15 @@ export default function JoinRequestsPanel({ clubId, onDecision }: { clubId: Id; 
     loadMore.current = () => fetchNext(true);
     fetchNext();
     return () => { active = false; };
-  }, [clubId, revision]);
+  }, [clubId, revision, onUnavailable]);
 
   const decide = async (request: JoinRequest, decision: 'accept' | 'reject') => {
     setBusy(true); setError('');
     try { await decideJoinRequest(clubId, request.id, decision); onDecision(); setRevision(value => value + 1); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) {
+      if (isClubServiceUnavailable(e)) onUnavailable?.();
+      else setError((e as Error).message);
+    }
     finally { setBusy(false); }
   };
 

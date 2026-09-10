@@ -1,4 +1,7 @@
 .clubs-page { text-align: left; padding-top: 2rem; padding-bottom: 3rem; }
+.club-service-unavailable { color: #8a8782; filter: grayscale(1); opacity: .58; }
+.club-service-unavailable a, .club-service-unavailable button, .club-service-unavailable input, .club-service-unavailable select, .club-service-unavailable textarea { pointer-events: none; }
+.club-service-unavailable a { color: inherit; }
 .club-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; }
 .club-page-heading h1 { margin-bottom: .4rem; }
 .club-page-heading p { color: #67635e; margin-bottom: 0; }

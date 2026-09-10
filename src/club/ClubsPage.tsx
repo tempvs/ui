@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import defaultImage from '../assets/default-image.png';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
-import { Club, ClubDraft, createClub, listClubs } from './clubApi';
+import { Club, ClubDraft, createClub, isClubServiceUnavailable, listClubs } from './clubApi';
 import ClubForm from './ClubForm';
 import './clubs.css';
 
@@ -21,6 +21,7 @@ export default function ClubsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [searchError, setSearchError] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
@@ -30,7 +31,7 @@ export default function ClubsPage() {
     const controller = new AbortController();
     let active = true, fetching = false, ready = false, more = true, failed = false;
     let nextPage = 0;
-    setClubs([]); setLoading(true); setSearchError(''); setHasMore(false);
+    setClubs([]); setLoading(true); setSearchError(''); setHasMore(false); setUnavailable(false);
     const fetchNext = async (retry = false) => {
       if (!active || !ready || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setLoading(true); setSearchError('');
@@ -44,7 +45,10 @@ export default function ClubsPage() {
         nextPage += 1; more = data.hasMore; setHasMore(more);
       } catch (e) {
         failed = true;
-        if (active) setSearchError((e as Error).message);
+        if (active) {
+          if (isClubServiceUnavailable(e)) setUnavailable(true);
+          else setSearchError((e as Error).message);
+        }
       } finally {
         fetching = false;
         if (active) setLoading(false);
@@ -74,19 +78,22 @@ export default function ClubsPage() {
   const save = async (draft: ClubDraft) => {
     setBusy(true); setError('');
     try { const club = await createClub(draft); navigate(`/clubs/${club.id}`); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) {
+      if (isClubServiceUnavailable(e)) setUnavailable(true);
+      else setError((e as Error).message);
+    }
     finally { setBusy(false); }
   };
-  return <Container className="clubs-page">
+  return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
     <div className="club-page-heading">
       <div><h1>{t('title', 'Clubs')}</h1><p>{t('intro', 'Find the people who bring your period to life.')}</p></div>
-      {Cookies.get('TEMPVS_LOGGED_IN') && !creating && <Button variant="secondary" onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button>}
+      {Cookies.get('TEMPVS_LOGGED_IN') && !creating && <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button>}
     </div>
     {error && <Alert variant="danger">{error}</Alert>}
-    {creating ? <section className="club-panel"><h2>{t('create', 'Create club')}</h2><ClubForm busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
+    {creating ? <section className="club-panel"><h2>{t('create', 'Create club')}</h2><ClubForm busy={busy || unavailable} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
       <div className="club-search">
-        <Form.Control aria-label={t('searchClubs', 'Search clubs')} placeholder={t('searchClubs', 'Search clubs')} maxLength={120} value={query} onChange={e => setQuery(e.target.value)} />
-        <Form.Select aria-label={t('period', 'Period')} value={period} onChange={e => setPeriod(e.target.value)}>
+        <Form.Control aria-label={t('searchClubs', 'Search clubs')} placeholder={t('searchClubs', 'Search clubs')} maxLength={120} value={query} disabled={unavailable} onChange={e => setQuery(e.target.value)} />
+        <Form.Select aria-label={t('period', 'Period')} value={period} disabled={unavailable} onChange={e => setPeriod(e.target.value)}>
           <option value="">{t('allPeriods', 'All periods')}</option>
           {PERIODS.map(value => <option key={value} value={value}>{getPeriodLabel(intl, value)}</option>)}
         </Form.Select>
@@ -102,7 +109,7 @@ export default function ClubsPage() {
       </article>)}</div>
       {loading && <p role="status">{t('searching', 'Searching clubs…')}</p>}
       {searchError && <Alert variant="danger">{searchError} <Button variant="link" onClick={() => loadMore.current()}>{t('retry', 'Retry')}</Button></Alert>}
-      {!loading && !searchError && clubs.length === 0 && <p className="club-panel">{t('empty', 'No clubs found. Start one for your reenactment group.')}</p>}
+      {!loading && !unavailable && !searchError && clubs.length === 0 && <p className="club-panel">{t('empty', 'No clubs found. Start one for your reenactment group.')}</p>}
       <div ref={sentinel} className="clubs-load-sentinel" aria-hidden="true" />
     </>}
   </Container>;

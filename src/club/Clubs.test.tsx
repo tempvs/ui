@@ -11,6 +11,7 @@ import * as api from './clubApi';
 import * as profileApi from '../profile/profileApi';
 
 jest.mock('./clubApi', () => ({
+  ...jest.requireActual('./clubApi'),
   getClub: jest.fn(), getParticipants: jest.fn(), listClubs: jest.fn(), getProfileClubs: jest.fn(),
   getJoinOptions: jest.fn(), requestJoin: jest.fn(), getJoinRequests: jest.fn(), decideJoinRequest: jest.fn(),
   attachProfile: jest.fn(), detachProfile: jest.fn(), updateClub: jest.fn(), deleteClub: jest.fn(),

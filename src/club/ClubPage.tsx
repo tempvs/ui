@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Col, Container, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
@@ -8,7 +8,7 @@ import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { PeriodBadge } from '../util/periods';
-import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, getClub, getParticipants, removeAdmin, updateClub } from './clubApi';
+import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, getClub, getParticipants, isClubServiceUnavailable, removeAdmin, updateClub } from './clubApi';
 import ClubForm from './ClubForm';
 import ProfilePicker from './ProfilePicker';
 import JoinRequestsPanel from './JoinRequestsPanel';
@@ -31,19 +31,26 @@ export default function ClubPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [participantsError, setParticipantsError] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [revision, setRevision] = useState(0);
   const loadMoreParticipants = useRef<() => void>(() => {});
+  const markUnavailable = useCallback(() => setUnavailable(true), []);
   useEffect(() => {
     let active = true;
     fetchCurrentUserInfo(result => { if (active) setCurrentUserId(result.currentUserId); });
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    let active = true; setLoading(true); setError('');
+    let active = true; setLoading(true); setError(''); setUnavailable(false);
     getClub(id).then(data => { if (active) setClub(data); })
-      .catch(e => { if (active) setError(e.message); })
+      .catch(e => {
+        if (active) {
+          if (isClubServiceUnavailable(e)) setUnavailable(true);
+          else setError(e.message);
+        }
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [id, revision]);
@@ -64,7 +71,10 @@ export default function ClubPage() {
         nextPage += 1; more = profiles.hasMore; setHasMore(more);
       } catch (e) {
         failed = true;
-        if (active) setParticipantsError((e as Error).message);
+        if (active) {
+          if (isClubServiceUnavailable(e)) setUnavailable(true);
+          else setParticipantsError((e as Error).message);
+        }
       } finally {
         fetching = false;
         if (active) setParticipantsLoading(false);
@@ -77,7 +87,10 @@ export default function ClubPage() {
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true); setError('');
     try { await action(); setRevision(value => value + 1); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) {
+      if (isClubServiceUnavailable(e)) setUnavailable(true);
+      else setError((e as Error).message);
+    }
     finally { setBusy(false); }
   };
   const save = (draft: ClubDraft) => act(async () => { await updateClub(id, draft); setEditing(false); });
@@ -87,17 +100,17 @@ export default function ClubPage() {
       loadMoreParticipants.current();
     }
   };
-  return <Container className="clubs-page">
+  return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
     <Link to="/clubs">{t('back', 'All clubs')}</Link>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loading ? <Spinner /> : club && <>
       <div className="club-page-heading mt-3"><div><h1>{club.name}</h1><PeriodBadge period={club.period} /></div>
-        {club.canManage && !editing && <Button variant="outline-secondary" onClick={() => setEditing(true)}>{t('edit', 'Edit club')}</Button>}
+        {club.canManage && !editing && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setEditing(true)}>{t('edit', 'Edit club')}</Button>}
       </div>
       <Row><Col lg={8}>
-        <ClubPhotoPanel club={club} onChange={setClub} />
+        <ClubPhotoPanel club={club} onChange={setClub} onUnavailable={markUnavailable} />
         <section className="club-panel">
-          {editing ? <ClubForm initial={club} busy={busy} onSave={save} onCancel={() => setEditing(false)} /> : <>
+          {editing ? <ClubForm initial={club} busy={busy || unavailable} onSave={save} onCancel={() => setEditing(false)} /> : <>
             <h2>{t('about', 'About the club')}</h2>
             <p className="club-description">{club.description || t('noDescription', 'No description yet.')}</p>
             {club.location && <p><strong>{t('location', 'Location')}: </strong>{club.location}</p>}
@@ -114,15 +127,15 @@ export default function ClubPage() {
               const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
               return <li key={profile.id}>
                 <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
-                {owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy} onClick={() => act(() => detachProfile(id, profile.id))}>
+                {owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>
                   <LeaveIcon aria-hidden="true" /> <span>{t('leave', 'Leave club')}</span>
-                </Button> : club.canManage && <Button size="sm" variant="outline-danger" disabled={busy} onClick={() => act(() => detachProfile(id, profile.id))}>{t('remove', 'Remove')}</Button>}
+                </Button> : club.canManage && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>{t('remove', 'Remove')}</Button>}
               </li>;
             })}</ul>
             {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
           </div>
         </section>
-        {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} />}
+        {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} onUnavailable={markUnavailable} />}
       </Col><Col lg={4}>
         <section className="club-panel">
           <h2>{t('management', 'Club management')}</h2>
@@ -131,7 +144,7 @@ export default function ClubPage() {
           {club.adminUserIds.length === 0 && <p>{t('noAdmins', 'No additional admins.')}</p>}
           <ul className="club-member-list">{club.adminUserIds.map(userId => <li key={userId}>
             <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-            {club.canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy} onClick={() => act(() => removeAdmin(id, userId))}>{t('remove', 'Remove')}</Button>}
+            {club.canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => removeAdmin(id, userId))}>{t('remove', 'Remove')}</Button>}
           </li>)}</ul>
           {club.canManageAdmins && <>
             <h3 className="h6">{t('assignAdmin', 'Assign an admin')}</h3>

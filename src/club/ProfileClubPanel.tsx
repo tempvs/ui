@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import defaultImage from '../assets/default-image.png';
 import { Id } from '../profile/profileTypes';
-import { Club, getProfileClubs } from './clubApi';
+import { Club, getProfileClubs, isClubServiceUnavailable } from './clubApi';
 import JoinClubModal from './JoinClubModal';
 import './clubs.css';
 
@@ -14,20 +14,28 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
   const [joining, setJoining] = useState(false);
   const [revision, setRevision] = useState(0);
+  const markUnavailable = useCallback(() => setUnavailable(true), []);
   useEffect(() => {
-    let active = true; setLoaded(false); setError('');
+    let active = true; setLoaded(false); setError(''); setUnavailable(false);
     getProfileClubs(profileId).then(data => { if (active) { setClubs(data); setLoaded(true); } })
-      .catch(e => { if (active) setError(e.message); });
+      .catch(e => {
+        if (active) {
+          if (isClubServiceUnavailable(e)) setUnavailable(true);
+          else setError(e.message);
+          setLoaded(true);
+        }
+      });
     return () => { active = false; };
   }, [profileId, revision]);
   // An unattached profile has no club UI for visitors, including while loading.
   if (!editable && (!loaded || clubs.length === 0)) return null;
-  return <section className="club-panel profile-clubs-panel mt-3" aria-label={t('title', 'Clubs')}>
+  return <section className={`club-panel profile-clubs-panel mt-3${unavailable ? ' club-service-unavailable' : ''}`} aria-label={t('title', 'Clubs')}>
     <div className="profile-clubs-heading">
       <h2 className="mb-0">{t('title', 'Clubs')}</h2>
-      {editable && <Button variant="outline-secondary" onClick={() => setJoining(true)}>{t('join', 'Join club')}</Button>}
+      {editable && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setJoining(true)}>{t('join', 'Join club')}</Button>}
     </div>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>
@@ -36,6 +44,6 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
         <span>{club.name}</span>
       </Link>
     </li>)}</ul>}
-    {editable && joining && <JoinClubModal profileId={profileId} period={period} onClose={() => { setJoining(false); setRevision(value => value + 1); }} />}
+    {editable && joining && <JoinClubModal profileId={profileId} period={period} onUnavailable={markUnavailable} onClose={() => { setJoining(false); setRevision(value => value + 1); }} />}
   </section>;
 }

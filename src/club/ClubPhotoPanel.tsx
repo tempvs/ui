@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Alert, Button, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
-import { Club, removeClubPhoto, uploadClubPhoto } from './clubApi';
+import { Club, isClubServiceUnavailable, removeClubPhoto, uploadClubPhoto } from './clubApi';
 
-export default function ClubPhotoPanel({ club, onChange }: { club: Club; onChange: (club: Club) => void }) {
+export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
+  club: Club; onChange: (club: Club) => void; onUnavailable?: () => void;
+}) {
   const intl = useIntl();
   const t = (id: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
   const [busy, setBusy] = useState(false);
@@ -16,13 +18,19 @@ export default function ClubPhotoPanel({ club, onChange }: { club: Club; onChang
     }
     setBusy(true); setError('');
     try { onChange(await uploadClubPhoto(club.id, file)); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) {
+      if (isClubServiceUnavailable(e)) onUnavailable?.();
+      else setError((e as Error).message);
+    }
     finally { setBusy(false); }
   };
   const remove = async () => {
     setBusy(true); setError('');
     try { onChange(await removeClubPhoto(club.id)); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) {
+      if (isClubServiceUnavailable(e)) onUnavailable?.();
+      else setError((e as Error).message);
+    }
     finally { setBusy(false); }
   };
   if (!club.photoUrl && !club.canManage) return null;

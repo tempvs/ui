@@ -23,6 +23,7 @@ const WARMUP_URLS = [
   'https://user-service-d4or.onrender.com/',
   'https://tempvs-library.onrender.com/',
   'https://profile-service-ynnk.onrender.com/',
+  'https://tempvs-club.onrender.com/',
   'https://api-gateway-t7bp.onrender.com/',
 ];
 

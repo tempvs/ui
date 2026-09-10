@@ -17,28 +17,45 @@ export type Club = {
 export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period'>;
 
 export class ClubApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public unavailable = false) { super(message); }
+}
+
+export function isClubServiceUnavailable(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'unavailable' in error
+    && (error as { unavailable?: unknown }).unavailable === true;
 }
 
 export async function request<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`/api/club${path}`, {
-    method,
-    signal,
-    headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: body instanceof FormData ? body : JSON.stringify(body) }),
-  });
-  const text = await response.text();
+  let response: Response;
+  try {
+    response = await fetch(`/api/club${path}`, {
+      method,
+      signal,
+      headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: body instanceof FormData ? body : JSON.stringify(body) }),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new ClubApiError(0, '', true);
+  }
+  let text: string;
+  try {
+    text = await response.text();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new ClubApiError(0, '', true);
+  }
   let data;
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-  if (!response.ok) throw new ClubApiError(response.status, typeof data?.detail === 'string' ? data.detail : 'Unable to complete the club request. Please try again.');
+  if (!response.ok) throw new ClubApiError(response.status, typeof data?.detail === 'string' ? data.detail : '', response.status >= 500);
   if (response.status !== 204 && data == null) {
-    throw new ClubApiError(502, 'The club service returned an invalid response. Please try again.');
+    throw new ClubApiError(502, 'The club service returned an invalid response. Please try again.', true);
   }
   return data as T;
 }
 
 function invalidResponse(): never {
-  throw new ClubApiError(502, 'The club service returned an unexpected response. Please try again.');
+  throw new ClubApiError(502, 'The club service returned an unexpected response. Please try again.', true);
 }
 
 function clubValue(value: unknown): Club {
