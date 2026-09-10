@@ -7,6 +7,7 @@ import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
 import LibraryButton from '../library/LibraryButton';
 import ChatButton from '../chat/ChatButton';
+import ClubButton from '../club/ClubButton';
 import SearchDialog from '../search/SearchDialog';
 import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
@@ -214,6 +215,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
             <Col sm={9}>
               <div className="header-main-actions">
                 <SearchDialog />
+                <Link to="/clubs" className="header-inline-link"><ClubButton /></Link>
                 {this.state.loggedIn && (
                   <Link to="/chat" className="header-inline-link">
                     <ChatButton />

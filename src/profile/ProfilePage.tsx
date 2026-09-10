@@ -12,6 +12,7 @@ import { readFileAsBase64 } from "../util/fileUtils";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
+import ProfileClubPanel from '../club/ProfileClubPanel';
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
@@ -1085,6 +1086,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   </Link>
                 </div>
               </div>
+            )}
+            {this.state.type === 'CLUB' && this.state.profileId && (
+              <ProfileClubPanel key={this.state.profileId} profileId={this.state.profileId} period={this.state.period} editable={isEditable} />
             )}
             <ClubProfilesSection
               isUserProfile={this.state.type === 'USER'}

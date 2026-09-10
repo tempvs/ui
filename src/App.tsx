@@ -12,6 +12,8 @@ import LibraryPage from './library/LibraryPage';
 import HomePage from './HomePage';
 import CompleteRegistrationPage from './auth/CompleteRegistrationPage';
 import ChatPage from './chat/ChatPage';
+import ClubsPage from './club/ClubsPage';
+import ClubPage from './club/ClubPage';
 
 const WARMUP_URLS = [
   'https://tempvs-image-1.onrender.com/',
@@ -50,6 +52,11 @@ function LibraryAdminPage() {
 
 function ChatConversationPage() {
   return <ChatPage />;
+}
+
+function ClubPageWithParam() {
+  const { id } = useParams();
+  return <ClubPage key={id} />;
 }
 
 function pingRenderServices() {
@@ -95,6 +102,8 @@ function App() {
           <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
           <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/clubs" element={<ClubsPage />} />
+          <Route path="/clubs/:id" element={<ClubPageWithParam />} />
           <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
           <Route path="/user/registration/:verificationId" element={<CompleteRegistrationPage />} />
         </Routes>

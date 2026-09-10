@@ -10,5 +10,6 @@ test('renders an app', () => {
       <App />
     </IntlProvider>
   );
-  expect(document.querySelector('a')?.getAttribute('href')).toBe('/library');
+  expect(document.querySelector('a[href="/library"]')).toBeInTheDocument();
+  expect(document.querySelector('a[href="/clubs"]')).toBeInTheDocument();
 });
