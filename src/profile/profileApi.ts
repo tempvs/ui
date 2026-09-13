@@ -67,8 +67,9 @@ export function fetchUserProfileByUserId(userId: Id, handlers: ProfileHandlers<P
 }
 
 export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): void {
-  doFetch(`/api/image/image/profile/${profileId}`, 'GET', null, {
-    200: avatars => {
+  doFetch(`/api/images/profile/${profileId}?page=0&size=1`, 'GET', null, {
+    200: result => {
+      const avatars = (result as { content?: Avatar[] } | null)?.content;
       if (Array.isArray(avatars) && avatars.length) {
         handlers.onSuccess(avatars[0]);
         return;
@@ -83,15 +84,15 @@ export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): v
 }
 
 export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
-  const response = await requestJson(`/api/image/image/profile/${profileId}`);
+  const response = await requestJson(`/api/images/profile/${profileId}?page=0&size=1`);
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
-  if (!response.ok || !Array.isArray(data) || !data.length) {
+  if (!response.ok || !Array.isArray(data?.content) || !data.content.length) {
     return null;
   }
 
-  return data[0] as Avatar;
+  return data.content[0] as Avatar;
 }
 
 export function fetchClubProfiles(userId: Id, handlers: ProfileHandlers<Profile[]>): void {

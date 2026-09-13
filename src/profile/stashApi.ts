@@ -58,10 +58,6 @@ async function requestJson<TData = unknown>(url: string, options: RequestOptions
   return data;
 }
 
-function buildEntityIdsQuery(entityIds: Id[]) {
-  return entityIds.map(entityId => `entityIds=${encodeURIComponent(String(entityId))}`).join('&');
-}
-
 export function getProfileStash(profileId: Id) {
   return requestJson<Stash>(`/api/stash/group/profile/${profileId}`);
 }
@@ -117,7 +113,8 @@ export function updateStashItemDescription(itemId: Id, description: string) {
 }
 
 export function getStashItemImages(itemId: Id) {
-  return requestJson<StashItemImage[]>(`/api/image/image/item/${itemId}`);
+  return requestJson<{ content: StashItemImage[] }>(`/api/images/item/${itemId}?page=0&size=100`)
+    .then(page => page.content || []);
 }
 
 export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
@@ -125,7 +122,15 @@ export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
     return Promise.resolve([] as EntityImage[]);
   }
 
-  return requestJson<EntityImage[]>(`/api/image/image/${belongsTo}?${buildEntityIdsQuery(entityIds)}`);
+  return Promise.all(entityIds.map(entityId =>
+    requestJson<{ content: EntityImage[] }>(
+      `/api/images/${encodeURIComponent(belongsTo)}/${entityId}?page=0&size=100`,
+    ).then(page => (page.content || []).map(image => ({
+      ...image,
+      entityId: image.resourceId || image.entityId || String(entityId),
+      belongsTo: image.resourceType || image.belongsTo || belongsTo,
+    }))),
+  )).then(pages => pages.flat());
 }
 
 export function uploadStashItemImage(itemId: Id, payload: JsonRecord) {

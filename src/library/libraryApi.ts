@@ -155,7 +155,12 @@ export function getSource(sourceId: string | number | undefined) {
 }
 
 export function getSourceImages(sourceId: string | number | undefined) {
-  return fetchJson<LibrarySourceImage[]>(`/api/image/image/source/${sourceId}`);
+  return fetchJson<{ content: LibrarySourceImage[] }>(
+    `/api/images/source/${sourceId}?page=0&size=100`,
+  ).then(result => ({
+    ...result,
+    data: result.data?.content || [],
+  }) as ApiResponse<LibrarySourceImage[]>);
 }
 
 export async function patchSourceField(sourceId: string | number | undefined, field: string, value: unknown) {

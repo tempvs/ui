@@ -158,6 +158,8 @@ export type LibrarySourceSummary = {
 export type EntityImage = GalleryImage & {
   entityId?: string | null;
   belongsTo?: string | null;
+  resourceId?: string | null;
+  resourceType?: string | null;
 };
 
 export type StashItemMarker = {
