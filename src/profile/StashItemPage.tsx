@@ -17,7 +17,8 @@ import { SaveStatus } from '../component/EditableFieldRow';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { clearAllTimers, clearTimer } from '../util/timers';
 import { getPeriodLabel as getSharedPeriodLabel } from '../util/periods';
-import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile } from '../util/fileUtils';
+import RefreshingImage from '../image/RefreshingImage';
 import { buildClubProfileLabel, buildProfileLabel } from './profileLabels';
 import {
   fetchCurrentUserInfo,
@@ -37,6 +38,7 @@ import {
   updateStashItemImageDescription,
   updateStashItemName,
   uploadStashItemImage,
+  replaceStashItemImage,
 } from './stashApi';
 import {
   EntityImage,
@@ -69,15 +71,7 @@ function getImageSrc(image?: EntityImage | null) {
     return null;
   }
 
-  if (image.url) {
-    return image.url;
-  }
-
-  if (image.src) {
-    return `data:image/jpeg;base64, ${image.src}`;
-  }
-
-  return null;
+  return image.thumbnailUrl || image.url || null;
 }
 
 function buildFirstImageMap(images: EntityImage[]) {
@@ -320,12 +314,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     setImageUploading(true);
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      await uploadStashItemImage(item.id, {
-        content,
-        fileName: preparedFile.name,
-        description: imageDescription || null,
-      });
+      await uploadStashItemImage(item.id, preparedFile, imageDescription || null);
       setImageUploadVisible(false);
       setImageDescription('');
       if (imageInputRef.current) {
@@ -364,13 +353,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
     setImageUploading(true);
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      await uploadStashItemImage(item.id, {
-        content,
-        fileName: preparedFile.name,
-        description: imageDrafts[toRecordKey(target.id)] ?? target.description ?? null,
-      });
-      await deleteStashItemImage(item.id, target.id);
+      await replaceStashItemImage(
+        item.id,
+        target.id,
+        preparedFile,
+        imageDrafts[toRecordKey(target.id)] ?? target.description ?? null,
+      );
       await refreshItemData();
     } finally {
       setImageUploading(false);
@@ -620,7 +608,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
               <div key={source.id} className="stash-source-card">
                 {sourceImageSrc && (
                   <Link to={`/library/source/${source.id}`} className="stash-source-thumb-shell">
-                    <img src={sourceImageSrc} alt={source.name || 'Source'} className="stash-source-thumb" />
+                    <RefreshingImage
+                      image={sourceImage || { url: sourceImageSrc, resourceType: 'source', resourceId: source.id }}
+                      variant="thumbnail"
+                      alt={source.name || 'Source'}
+                      className="stash-source-thumb"
+                    />
                   </Link>
                 )}
                 <Link to={`/library/source/${source.id}`} className="stash-source-copy text-decoration-none text-reset">
@@ -721,7 +714,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
       <Form.Control
         ref={replaceImageInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/gif"
         onChange={handleReplaceImage}
         className="d-none"
       />
@@ -734,7 +727,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
-              <Form.Control ref={imageInputRef} type="file" accept="image/*" />
+              <Form.Control ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
             </Form.Group>
             <Form.Group>
               <Form.Label>{t('profile.stash.itemImageDescription', 'Description')}</Form.Label>

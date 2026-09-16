@@ -24,5 +24,6 @@ test('warms up club-service with the other Render services', () => {
     mode: 'no-cors',
     cache: 'no-store',
   });
+  expect(fetch).not.toHaveBeenCalledWith('https://tempvs-image-1.onrender.com/', expect.anything());
   fetch.mockRestore();
 });

@@ -14,8 +14,8 @@ type ProfileAvatarPanelProps = {
   avatarPanelWidth: string;
   avatarVisible: boolean;
   avatarLoaded: boolean;
-  avatarImage?: string | null;
   avatarUrl?: string | null;
+  profileId?: string | number | null;
   avatarInfo?: string | null;
   avatarUploadStatus?: string | null;
   avatarUploadMessage?: string | null;
@@ -42,8 +42,8 @@ export default function ProfileAvatarPanel({
   avatarPanelWidth,
   avatarVisible,
   avatarLoaded,
-  avatarImage,
   avatarUrl,
+  profileId,
   avatarInfo,
   avatarUploadStatus,
   avatarUploadMessage,
@@ -75,8 +75,9 @@ export default function ProfileAvatarPanel({
           {avatarVisible
             ? (
               <ModalImage
-                src={avatarImage}
                 url={avatarUrl}
+                resourceType="profile"
+                resourceId={profileId}
                 alt={avatarInfo || undefined}
                 description={avatarInfo}
                 wrapperStyle={{ maxWidth: '100%' }}
@@ -177,7 +178,7 @@ export default function ProfileAvatarPanel({
           <Form.Control
             id="avatarUploadInput"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif"
             onChange={onUploadChange}
             disabled={avatarUploadStatus === 'uploading'}
             className="d-none"

@@ -5,6 +5,7 @@ import { useIntl } from 'react-intl';
 import { Link, useLocation } from 'react-router-dom';
 
 import Spinner from '../component/Spinner';
+import RefreshingImage from '../image/RefreshingImage';
 import { findSources, getSourceImages, LibrarySource, LibrarySourceImage } from '../library/libraryApi';
 import SourceCard from '../library/components/SourceCard';
 import {
@@ -35,22 +36,6 @@ function getProfileTypeLabel(profileType: string | null | undefined) {
   }
 
   return profileType || '';
-}
-
-function getAvatarSrc(avatar: Avatar | null | undefined) {
-  if (!avatar) {
-    return null;
-  }
-
-  if (avatar.url) {
-    return avatar.url;
-  }
-
-  if (avatar.content) {
-    return `data:image/jpeg;base64, ${avatar.content}`;
-  }
-
-  return null;
 }
 
 export default function SearchDialog() {
@@ -350,14 +335,19 @@ export default function SearchDialog() {
                     <div className="search-results-grid">
                       {profileResults.map(profile => {
                         const profileName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim() || profile.alias || 'Unnamed profile';
-                        const avatarSrc = getAvatarSrc(profilePreviewImages[profile.id]);
+                        const avatar = profilePreviewImages[profile.id];
 
                         return (
                           <Card key={String(profile.id)} className="shadow-sm search-profile-card">
                             <Card.Body className="search-profile-card-body">
-                              {avatarSrc && (
+                              {avatar && (avatar.thumbnailUrl || avatar.url) && (
                                 <Link to={`/profile/${profile.alias || profile.id}`} className="search-profile-image-link" onClick={closePopover}>
-                                  <img src={avatarSrc} alt="" className="search-profile-image" />
+                                  <RefreshingImage
+                                    image={{ ...avatar, resourceType: 'profile', resourceId: profile.id }}
+                                    variant="thumbnail"
+                                    alt=""
+                                    className="search-profile-image"
+                                  />
                                 </Link>
                               )}
                               <div className="text-start flex-grow-1" style={{ minWidth: 0 }}>

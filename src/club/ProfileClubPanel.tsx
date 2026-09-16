@@ -3,6 +3,7 @@ import { Alert, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import defaultImage from '../assets/default-image.png';
+import RefreshingImage from '../image/RefreshingImage';
 import { Id } from '../profile/profileTypes';
 import { Club, getProfileClubs, isClubServiceUnavailable } from './clubApi';
 import JoinClubModal from './JoinClubModal';
@@ -40,7 +41,14 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>
       <Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
-        <img className="club-list-thumbnail" src={club.photoUrl || defaultImage} alt="" loading="lazy" />
+        <RefreshingImage
+          image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+          variant="thumbnail"
+          fallbackSrc={defaultImage}
+          className="club-list-thumbnail"
+          alt=""
+          loading="lazy"
+        />
         <span>{club.name}</span>
       </Link>
     </li>)}</ul>}

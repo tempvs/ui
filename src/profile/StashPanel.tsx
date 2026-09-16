@@ -7,7 +7,7 @@ import EditableDescriptionField from '../component/EditableDescriptionField';
 import InlineEditableText from '../component/InlineEditableText';
 import Spinner from '../component/Spinner';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
-import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile } from '../util/fileUtils';
 import { clearAllTimers, clearTimer } from '../util/timers';
 import CollectionTabs from './components/stash/CollectionTabs';
 import LinkedSourcesPanel from './components/stash/LinkedSourcesPanel';
@@ -30,6 +30,7 @@ import {
   updateStashGroupDescription,
   updateStashGroupName,
   uploadStashItemImage,
+  replaceStashItemImage,
   updateStashItemDescription,
   updateStashItemName,
 } from './stashApi';
@@ -550,12 +551,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      await uploadStashItemImage(itemImageUploadTarget.id, {
-        content,
-        fileName: preparedFile.name,
-        description: itemImageDescription || null,
-      });
+      await uploadStashItemImage(itemImageUploadTarget.id, preparedFile, itemImageDescription || null);
       if (itemImageInputRef.current) {
         itemImageInputRef.current.value = '';
       }
@@ -593,13 +589,12 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      await uploadStashItemImage(target.itemId, {
-        content,
-        fileName: preparedFile.name,
-        description: itemImageDrafts[target.image.id] ?? target.image.description ?? null,
-      });
-      await deleteStashItemImage(target.itemId, target.image.id);
+      await replaceStashItemImage(
+        target.itemId,
+        target.image.id,
+        preparedFile,
+        itemImageDrafts[target.image.id] ?? target.image.description ?? null,
+      );
       await loadItemImages(target.itemId);
       setFeedback({
         variant: 'success',
@@ -1105,7 +1100,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
           <Form.Control
             ref={replaceItemImageInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif"
             onChange={handleReplaceItemImage}
             className="d-none"
           />
@@ -1125,7 +1120,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
               <Modal.Body>
                 <Form.Group className="mb-3">
                   <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
-                  <Form.Control ref={itemImageInputRef} type="file" accept="image/*" />
+                  <Form.Control ref={itemImageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>{t('profile.stash.itemImageDescription', 'Description')}</Form.Label>

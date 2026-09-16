@@ -19,6 +19,7 @@ import {
   LibraryUserInfoPayload,
   patchSourceField,
   removeSource,
+  replaceSourceImage,
   updateSourceImageDescription,
   uploadSourceImage,
 } from '../libraryApi';
@@ -26,7 +27,7 @@ import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { getClassificationLabel, getTypeLabel } from '../libraryShared';
 import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
-import { prepareImageFile, readFileAsBase64 } from '../../util/fileUtils';
+import { prepareImageFile } from '../../util/fileUtils';
 import { getErrorMessage } from '../../util/errors';
 import { clearAllTimers, clearTimer } from '../../util/timers';
 import { SaveStatus } from '../../component/EditableFieldRow';
@@ -216,12 +217,7 @@ export default function LibrarySourcePage() {
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      const result = await uploadSourceImage(sourceId, {
-        content,
-        fileName: preparedFile.name,
-        description: imageDescription || null,
-      });
+      const result = await uploadSourceImage(sourceId, preparedFile, imageDescription || null);
 
       if (!result.ok) {
         throw new Error('Unable to upload the image.');
@@ -261,20 +257,15 @@ export default function LibrarySourcePage() {
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      const uploadResult = await uploadSourceImage(sourceId, {
-        content,
-        fileName: preparedFile.name,
-        description: imageDrafts[targetImage.id] ?? targetImage.description ?? null,
-      });
+      const uploadResult = await replaceSourceImage(
+        sourceId,
+        targetImage.id,
+        preparedFile,
+        imageDrafts[targetImage.id] ?? targetImage.description ?? null,
+      );
 
       if (!uploadResult.ok) {
         throw new Error('Unable to replace the image.');
-      }
-
-      const deleteResult = await deleteSourceImage(sourceId, targetImage.id);
-      if (!deleteResult.ok) {
-        throw new Error('Replacement uploaded, but the old image could not be removed.');
       }
 
       await loadSource();
@@ -503,7 +494,7 @@ export default function LibrarySourcePage() {
                       <Form.Control
                         ref={replaceImageInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/gif"
                         onChange={handleReplaceImage}
                         className="d-none"
                       />
@@ -547,7 +538,7 @@ export default function LibrarySourcePage() {
             <Modal.Body>
               <Form.Group className="mb-3">
                 <Form.Label>Image file</Form.Label>
-                <Form.Control ref={imageInputRef} type="file" accept="image/*" />
+                <Form.Control ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
               </Form.Group>
               <Form.Group>
                 <Form.Label>Description</Form.Label>

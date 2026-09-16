@@ -4,6 +4,7 @@ import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import defaultImage from '../assets/default-image.png';
+import RefreshingImage from '../image/RefreshingImage';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
 import { Club, ClubDraft, createClub, isClubServiceUnavailable, listClubs } from './clubApi';
 import ClubForm from './ClubForm';
@@ -101,7 +102,14 @@ export default function ClubsPage() {
       <div className="club-card-grid">{clubs.map(club => <article key={club.id} className="club-panel">
         <PeriodBadge period={club.period} />
         <h2 className="mt-3"><Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
-          <img className="club-list-thumbnail" src={club.photoUrl || defaultImage} alt="" loading="lazy" />
+          <RefreshingImage
+            image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+            variant="thumbnail"
+            fallbackSrc={defaultImage}
+            className="club-list-thumbnail"
+            alt=""
+            loading="lazy"
+          />
           <span>{club.name}</span>
         </Link></h2>
         {club.location && <p className="text-muted">{club.location}</p>}

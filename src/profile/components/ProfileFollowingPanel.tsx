@@ -3,6 +3,7 @@ import { Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import { MessageFormatter, Profile } from '../profileTypes';
+import RefreshingImage from '../../image/RefreshingImage';
 
 type ProfileFollowingPanelProps = {
   profiles: Profile[];
@@ -64,7 +65,12 @@ export default function ProfileFollowingPanel({
               <Link key={String(profile.id)} to={getProfileLink(profile)} className="profile-following-item">
                 {profile.avatarUrl && (
                   <span className="profile-following-thumb">
-                    <img src={profile.avatarUrl} alt={buildProfileLabel(profile)} className="profile-following-thumb-image" />
+                    <RefreshingImage
+                      image={{ resourceType: 'profile', resourceId: profile.id, thumbnailUrl: profile.avatarUrl }}
+                      variant="thumbnail"
+                      alt={buildProfileLabel(profile)}
+                      className="profile-following-thumb-image"
+                    />
                   </span>
                 )}
                 <span className="profile-following-name">{buildProfileLabel(profile)}</span>

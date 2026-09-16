@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import IconActionButton from "../component/IconActionButton";
 import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
-import { readFileAsBase64 } from "../util/fileUtils";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
@@ -678,7 +677,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     this.setState({
       avatarVisible: true,
       avatarLoaded: true,
-      avatarImage: avatar.content,
+      avatarImage: null,
       avatarUrl: avatar.url,
       avatarInfo: avatar.description,
       avatarDescriptionDraft: avatar.description || '',
@@ -700,12 +699,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     try {
       const preparedFile = await this.prepareAvatarFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      const response = await uploadAvatar(this.state.profileId, {
-        content,
-        fileName: preparedFile.name,
-        description: this.state.avatarDescriptionDraft || null,
-      });
+      const response = await uploadAvatar(
+        this.state.profileId,
+        preparedFile,
+        this.state.avatarDescriptionDraft || null,
+      );
 
       if (response.status !== 200) {
         throw new Error('Upload failed');
@@ -955,9 +953,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   renderProfileView() {
     const isEditable = this.isEditableProfile();
     const isClubProfile = this.state.type === 'CLUB';
-    const headerSubtitleDisplay = isClubProfile
-      ? `Club profile${this.state.period ? ` • ${this.getPeriodLabel(this.state.period)}` : ''}`
-      : 'User profile';
+    const headerSubtitleDisplay = isClubProfile ? 'Club profile' : 'User profile';
     const ownerLink = isClubProfile && this.state.ownerUserProfile
       ? this.getCanonicalProfilePath(this.state.ownerUserProfile)
       : null;
@@ -1017,8 +1013,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               avatarPanelWidth={AVATAR_PANEL_WIDTH}
               avatarVisible={this.state.avatarVisible}
               avatarLoaded={this.state.avatarLoaded}
-              avatarImage={this.state.avatarImage}
               avatarUrl={this.state.avatarUrl}
+              profileId={this.state.profileId}
               avatarInfo={this.state.avatarInfo}
               avatarUploadStatus={this.state.avatarUploadStatus}
               avatarUploadMessage={this.state.avatarUploadMessage}

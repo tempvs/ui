@@ -52,8 +52,8 @@ export type CurrentUserInfo = {
 };
 
 export type Avatar = {
-  content?: string | null;
   url?: string | null;
+  thumbnailUrl?: string | null;
   description?: string | null;
 };
 
@@ -156,9 +156,9 @@ export type LibrarySourceSummary = {
 };
 
 export type EntityImage = GalleryImage & {
-  entityId?: string | null;
+  entityId?: string | number | null;
   belongsTo?: string | null;
-  resourceId?: string | null;
+  resourceId?: string | number | null;
   resourceType?: string | null;
 };
 

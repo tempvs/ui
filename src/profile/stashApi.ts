@@ -34,12 +34,12 @@ function encodeLibraryQuery(payload: JsonRecord) {
 }
 
 async function requestJson<TData = unknown>(url: string, options: RequestOptions = {}): Promise<TData> {
+  const headers = options.body instanceof FormData
+    ? options.headers
+    : { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
     ...options,
+    headers,
   });
 
   const text = await response.text();
@@ -113,7 +113,7 @@ export function updateStashItemDescription(itemId: Id, description: string) {
 }
 
 export function getStashItemImages(itemId: Id) {
-  return requestJson<{ content: StashItemImage[] }>(`/api/images/item/${itemId}?page=0&size=100`)
+  return requestJson<{ content: StashItemImage[] }>(`/api/images/item/${itemId}?limit=100`)
     .then(page => page.content || []);
 }
 
@@ -124,7 +124,7 @@ export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
 
   return Promise.all(entityIds.map(entityId =>
     requestJson<{ content: EntityImage[] }>(
-      `/api/images/${encodeURIComponent(belongsTo)}/${entityId}?page=0&size=100`,
+      `/api/images/${encodeURIComponent(belongsTo)}/${entityId}?limit=100`,
     ).then(page => (page.content || []).map(image => ({
       ...image,
       entityId: image.resourceId || image.entityId || String(entityId),
@@ -133,10 +133,18 @@ export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
   )).then(pages => pages.flat());
 }
 
-export function uploadStashItemImage(itemId: Id, payload: JsonRecord) {
+export function uploadStashItemImage(itemId: Id, file: File, description?: string | null) {
+  const body = imageForm(file, description);
   return requestJson<StashItemImage>(`/api/stash/item/${itemId}/images`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body,
+  });
+}
+
+export function replaceStashItemImage(itemId: Id, imageId: Id, file: File, description?: string | null) {
+  return requestJson<StashItemImage>(`/api/stash/item/${itemId}/images/${imageId}`, {
+    method: 'PATCH',
+    body: imageForm(file, description),
   });
 }
 
@@ -157,11 +165,18 @@ export function deleteStashItem(itemId: Id) {
   return requestJson<unknown>(`/api/stash/item/${itemId}`, { method: 'DELETE' });
 }
 
-export function uploadStashGroupImage(groupId: Id, payload: JsonRecord) {
+export function uploadStashGroupImage(groupId: Id, file: File, description?: string | null) {
   return requestJson<unknown>(`/api/stash/group/${groupId}/images`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: imageForm(file, description),
   });
+}
+
+function imageForm(file: File, description?: string | null) {
+  const body = new FormData();
+  body.append('file', file);
+  if (description !== undefined && description !== null) body.append('description', description);
+  return body;
 }
 
 export function deleteStashGroupImage(groupId: Id) {

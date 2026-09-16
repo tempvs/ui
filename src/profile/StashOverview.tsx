@@ -12,7 +12,8 @@ import defaultImage from '../assets/default-image.png';
 import { getClassificationLabel } from '../library/libraryShared';
 import { SaveStatus } from '../component/EditableFieldRow';
 import { clearAllTimers, clearTimer } from '../util/timers';
-import { prepareImageFile, readFileAsBase64 } from '../util/fileUtils';
+import { prepareImageFile } from '../util/fileUtils';
+import RefreshingImage from '../image/RefreshingImage';
 import {
   createStashGroup,
   createStashItem,
@@ -114,15 +115,7 @@ function getImageSrc(image?: EntityImage | null) {
     return null;
   }
 
-  if (image.url) {
-    return image.url;
-  }
-
-  if (image.src) {
-    return `data:image/jpeg;base64, ${image.src}`;
-  }
-
-  return null;
+  return image.thumbnailUrl || image.url || null;
 }
 
 function sortItemsByMarker(items: StashItem[], markersByItemId: IdRecord<StashItemMarker>) {
@@ -763,12 +756,7 @@ export default function StashOverview({
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const content = await readFileAsBase64(preparedFile);
-      await uploadStashGroupImage(groupImageTarget.id, {
-        content,
-        fileName: preparedFile.name,
-        description: groupImageTarget.name || null,
-      });
+      await uploadStashGroupImage(groupImageTarget.id, preparedFile, groupImageTarget.name || null);
       if (groupImageInputRef.current) {
         groupImageInputRef.current.value = '';
       }
@@ -1004,8 +992,9 @@ export default function StashOverview({
                     onClick={handleImageClick}
                   >
                     {activeGroupImageSrc ? (
-                      <img
-                        src={activeGroupImageSrc}
+                      <RefreshingImage
+                        image={activeGroupImage || { url: activeGroupImageSrc, resourceType: 'item-group', resourceId: activeGroup.id }}
+                        variant="thumbnail"
                         alt={activeGroup.name || 'Collection'}
                         className="stash-hero-image"
                         onLoad={() => scheduleArrowRefresh(recalculateArrows)}
@@ -1220,7 +1209,12 @@ export default function StashOverview({
                           )}
                           {itemImageSrc && (
                             <div className="stash-item-thumb-shell">
-                              <img src={itemImageSrc} alt={item.name || 'Item'} className="stash-item-thumb" />
+                              <RefreshingImage
+                                image={itemImage || { url: itemImageSrc, resourceType: 'item', resourceId: item.id }}
+                                variant="thumbnail"
+                                alt={item.name || 'Item'}
+                                className="stash-item-thumb"
+                              />
                             </div>
                           )}
                         </div>
@@ -1350,7 +1344,7 @@ export default function StashOverview({
           <Modal.Body>
             <Form.Group>
               <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
-              <Form.Control ref={groupImageInputRef} type="file" accept="image/*" />
+              <Form.Control ref={groupImageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>

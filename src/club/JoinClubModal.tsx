@@ -4,6 +4,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
+import RefreshingImage from '../image/RefreshingImage';
 import { getJoinOptions, isClubServiceUnavailable, JoinOption, requestJoin } from './clubApi';
 
 export default function JoinClubModal({ profileId, period, onClose, onUnavailable }: {
@@ -96,7 +97,15 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
           if (!searchError && element.scrollHeight - element.scrollTop - element.clientHeight < 100) loadMore.current();
         }}>
         <ul className="join-club-tiles">{options.map(({ club, status }) => <li key={club.id} className="join-club-tile">
-          {club.photoUrl && <img className="join-club-photo" src={club.photoUrl} alt="" loading="lazy" />}
+          {(club.photoThumbnailUrl || club.photoUrl) && (
+            <RefreshingImage
+              image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+              variant="thumbnail"
+              className="join-club-photo"
+              alt=""
+              loading="lazy"
+            />
+          )}
           <Link to={`/clubs/${club.id}`} aria-disabled={unavailable || undefined} tabIndex={unavailable ? -1 : undefined} onClick={onClose}>{club.name}</Link>
           <PeriodBadge period={club.period} />
           <Button size="sm" variant="outline-secondary" disabled={busy || unavailable || status === 'MEMBER' || status === 'PENDING'} onClick={() => send(club.id)}>

@@ -28,7 +28,9 @@ export type LibrarySource = {
 export type LibrarySourceImage = {
   id: string | number;
   url?: string | null;
-  src?: string | null;
+  thumbnailUrl?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | number | null;
   fileName?: string | null;
   description?: string | null;
 };
@@ -156,7 +158,7 @@ export function getSource(sourceId: string | number | undefined) {
 
 export function getSourceImages(sourceId: string | number | undefined) {
   return fetchJson<{ content: LibrarySourceImage[] }>(
-    `/api/images/source/${sourceId}?page=0&size=100`,
+    `/api/images/source/${sourceId}?limit=100`,
   ).then(result => ({
     ...result,
     data: result.data?.content || [],
@@ -180,16 +182,34 @@ export async function removeSource(sourceId: string | number | undefined) {
   return parseResponse<ApiErrorPayload | string>(response);
 }
 
-export async function uploadSourceImage(sourceId: string | number | undefined, payload: SourcePayload) {
+export async function uploadSourceImage(sourceId: string | number | undefined, file: File, description?: string | null) {
+  const body = imageForm(file, description);
   const response = await fetch(`/api/library/source/${sourceId}/images`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+    body,
   });
 
   return parseResponse<LibrarySourceImage | ApiErrorPayload>(response);
+}
+
+export async function replaceSourceImage(
+  sourceId: string | number | undefined,
+  imageId: string | number,
+  file: File,
+  description?: string | null,
+) {
+  const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}`, {
+    method: 'PATCH',
+    body: imageForm(file, description),
+  });
+  return parseResponse<LibrarySourceImage | ApiErrorPayload>(response);
+}
+
+function imageForm(file: File, description?: string | null) {
+  const body = new FormData();
+  body.append('file', file);
+  if (description !== undefined && description !== null) body.append('description', description);
+  return body;
 }
 
 export async function deleteSourceImage(sourceId: string | number | undefined, imageId: string | number) {

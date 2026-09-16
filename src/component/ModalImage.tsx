@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Image, Modal } from 'react-bootstrap';
+import { Modal } from 'react-bootstrap';
 
 import ImageDescriptionBlock from './ImageDescriptionBlock';
+import RefreshingImage from '../image/RefreshingImage';
 
 type ModalImageProps = {
   url?: string | null;
-  src?: string | null;
+  resourceType?: string;
+  resourceId?: string | number | null;
   alt?: string;
   description?: string | null;
   wrapperStyle?: React.CSSProperties;
@@ -18,7 +20,6 @@ type ModalImageProps = {
 
 function ModalImage(props: ModalImageProps) {
   const [show, setShow] = useState(false);
-  const imageSrc = props.url || `data:image/jpeg;base64, ${props.src || ''}`;
   const wrapperStyle = {
     width: '100%',
     maxWidth: '18rem',
@@ -34,7 +35,12 @@ function ModalImage(props: ModalImageProps) {
   return (
     <>
       <div style={wrapperStyle}>
-        <Image alt={props.alt} src={imageSrc} onClick={() => setShow(true)} style={imageStyle} />
+        <RefreshingImage
+          image={{ url: props.url, resourceType: props.resourceType, resourceId: props.resourceId }}
+          alt={props.alt || ''}
+          onClick={() => setShow(true)}
+          style={imageStyle}
+        />
       </div>
 
       <Modal show={show} onHide={() => setShow(false)} centered size={props.modalSize}>
@@ -50,7 +56,11 @@ function ModalImage(props: ModalImageProps) {
                 {props.modalTopRightAction}
               </div>
             ) : null}
-            <Image alt={props.alt} src={imageSrc} fluid />
+            <RefreshingImage
+              image={{ url: props.url, resourceType: props.resourceType, resourceId: props.resourceId }}
+              alt={props.alt || ''}
+              className="img-fluid"
+            />
           </div>
           {props.modalDescriptionContent || (
             <ImageDescriptionBlock description={props.description} className="mt-3" />

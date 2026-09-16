@@ -1,9 +1,10 @@
 import React from 'react';
-import { Badge, Card, Image } from 'react-bootstrap';
+import { Badge, Card } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 
 import { getClassificationLabel, getTypeLabel, PeriodBadge } from '../libraryShared';
+import RefreshingImage from '../../image/RefreshingImage';
 
 type SourceCardSource = {
   id: string | number;
@@ -16,7 +17,10 @@ type SourceCardSource = {
 
 type SourceCardImage = {
   url?: string | null;
-  src?: string | null;
+  thumbnailUrl?: string | null;
+  id?: string | number | null;
+  resourceType?: string | null;
+  resourceId?: string | number | null;
   fileName?: string | null;
 };
 
@@ -25,10 +29,6 @@ type SourceCardProps = {
   showPeriodBadge?: boolean;
   firstImage?: SourceCardImage | null;
 };
-
-function getImageSrc(image: SourceCardImage): string {
-  return image?.url || `data:image/jpeg;base64, ${image?.src || ''}`;
-}
 
 export default function SourceCard({ source, showPeriodBadge = true, firstImage = null }: SourceCardProps) {
   const intl = useIntl();
@@ -43,9 +43,10 @@ export default function SourceCard({ source, showPeriodBadge = true, firstImage 
       <Card.Body className="source-card-body d-flex gap-3">
         {firstImage && (
           <Link to={`/library/source/${source.id}`} className="source-card-image-link">
-            <Image
+            <RefreshingImage
+              image={{ ...firstImage, resourceType: firstImage.resourceType || 'source', resourceId: firstImage.resourceId || source.id }}
+              variant="thumbnail"
               alt={firstImage.fileName || source.name || 'Source image'}
-              src={getImageSrc(firstImage)}
               className="source-card-image"
             />
           </Link>

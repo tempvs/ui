@@ -67,7 +67,7 @@ export function fetchUserProfileByUserId(userId: Id, handlers: ProfileHandlers<P
 }
 
 export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): void {
-  doFetch(`/api/images/profile/${profileId}?page=0&size=1`, 'GET', null, {
+  doFetch(`/api/images/profile/${profileId}?limit=1`, 'GET', null, {
     200: result => {
       const avatars = (result as { content?: Avatar[] } | null)?.content;
       if (Array.isArray(avatars) && avatars.length) {
@@ -84,7 +84,7 @@ export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): v
 }
 
 export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
-  const response = await requestJson(`/api/images/profile/${profileId}?page=0&size=1`);
+  const response = await requestJson(`/api/images/profile/${profileId}?limit=1`);
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -203,10 +203,13 @@ export function deleteProfile(profileId: Id) {
   });
 }
 
-export function uploadAvatar(profileId: Id, payload: JsonRecord) {
-  return requestJson(`/api/profile/profile/${profileId}/avatar`, {
+export function uploadAvatar(profileId: Id, file: File, description?: string | null) {
+  const body = new FormData();
+  body.append('file', file);
+  if (description !== undefined && description !== null) body.append('description', description);
+  return fetch(`/api/profile/profile/${profileId}/avatar`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body,
   });
 }
 

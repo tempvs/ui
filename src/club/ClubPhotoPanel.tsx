@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Button, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Club, isClubServiceUnavailable, removeClubPhoto, uploadClubPhoto } from './clubApi';
+import RefreshingImage from '../image/RefreshingImage';
 
 export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
   club: Club; onChange: (club: Club) => void; onUnavailable?: () => void;
@@ -35,7 +36,13 @@ export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
   };
   if (!club.photoUrl && !club.canManage) return null;
   return <section className="club-panel club-photo-panel" aria-label={t('photo', 'Club photo')}>
-    {club.photoUrl && <img className="club-detail-photo" src={club.photoUrl} alt={club.name} />}
+    {club.photoUrl && (
+      <RefreshingImage
+        image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+        className="club-detail-photo"
+        alt={club.name}
+      />
+    )}
     {club.canManage && <div className="mt-3">
       <Form.Group controlId={`club-photo-${club.id}`}>
         <Form.Label>{club.photoUrl ? t('replacePhoto', 'Replace club photo') : t('uploadPhoto', 'Upload club photo')}</Form.Label>

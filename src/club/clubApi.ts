@@ -13,6 +13,7 @@ export type Club = {
   canManage: boolean;
   canManageAdmins: boolean;
   photoUrl?: string | null;
+  photoThumbnailUrl?: string | null;
 };
 export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period'>;
 

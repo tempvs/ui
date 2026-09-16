@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Badge, Carousel, Image, Modal } from 'react-bootstrap';
+import { Badge, Carousel, Modal } from 'react-bootstrap';
 import { FaUpload } from 'react-icons/fa';
 
 import ConfirmingTrashButton from './ConfirmingTrashButton';
@@ -7,11 +7,16 @@ import EditableImageDescription from './EditableImageDescription';
 import ImageOverlayActionButton from './ImageOverlayActionButton';
 import ImageDescriptionBlock from './ImageDescriptionBlock';
 import { SaveStatus } from './EditableFieldRow';
+import RefreshingImage from '../image/RefreshingImage';
 
 export type GalleryImage = {
   id: string | number;
   url?: string | null;
-  src?: string | null;
+  thumbnailUrl?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  belongsTo?: string | null;
+  entityId?: string | number | null;
   fileName?: string | null;
   description?: string | null;
 };
@@ -35,10 +40,6 @@ type UploadIconProps = {
 };
 
 const UploadIcon = FaUpload as React.ComponentType<UploadIconProps>;
-
-function getImageSrc(image: GalleryImage): string {
-  return image?.url || `data:image/jpeg;base64, ${image?.src || ''}`;
-}
 
 export default function StackedImageGallery({
   images,
@@ -96,9 +97,10 @@ export default function StackedImageGallery({
                   borderColor: '#d8cbb4',
                 }}
               >
-                <Image
+                <RefreshingImage
+                  image={image}
+                  variant="thumbnail"
                   alt={image.fileName || title}
-                  src={getImageSrc(image)}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -185,10 +187,10 @@ export default function StackedImageGallery({
                       style={{ zIndex: 4 }}
                     />
                   )}
-                  <Image
+                  <RefreshingImage
+                    image={image}
                     alt={image.fileName || `${title} ${index + 1}`}
-                    src={getImageSrc(image)}
-                    fluid
+                    className="img-fluid"
                     style={{
                       width: '100%',
                       maxHeight: '65vh',
