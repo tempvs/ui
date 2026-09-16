@@ -31,19 +31,19 @@ export default function ClubsPage() {
     if (creating) return;
     const controller = new AbortController();
     let active = true, fetching = false, ready = false, more = true, failed = false;
-    let nextPage = 0;
+    let nextToken: string | undefined;
     setClubs([]); setLoading(true); setSearchError(''); setHasMore(false); setUnavailable(false);
     const fetchNext = async (retry = false) => {
       if (!active || !ready || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setLoading(true); setSearchError('');
       try {
-        const data = await listClubs(query.trim(), period, nextPage, controller.signal);
+        const data = await listClubs(query.trim(), period, nextToken, controller.signal);
         if (!active) return;
         setClubs(current => {
           const ids = new Set(current.map(club => club.id));
           return [...current, ...data.content.filter(club => !ids.has(club.id))];
         });
-        nextPage += 1; more = data.hasMore; setHasMore(more);
+        nextToken = data.nextToken; more = data.hasMore; setHasMore(more);
       } catch (e) {
         failed = true;
         if (active) {
@@ -103,7 +103,7 @@ export default function ClubsPage() {
         <PeriodBadge period={club.period} />
         <h2 className="mt-3"><Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
           <RefreshingImage
-            image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+            image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
             variant="thumbnail"
             fallbackSrc={defaultImage}
             className="club-list-thumbnail"

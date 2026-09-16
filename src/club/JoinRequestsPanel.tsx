@@ -21,19 +21,19 @@ export default function JoinRequestsPanel({ clubId, onDecision, onUnavailable }:
 
   useEffect(() => {
     let active = true, fetching = false, more = true, failed = false;
-    let nextPage = 0;
+    let nextToken: string | undefined;
     setRequests([]); setLoading(true); setHasMore(false); setError('');
     const fetchNext = async (retry = false) => {
       if (!active || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setLoading(true); setError('');
       try {
-        const data = await getJoinRequests(clubId, nextPage);
+        const data = await getJoinRequests(clubId, nextToken);
         if (!active) return;
         setRequests(current => {
           const ids = new Set(current.map(request => request.id));
-          return [...current, ...data.filter(request => !ids.has(request.id))];
+          return [...current, ...data.content.filter(request => !ids.has(request.id))];
         });
-        nextPage += 1; more = data.length === 20; setHasMore(more);
+        nextToken = data.nextToken; more = data.hasMore; setHasMore(more);
       } catch (e) {
         failed = true;
         if (active) {

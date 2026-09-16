@@ -6,7 +6,7 @@ function emptyResponse() {
   return { ok: true, status: 200, headers: new Headers(), text: async () => '' } as Response;
 }
 
-test('all owner services receive image bytes as multipart form data', async () => {
+test('legacy owner services still receive image bytes as multipart form data', async () => {
   const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue(emptyResponse());
   const file = new File(['image'], 'photo.png', { type: 'image/png' });
 

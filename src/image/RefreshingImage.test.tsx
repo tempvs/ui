@@ -3,6 +3,24 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 
 import RefreshingImage from './RefreshingImage';
 
+test('loads a signed URL when a known image has no URL in the owner response', async () => {
+  const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: [{ url: 'https://s3/club-photo' }] }),
+  } as Response);
+  const view = render(
+    <RefreshingImage
+      image={{ id: 'image-1', resourceType: 'club', resourceId: 'club-1' }}
+      fallbackSrc="/placeholder.png"
+      alt="Club"
+    />,
+  );
+
+  await waitFor(() => expect(view.getByRole('img')).toHaveAttribute('src', 'https://s3/club-photo'));
+  expect(fetchMock).toHaveBeenCalledWith('/api/images/club/club-1?limit=1&imageIds=image-1');
+  fetchMock.mockRestore();
+});
+
 test('refetches expired metadata once and uses the new signed thumbnail URL', async () => {
   const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({
     ok: true,

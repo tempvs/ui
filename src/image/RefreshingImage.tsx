@@ -23,13 +23,16 @@ function initialUrl(image: ImageReference, variant: 'display' | 'thumbnail') {
     : image.url || image.thumbnailUrl || '';
 }
 
-async function refreshUrl(image: ImageReference, variant: 'display' | 'thumbnail') {
-  const resourceType = image.resourceType || image.belongsTo;
-  const resourceId = image.resourceId ?? image.entityId;
+async function refreshUrl(
+  resourceType: string | null | undefined,
+  resourceId: string | number | null | undefined,
+  imageId: string | number | null | undefined,
+  variant: 'display' | 'thumbnail',
+) {
   if (!resourceType || resourceId == null) return null;
 
   const params = new URLSearchParams({ limit: '1' });
-  if (image.id != null) params.set('imageIds', String(image.id));
+  if (imageId != null) params.set('imageIds', String(imageId));
   const response = await fetch(
     `/api/images/${encodeURIComponent(resourceType)}/${encodeURIComponent(String(resourceId))}?${params}`,
   );
@@ -48,13 +51,22 @@ export default function RefreshingImage({
   ...imgProps
 }: RefreshingImageProps) {
   const source = initialUrl(image, variant);
+  const imageId = image.id;
+  const resourceType = image.resourceType || image.belongsTo;
+  const resourceId = image.resourceId ?? image.entityId;
   const [currentSource, setCurrentSource] = useState(source);
   const retried = useRef(false);
 
   useEffect(() => {
     setCurrentSource(source);
     retried.current = false;
-  }, [source, image.id, image.resourceType, image.resourceId, image.belongsTo, image.entityId, variant]);
+    if (source || imageId == null) return;
+    let active = true;
+    void refreshUrl(resourceType, resourceId, imageId, variant).then(url => {
+      if (active && url) setCurrentSource(url);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [source, imageId, resourceType, resourceId, variant]);
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = event => {
     onError?.(event);
@@ -63,7 +75,7 @@ export default function RefreshingImage({
       return;
     }
     retried.current = true;
-    void refreshUrl(image, variant).then(url => {
+    void refreshUrl(resourceType, resourceId, imageId, variant).then(url => {
       if (url && url !== currentSource) setCurrentSource(url);
       else if (fallbackSrc) setCurrentSource(fallbackSrc);
     }).catch(() => {

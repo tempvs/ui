@@ -34,7 +34,7 @@ beforeEach(() => {
   mock(api.getClub).mockResolvedValue(club);
   mock(api.getParticipants).mockResolvedValue({ content: [{ id: 5, firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
-  mock(api.getJoinRequests).mockResolvedValue([]);
+  mock(api.getJoinRequests).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getJoinOptions).mockResolvedValue({ content: [{ club, status: null }], hasMore: false });
 });
 
@@ -61,7 +61,7 @@ test('profile owners can leave from the scrollable club participant list', async
 
 test('scrolling participants appends the next page without pagination buttons', async () => {
   mock(api.getParticipants)
-    .mockResolvedValueOnce({ content: [{ id: 5, firstName: 'Alex', lastName: 'Archer' }], hasMore: true })
+    .mockResolvedValueOnce({ content: [{ id: 5, firstName: 'Alex', lastName: 'Archer' }], hasMore: true, nextToken: 'participants-2' })
     .mockResolvedValueOnce({ content: [{ id: 6, firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   await screen.findByRole('link', { name: 'Alex Archer' });
@@ -73,7 +73,7 @@ test('scrolling participants appends the next page without pagination buttons', 
   });
   fireEvent.scroll(region);
   expect(await screen.findByRole('link', { name: 'Robin Hood' })).toBeInTheDocument();
-  expect(api.getParticipants).toHaveBeenLastCalledWith('1', 1);
+  expect(api.getParticipants).toHaveBeenLastCalledWith('1', 'participants-2');
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 });
@@ -106,7 +106,7 @@ test('owner opens search modal and requests membership without immediately joini
   fireEvent.click(await screen.findByRole('button', { name: 'Join club' }));
   const modal = await screen.findByRole('dialog');
   expect(within(modal).getByText('Clubs matching this profile’s period')).toBeInTheDocument();
-  await waitFor(() => expect(api.getJoinOptions).toHaveBeenCalledWith(5, '', 0, expect.any(AbortSignal)));
+  await waitFor(() => expect(api.getJoinOptions).toHaveBeenCalledWith(5, '', undefined, expect.any(AbortSignal)));
   fireEvent.click(await within(modal).findByRole('button', { name: 'Request to join' }));
   await waitFor(() => expect(api.requestJoin).toHaveBeenCalledWith(1, 5));
   expect(await within(modal).findByRole('button', { name: 'Request pending' })).toBeDisabled();
@@ -152,7 +152,8 @@ test('owners with existing memberships still have a join button', async () => {
 test.each(['accept', 'reject'] as const)('club admins can %s a pending request', async decision => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
   const request: api.JoinRequest = { id: 9, clubId: 1, profileId: 6, status: 'PENDING', requestedDate: '', profile: { id: 6, firstName: 'Robin', lastName: 'Hood' } };
-  mock(api.getJoinRequests).mockResolvedValueOnce([request]).mockResolvedValue([]);
+  mock(api.getJoinRequests).mockResolvedValueOnce({ content: [request], hasMore: false })
+    .mockResolvedValue({ content: [], hasMore: false });
   mock(api.decideJoinRequest).mockResolvedValue({ ...request, status: decision === 'accept' ? 'ACCEPTED' : 'REJECTED' });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   fireEvent.click(await screen.findByRole('button', { name: decision === 'accept' ? 'Accept' : 'Reject' }));
@@ -169,13 +170,13 @@ test('club browsing searches as the user types and changes period', async () => 
   expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
-  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', '', 0, expect.any(AbortSignal)));
+  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', '', undefined, expect.any(AbortSignal)));
   fireEvent.change(screen.getByLabelText('Period'), { target: { value: 'HIGH_MIDDLE_AGES' } });
-  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', 'HIGH_MIDDLE_AGES', 0, expect.any(AbortSignal)));
+  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', 'HIGH_MIDDLE_AGES', undefined, expect.any(AbortSignal)));
 });
 
 test('scrolling the clubs page appends another page and stops at the end', async () => {
-  mock(api.listClubs).mockResolvedValueOnce({ content: [club], hasMore: true })
+  mock(api.listClubs).mockResolvedValueOnce({ content: [club], hasMore: true, nextToken: 'clubs-2' })
     .mockResolvedValueOnce({ content: [{ ...club, id: 2, name: 'Second club' }], hasMore: false });
   const view = wrap(<ClubsPage />);
   await screen.findByRole('link', { name: 'Longbow Company' });
@@ -184,14 +185,21 @@ test('scrolling the clubs page appends another page and stops at the end', async
   fireEvent.scroll(window);
   await screen.findByRole('link', { name: 'Second club' });
   expect(screen.getByRole('link', { name: 'Longbow Company' })).toBeInTheDocument();
-  expect(api.listClubs).toHaveBeenLastCalledWith('', '', 1, expect.any(AbortSignal));
+  expect(api.listClubs).toHaveBeenLastCalledWith('', '', 'clubs-2', expect.any(AbortSignal));
   fireEvent.scroll(window);
   expect(api.listClubs).toHaveBeenCalledTimes(2);
 });
 
 test('managers upload a club photo and see the saved image', async () => {
   const onChange = jest.fn();
-  const saved = { ...club, canManage: true, photoUrl: '/api/club/clubs/1/photo?v=one' };
+  const saved = {
+    ...club,
+    canManage: true,
+    hasPhoto: true,
+    photoImageId: 'image-id',
+    photoUrl: 'https://s3/photo',
+    photoThumbnailUrl: null,
+  };
   mock(api.uploadClubPhoto).mockResolvedValue(saved);
   wrap(<ClubPhotoPanel club={{ ...club, canManage: true }} onChange={onChange} />);
   const file = new File(['photo'], 'club.png', { type: 'image/png' });
@@ -211,6 +219,25 @@ test('photo uploads reject unsupported files and visitors cannot upload', async 
   expect(screen.queryByLabelText('Replace club photo')).not.toBeInTheDocument();
 });
 
+test('club search and profile tiles resolve migrated image IDs through the image API', async () => {
+  const photoClub = { ...club, hasPhoto: true, photoImageId: 'club-image-id' };
+  mock(api.getJoinOptions).mockResolvedValue({
+    content: [{ club: photoClub, status: null }],
+    hasMore: false,
+  });
+  const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: [{ id: 'club-image-id', url: '/signed-club-photo' }] }),
+  } as Response);
+  const view = wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
+  await waitFor(() => {
+    expect(document.querySelector('.join-club-photo')).toHaveAttribute('src', '/signed-club-photo');
+  });
+  expect(fetchMock).toHaveBeenCalledWith('/api/images/club/1?limit=1&imageIds=club-image-id');
+  fetchMock.mockRestore();
+  view.unmount();
+});
+
 test('join modal searches as typing settles, with no search, pagination, or close buttons', async () => {
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
   await screen.findByRole('link', { name: 'Longbow Company' });
@@ -221,14 +248,14 @@ test('join modal searches as typing settles, with no search, pagination, or clos
   fireEvent.change(input, { target: { value: 'l' } });
   fireEvent.change(input, { target: { value: 'long' } });
   fireEvent.change(input, { target: { value: 'longbow' } });
-  await waitFor(() => expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, 'longbow', 0, expect.any(AbortSignal)));
+  await waitFor(() => expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, 'longbow', undefined, expect.any(AbortSignal)));
   expect(api.getJoinOptions).toHaveBeenCalledTimes(2);
 });
 
 test('join tiles append the next server page once and stop when hasMore is false', async () => {
   const firstPage = Array.from({ length: 20 }, (_, index) => ({ club: { ...club, id: index + 1, name: `Club ${index + 1}` }, status: null }));
   let resolveNext!: (page: api.JoinOptionsPage) => void;
-  mock(api.getJoinOptions).mockResolvedValueOnce({ content: firstPage, hasMore: true })
+  mock(api.getJoinOptions).mockResolvedValueOnce({ content: firstPage, hasMore: true, nextToken: 'join-2' })
     .mockImplementationOnce(() => new Promise(resolve => { resolveNext = resolve; }));
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
   await screen.findByRole('link', { name: 'Club 20' });
@@ -237,7 +264,7 @@ test('join tiles append the next server page once and stop when hasMore is false
   fireEvent.scroll(region);
   fireEvent.scroll(region);
   expect(api.getJoinOptions).toHaveBeenCalledTimes(2);
-  expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, '', 1, expect.any(AbortSignal));
+  expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, '', 'join-2', expect.any(AbortSignal));
   await act(async () => resolveNext({ content: [{ club: { ...club, id: 21, name: 'Club 21' }, status: null }], hasMore: false }));
   expect(screen.getByRole('link', { name: 'Club 1' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Club 21' })).toBeInTheDocument();
@@ -266,7 +293,7 @@ test('failed pages can be retried without skipping results', async () => {
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
   await screen.findByRole('link', { name: 'Longbow Company' });
-  expect(mock(api.getJoinOptions).mock.calls.map(call => call[2])).toEqual([0, 0]);
+  expect(mock(api.getJoinOptions).mock.calls.map(call => call[2])).toEqual([undefined, undefined]);
 });
 
 test('clicking outside the modal content closes it', async () => {

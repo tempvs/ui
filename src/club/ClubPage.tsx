@@ -56,19 +56,19 @@ export default function ClubPage() {
   }, [id, revision]);
   useEffect(() => {
     let active = true, fetching = false, more = true, failed = false;
-    let nextPage = 0;
+    let nextToken: string | undefined;
     setMembers([]); setHasMore(false); setParticipantsError(''); setParticipantsLoading(true);
     const fetchNext = async (retry = false) => {
       if (!active || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setParticipantsLoading(true); setParticipantsError('');
       try {
-        const profiles = await getParticipants(id, nextPage);
+        const profiles = await getParticipants(id, nextToken);
         if (!active) return;
         setMembers(current => {
           const ids = new Set(current.map(profile => String(profile.id)));
           return [...current, ...profiles.content.filter(profile => !ids.has(String(profile.id)))];
         });
-        nextPage += 1; more = profiles.hasMore; setHasMore(more);
+        nextToken = profiles.nextToken; more = profiles.hasMore; setHasMore(more);
       } catch (e) {
         failed = true;
         if (active) {

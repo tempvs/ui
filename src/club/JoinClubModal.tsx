@@ -28,7 +28,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
     const controller = new AbortController();
     let active = true;
     let fetching = false;
-    let nextPage = 0;
+    let nextToken: string | undefined;
     let more = true;
     let ready = false;
     let available = true;
@@ -39,13 +39,13 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
       if (!active || !available || !ready || fetching || !more) return;
       fetching = true; setLoading(true); setSearchError('');
       try {
-        const data = await getJoinOptions(profileId, query.trim(), nextPage, controller.signal);
+        const data = await getJoinOptions(profileId, query.trim(), nextToken, controller.signal);
         if (!active) return;
         setOptions(current => {
           const ids = new Set(current.map(option => option.club.id));
           return [...current, ...data.content.filter(option => !ids.has(option.club.id))];
         });
-        nextPage += 1;
+        nextToken = data.nextToken;
         more = data.hasMore;
         setHasMore(more);
       } catch (e) {
@@ -97,9 +97,9 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
           if (!searchError && element.scrollHeight - element.scrollTop - element.clientHeight < 100) loadMore.current();
         }}>
         <ul className="join-club-tiles">{options.map(({ club, status }) => <li key={club.id} className="join-club-tile">
-          {(club.photoThumbnailUrl || club.photoUrl) && (
+          {(club.hasPhoto || club.photoImageId || club.photoThumbnailUrl || club.photoUrl) && (
             <RefreshingImage
-              image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+              image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
               variant="thumbnail"
               className="join-club-photo"
               alt=""

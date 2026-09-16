@@ -34,22 +34,22 @@ export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
     }
     finally { setBusy(false); }
   };
-  if (!club.photoUrl && !club.canManage) return null;
+  if (!club.photoUrl && !club.hasPhoto && !club.canManage) return null;
   return <section className="club-panel club-photo-panel" aria-label={t('photo', 'Club photo')}>
-    {club.photoUrl && (
+    {(club.photoUrl || club.hasPhoto) && (
       <RefreshingImage
-        image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+        image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
         className="club-detail-photo"
         alt={club.name}
       />
     )}
     {club.canManage && <div className="mt-3">
       <Form.Group controlId={`club-photo-${club.id}`}>
-        <Form.Label>{club.photoUrl ? t('replacePhoto', 'Replace club photo') : t('uploadPhoto', 'Upload club photo')}</Form.Label>
+        <Form.Label>{club.hasPhoto || club.photoUrl ? t('replacePhoto', 'Replace club photo') : t('uploadPhoto', 'Upload club photo')}</Form.Label>
         <Form.Control type="file" accept="image/jpeg,image/png" disabled={busy} onChange={upload} />
         <Form.Text>{t('photoRequirements', 'Choose a JPEG or PNG photo up to 5 MB.')}</Form.Text>
       </Form.Group>
-      {club.photoUrl && <Button variant="outline-danger" size="sm" className="mt-2" disabled={busy} onClick={remove}>{t('removePhoto', 'Remove photo')}</Button>}
+      {(club.hasPhoto || club.photoUrl) && <Button variant="outline-danger" size="sm" className="mt-2" disabled={busy} onClick={remove}>{t('removePhoto', 'Remove photo')}</Button>}
     </div>}
     {busy && <p role="status" className="mt-2">{t('savingPhoto', 'Saving photo…')}</p>}
     {error && <Alert variant="danger" className="mt-2">{error}</Alert>}

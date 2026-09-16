@@ -42,7 +42,7 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
     {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>
       <Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
         <RefreshingImage
-          image={{ resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
+          image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
           variant="thumbnail"
           fallbackSrc={defaultImage}
           className="club-list-thumbnail"
