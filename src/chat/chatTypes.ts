@@ -1,36 +1,37 @@
 export type ChatParticipant = {
   profileId: number;
   name: string;
-  type?: string | null;
+  type: string;
 };
 
 export type ChatMessage = {
-  id: number;
+  id: string;
   senderProfileId: number;
   senderName: string;
   text: string;
-  createdAt?: string | null;
+  createdAt: string;
 };
 
 export type ChatConversationSummary = {
-  id: number;
-  title?: string | null;
-  type?: 'DIRECT' | 'GROUP' | string | null;
+  id: string;
+  title?: string;
+  type: 'DIRECT' | 'GROUP';
   displayName: string;
-  previewText?: string | null;
-  updatedAt?: string | null;
+  previewText: string;
+  updatedAt: string;
   participants: ChatParticipant[];
 };
 
-export type ChatConversationDetails = {
-  id: number;
-  title?: string | null;
-  type?: 'DIRECT' | 'GROUP' | string | null;
-  displayName: string;
-  updatedAt?: string | null;
-  participants: ChatParticipant[];
+export type ChatConversationPage = {
+  content: ChatConversationSummary[];
+  hasMore: boolean;
+  nextToken?: string;
+};
+
+export type ChatConversationDetails = ChatConversationSummary & {
   messages: ChatMessage[];
   hasMoreMessages: boolean;
+  nextToken?: string;
 };
 
 export type CreateChatConversationPayload = {
@@ -44,3 +45,4 @@ export type SendChatMessagePayload = {
   senderProfileId: number;
   text: string;
 };
+

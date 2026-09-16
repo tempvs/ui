@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { Alert, Badge, Button, Container, Form, Modal, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -8,7 +8,7 @@ import SectionHeaderBar from '../component/SectionHeaderBar';
 import { resolveCurrentOwnedProfileId } from '../profile/currentProfile';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId, searchProfiles } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
-import { createConversation, getConversation, listConversations, sendMessage } from './chatApi';
+import { createConversation, getConversation, listConversations, newIdempotencyKey, sendMessage } from './chatApi';
 import { ChatConversationDetails, ChatConversationSummary } from './chatTypes';
 
 type IconProps = {
@@ -119,6 +119,9 @@ export default function ChatPage() {
   const [senderProfiles, setSenderProfiles] = useState<Profile[]>([]);
   const [selectedSenderId, setSelectedSenderId] = useState<number | null>(null);
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
+  const [conversationsNextToken, setConversationsNextToken] = useState<string | undefined>();
+  const [hasMoreConversations, setHasMoreConversations] = useState(false);
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<ChatConversationDetails | null>(null);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingConversation, setLoadingConversation] = useState(false);
@@ -133,6 +136,8 @@ export default function ChatPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const sendRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
     fetchCurrentUserInfo(result => {
@@ -204,6 +209,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!senderProfiles.length || currentProfileId == null) {
       setConversations([]);
+      setConversationsNextToken(undefined);
+      setHasMoreConversations(false);
       setLoadingConversations(false);
       return;
     }
@@ -216,9 +223,11 @@ export default function ChatPage() {
       try {
         const data = await listConversations(resolvedCurrentProfileId);
         if (!cancelled) {
-          const visibleConversations = (Array.isArray(data) ? data : [])
+          const visibleConversations = data.content
             .filter(conversation => conversationIncludesProfile(conversation, resolvedCurrentProfileId));
           setConversations(visibleConversations);
+          setConversationsNextToken(data.nextToken);
+          setHasMoreConversations(data.hasMore);
         }
       } catch (error) {
         if (!cancelled) {
@@ -358,7 +367,7 @@ export default function ChatPage() {
     };
   }, [createModalVisible, currentUserId, intl, participantQuery, selectedParticipants, selectedSenderId]);
 
-  async function refreshConversations(selectedId?: number) {
+  async function refreshConversations(selectedId?: string) {
     if (currentProfileId == null) {
       setConversations([]);
       if (selectedId != null) {
@@ -368,12 +377,70 @@ export default function ChatPage() {
     }
 
     const data = await listConversations(currentProfileId);
-    const visibleConversations = (Array.isArray(data) ? data : [])
+    const visibleConversations = data.content
       .filter(conversation => conversationIncludesProfile(conversation, currentProfileId));
     setConversations(visibleConversations);
+    setConversationsNextToken(data.nextToken);
+    setHasMoreConversations(data.hasMore);
 
     if (selectedId != null) {
       navigate(`/chat/${selectedId}`);
+    }
+  }
+
+  async function loadMoreConversations() {
+    if (currentProfileId == null || !conversationsNextToken || loadingMoreConversations) {
+      return;
+    }
+    setLoadingMoreConversations(true);
+    try {
+      const data = await listConversations(currentProfileId, conversationsNextToken);
+      setConversations(current => {
+        const ids = new Set(current.map(conversation => conversation.id));
+        return [...current, ...data.content.filter(conversation => !ids.has(conversation.id))];
+      });
+      setConversationsNextToken(data.nextToken);
+      setHasMoreConversations(data.hasMore);
+    } catch (error) {
+      setFeedback(intl.formatMessage({
+        id: 'chat.conversations.failed',
+        defaultMessage: 'Unable to load conversations right now.',
+      }));
+    } finally {
+      setLoadingMoreConversations(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedConversation?.nextToken || currentProfileId == null || loadingConversation) {
+      return;
+    }
+    setLoadingConversation(true);
+    try {
+      const older = await getConversation(
+        selectedConversation.id,
+        currentProfileId,
+        selectedConversation.nextToken
+      );
+      setSelectedConversation(current => {
+        if (!current || current.id !== older.id) {
+          return current;
+        }
+        const currentIds = new Set(current.messages.map(message => message.id));
+        return {
+          ...current,
+          messages: [...older.messages.filter(message => !currentIds.has(message.id)), ...current.messages],
+          hasMoreMessages: older.hasMoreMessages,
+          nextToken: older.nextToken,
+        };
+      });
+    } catch (error) {
+      setFeedback(intl.formatMessage({
+        id: 'chat.messages.failed',
+        defaultMessage: 'Unable to load older messages.',
+      }));
+    } finally {
+      setLoadingConversation(false);
     }
   }
 
@@ -403,12 +470,19 @@ export default function ChatPage() {
     }
 
     try {
-      const details = await createConversation({
+      const payload = {
         senderProfileId: currentProfileId,
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
         initialMessage: initialMessage.trim(),
-      });
+      };
+      const fingerprint = JSON.stringify(payload);
+      const pending = createRequestRef.current?.fingerprint === fingerprint
+        ? createRequestRef.current
+        : { fingerprint, key: newIdempotencyKey() };
+      createRequestRef.current = pending;
+      const details = await createConversation(payload, pending.key);
+      createRequestRef.current = null;
       setSelectedParticipants([]);
       setParticipantResults([]);
       setParticipantQuery('');
@@ -437,10 +511,17 @@ export default function ChatPage() {
     }
 
     try {
-      const details = await sendMessage(selectedConversation.id, {
+      const payload = {
         senderProfileId: selectedSenderId,
         text: messageDraft,
-      });
+      };
+      const fingerprint = JSON.stringify({ conversationId: selectedConversation.id, ...payload });
+      const pending = sendRequestRef.current?.fingerprint === fingerprint
+        ? sendRequestRef.current
+        : { fingerprint, key: newIdempotencyKey() };
+      sendRequestRef.current = pending;
+      const details = await sendMessage(selectedConversation.id, payload, pending.key);
+      sendRequestRef.current = null;
       setMessageDraft('');
       setSelectedConversation(details);
       setFeedback(null);
@@ -556,6 +637,21 @@ export default function ChatPage() {
                   <div className="chat-conversation-meta">{formatDate(conversation.updatedAt)}</div>
                 </button>
               ))}
+              {hasMoreConversations && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="chat-load-more"
+                  disabled={loadingMoreConversations}
+                  onClick={loadMoreConversations}
+                >
+                  {loadingMoreConversations ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <FormattedMessage id="chat.conversations.more" defaultMessage="Load more" />
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </aside>
@@ -602,6 +698,21 @@ export default function ChatPage() {
                 </div>
               </div>
               <div className="chat-message-list">
+                {selectedConversation.hasMoreMessages && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="chat-load-more"
+                    disabled={loadingConversation}
+                    onClick={loadOlderMessages}
+                  >
+                    {loadingConversation ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      <FormattedMessage id="chat.messages.older" defaultMessage="Load older messages" />
+                    )}
+                  </Button>
+                )}
                 {selectedConversation.messages.length === 0 && (
                   <div className="chat-empty-state">
                     <FormattedMessage id="chat.messages.empty" defaultMessage="No messages yet. Send the first one." />
