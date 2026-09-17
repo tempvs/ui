@@ -5,10 +5,17 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { FaPlus } from 'react-icons/fa';
 
 import SectionHeaderBar from '../component/SectionHeaderBar';
-import { resolveCurrentOwnedProfileId } from '../profile/currentProfile';
+import { clearStoredCurrentProfileValue, resolveCurrentOwnedProfileId } from '../profile/currentProfile';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId, searchProfiles } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
-import { createConversation, getConversation, listConversations, newIdempotencyKey, sendMessage } from './chatApi';
+import {
+  activeProfileNotFoundId,
+  createConversation,
+  getConversation,
+  listConversations,
+  newIdempotencyKey,
+  sendMessage,
+} from './chatApi';
 import { ChatConversationDetails, ChatConversationSummary } from './chatTypes';
 
 type IconProps = {
@@ -231,6 +238,11 @@ export default function ChatPage() {
         }
       } catch (error) {
         if (!cancelled) {
+          if (activeProfileNotFoundId(error) === resolvedCurrentProfileId) {
+            clearStoredCurrentProfileValue();
+            window.location.reload();
+            return;
+          }
           setFeedback(intl.formatMessage({
             id: 'chat.conversations.failed',
             defaultMessage: 'Unable to load conversations right now.',
@@ -293,6 +305,11 @@ export default function ChatPage() {
         });
       } catch (error) {
         if (!cancelled) {
+          if (activeProfileNotFoundId(error) === resolvedCurrentProfileId) {
+            clearStoredCurrentProfileValue();
+            window.location.reload();
+            return;
+          }
           setSelectedConversation(null);
           setFeedback(intl.formatMessage({
             id: 'chat.conversation.failed',
@@ -494,6 +511,25 @@ export default function ChatPage() {
       setSelectedConversation(details);
       navigate(`/chat/${details.id}`);
     } catch (error) {
+      const missingProfileId = activeProfileNotFoundId(error);
+      if (missingProfileId === currentProfileId) {
+        clearStoredCurrentProfileValue();
+        window.location.reload();
+        return;
+      }
+      if (missingProfileId != null) {
+        setSelectedParticipants(current => current.filter(
+          profile => Number(profile.id) !== missingProfileId
+        ));
+        setParticipantResults(current => current.filter(
+          profile => Number(profile.id) !== missingProfileId
+        ));
+        setFeedback(intl.formatMessage({
+          id: 'chat.profile.inactive',
+          defaultMessage: 'That profile is no longer active. Choose another participant.',
+        }));
+        return;
+      }
       const message = error instanceof Error && error.message
         ? error.message
         : intl.formatMessage({
@@ -527,6 +563,11 @@ export default function ChatPage() {
       setFeedback(null);
       await refreshConversations(details.id);
     } catch (error) {
+      if (activeProfileNotFoundId(error) === selectedSenderId) {
+        clearStoredCurrentProfileValue();
+        window.location.reload();
+        return;
+      }
       const message = error instanceof Error && error.message
         ? error.message
         : intl.formatMessage({

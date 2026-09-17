@@ -54,6 +54,14 @@ export function newIdempotencyKey() {
   return crypto.randomUUID();
 }
 
+export function activeProfileNotFoundId(error: unknown): number | null {
+  if (!(error instanceof Error)) return null;
+  const match = /^Active profile (\d+) not found$/.exec(error.message);
+  if (!match) return null;
+  const profileId = Number(match[1]);
+  return Number.isSafeInteger(profileId) && profileId > 0 ? profileId : null;
+}
+
 export function listConversations(profileId: number, nextToken?: string, limit = 20) {
   const query = new URLSearchParams({ profileId: String(profileId), limit: String(limit) });
   if (nextToken) query.set('nextToken', nextToken);
@@ -189,4 +197,3 @@ function optionalString(value: unknown): string | undefined {
 function positiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
-

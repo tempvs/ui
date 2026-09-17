@@ -1,4 +1,10 @@
-import { createConversation, getConversation, listConversations, sendMessage } from './chatApi';
+import {
+  activeProfileNotFoundId,
+  createConversation,
+  getConversation,
+  listConversations,
+  sendMessage,
+} from './chatApi';
 
 const conversation = {
   id: '0199f5d2-7a10-7000-8000-000000000001',
@@ -84,3 +90,7 @@ test('surfaces Lambda errors and rejects malformed successful responses', async 
   await expect(listConversations(2)).rejects.toThrow('invalid response');
 });
 
+test('extracts a stale active profile id from the Chat API error', () => {
+  expect(activeProfileNotFoundId(new Error('Active profile 8 not found'))).toBe(8);
+  expect(activeProfileNotFoundId(new Error('Chat route not found'))).toBeNull();
+});
