@@ -828,7 +828,7 @@ export default function StashOverview({
 
     try {
       const payload = {
-        itemId: markerPlacement.itemId,
+        itemId: String(markerPlacement.itemId),
         x,
         y,
       };
@@ -854,7 +854,7 @@ export default function StashOverview({
           ...previousState,
           [groupKey]: [
             ...(previousState[groupKey] || []).filter(marker => marker.itemId !== markerPlacement.itemId),
-            { id: tempMarkerId, itemId: markerPlacement.itemId, x, y },
+            { id: tempMarkerId, itemId: String(markerPlacement.itemId), x, y },
           ],
         }));
         scheduleArrowRefresh(recalculateArrows);

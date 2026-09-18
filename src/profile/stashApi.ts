@@ -20,6 +20,21 @@ type PageRequest = {
   size?: number;
 };
 
+type CursorPage<T> = {
+  content?: T[];
+  hasMore?: boolean;
+  nextToken?: string;
+};
+
+type ImageUploadIntent<T> = {
+  image: T;
+  upload: {
+    url: string;
+    method: 'PUT';
+    headers: Record<string, string>;
+  };
+};
+
 type SourceSearchParams = {
   query?: string;
   period?: string | null;
@@ -58,17 +73,48 @@ async function requestJson<TData = unknown>(url: string, options: RequestOptions
   return data;
 }
 
-export function getProfileStash(profileId: Id) {
-  return requestJson<Stash>(`/api/stash/group/profile/${profileId}`);
+export async function getProfileStash(profileId: Id) {
+  let nextToken: string | undefined;
+  let result: (Stash & CursorPage<StashGroup>) | undefined;
+  const groups: StashGroup[] = [];
+  do {
+    const query = new URLSearchParams({ limit: '40' });
+    if (nextToken) query.set('nextToken', nextToken);
+    const page = await requestJson<Stash & CursorPage<StashGroup>>(
+      `/api/stash/group/profile/${profileId}?${query}`,
+    );
+    result ||= page;
+    groups.push(...(page.groups || page.content || []));
+    nextToken = page.nextToken;
+  } while (nextToken);
+  return { ...(result || {}), groups } as Stash;
 }
 
-export function getGroupItems(groupId: Id, { page = 0, size = 40 }: PageRequest = {}) {
-  return requestJson<StashItem[]>(`/api/stash/group/${groupId}/item?page=${page}&size=${size}`);
+export async function getGroupItems(groupId: Id, { page = 0, size = 40 }: PageRequest = {}) {
+  if (page > 0) throw new Error('Offset Stash pages are no longer supported');
+  const items: StashItem[] = [];
+  let nextToken: string | undefined;
+  do {
+    const query = new URLSearchParams({ limit: String(size) });
+    if (nextToken) query.set('nextToken', nextToken);
+    const result = await requestJson<StashItem[] | CursorPage<StashItem>>(
+      `/api/stash/group/${groupId}/item?${query}`,
+    );
+    if (Array.isArray(result)) {
+      items.push(...result);
+      nextToken = undefined;
+    } else {
+      items.push(...(result.content || []));
+      nextToken = result.nextToken;
+    }
+  } while (nextToken);
+  return items;
 }
 
 export function createStashGroup(profileId: Id, payload: JsonRecord) {
   return requestJson<StashGroup>(`/api/stash/group/profile/${profileId}`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(payload),
   });
 }
@@ -94,6 +140,7 @@ export function deleteStashGroup(groupId: Id) {
 export function createStashItem(groupId: Id, payload: JsonRecord) {
   return requestJson<StashItem>(`/api/stash/group/${groupId}/item`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(payload),
   });
 }
@@ -134,18 +181,49 @@ export function getStashEntityImages(belongsTo: string, entityIds: Id[]) {
 }
 
 export function uploadStashItemImage(itemId: Id, file: File, description?: string | null) {
-  const body = imageForm(file, description);
-  return requestJson<StashItemImage>(`/api/stash/item/${itemId}/images`, {
-    method: 'POST',
-    body,
-  });
+  return requestImageUpload<StashItemImage>(`/api/stash/item/${itemId}/images`, 'POST', file, description);
 }
 
 export function replaceStashItemImage(itemId: Id, imageId: Id, file: File, description?: string | null) {
-  return requestJson<StashItemImage>(`/api/stash/item/${itemId}/images/${imageId}`, {
-    method: 'PATCH',
-    body: imageForm(file, description),
+  return requestImageUpload<StashItemImage>(`/api/stash/item/${itemId}/images/${imageId}`, 'PATCH', file, description);
+}
+
+async function requestImageUpload<T>(url: string, method: 'POST' | 'PATCH', file: File, description?: string | null) {
+  const intent = await requestJson<ImageUploadIntent<T>>(url, {
+    method,
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      byteSize: file.size,
+      ...(description !== undefined ? { description } : {}),
+    }),
   });
+  if (
+    !intent?.upload
+    || intent.upload.method !== 'PUT'
+    || typeof intent.upload.url !== 'string'
+    || !intent.upload.headers
+    || typeof intent.upload.headers !== 'object'
+  ) {
+    throw new Error('Image API returned an invalid upload intent');
+  }
+  const response = await fetch(intent.upload.url, {
+    method: 'PUT',
+    headers: intent.upload.headers,
+    body: file,
+  });
+  if (!response.ok) {
+    throw new Error(`Image upload failed with status ${response.status}`);
+  }
+  return intent.image;
+}
+
+/*
+ * Image bytes deliberately bypass API Gateway. The Stash Lambda authorizes the
+ * mutation and returns Image API metadata plus a short-lived S3 PUT URL.
+ */
+export function uploadStashGroupImage(groupId: Id, file: File, description?: string | null) {
+  return requestImageUpload<unknown>(`/api/stash/group/${groupId}/images`, 'POST', file, description);
 }
 
 export function deleteStashItemImage(itemId: Id, imageId: Id) {
@@ -163,20 +241,6 @@ export function updateStashItemImageDescription(itemId: Id, imageId: Id, descrip
 
 export function deleteStashItem(itemId: Id) {
   return requestJson<unknown>(`/api/stash/item/${itemId}`, { method: 'DELETE' });
-}
-
-export function uploadStashGroupImage(groupId: Id, file: File, description?: string | null) {
-  return requestJson<unknown>(`/api/stash/group/${groupId}/images`, {
-    method: 'POST',
-    body: imageForm(file, description),
-  });
-}
-
-function imageForm(file: File, description?: string | null) {
-  const body = new FormData();
-  body.append('file', file);
-  if (description !== undefined && description !== null) body.append('description', description);
-  return body;
 }
 
 export function deleteStashGroupImage(groupId: Id) {
@@ -215,6 +279,7 @@ export function getStashItemMarkers(groupId: Id) {
 export function createStashItemMarker(groupId: Id, payload: StashItemMarker) {
   return requestJson<StashItemMarker>(`/api/stash/group/${groupId}/marker`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(payload),
   });
 }

@@ -115,21 +115,21 @@ export type DraftFields = {
 export type FieldName = keyof DraftFields;
 
 export type StashGroup = {
-  id: Id;
+  id: string;
   name?: string | null;
   description?: string | null;
   items?: StashItem[];
 };
 
 export type StashItem = {
-  id: Id;
+  id: string;
   name?: string | null;
   description?: string | null;
   classification?: string | null;
   period?: string | null;
   sources?: Id[] | null;
   itemGroup: {
-    id: Id;
+    id: string;
     name?: string | null;
     description?: string | null;
     profile?: {
@@ -163,8 +163,8 @@ export type EntityImage = GalleryImage & {
 };
 
 export type StashItemMarker = {
-  id?: Id | null;
-  itemId: Id;
+  id?: string | null;
+  itemId: string;
   x: number;
   y: number;
 };

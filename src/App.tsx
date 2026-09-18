@@ -16,7 +16,6 @@ import ClubsPage from './club/ClubsPage';
 import ClubPage from './club/ClubPage';
 
 const WARMUP_URLS = [
-  'https://stash-service-iri9.onrender.com/',
   'https://email-service-ova5.onrender.com/',
   'https://user-service-d4or.onrender.com/',
   'https://tempvs-library.onrender.com/',
