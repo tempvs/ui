@@ -183,11 +183,11 @@ type FetchFormEvent = {
 };
 
 export function createUserProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
-  doFetch('/api/profile/user-profile', 'POST', event, handlers);
+  doFetch('/api/profile/user-profile', 'POST', event, handlers, { 'Idempotency-Key': crypto.randomUUID() });
 }
 
 export function createClubProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
-  doFetch('/api/profile/club-profile', 'POST', event, handlers);
+  doFetch('/api/profile/club-profile', 'POST', event, handlers, { 'Idempotency-Key': crypto.randomUUID() });
 }
 
 export function updateProfile(profileId: Id, payload: JsonRecord) {
@@ -203,13 +203,33 @@ export function deleteProfile(profileId: Id) {
   });
 }
 
-export function uploadAvatar(profileId: Id, file: File, description?: string | null) {
-  const body = new FormData();
-  body.append('file', file);
-  if (description !== undefined && description !== null) body.append('description', description);
-  return fetch(`/api/profile/profile/${profileId}/avatar`, {
+export async function uploadAvatar(profileId: Id, file: File, description?: string | null) {
+  const intentResponse = await requestJson(`/api/profile/profile/${profileId}/avatar`, {
     method: 'POST',
-    body,
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      byteSize: file.size,
+      ...(description !== undefined ? { description } : {}),
+    }),
+  });
+  if (!intentResponse.ok) return intentResponse;
+
+  const intent = await intentResponse.json() as {
+    upload?: { url?: unknown; method?: unknown; headers?: unknown };
+  };
+  if (
+    typeof intent.upload?.url !== 'string'
+    || intent.upload.method !== 'PUT'
+    || !intent.upload.headers
+    || typeof intent.upload.headers !== 'object'
+  ) {
+    return new Response(null, { status: 502, statusText: 'Invalid upload intent' });
+  }
+  return fetch(intent.upload.url, {
+    method: 'PUT',
+    headers: intent.upload.headers as HeadersInit,
+    body: file,
   });
 }
 

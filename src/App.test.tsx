@@ -14,16 +14,14 @@ test('renders an app', () => {
   expect(document.querySelector('a[href="/clubs"]')).toBeInTheDocument();
 });
 
-test('warms up club-service with the other Render services', () => {
+test('warms only services that still run on Render', () => {
   const fetch = jest.spyOn(window, 'fetch').mockResolvedValue({ status: 404, text: async () => '' } as Response);
 
   render(<IntlProvider locale="en" messages={{}}><App /></IntlProvider>);
 
-  expect(fetch).toHaveBeenCalledWith('https://tempvs-club.onrender.com/', {
-    method: 'GET',
-    mode: 'no-cors',
-    cache: 'no-store',
-  });
+  expect(fetch).toHaveBeenCalledWith('https://stash-service-iri9.onrender.com/', expect.anything());
+  expect(fetch).not.toHaveBeenCalledWith('https://tempvs-club.onrender.com/', expect.anything());
+  expect(fetch).not.toHaveBeenCalledWith('https://profile-service-ynnk.onrender.com/', expect.anything());
   expect(fetch).not.toHaveBeenCalledWith('https://tempvs-image-1.onrender.com/', expect.anything());
   fetch.mockRestore();
 });

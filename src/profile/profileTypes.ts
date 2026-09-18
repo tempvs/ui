@@ -14,7 +14,7 @@ export type MessageFormatter = (
 export type ProfileType = 'USER' | 'CLUB' | string;
 
 export type Profile = {
-  id: Id;
+  id: string;
   userId?: Id | null;
   type?: ProfileType | null;
   firstName?: string | null;
@@ -28,7 +28,7 @@ export type Profile = {
 };
 
 export type PersistedProfile = {
-  profileId: Id | null;
+  profileId: string | null;
   userId: Id | null;
   type: ProfileType | null;
   firstName: string;

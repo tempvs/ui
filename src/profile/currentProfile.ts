@@ -74,16 +74,22 @@ export function buildOwnedProfileOptions(userProfile: Profile | null, clubProfil
 
 export function resolveCurrentProfileOption(options: CurrentProfileOption[]) {
   const storedValue = getStoredCurrentProfileValue();
-  return options.find(option => option.value === storedValue) || options[0] || null;
+  const selected = options.find(option => option.value === storedValue);
+  if (selected) return selected;
+  setStoredCurrentProfileValue(DEFAULT_CURRENT_PROFILE_VALUE);
+  return options[0] || null;
 }
 
 export function resolveCurrentOwnedProfileId(profiles: Profile[]) {
   const storedValue = getStoredCurrentProfileValue();
   if (storedValue === DEFAULT_CURRENT_PROFILE_VALUE) {
     const userProfile = profiles.find(profile => profile.type === 'USER');
-    return userProfile?.id != null ? Number(userProfile.id) : null;
+    return userProfile?.id != null ? String(userProfile.id) : null;
   }
 
   const matchedProfile = profiles.find(profile => toProfileValue(profile.id) === storedValue);
-  return matchedProfile?.id != null ? Number(matchedProfile.id) : null;
+  if (matchedProfile?.id != null) return String(matchedProfile.id);
+  setStoredCurrentProfileValue(DEFAULT_CURRENT_PROFILE_VALUE);
+  const userProfile = profiles.find(profile => profile.type === 'USER');
+  return userProfile?.id != null ? String(userProfile.id) : null;
 }

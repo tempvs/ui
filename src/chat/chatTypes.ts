@@ -1,12 +1,12 @@
 export type ChatParticipant = {
-  profileId: number;
+  profileId: string;
   name: string;
   type: string;
 };
 
 export type ChatMessage = {
   id: string;
-  senderProfileId: number;
+  senderProfileId: string;
   senderName: string;
   text: string;
   createdAt: string;
@@ -35,14 +35,13 @@ export type ChatConversationDetails = ChatConversationSummary & {
 };
 
 export type CreateChatConversationPayload = {
-  senderProfileId: number;
-  participantProfileIds: number[];
+  senderProfileId: string;
+  participantProfileIds: string[];
   title?: string | null;
   initialMessage?: string | null;
 };
 
 export type SendChatMessagePayload = {
-  senderProfileId: number;
+  senderProfileId: string;
   text: string;
 };
-

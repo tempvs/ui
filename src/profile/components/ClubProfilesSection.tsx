@@ -6,7 +6,7 @@ import Spinner from '../../component/Spinner';
 import { MessageFormatter } from '../profileTypes';
 
 type ClubProfile = {
-  id: string | number;
+  id: string;
   firstName?: string | null;
   lastName?: string | null;
   nickName?: string | null;

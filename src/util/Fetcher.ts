@@ -27,7 +27,8 @@ export const doFetch = (
   url: string,
   method: string,
   event: FetchFormEvent,
-  actions: FetchActions = {}
+  actions: FetchActions = {},
+  headers: HeadersInit = {}
 ): void => {
   const defaultAction = () => alert('Something went wrong!'); // TODO: add i18n
 
@@ -64,6 +65,7 @@ export const doFetch = (
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...headers,
     },
     body: buildPayload(event),
   }).then(responseHandler);

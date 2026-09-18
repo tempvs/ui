@@ -32,7 +32,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
   mock(api.getClub).mockResolvedValue(club);
-  mock(api.getParticipants).mockResolvedValue({ content: [{ id: 5, firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
+  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
   mock(api.getJoinRequests).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getJoinOptions).mockResolvedValue({ content: [{ club, status: null }], hasMore: false });
@@ -50,19 +50,19 @@ test('visitors see participants linked to profiles and no management controls', 
 
 test('profile owners can leave from the scrollable club participant list', async () => {
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 42, oauthProfile: null }));
-  mock(api.getParticipants).mockResolvedValue({ content: [{ id: 5, userId: 42, firstName: 'Alex', lastName: 'Archer' }], hasMore: false });
+  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', userId: 42, firstName: 'Alex', lastName: 'Archer' }], hasMore: false });
   mock(api.detachProfile).mockResolvedValue(undefined);
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   const leave = await screen.findByRole('button', { name: 'Leave club' });
   expect(screen.getByRole('region', { name: 'Participants' })).toHaveClass('club-scroll-list');
   fireEvent.click(leave);
-  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith('1', 5));
+  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith('1', '5'));
 });
 
 test('scrolling participants appends the next page without pagination buttons', async () => {
   mock(api.getParticipants)
-    .mockResolvedValueOnce({ content: [{ id: 5, firstName: 'Alex', lastName: 'Archer' }], hasMore: true, nextToken: 'participants-2' })
-    .mockResolvedValueOnce({ content: [{ id: 6, firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
+    .mockResolvedValueOnce({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer' }], hasMore: true, nextToken: 'participants-2' })
+    .mockResolvedValueOnce({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   await screen.findByRole('link', { name: 'Alex Archer' });
   const region = screen.getByRole('region', { name: 'Participants' });
@@ -151,7 +151,7 @@ test('owners with existing memberships still have a join button', async () => {
 
 test.each(['accept', 'reject'] as const)('club admins can %s a pending request', async decision => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
-  const request: api.JoinRequest = { id: 9, clubId: 1, profileId: 6, status: 'PENDING', requestedDate: '', profile: { id: 6, firstName: 'Robin', lastName: 'Hood' } };
+  const request: api.JoinRequest = { id: 9, clubId: 1, profileId: '6', status: 'PENDING', requestedDate: '', profile: { id: '6', firstName: 'Robin', lastName: 'Hood' } };
   mock(api.getJoinRequests).mockResolvedValueOnce({ content: [request], hasMore: false })
     .mockResolvedValue({ content: [], hasMore: false });
   mock(api.decideJoinRequest).mockResolvedValue({ ...request, status: decision === 'accept' ? 'ACCEPTED' : 'REJECTED' });

@@ -263,7 +263,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   refreshFollowState() {
     const targetProfileId = this.state.profileId;
     const currentProfileId = this.state.currentProfileId;
-    const currentProfile = this.state.currentOwnedProfiles.find(profile => Number(profile.id) === Number(currentProfileId)) || null;
+    const currentProfile = this.state.currentOwnedProfiles.find(profile => String(profile.id) === String(currentProfileId)) || null;
 
     if (!targetProfileId || !currentProfileId || !currentProfile || currentProfileId === targetProfileId || currentProfile.userId === this.state.userId) {
       this.setState({ followStateLoaded: true, isFollowingCurrentProfile: false });
@@ -496,6 +496,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     createUserProfile(event, {
       200: profile => this.renderProfile(profile as Profile),
+      201: profile => this.renderProfile(profile as Profile),
       400: error => this.setState({
         message: this.extractCreateErrorMessage(error, this.t('profile.create.invalid', 'Unable to create profile. Check the required fields.')),
         messageVariant: 'error',
@@ -521,6 +522,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     createClubProfile(event, {
       200: profile => this.renderProfile(profile as Profile),
+      201: profile => this.renderProfile(profile as Profile),
       400: () => this.setState({ clubProfileCreateError: true }),
       401: () => this.setState({ clubProfileCreateError: true }),
       409: () => this.setState({ clubProfileCreateError: true }),
@@ -970,7 +972,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     });
     const showEmptyClubProfiles = this.state.type === 'USER' && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
     const profileInitials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
-    const currentProfile = this.state.currentOwnedProfiles.find(profile => Number(profile.id) === Number(this.state.currentProfileId)) || null;
+    const currentProfile = this.state.currentOwnedProfiles.find(profile => String(profile.id) === String(this.state.currentProfileId)) || null;
     const canFollow = Boolean(
       this.state.currentProfileId &&
       this.state.profileId &&

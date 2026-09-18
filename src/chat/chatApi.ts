@@ -54,15 +54,14 @@ export function newIdempotencyKey() {
   return crypto.randomUUID();
 }
 
-export function activeProfileNotFoundId(error: unknown): number | null {
+export function activeProfileNotFoundId(error: unknown): string | null {
   if (!(error instanceof Error)) return null;
-  const match = /^Active profile (\d+) not found$/.exec(error.message);
+  const match = /^Active profile ([0-9a-f-]+) not found$/i.exec(error.message);
   if (!match) return null;
-  const profileId = Number(match[1]);
-  return Number.isSafeInteger(profileId) && profileId > 0 ? profileId : null;
+  return match[1];
 }
 
-export function listConversations(profileId: number, nextToken?: string, limit = 20) {
+export function listConversations(profileId: string, nextToken?: string, limit = 20) {
   const query = new URLSearchParams({ profileId: String(profileId), limit: String(limit) });
   if (nextToken) query.set('nextToken', nextToken);
   return requestJson(`/api/chat/conversations?${query}`, pageValue);
@@ -70,7 +69,7 @@ export function listConversations(profileId: number, nextToken?: string, limit =
 
 export function getConversation(
   conversationId: string,
-  profileId: number,
+  profileId: string,
   nextToken?: string,
   limit = 40,
 ) {
@@ -154,7 +153,7 @@ function conversationSummaryValue(value: unknown): ChatConversationSummary {
 
 function participantValue(value: unknown): ChatParticipant {
   const object = requiredObject(value);
-  if (!positiveInteger(object.profileId) || typeof object.name !== 'string' || typeof object.type !== 'string') {
+  if (!profileIdValue(object.profileId) || typeof object.name !== 'string' || typeof object.type !== 'string') {
     throw new Error();
   }
   return { profileId: object.profileId, name: object.name, type: object.type };
@@ -164,7 +163,7 @@ function messageValue(value: unknown): ChatMessage {
   const object = requiredObject(value);
   if (
     typeof object.id !== 'string' ||
-    !positiveInteger(object.senderProfileId) ||
+    !profileIdValue(object.senderProfileId) ||
     typeof object.senderName !== 'string' ||
     typeof object.text !== 'string' ||
     typeof object.createdAt !== 'string'
@@ -194,6 +193,6 @@ function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-function positiveInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+function profileIdValue(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
 }

@@ -87,8 +87,8 @@ function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number 
   const seenUserIds = new Set<number>();
 
   return profiles.filter(profile => {
-    const profileId = Number(profile.id);
-    if (!Number.isFinite(profileId)) {
+    const profileId = String(profile.id);
+    if (!profileId) {
       return false;
     }
 
@@ -111,7 +111,7 @@ function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number 
 
 function conversationIncludesProfile(
   conversation: Pick<ChatConversationSummary, 'participants'> | Pick<ChatConversationDetails, 'participants'>,
-  profileId: number
+  profileId: string
 ) {
   return conversation.participants.some(participant => participant.profileId === profileId);
 }
@@ -122,9 +122,9 @@ export default function ChatPage() {
   const { conversationId } = useParams();
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [currentProfileId, setCurrentProfileId] = useState<number | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [senderProfiles, setSenderProfiles] = useState<Profile[]>([]);
-  const [selectedSenderId, setSelectedSenderId] = useState<number | null>(null);
+  const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
   const [conversationsNextToken, setConversationsNextToken] = useState<string | undefined>();
   const [hasMoreConversations, setHasMoreConversations] = useState(false);
@@ -185,10 +185,10 @@ export default function ChatPage() {
         const currentProfileId = resolveCurrentOwnedProfileId(profiles);
         setCurrentProfileId(currentProfileId);
         setSelectedSenderId(prev => {
-          if (prev && profiles.some(profile => Number(profile.id) === prev)) {
+          if (prev && profiles.some(profile => String(profile.id) === prev)) {
             return prev;
           }
-          if (currentProfileId != null && profiles.some(profile => Number(profile.id) === currentProfileId)) {
+          if (currentProfileId != null && profiles.some(profile => String(profile.id) === currentProfileId)) {
             return currentProfileId;
           }
           return null;
@@ -299,7 +299,7 @@ export default function ChatPage() {
             return resolvedCurrentProfileId;
           }
           const ownedParticipant = data.participants.find(participant =>
-            senderProfiles.some(profile => Number(profile.id) === participant.profileId)
+            senderProfiles.some(profile => String(profile.id) === participant.profileId)
           );
           return ownedParticipant ? ownedParticipant.profileId : prev;
         });
@@ -356,7 +356,7 @@ export default function ChatPage() {
           );
 
           const filteredResults = deduplicateProfilesByUser(results, currentUserId)
-            .filter(profile => Number(profile.id) !== selectedSenderId)
+            .filter(profile => String(profile.id) !== selectedSenderId)
             .filter(profile => {
               const userId = profile.userId != null ? Number(profile.userId) : null;
               return userId == null || !selectedUserIds.has(userId);
@@ -475,7 +475,7 @@ export default function ChatPage() {
     }
 
     const participantIds = selectedParticipants
-      .map(profile => Number(profile.id))
+      .map(profile => String(profile.id))
       .filter(profileId => profileId !== currentProfileId);
 
     if (!participantIds.length) {
@@ -519,10 +519,10 @@ export default function ChatPage() {
       }
       if (missingProfileId != null) {
         setSelectedParticipants(current => current.filter(
-          profile => Number(profile.id) !== missingProfileId
+          profile => String(profile.id) !== missingProfileId
         ));
         setParticipantResults(current => current.filter(
-          profile => Number(profile.id) !== missingProfileId
+          profile => String(profile.id) !== missingProfileId
         ));
         setFeedback(intl.formatMessage({
           id: 'chat.profile.inactive',
@@ -580,7 +580,7 @@ export default function ChatPage() {
 
   function addParticipant(profile: Profile) {
     setSelectedParticipants(current => {
-      if (current.some(entry => Number(entry.id) === Number(profile.id))) {
+      if (current.some(entry => String(entry.id) === String(profile.id))) {
         return current;
       }
       return [...current, profile];
@@ -589,8 +589,8 @@ export default function ChatPage() {
     setParticipantResults([]);
   }
 
-  function removeParticipant(profileId: number) {
-    setSelectedParticipants(current => current.filter(profile => Number(profile.id) !== profileId));
+  function removeParticipant(profileId: string) {
+    setSelectedParticipants(current => current.filter(profile => String(profile.id) !== profileId));
   }
 
   function resetCreateConversationState() {
@@ -629,7 +629,7 @@ export default function ChatPage() {
     selectedConversation.participants.some(participant => participant.profileId === selectedSenderId)
   );
   const noCurrentProfile = !loadingProfiles && currentProfileId == null;
-  const currentProfile = senderProfiles.find(profile => Number(profile.id) === currentProfileId) || null;
+  const currentProfile = senderProfiles.find(profile => String(profile.id) === currentProfileId) || null;
   const currentProfileName = buildProfileLabel(currentProfile);
   const canCreateConversation = !loadingProfiles && Boolean(initialMessage.trim());
 
@@ -874,7 +874,7 @@ export default function ChatPage() {
                     key={profile.id}
                     type="button"
                     className="chat-chip"
-                    onClick={() => removeParticipant(Number(profile.id))}
+                    onClick={() => removeParticipant(String(profile.id))}
                   >
                     {buildProfileLabel(profile)} <span>x</span>
                   </button>
