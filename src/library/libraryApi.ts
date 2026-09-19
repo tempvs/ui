@@ -17,7 +17,8 @@ export type LibraryWelcome = {
 };
 
 export type LibrarySource = {
-  id: string | number;
+  id: string;
+  version: number;
   name?: string | null;
   description?: string | null;
   period?: string | null;
@@ -26,18 +27,18 @@ export type LibrarySource = {
 };
 
 export type LibrarySourceImage = {
-  id: string | number;
+  id: string;
   url?: string | null;
   thumbnailUrl?: string | null;
   resourceType?: string | null;
-  resourceId?: string | number | null;
+  resourceId?: string | null;
   fileName?: string | null;
   description?: string | null;
 };
 
 export type LibraryRoleRequest = {
-  userId: string | number;
-  profileId: string | number;
+  userId: string;
+  profileId: string | null;
   userName?: string | null;
   role: string;
   roleLabel?: string | null;
@@ -45,6 +46,17 @@ export type LibraryRoleRequest = {
 
 type LibraryAdminRoleRequests = {
   roleRequests?: LibraryRoleRequest[] | null;
+  nextToken?: string | null;
+};
+
+type LibrarySourcePage = {
+  content: LibrarySource[];
+  nextToken: string | null;
+};
+
+type ImageUploadIntent = {
+  image: LibrarySourceImage;
+  upload: { method: 'PUT'; url: string; headers: Record<string, string> };
 };
 
 type ApiErrorPayload = {
@@ -60,6 +72,7 @@ type SourceSearchParams = {
   types?: string[];
   page?: number;
   size?: number;
+  nextToken?: string;
 };
 
 type SourcePayload = Record<string, unknown>;
@@ -127,9 +140,13 @@ export function updateRoleRequest(role: string, method: string) {
   return fetchJson<LibraryWelcome, LibraryUserInfoPayload>(`/api/library/library/role/${role}`, { method });
 }
 
-export function findSources({ query, period, classifications, types, page = 0, size }: SourceSearchParams) {
+export async function findSources({ query, period, classifications, types, page = 0, size = 40, nextToken }: SourceSearchParams) {
+  if (page !== 0) throw new Error('Offset Library pages are no longer supported');
   const encodedQuery = buildSearchQuery(query, period, classifications, types);
-  return fetchJson<LibrarySource[], LibraryUserInfoPayload>(`/api/library/source/find?page=${page}&size=${size}&q=${encodedQuery}`);
+  const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
+  if (nextToken) params.set('nextToken', nextToken);
+  const result = await fetchJson<LibrarySourcePage, LibraryUserInfoPayload>(`/api/library/source/find?${params}`);
+  return { ...result, data: result.data?.content || [], nextToken: result.data?.nextToken || null };
 }
 
 export async function createSource(payload: SourcePayload) {
@@ -137,6 +154,7 @@ export async function createSource(payload: SourcePayload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Idempotency-Key': newIdempotencyKey(),
     },
     body: JSON.stringify(payload),
   });
@@ -144,19 +162,21 @@ export async function createSource(payload: SourcePayload) {
   return parseResponse<LibrarySource | ApiErrorPayload>(response);
 }
 
-export function getAdminRoleRequests({ page = 0, size }: { page?: number; size?: number }) {
-  return fetchJson<LibraryAdminRoleRequests>(`/api/library/library/admin?page=${page}&size=${size}`);
+export function getAdminRoleRequests({ size = 40, nextToken }: { size?: number; nextToken?: string }) {
+  const params = new URLSearchParams({ limit: String(size) });
+  if (nextToken) params.set('nextToken', nextToken);
+  return fetchJson<LibraryAdminRoleRequests>(`/api/library/library/admin?${params}`);
 }
 
-export function updateAdminRoleRequest(role: string, userId: string | number, method: string) {
-  return fetchJson<LibraryAdminRoleRequests>(`/api/library/library/${role}/${userId}`, { method });
+export function updateAdminRoleRequest(role: string, userId: string, method: string) {
+  return fetchJson<LibraryAdminRoleRequests | { operationId: string; status: string }>(`/api/library/library/${role}/${userId}`, { method });
 }
 
-export function getSource(sourceId: string | number | undefined) {
+export function getSource(sourceId: string | undefined) {
   return fetchJson<LibrarySource, LibraryUserInfoPayload>(`/api/library/source/${sourceId}`);
 }
 
-export function getSourceImages(sourceId: string | number | undefined) {
+export function getSourceImages(sourceId: string | undefined) {
   return fetchJson<{ content: LibrarySourceImage[] }>(
     `/api/images/source/${sourceId}?limit=100`,
   ).then(result => ({
@@ -165,11 +185,12 @@ export function getSourceImages(sourceId: string | number | undefined) {
   }) as ApiResponse<LibrarySourceImage[]>);
 }
 
-export async function patchSourceField(sourceId: string | number | undefined, field: string, value: unknown) {
+export async function patchSourceField(sourceId: string | undefined, field: string, value: unknown, version: number) {
   const response = await fetch(`/api/library/source/${sourceId}/${field}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
+      'If-Match': `"${version}"`,
     },
     body: JSON.stringify({ [field]: value }),
   });
@@ -177,42 +198,54 @@ export async function patchSourceField(sourceId: string | number | undefined, fi
   return parseResponse<LibrarySource | ApiErrorPayload>(response);
 }
 
-export async function removeSource(sourceId: string | number | undefined) {
-  const response = await fetch(`/api/library/source/${sourceId}`, { method: 'DELETE' });
+export async function removeSource(sourceId: string | undefined, version: number) {
+  const response = await fetch(`/api/library/source/${sourceId}`, { method: 'DELETE', headers: { 'If-Match': `"${version}"` } });
   return parseResponse<ApiErrorPayload | string>(response);
 }
 
-export async function uploadSourceImage(sourceId: string | number | undefined, file: File, description?: string | null) {
-  const body = imageForm(file, description);
-  const response = await fetch(`/api/library/source/${sourceId}/images`, {
-    method: 'POST',
-    body,
-  });
-
-  return parseResponse<LibrarySourceImage | ApiErrorPayload>(response);
+export async function uploadSourceImage(sourceId: string | undefined, file: File, description?: string | null) {
+  return sourceImageIntent(`/api/library/source/${sourceId}/images`, 'POST', file, description);
 }
 
 export async function replaceSourceImage(
-  sourceId: string | number | undefined,
-  imageId: string | number,
+  sourceId: string | undefined,
+  imageId: string,
   file: File,
   description?: string | null,
 ) {
-  const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}`, {
-    method: 'PATCH',
-    body: imageForm(file, description),
+  return sourceImageIntent(`/api/library/source/${sourceId}/images/${imageId}`, 'PATCH', file, description);
+}
+
+async function sourceImageIntent(url: string, method: 'POST' | 'PATCH', file: File, description?: string | null): Promise<ApiResponse<LibrarySourceImage | ApiErrorPayload>> {
+  const result = await fetchJson<ImageUploadIntent | ApiErrorPayload>(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': newIdempotencyKey() },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      byteSize: file.size,
+      ...(description !== undefined ? { description } : {}),
+    }),
   });
-  return parseResponse<LibrarySourceImage | ApiErrorPayload>(response);
+  if (!result.ok) return { ...result, data: result.data as ApiErrorPayload | null };
+  const intent = result.data as ImageUploadIntent | null;
+  if (!intent?.upload || intent.upload.method !== 'PUT' || !intent.upload.url || !intent.upload.headers || !intent.image) {
+    throw new Error('Library returned an invalid image upload intent');
+  }
+  const upload = await fetch(intent.upload.url, {
+    method: 'PUT',
+    headers: intent.upload.headers,
+    body: file,
+  });
+  if (!upload.ok) throw new Error(`Image upload failed with status ${upload.status}`);
+  return { ...result, data: intent.image };
 }
 
-function imageForm(file: File, description?: string | null) {
-  const body = new FormData();
-  body.append('file', file);
-  if (description !== undefined && description !== null) body.append('description', description);
-  return body;
+function newIdempotencyKey(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `library-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export async function deleteSourceImage(sourceId: string | number | undefined, imageId: string | number) {
+export async function deleteSourceImage(sourceId: string | undefined, imageId: string) {
   const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}`, {
     method: 'DELETE',
   });
@@ -221,8 +254,8 @@ export async function deleteSourceImage(sourceId: string | number | undefined, i
 }
 
 export async function updateSourceImageDescription(
-  sourceId: string | number | undefined,
-  imageId: string | number,
+  sourceId: string | undefined,
+  imageId: string,
   description: string
 ) {
   const response = await fetch(`/api/library/source/${sourceId}/images/${imageId}/description`, {

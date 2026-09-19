@@ -127,7 +127,7 @@ export type StashItem = {
   description?: string | null;
   classification?: string | null;
   period?: string | null;
-  sources?: Id[] | null;
+  sources?: string[] | null;
   itemGroup: {
     id: string;
     name?: string | null;
@@ -147,7 +147,7 @@ export type Stash = {
 };
 
 export type LibrarySourceSummary = {
-  id: Id;
+  id: string;
   name?: string | null;
   description?: string | null;
   type?: string | null;
@@ -174,6 +174,7 @@ export type SourceSearchState = {
   loading?: boolean;
   error?: string | null;
   results?: LibrarySourceSummary[];
+  nextToken?: string | null;
 };
 
 export type StashItemImage = GalleryImage;

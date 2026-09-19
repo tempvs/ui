@@ -31,6 +31,8 @@ export default function LibraryPeriodPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [sources, setSources] = useState<LibrarySource[]>([]);
+  const [nextToken, setNextToken] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sourcePreviewImages, setSourcePreviewImages] = useState<Record<string | number, LibrarySourceImage | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -65,6 +67,7 @@ export default function LibraryPeriodPage() {
 
       const nextSources = Array.isArray(result.data) ? result.data : [];
       setSources(nextSources);
+      setNextToken(result.nextToken);
       setSourcePreviewImages({});
       setUserInfo(result.userInfo);
 
@@ -86,6 +89,38 @@ export default function LibraryPeriodPage() {
       setLoading(false);
     }
   }, [periodCode, query, selectedClassifications, selectedTypes]);
+
+  const loadMoreSources = async () => {
+    if (!nextToken || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await findSources({
+        query,
+        period: periodCode,
+        classifications: selectedClassifications,
+        types: selectedTypes,
+        size: PAGE_SIZE,
+        nextToken,
+      });
+      if (!result.ok) throw new Error('Unable to load more sources.');
+      const nextSources = result.data || [];
+      setSources(current => [...current, ...nextSources]);
+      setNextToken(result.nextToken);
+      const previewEntries = await Promise.all(nextSources.map(async source => {
+        try {
+          const imageResult = await getSourceImages(source.id);
+          return [source.id, imageResult.ok ? imageResult.data?.[0] || null : null] as const;
+        } catch {
+          return [source.id, null] as const;
+        }
+      }));
+      setSourcePreviewImages(current => ({ ...current, ...Object.fromEntries(previewEntries) }));
+    } catch (fetchError) {
+      setError(getErrorMessage(fetchError));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -241,6 +276,13 @@ export default function LibraryPeriodPage() {
                   </Col>
                 ))}
               </Row>
+              {nextToken && (
+                <div className="d-flex justify-content-center mt-4">
+                  <Button variant="outline-dark" disabled={loadingMore} onClick={loadMoreSources}>
+                    {loadingMore ? 'Loading...' : 'Load more sources'}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </Col>

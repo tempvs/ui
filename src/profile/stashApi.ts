@@ -42,6 +42,7 @@ type SourceSearchParams = {
   types?: string[];
   page?: number;
   size?: number;
+  nextToken?: string;
 };
 
 function encodeLibraryQuery(payload: JsonRecord) {
@@ -249,14 +250,18 @@ export function deleteStashGroupImage(groupId: Id) {
   });
 }
 
-export function searchLibrarySources({ query, period, classifications, types, page = 0, size = 20 }: SourceSearchParams) {
-  const encodedQuery = encodeURIComponent(encodeLibraryQuery({
+export function searchLibrarySources({ query, period, classifications, types, page = 0, size = 20, nextToken }: SourceSearchParams) {
+  if (page !== 0) throw new Error('Offset Library pages are no longer supported');
+  const encodedQuery = encodeLibraryQuery({
     query,
     period,
     classifications,
     types,
-  }));
-  return requestJson<LibrarySourceSummary[]>(`/api/library/source/find?page=${page}&size=${size}&q=${encodedQuery}`);
+  });
+  const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
+  if (nextToken) params.set('nextToken', nextToken);
+  return requestJson<{ content: LibrarySourceSummary[]; nextToken: string | null }>(`/api/library/source/find?${params}`)
+    .then(result => ({ content: result.content || [], nextToken: result.nextToken || null }));
 }
 
 export function getLibrarySourcesByIds(ids: Id[]) {
@@ -297,10 +302,10 @@ export function deleteStashItemMarker(groupId: Id, markerId: Id) {
   });
 }
 
-export function linkStashItemSource(itemId: Id, sourceId: Id) {
+export function linkStashItemSource(itemId: Id, sourceId: string) {
   return requestJson<StashItem>(`/api/stash/item/${itemId}/source/${sourceId}`, { method: 'POST' });
 }
 
-export function unlinkStashItemSource(itemId: Id, sourceId: Id) {
+export function unlinkStashItemSource(itemId: Id, sourceId: string) {
   return requestJson<StashItem>(`/api/stash/item/${itemId}/source/${sourceId}`, { method: 'DELETE' });
 }

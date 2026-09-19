@@ -706,8 +706,10 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     handleUpdateItemImageDescription(itemId, imageId);
   }
 
-  async function handleSearchSources(item: StashItem) {
+  async function handleSearchSources(item: StashItem, append = false) {
     const query = sourceSearch[item.id]?.query || '';
+    const nextToken = append ? sourceSearch[item.id]?.nextToken : undefined;
+    if (append && !nextToken) return;
     setSourceSearch(prevState => ({
       ...prevState,
       [item.id]: {
@@ -718,18 +720,20 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }));
 
     try {
-      const results = await searchLibrarySources({
+      const page = await searchLibrarySources({
         query,
         period: item.period,
         classifications: item.classification ? [item.classification] : [],
         types: ALL_SOURCE_TYPES,
+        nextToken: nextToken || undefined,
       });
       setSourceSearch(prevState => ({
         ...prevState,
         [item.id]: {
           ...(prevState[item.id] || {}),
           loading: false,
-          results: Array.isArray(results) ? results : [],
+          results: append ? [...(prevState[item.id]?.results || []), ...page.content] : page.content,
+          nextToken: page.nextToken,
           error: null,
         },
       }));
@@ -739,14 +743,15 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
         [item.id]: {
           ...(prevState[item.id] || {}),
           loading: false,
-          results: [],
+          results: append ? prevState[item.id]?.results || [] : [],
+          nextToken: append ? prevState[item.id]?.nextToken : null,
           error: t('profile.stash.sourceSearchFailed', 'Unable to search library sources.'),
         },
       }));
     }
   }
 
-  async function handleLinkSource(item: StashItem, sourceId: Id) {
+  async function handleLinkSource(item: StashItem, sourceId: string) {
     try {
       await linkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
@@ -759,7 +764,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
     }
   }
 
-  async function handleUnlinkSource(item: StashItem, sourceId: Id) {
+  async function handleUnlinkSource(item: StashItem, sourceId: string) {
     try {
       await unlinkStashItemSource(item.id, sourceId);
       await loadItems(item.itemGroup.id);
@@ -1031,6 +1036,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                                       },
                                     }))}
                                     onSearch={() => handleSearchSources(item)}
+                                    onLoadMore={() => handleSearchSources(item, true)}
                                     onLinkSource={sourceId => handleLinkSource(item, sourceId)}
                                     onUnlinkSource={sourceId => handleUnlinkSource(item, sourceId)}
                                   />

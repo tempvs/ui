@@ -404,7 +404,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     navigate(`/stash/${profile.alias || profile.id}${item.itemGroup?.id ? `?group=${item.itemGroup.id}` : ''}`);
   }
 
-  async function handleUnlinkSource(sourceId: Id) {
+  async function handleUnlinkSource(sourceId: string) {
     if (!item) {
       return;
     }
@@ -412,7 +412,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     await refreshItemData();
   }
 
-  async function handleLinkSource(sourceId: Id) {
+  async function handleLinkSource(sourceId: string) {
     if (!item) {
       return;
     }
@@ -421,21 +421,34 @@ function StashItemPage({ intl }: StashItemPageProps) {
     await refreshItemData();
   }
 
-  const handleSearchSources = useCallback(async () => {
+  const handleSearchSources = useCallback(async (nextToken?: string) => {
     if (!item) {
       return;
     }
     setSourceSearch(previousState => ({ ...previousState, loading: true, error: null }));
     try {
-      const results = await searchLibrarySources({
+      const page = await searchLibrarySources({
         query: sourceSearch.query || '',
         period: item.period,
         classifications: item.classification ? [item.classification] : [],
         types: ALL_SOURCE_TYPES,
+        nextToken,
       });
-      setSourceSearch(previousState => ({ ...previousState, loading: false, results, error: null }));
+      setSourceSearch(previousState => ({
+        ...previousState,
+        loading: false,
+        results: nextToken ? [...(previousState.results || []), ...page.content] : page.content,
+        nextToken: page.nextToken,
+        error: null,
+      }));
     } catch (error) {
-      setSourceSearch(previousState => ({ ...previousState, loading: false, results: [], error: sourceSearchFailedMessage }));
+      setSourceSearch(previousState => ({
+        ...previousState,
+        loading: false,
+        results: nextToken ? previousState.results || [] : [],
+        nextToken: nextToken || null,
+        error: sourceSearchFailedMessage,
+      }));
     }
   }, [item, sourceSearch.query, sourceSearchFailedMessage]);
 
@@ -701,7 +714,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
                   ))}
                 </div>
               )}
-              {!sourceSearch.loading && !sourceSearch.error && sourceSearchVisible && availableSourceResults.length === 0 && (
+              {sourceSearch.nextToken && (
+                <Button size="sm" variant="outline-secondary" disabled={sourceSearch.loading} onClick={() => { void handleSearchSources(sourceSearch.nextToken || undefined); }} className="mt-2">
+                  {t('profile.action.loadMore', 'Load more')}
+                </Button>
+              )}
+              {!sourceSearch.loading && !sourceSearch.error && sourceSearchVisible && availableSourceResults.length === 0 && !sourceSearch.nextToken && (
                 <div className="small text-muted">
                   {t('profile.stash.sourceSearchEmpty', 'No matching sources available to link.')}
                 </div>

@@ -23,8 +23,9 @@ type LinkedSourcesPanelProps = {
   onToggleSearch: () => void;
   onQueryChange: (value: string) => void;
   onSearch: () => void;
-  onLinkSource: (sourceId: Id) => void;
-  onUnlinkSource: (sourceId: Id) => void;
+  onLoadMore: () => void;
+  onLinkSource: (sourceId: string) => void;
+  onUnlinkSource: (sourceId: string) => void;
 };
 
 export default function LinkedSourcesPanel({
@@ -38,6 +39,7 @@ export default function LinkedSourcesPanel({
   onToggleSearch,
   onQueryChange,
   onSearch,
+  onLoadMore,
   onLinkSource,
   onUnlinkSource,
 }: LinkedSourcesPanelProps) {
@@ -132,6 +134,11 @@ export default function LinkedSourcesPanel({
                 </div>
               ))}
             </div>
+          )}
+          {sourceState.nextToken && (
+            <Button size="sm" variant="outline-secondary" disabled={sourceState.loading} onClick={onLoadMore} className="mt-2">
+              {t('profile.action.loadMore', 'Load more')}
+            </Button>
           )}
         </div>
       )}

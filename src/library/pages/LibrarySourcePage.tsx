@@ -123,13 +123,14 @@ export default function LibrarySourcePage() {
         ...prevState,
         [field]: 'saving',
       }));
-      const result = await patchSourceField(sourceId, field, value);
+      if (!source) throw new Error('Source version is unavailable.');
+      const result = await patchSourceField(sourceId, field, value, source.version);
 
       if (!result.ok) {
         throw new Error(`Unable to update source ${field}.`);
       }
 
-      setSource(prevState => prevState ? { ...prevState, [field]: value } : prevState);
+      setSource(result.data && 'version' in result.data ? result.data as LibrarySource : null);
       setFieldStatuses(prevState => ({
         ...prevState,
         [field]: 'saved',
@@ -188,7 +189,7 @@ export default function LibrarySourcePage() {
     }
 
     try {
-      const result = await removeSource(sourceId);
+      const result = await removeSource(sourceId, source.version);
       if (!result.ok) {
         throw new Error(
           (typeof result.data === 'string' && result.data)
@@ -506,12 +507,15 @@ export default function LibrarySourcePage() {
                       emptyText="No images uploaded for this source yet."
                       previewSize="compact"
                       editable={canEditSource(userInfo)}
-                      onDeleteImage={handleDeleteImage}
-                      onReplaceImage={handleOpenReplaceImagePicker}
+                      onDeleteImage={imageId => handleDeleteImage(String(imageId))}
+                      onReplaceImage={image => {
+                        const sourceImage = images.find(entry => entry.id === String(image.id));
+                        if (sourceImage) handleOpenReplaceImagePicker(sourceImage);
+                      }}
                       imageDrafts={imageDrafts}
                       imageStatuses={imageStatuses}
-                      onDescriptionChange={handleImageDescriptionChange}
-                      onDescriptionBlur={handleImageDescriptionBlur}
+                      onDescriptionChange={(imageId, value) => handleImageDescriptionChange(String(imageId), value)}
+                      onDescriptionBlur={imageId => handleImageDescriptionBlur(String(imageId))}
                     />
                   </div>
                 </Col>
