@@ -14,12 +14,12 @@ type IconProps = {
 const GoogleIcon = FaGoogle as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType;
 const RegisterIcon = FaUserPlus as React.ComponentType<IconProps>;
-
 type LoginRegisterButtonProps = {
   logIn: () => void;
+  googleOnlyAuth?: boolean;
 };
 
-export default function LoginRegisterButton({ logIn }: LoginRegisterButtonProps) {
+export default function LoginRegisterButton({ logIn, googleOnlyAuth = process.env.REACT_APP_GOOGLE_ONLY_AUTH === 'true' }: LoginRegisterButtonProps) {
   const [show, setShow] = useState(false);
   const close = () => setShow(false);
   const handleLogIn = () => {
@@ -47,7 +47,7 @@ export default function LoginRegisterButton({ logIn }: LoginRegisterButtonProps)
           </div>
         </Modal.Header>
         <Modal.Body className="auth-modal-body">
-          <Tabs defaultActiveKey="login" className="auth-tabs">
+          {!googleOnlyAuth && <Tabs defaultActiveKey="login" className="auth-tabs">
             <Tab
               eventKey="login"
               title={(
@@ -70,12 +70,12 @@ export default function LoginRegisterButton({ logIn }: LoginRegisterButtonProps)
             >
               <RegistrationForm />
             </Tab>
-          </Tabs>
-          <div className="auth-divider">
+          </Tabs>}
+          {!googleOnlyAuth && <div className="auth-divider">
             <span>
               <FormattedMessage id="auth.divider" defaultMessage="or continue with" />
             </span>
-          </div>
+          </div>}
           <div className="d-grid auth-oauth-grid">
             <Button
               as="a"

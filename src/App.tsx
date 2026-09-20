@@ -15,11 +15,14 @@ import ChatPage from './chat/ChatPage';
 import ClubsPage from './club/ClubsPage';
 import ClubPage from './club/ClubPage';
 
-const WARMUP_URLS = [
-  'https://email-service-ova5.onrender.com/',
-  'https://user-service-d4or.onrender.com/',
-  'https://api-gateway-t7bp.onrender.com/',
-];
+const googleOnlyAuth = process.env.REACT_APP_GOOGLE_ONLY_AUTH === 'true';
+const WARMUP_URLS = googleOnlyAuth
+  ? ['https://api-gateway-t7bp.onrender.com/']
+  : [
+      'https://email-service-ova5.onrender.com/',
+      'https://user-service-d4or.onrender.com/',
+      'https://api-gateway-t7bp.onrender.com/',
+    ];
 
 const WARMUP_INTERVAL_MS = 14 * 60 * 1000;
 
@@ -100,7 +103,7 @@ function App() {
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/:id" element={<ClubPageWithParam />} />
           <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
-          <Route path="/user/registration/:verificationId" element={<CompleteRegistrationPage />} />
+          {!googleOnlyAuth && <Route path="/user/registration/:verificationId" element={<CompleteRegistrationPage />} />}
         </Routes>
       </BrowserRouter>
     </div>

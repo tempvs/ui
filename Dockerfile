@@ -1,4 +1,6 @@
 FROM node:24-alpine AS build
+ARG REACT_APP_GOOGLE_ONLY_AUTH=false
+ENV REACT_APP_GOOGLE_ONLY_AUTH=$REACT_APP_GOOGLE_ONLY_AUTH
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
 COPY package.json ./
