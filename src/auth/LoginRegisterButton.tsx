@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { FaGoogle, FaSignInAlt, FaUserPlus } from 'react-icons/fa';
-import { Button, Modal, Tab, Tabs } from 'react-bootstrap';
+import { FaGoogle, FaSignInAlt } from 'react-icons/fa';
+import { Button, Modal } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 
 import HeaderIconPopover from '../component/HeaderIconPopover';
-import LoginForm from './LoginForm';
-import RegistrationForm from './RegistrationForm';
 
 type IconProps = {
   className?: string;
@@ -13,19 +11,9 @@ type IconProps = {
 
 const GoogleIcon = FaGoogle as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType;
-const RegisterIcon = FaUserPlus as React.ComponentType<IconProps>;
-type LoginRegisterButtonProps = {
-  logIn: () => void;
-  googleOnlyAuth?: boolean;
-};
-
-export default function LoginRegisterButton({ logIn, googleOnlyAuth = process.env.REACT_APP_GOOGLE_ONLY_AUTH === 'true' }: LoginRegisterButtonProps) {
+export default function LoginRegisterButton() {
   const [show, setShow] = useState(false);
   const close = () => setShow(false);
-  const handleLogIn = () => {
-    close();
-    logIn();
-  };
 
   return (
     <>
@@ -47,35 +35,6 @@ export default function LoginRegisterButton({ logIn, googleOnlyAuth = process.en
           </div>
         </Modal.Header>
         <Modal.Body className="auth-modal-body">
-          {!googleOnlyAuth && <Tabs defaultActiveKey="login" className="auth-tabs">
-            <Tab
-              eventKey="login"
-              title={(
-                <span className="auth-tab-label">
-                  <SignInIcon />
-                  <FormattedMessage id="login.tab" defaultMessage="Log in" />
-                </span>
-              )}
-            >
-              <LoginForm logIn={handleLogIn} />
-            </Tab>
-            <Tab
-              eventKey="register"
-              title={(
-                <span className="auth-tab-label">
-                  <RegisterIcon />
-                  <FormattedMessage id="register.tab" defaultMessage="Register" />
-                </span>
-              )}
-            >
-              <RegistrationForm />
-            </Tab>
-          </Tabs>}
-          {!googleOnlyAuth && <div className="auth-divider">
-            <span>
-              <FormattedMessage id="auth.divider" defaultMessage="or continue with" />
-            </span>
-          </div>}
           <div className="d-grid auth-oauth-grid">
             <Button
               as="a"
@@ -84,7 +43,7 @@ export default function LoginRegisterButton({ logIn, googleOnlyAuth = process.en
               className="auth-oauth-button"
             >
               <GoogleIcon className="me-2" />
-              <FormattedMessage id="login.google.button" defaultMessage="Authenticate with Gmail" />
+              <FormattedMessage id="login.google.button" defaultMessage="Continue with Google" />
             </Button>
           </div>
         </Modal.Body>

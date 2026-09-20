@@ -53,7 +53,6 @@ class Header extends Component<Record<string, never>, HeaderState> {
       currentProfilePath: '/profile',
       profileOptions: [],
     };
-    this.logIn = this.logIn.bind(this);
     this.logOut = this.logOut.bind(this);
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
     this.handleCurrentProfileChange = this.handleCurrentProfileChange.bind(this);
@@ -63,10 +62,6 @@ class Header extends Component<Record<string, never>, HeaderState> {
     if (this.state.loggedIn) {
       this.loadOAuthProfile();
     }
-  }
-
-  logIn() {
-    this.setState({ loggedIn: true }, this.loadOAuthProfile);
   }
 
   logOut() {
@@ -229,7 +224,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
             <Col sm={1}>
               {this.state.loggedIn
                 ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
-                : <LoginRegisterButton logIn={this.logIn} />}
+                : <LoginRegisterButton />}
             </Col>
           </Row>
         </Container>
