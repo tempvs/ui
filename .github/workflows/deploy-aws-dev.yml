@@ -82,6 +82,10 @@ jobs:
         shell: bash
         run: |
           aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
-          aws s3 sync build/ "s3://$WEB_BUCKET_NAME/" --exclude 'index.html' --exclude 'static/*' --cache-control 'public,max-age=3600' --no-progress
+          for asset in build/*; do
+            if [[ -f "$asset" && "$asset" != 'build/index.html' ]]; then
+              aws s3 cp "$asset" "s3://$WEB_BUCKET_NAME/$(basename "$asset")" --cache-control 'public,max-age=3600' --no-progress
+            fi
+          done
           aws s3 cp build/index.html "s3://$WEB_BUCKET_NAME/index.html" --content-type 'text/html; charset=utf-8' --cache-control 'no-cache,no-store,must-revalidate' --no-progress
           aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*'
