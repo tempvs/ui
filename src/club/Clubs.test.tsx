@@ -21,7 +21,7 @@ jest.mock('./clubApi', () => ({
 jest.mock('../profile/profileApi', () => ({ fetchCurrentUserInfo: jest.fn() }));
 
 const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
-  period: 'HIGH_MIDDLE_AGES', creatorUserId: 10, adminUserIds: [20], canManage: false, canManageAdmins: false };
+  period: 'HIGH_MIDDLE_AGES', creatorUserId: 'user-10', adminUserIds: ['user-20'], canManage: false, canManageAdmins: false };
 const mock = <T extends (...args: any[]) => any>(fn: T) => fn as jest.MockedFunction<T>;
 
 function wrap(child: React.ReactNode, path = '/') {
@@ -49,8 +49,8 @@ test('visitors see participants linked to profiles and no management controls', 
 });
 
 test('profile owners can leave from the scrollable club participant list', async () => {
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 42, oauthProfile: null }));
-  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', userId: 42, firstName: 'Alex', lastName: 'Archer' }], hasMore: false });
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-42', oauthProfile: null }));
+  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', userId: 'user-42', firstName: 'Alex', lastName: 'Archer' }], hasMore: false });
   mock(api.detachProfile).mockResolvedValue(undefined);
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   const leave = await screen.findByRole('button', { name: 'Leave club' });
@@ -93,9 +93,9 @@ test('creator can revoke admin access and sees refreshed management', async () =
   mock(api.removeAdmin).mockResolvedValue({ ...club, adminUserIds: [] });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   expect(await screen.findByText('Assign an admin')).toBeInTheDocument();
-  const adminLink = screen.getByRole('link', { name: 'View profile #20' });
+  const adminLink = screen.getByRole('link', { name: 'View profile #user-20' });
   fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
-  await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith('1', 20));
+  await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith('1', 'user-20'));
 });
 
 test('owner opens search modal and requests membership without immediately joining', async () => {

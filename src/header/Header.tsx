@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import { Col, Container, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import Cookies from 'js-cookie';
 
 import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
@@ -27,14 +26,14 @@ type OAuthProfile = {
   picture?: string | null;
   name?: string | null;
   email?: string | null;
-  userId?: number | null;
+  userId?: string | null;
 };
 
 type HeaderState = {
-  loggedIn: string | boolean | undefined;
+  loggedIn: boolean | undefined;
   avatarUrl: string | null;
   avatarText: string | null;
-  currentUserId: number | null;
+  currentUserId: string | null;
   currentProfileValue: string | null;
   currentProfilePath: string;
   profileOptions: CurrentProfileOption[];
@@ -43,9 +42,8 @@ type HeaderState = {
 class Header extends Component<Record<string, never>, HeaderState> {
   constructor(props: Record<string, never>) {
     super(props);
-    const loggedIn = Cookies.get('TEMPVS_LOGGED_IN');
     this.state = {
-      loggedIn,
+      loggedIn: undefined,
       avatarUrl: null,
       avatarText: null,
       currentUserId: null,
@@ -59,9 +57,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
   }
 
   componentDidMount() {
-    if (this.state.loggedIn) {
-      this.loadOAuthProfile();
-    }
+    this.loadOAuthProfile();
   }
 
   logOut() {
@@ -79,6 +75,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
 
   loadOAuthProfile() {
     const clearAvatar = () => this.setState({
+      loggedIn: false,
       avatarUrl: null,
       avatarText: null,
       currentUserId: null,
@@ -96,14 +93,15 @@ class Header extends Component<Record<string, never>, HeaderState> {
       this.setState({
         avatarUrl: oauthProfile?.picture || null,
         avatarText: this.buildAvatarText(oauthProfile),
-        currentUserId: Number(result.currentUserId),
+        loggedIn: true,
+        currentUserId: String(result.currentUserId),
       }, () => {
-        this.loadOwnedProfiles(Number(result.currentUserId));
+        this.loadOwnedProfiles(String(result.currentUserId));
       });
     });
   }
 
-  loadOwnedProfiles(userId: number) {
+  loadOwnedProfiles(userId: string) {
     const toPromiseUserProfile = () => new Promise<Profile | null>(resolve => {
       fetchUserProfileByUserId(userId, {
         onSuccess: profile => resolve(profile || null),

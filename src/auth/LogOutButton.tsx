@@ -3,7 +3,6 @@ import { FaSignOutAlt } from 'react-icons/fa';
 import { Button, Modal } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 
-import { doFetch } from '../util/Fetcher';
 import HeaderIconPopover from '../component/HeaderIconPopover';
 
 type LogOutButtonProps = {
@@ -19,17 +18,6 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
 
   const handleClose = () => setShowModal(false);
   const handleShow = () => setShowModal(true);
-
-  const handleLogOut = () => {
-    const actions = {
-      200: () => {
-        handleClose();
-        logOut();
-      },
-    };
-
-    doFetch('/api/user/logout', 'POST', null, actions);
-  };
 
   const avatar = avatarUrl
     ? (
@@ -65,14 +53,14 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
           <div className="auth-logout-copy">
             <FormattedMessage id="logout.confirmation" defaultMessage="Are you sure you want to log out?" />
           </div>
-          <div className="auth-logout-actions">
+          <form className="auth-logout-actions" method="post" action="/auth/logout" onSubmit={logOut}>
             <Button variant="light" type="button" className="auth-secondary-button" onClick={handleClose}>
               <FormattedMessage id="no" defaultMessage="No" />
             </Button>
-            <Button variant="secondary" type="button" className="auth-submit-button" onClick={handleLogOut}>
+            <Button variant="secondary" type="submit" className="auth-submit-button">
               <FormattedMessage id="yes" defaultMessage="Yes" />
             </Button>
-          </div>
+          </form>
         </Modal.Body>
       </Modal>
     </>

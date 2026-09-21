@@ -8,7 +8,7 @@ import ProfileClubPanel from './ProfileClubPanel';
 import { Club, getJoinOptions, getProfileClubs, listClubs } from './clubApi';
 
 const club: Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
-  period: 'HIGH_MIDDLE_AGES', creatorUserId: 10, adminUserIds: [], canManage: false, canManageAdmins: false };
+  period: 'HIGH_MIDDLE_AGES', creatorUserId: 'user-10', adminUserIds: [], canManage: false, canManageAdmins: false };
 const response = (data: unknown, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data) } as Response);
 
 function wrap(child: React.ReactNode, path = '/') {

@@ -10,9 +10,9 @@ function show() {
   fireEvent.click(screen.getByRole('button'));
 }
 
-test('Google sign-in has no password or registration fallback', () => {
+test('Cognito managed login handles Google and email sign-in', () => {
   show();
-  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/api/user/oauth2/authorization/google');
+  expect(screen.getByRole('button', { name: /continue to sign in/i })).toHaveAttribute('href', '/auth/login');
   expect(screen.queryByRole('tab', { name: /register/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: /email/i })).not.toBeInTheDocument();
 });

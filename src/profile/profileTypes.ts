@@ -15,7 +15,7 @@ export type ProfileType = 'USER' | 'CLUB' | string;
 
 export type Profile = {
   id: string;
-  userId?: Id | null;
+  userId?: string | null;
   type?: ProfileType | null;
   firstName?: string | null;
   lastName?: string | null;
@@ -29,7 +29,7 @@ export type Profile = {
 
 export type PersistedProfile = {
   profileId: string | null;
-  userId: Id | null;
+  userId: string | null;
   type: ProfileType | null;
   firstName: string;
   lastName: string;
@@ -43,11 +43,11 @@ export type PersistedProfile = {
 export type OauthProfile = {
   name?: string | null;
   email?: string | null;
-  userId?: Id | null;
+  userId?: string | null;
 };
 
 export type CurrentUserInfo = {
-  currentUserId: Id | null;
+  currentUserId: string | null;
   oauthProfile: OauthProfile | null;
 };
 
@@ -74,7 +74,7 @@ export type ProfilePageState = PersistedProfile & {
   loaded: boolean;
   notFound: boolean;
   createMode: boolean;
-  currentUserId: Id | null;
+  currentUserId: string | null;
   oauthProfile: OauthProfile | null;
   message: string | null;
   messageVariant: string | null;

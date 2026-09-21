@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import 'bootstrap/dist/css/bootstrap.css';
 
 import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
@@ -13,10 +13,6 @@ import HomePage from './HomePage';
 import ChatPage from './chat/ChatPage';
 import ClubsPage from './club/ClubsPage';
 import ClubPage from './club/ClubPage';
-
-const WARMUP_URLS = ['https://api-gateway-t7bp.onrender.com/'];
-
-const WARMUP_INTERVAL_MS = 14 * 60 * 1000;
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -49,37 +45,7 @@ function ClubPageWithParam() {
   return <ClubPage key={id} />;
 }
 
-function pingRenderServices() {
-  WARMUP_URLS.forEach(url => {
-    window.fetch(url, {
-      method: 'GET',
-      mode: 'no-cors',
-      cache: 'no-store',
-    }).catch(() => {});
-  });
-}
-
 function App() {
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (process.env.REACT_APP_AWS_DARK_WEB === 'true') {
-      return;
-    }
-
-    pingRenderServices();
-
-    const intervalId = window.setInterval(() => {
-      pingRenderServices();
-    }, WARMUP_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
   return (
     <div className="App">
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

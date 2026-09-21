@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
-import { FaGoogle, FaSignInAlt } from 'react-icons/fa';
+import { FaSignInAlt } from 'react-icons/fa';
 import { Button, Modal } from 'react-bootstrap';
 import { FormattedMessage } from 'react-intl';
 
 import HeaderIconPopover from '../component/HeaderIconPopover';
 
-type IconProps = {
-  className?: string;
-};
-
-const GoogleIcon = FaGoogle as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType;
 export default function LoginRegisterButton() {
   const [show, setShow] = useState(false);
@@ -38,12 +33,12 @@ export default function LoginRegisterButton() {
           <div className="d-grid auth-oauth-grid">
             <Button
               as="a"
-              href="/api/user/oauth2/authorization/google"
+              href="/auth/login"
               variant="light"
               className="auth-oauth-button"
             >
-              <GoogleIcon className="me-2" />
-              <FormattedMessage id="login.google.button" defaultMessage="Continue with Google" />
+              <SignInIcon />
+              <FormattedMessage id="login.button" defaultMessage="Continue to sign in" />
             </Button>
           </div>
         </Modal.Body>

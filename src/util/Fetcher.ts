@@ -68,5 +68,8 @@ export const doFetch = (
       ...headers,
     },
     body: buildPayload(event),
-  }).then(responseHandler);
+  }).then(responseHandler).catch(() => {
+    const handler = actions.default || defaultAction;
+    handler();
+  });
 };
