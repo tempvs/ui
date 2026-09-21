@@ -29,6 +29,7 @@ jobs:
       WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
       ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+      REACT_APP_AWS_DARK_WEB: 'true'
     steps:
       - uses: actions/checkout@v4
 

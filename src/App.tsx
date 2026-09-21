@@ -65,6 +65,10 @@ function App() {
       return;
     }
 
+    if (process.env.REACT_APP_AWS_DARK_WEB === 'true') {
+      return;
+    }
+
     pingRenderServices();
 
     const intervalId = window.setInterval(() => {
