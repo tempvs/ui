@@ -14,11 +14,14 @@ test('renders an app', () => {
   expect(document.querySelector('a[href="/clubs"]')).toBeInTheDocument();
 });
 
-test('does not make network requests while rendering the application shell', () => {
+test('uses relative same-origin paths while rendering the application shell', () => {
   const fetch = jest.spyOn(window, 'fetch').mockResolvedValue({ status: 404, text: async () => '' } as Response);
 
   render(<IntlProvider locale="en" messages={{}}><App /></IntlProvider>);
 
-  expect(fetch).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledWith('/api/user/me', expect.anything());
+  for (const [url] of fetch.mock.calls) {
+    expect(String(url)).toMatch(/^\//);
+  }
   fetch.mockRestore();
 });
