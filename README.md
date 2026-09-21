@@ -2,4 +2,6 @@
 
 Tempvs UI
 
-Google-only User migration is prepared behind the build-time `REACT_APP_GOOGLE_ONLY_AUTH` flag. The default is `false` while the current User service is live. After the User DynamoDB import and Gateway/Library cutover pass acceptance, set the GitHub repository variable `REACT_APP_GOOGLE_ONLY_AUTH=true` and deploy the UI build to hide email/password forms, the registration route, and old User/Email Render warmups. Do not set this flag during the dark API deployment.
+The current UI still uses legacy user authentication through the old Gateway. Cognito Google and email/password sign-in have been verified only on the separate dark auth edge; the UI has **not** switched to Cognito. Do not treat a successful static build as an application cutover.
+
+The manual [dark AWS UI deployment workflow](.github/workflows/deploy-aws-dev.yml) builds and tests the selected ref, archives the build in a private versioned S3 bucket, publishes to CloudFront, and supports restoring an archived commit SHA. It requires the `dev` GitHub environment variables `AWS_DEPLOY_ROLE_ARN`, `WEB_BUCKET_NAME`, and `CLOUDFRONT_DISTRIBUTION_ID` from the `tempvs-dev-web` CloudFormation outputs. No static AWS deployment changes `dev.tempvs.club` or stops the existing Render deployment. Sign-in and most API routes will not work on the generated CloudFront hostname until the same-origin edge and domain cutover are implemented.

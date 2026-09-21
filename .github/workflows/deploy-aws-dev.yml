@@ -1,0 +1,87 @@
+name: Deploy dark AWS UI (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_release:
+        description: Optional 40-character commit SHA of an archived UI release to restore
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-aws-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify deployment configuration
+        shell: bash
+        run: |
+          if [[ -z "$AWS_DEPLOY_ROLE_ARN" || -z "$WEB_BUCKET_NAME" || -z "$CLOUDFRONT_DISTRIBUTION_ID" ]]; then
+            echo '::error::Set AWS_DEPLOY_ROLE_ARN, WEB_BUCKET_NAME and CLOUDFRONT_DISTRIBUTION_ID in the GitHub dev environment.'
+            exit 1
+          fi
+          if [[ -n "$ROLLBACK_RELEASE" && ! "$ROLLBACK_RELEASE" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::rollback_release must be a full lowercase 40-character commit SHA.'
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.rollback_release == '' }}
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build and test UI
+        if: ${{ inputs.rollback_release == '' }}
+        run: |
+          npm ci
+          CI=true npm test -- --watchAll=false
+          npm run typecheck
+          npm run build
+
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Archive release in versioned bucket
+        if: ${{ inputs.rollback_release == '' }}
+        run: aws s3 sync build/ "s3://$WEB_BUCKET_NAME/releases/$GITHUB_SHA/" --no-progress
+
+      - name: Restore archived release
+        if: ${{ inputs.rollback_release != '' }}
+        shell: bash
+        run: |
+          if ! aws s3api head-object --bucket "$WEB_BUCKET_NAME" --key "releases/$ROLLBACK_RELEASE/index.html" >/dev/null; then
+            echo '::error::The requested release is not archived in the web bucket.'
+            exit 1
+          fi
+          aws s3 sync "s3://$WEB_BUCKET_NAME/releases/$ROLLBACK_RELEASE/" build/ --no-progress
+
+      - name: Publish static assets, then HTML
+        shell: bash
+        run: |
+          aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
+          aws s3 sync build/ "s3://$WEB_BUCKET_NAME/" --exclude 'index.html' --exclude 'static/*' --cache-control 'public,max-age=3600' --no-progress
+          aws s3 cp build/index.html "s3://$WEB_BUCKET_NAME/index.html" --content-type 'text/html; charset=utf-8' --cache-control 'no-cache,no-store,must-revalidate' --no-progress
+          aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*'
