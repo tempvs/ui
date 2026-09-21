@@ -18,6 +18,14 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
 
   const handleClose = () => setShowModal(false);
   const handleShow = () => setShowModal(true);
+  const handleLogOut = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // React state updates can unmount the modal before the browser performs a
+    // form's default submit action. Submit natively first so the POST reaches
+    // the CSRF-protected BFF logout endpoint.
+    event.currentTarget.submit();
+    logOut();
+  };
 
   const avatar = avatarUrl
     ? (
@@ -53,7 +61,7 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
           <div className="auth-logout-copy">
             <FormattedMessage id="logout.confirmation" defaultMessage="Are you sure you want to log out?" />
           </div>
-          <form className="auth-logout-actions" method="post" action="/auth/logout" onSubmit={logOut}>
+          <form className="auth-logout-actions" method="post" action="/auth/logout" onSubmit={handleLogOut}>
             <Button variant="light" type="button" className="auth-secondary-button" onClick={handleClose}>
               <FormattedMessage id="no" defaultMessage="No" />
             </Button>
