@@ -13,7 +13,6 @@ import LogOutButton from '../auth/LogOutButton';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
 import {
   buildOwnedProfileOptions,
-  clearStoredCurrentProfileValue,
   CurrentProfileOption,
   resolveCurrentProfileOption,
   setStoredCurrentProfileValue,
@@ -51,26 +50,12 @@ class Header extends Component<Record<string, never>, HeaderState> {
       currentProfilePath: '/profile',
       profileOptions: [],
     };
-    this.logOut = this.logOut.bind(this);
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
     this.handleCurrentProfileChange = this.handleCurrentProfileChange.bind(this);
   }
 
   componentDidMount() {
     this.loadOAuthProfile();
-  }
-
-  logOut() {
-    clearStoredCurrentProfileValue();
-    this.setState({
-      loggedIn: false,
-      avatarUrl: null,
-      avatarText: null,
-      currentUserId: null,
-      currentProfileValue: null,
-      currentProfilePath: '/profile',
-      profileOptions: [],
-    });
   }
 
   loadOAuthProfile() {
@@ -221,7 +206,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
             </Col>
             <Col sm={1}>
               {this.state.loggedIn
-                ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
+                ? <LogOutButton avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
                 : <LoginRegisterButton />}
             </Col>
           </Row>

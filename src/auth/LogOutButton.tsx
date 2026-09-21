@@ -6,26 +6,17 @@ import { FormattedMessage } from 'react-intl';
 import HeaderIconPopover from '../component/HeaderIconPopover';
 
 type LogOutButtonProps = {
-  logOut: () => void;
   avatarUrl?: string | null;
   avatarText?: string | null;
 };
 
 const SignOutIcon = FaSignOutAlt as React.ComponentType;
 
-export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutButtonProps) {
+export default function LogOutButton({ avatarUrl, avatarText }: LogOutButtonProps) {
   const [showModal, setShowModal] = useState(false);
 
   const handleClose = () => setShowModal(false);
   const handleShow = () => setShowModal(true);
-  const handleLogOut = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    // React state updates can unmount the modal before the browser performs a
-    // form's default submit action. Submit natively first so the POST reaches
-    // the CSRF-protected BFF logout endpoint.
-    event.currentTarget.submit();
-    logOut();
-  };
 
   const avatar = avatarUrl
     ? (
@@ -61,7 +52,7 @@ export default function LogOutButton({ logOut, avatarUrl, avatarText }: LogOutBu
           <div className="auth-logout-copy">
             <FormattedMessage id="logout.confirmation" defaultMessage="Are you sure you want to log out?" />
           </div>
-          <form className="auth-logout-actions" method="post" action="/auth/logout" onSubmit={handleLogOut}>
+          <form className="auth-logout-actions" method="post" action="/auth/logout">
             <Button variant="light" type="button" className="auth-secondary-button" onClick={handleClose}>
               <FormattedMessage id="no" defaultMessage="No" />
             </Button>
