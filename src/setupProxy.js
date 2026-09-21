@@ -11,6 +11,12 @@ module.exports = function (app) {
         changeOrigin: true,
         secure: true,
         xfwd: true,
+        pathRewrite(path) {
+          if (!path.startsWith('/auth/login')) return path;
+          const url = new URL(path, target);
+          url.searchParams.set('local', '1');
+          return `${url.pathname}${url.search}`;
+        },
         onProxyReq(proxyRequest) {
           if (proxyRequest.getHeader('origin')) {
             proxyRequest.setHeader('origin', target);
