@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { MessageFormatter, Profile } from '../profileTypes';
 import RefreshingImage from '../../image/RefreshingImage';
+import defaultImage from '../../assets/default-image.png';
 
 type ProfileFollowingPanelProps = {
   profiles: Profile[];
@@ -63,16 +64,16 @@ export default function ProfileFollowingPanel({
           {profiles.map(profile => {
             return (
               <Link key={String(profile.id)} to={getProfileLink(profile)} className="profile-following-item">
-                {profile.avatarUrl && (
-                  <span className="profile-following-thumb">
-                    <RefreshingImage
-                      image={{ resourceType: 'profile', resourceId: profile.id, thumbnailUrl: profile.avatarUrl }}
-                      variant="thumbnail"
-                      alt={buildProfileLabel(profile)}
-                      className="profile-following-thumb-image"
-                    />
-                  </span>
-                )}
+                <span className="profile-following-thumb">
+                  <RefreshingImage
+                    image={{ resourceType: 'profile', resourceId: profile.id, thumbnailUrl: profile.avatarUrl }}
+                    variant="thumbnail"
+                    fallbackSrc={defaultImage}
+                    alt={buildProfileLabel(profile)}
+                    className="profile-following-thumb-image"
+                    loading="lazy"
+                  />
+                </span>
                 <span className="profile-following-name">{buildProfileLabel(profile)}</span>
               </Link>
             );

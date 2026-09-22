@@ -675,19 +675,27 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
+    const wasFollowing = this.state.isFollowingCurrentProfile;
+    this.setState({ followStateLoaded: false, message: null, messageVariant: null });
     try {
-      const response = this.state.isFollowingCurrentProfile
+      const response = wasFollowing
         ? await unfollowProfile(this.state.profileId, this.state.currentProfileId)
         : await followProfile(this.state.profileId, this.state.currentProfileId);
 
-      if (response.status !== 200) {
+      // Profile follow mutations correctly return 204 No Content.  Treat any
+      // successful 2xx response as success rather than waiting for a later
+      // follow-state read to change the visible action.
+      if (!response.ok) {
         throw new Error('Follow request failed');
       }
 
-      this.fetchFollowingProfiles(this.state.profileId);
-      this.refreshFollowState();
+      this.setState({
+        isFollowingCurrentProfile: !wasFollowing,
+        followStateLoaded: true,
+      });
     } catch (error) {
       this.setState({
+        followStateLoaded: true,
         message: this.t('profile.follow.failed', 'Unable to update follow state right now.'),
         messageVariant: 'error',
       });
