@@ -26,7 +26,7 @@
 .club-scroll-list .club-member-list { margin-top: 0; margin-bottom: 0; }
 .club-leave-button { display: inline-flex; align-items: center; gap: .4rem; flex-shrink: 0; }
 .profile-clubs-panel { padding-top: .8rem; }
-.profile-clubs-heading { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; }
+.profile-clubs-heading { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
 .profile-clubs-heading h2 { font-size: .9rem; line-height: 1.2; font-weight: 600; }
 .join-club-dialog { max-width: 680px; }
 .join-club-dialog .modal-content { height: min(32rem, calc(100dvh - 3.5rem)); }

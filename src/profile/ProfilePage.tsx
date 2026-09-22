@@ -146,6 +146,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     fetchCurrentUserInfo(result => this.setState(result, () => {
       if (result.currentUserId) {
         this.fetchCurrentOwnedProfiles(result.currentUserId);
+
+        // `/profile` is the signed-in user's own profile.  Do not request it
+        // until the session has been resolved, otherwise an anonymous visitor
+        // makes an authenticated request while opening a public page.
+        if (!this.props.id && !this.props.userId) {
+          this.fetchProfile(null);
+        }
       } else {
         this.setState({
           currentOwnedProfiles: [],
@@ -153,6 +160,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           followStateLoaded: true,
           isFollowingCurrentProfile: false,
         });
+
+        // There is no public profile represented by the bare `/profile`
+        // route.  Explicit `/profile/:id` and `/profile/user/:userId` routes
+        // are fetched below and remain available to visitors.
+        if (!this.props.id && !this.props.userId) {
+          this.setState({ loaded: true, notFound: true, createMode: false });
+        }
       }
     }));
   }
@@ -182,7 +196,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
-    this.fetchProfile(this.props.id);
+    // The bare `/profile` endpoint is an authenticated "my profile" route.
+    // Let loadCurrentUserInfo decide whether it is appropriate to call it.
+    if (this.props.id) {
+      this.fetchProfile(this.props.id);
+    }
   }
 
   fetchClubProfiles(userId: Id | null | undefined) {
@@ -1118,11 +1136,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   renderNotFound() {
+    const isAnonymousOwnProfileRoute = !this.props.id && !this.props.userId && !this.state.currentUserId;
+
     return (
       <Container>
         <Row>
           <Col sm={12}>
-            {this.t('profile.notFound', 'Profile not found.')}
+            {isAnonymousOwnProfileRoute
+              ? this.t('profile.signInRequired', 'Sign in to view your profile.')
+              : this.t('profile.notFound', 'Profile not found.')}
           </Col>
         </Row>
       </Container>
