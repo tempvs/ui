@@ -6,11 +6,12 @@ type PrepareImageFileOptions = {
   startQuality?: number;
 };
 
-const DEFAULT_MAX_DIMENSION = 1600;
-const DEFAULT_TARGET_BYTES = 900 * 1024;
-const DEFAULT_MIN_DIMENSION = 800;
-const DEFAULT_MIN_QUALITY = 0.55;
-const DEFAULT_START_QUALITY = 0.9;
+const DEFAULT_MAX_DIMENSION = 1920;
+const DEFAULT_TARGET_BYTES = 19 * 1024 * 1024;
+const DEFAULT_MIN_DIMENSION = 1920;
+const DEFAULT_MIN_QUALITY = 0.78;
+const DEFAULT_START_QUALITY = 0.92;
+const MAX_DIRECT_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export async function prepareImageFile(
   file: File,
@@ -26,7 +27,10 @@ export async function prepareImageFile(
     return file;
   }
 
-  if (file.size <= targetBytes) {
+  // The Image Lambda owns display/thumbnail generation. Preserve original
+  // pixels whenever the file is within its accepted upload limit; client-side
+  // canvas conversion is reserved for oversized files that would be rejected.
+  if (file.size <= MAX_DIRECT_UPLOAD_BYTES) {
     return file;
   }
 

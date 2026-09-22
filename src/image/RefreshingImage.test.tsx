@@ -1,7 +1,13 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import RefreshingImage from './RefreshingImage';
+
+test('shows an hourglass while an uploaded image is still being processed', () => {
+  render(<RefreshingImage image={{ id: 'image-1' }} alt="Club" />);
+
+  expect(screen.getByRole('status', { name: 'Uploading Club' })).toBeInTheDocument();
+});
 
 test('loads a signed URL when a known image has no URL in the owner response', async () => {
   const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({

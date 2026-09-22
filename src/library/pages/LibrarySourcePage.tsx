@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
-import { FaTrashAlt } from 'react-icons/fa';
+import { FaHourglassHalf, FaTrashAlt } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -39,6 +39,7 @@ type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
 type ImageRecord<T> = Record<string | number, T>;
 
 const TrashIcon = FaTrashAlt as React.ComponentType;
+const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
@@ -567,6 +568,7 @@ export default function LibrarySourcePage() {
                 Cancel
               </Button>
               <Button type="submit" variant="dark" disabled={uploadingImage}>
+                {uploadingImage && <SavingIcon className="me-2" />}
                 {uploadingImage ? 'Uploading...' : 'Upload'}
               </Button>
             </Modal.Footer>

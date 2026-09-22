@@ -10,10 +10,13 @@ export type LibraryUserInfoPayload = {
 } | null;
 
 export type LibraryWelcome = {
-  role?: string | null;
-  roleRequestAvailable?: boolean | null;
   adminPanelAvailable?: boolean | null;
-  buttonText?: string | null;
+  roleRequests?: Array<{
+    role: string;
+    label: string;
+    description: string;
+    pending: boolean;
+  }> | null;
 };
 
 export type LibrarySource = {

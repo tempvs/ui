@@ -82,7 +82,7 @@ export default function LibraryAdminPage() {
     <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
         title="LIBRARY"
-        subtitle="Review contributor, scribe, and archivarius requests."
+        subtitle="Review Library creator, editor, and admin requests."
         period={null}
         variant="admin"
         rightContent={(

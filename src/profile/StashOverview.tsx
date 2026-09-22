@@ -1007,7 +1007,7 @@ export default function StashOverview({
                     {activeGroupImage ? (
                       <RefreshingImage
                         image={activeGroupImage}
-                        variant="thumbnail"
+                        variant="display"
                         alt={activeGroup.name || 'Collection'}
                         className="stash-hero-image"
                         onLoad={() => scheduleArrowRefresh(recalculateArrows)}
@@ -1365,6 +1365,7 @@ export default function StashOverview({
               {t('profile.action.cancel', 'Cancel')}
             </Button>
             <Button type="submit" variant="secondary" disabled={groupImageUploading}>
+              {groupImageUploading && <SavingIcon className="me-2" />}
               {groupImageUploading
                 ? t('profile.stash.itemImageUploading', 'Uploading...')
                 : t('profile.stash.itemImageUpload', 'Upload image')}

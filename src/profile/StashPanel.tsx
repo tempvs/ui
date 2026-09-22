@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { FaHourglassHalf } from 'react-icons/fa';
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 
@@ -50,6 +51,7 @@ import {
 import { SaveStatus } from '../component/EditableFieldRow';
 
 const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
+const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
 const emptyGroupForm = { name: '', description: '' };
 
@@ -1147,6 +1149,7 @@ export default function StashPanel({ profile, isEditable, t, getPeriodLabel, emb
                   {t('profile.action.cancel', 'Cancel')}
                 </Button>
                 <Button type="submit" variant="secondary" disabled={itemImageUploading}>
+                  {itemImageUploading && <SavingIcon className="me-2" />}
                   {itemImageUploading ? t('profile.stash.itemImageUploading', 'Uploading...') : t('profile.stash.itemImageUpload', 'Upload image')}
                 </Button>
               </Modal.Footer>

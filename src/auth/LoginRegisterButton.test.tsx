@@ -10,9 +10,9 @@ function show() {
   fireEvent.click(screen.getByRole('button'));
 }
 
-test('Cognito managed login handles Google and email sign-in', () => {
+test('keeps email sign-in and registration inside the regular UI modal', () => {
   show();
-  expect(screen.getByRole('button', { name: /continue to sign in/i })).toHaveAttribute('href', '/auth/login');
-  expect(screen.queryByRole('tab', { name: /register/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('textbox', { name: /email/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: /register/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/auth/login?provider=Google');
 });

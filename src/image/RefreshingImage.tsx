@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { FaHourglassHalf } from 'react-icons/fa';
 
 export type ImageReference = {
   id?: string | number | null;
@@ -25,6 +26,7 @@ function initialUrl(image: ImageReference, variant: 'display' | 'thumbnail') {
 
 const IMAGE_REFRESH_INTERVAL_MS = 750;
 const IMAGE_REFRESH_ATTEMPTS = 40;
+const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
 async function refreshUrl(
   resourceType: string | null | undefined,
@@ -51,6 +53,8 @@ export default function RefreshingImage({
   fallbackSrc,
   alt,
   onError,
+  className,
+  style,
   ...imgProps
 }: RefreshingImageProps) {
   const source = initialUrl(image, variant);
@@ -108,5 +112,18 @@ export default function RefreshingImage({
     });
   };
 
-  return <img {...imgProps} src={currentSource || fallbackSrc} alt={alt} onError={handleError} />;
+  if (!currentSource && !fallbackSrc) {
+    return (
+      <span
+        className={className}
+        role="status"
+        aria-label={`Uploading ${alt}`}
+        style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <SavingIcon aria-hidden={true} />
+      </span>
+    );
+  }
+
+  return <img {...imgProps} className={className} style={style} src={currentSource || fallbackSrc} alt={alt} onError={handleError} />;
 }
