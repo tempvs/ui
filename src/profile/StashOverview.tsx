@@ -756,14 +756,27 @@ export default function StashOverview({
 
     try {
       const preparedFile = await prepareImageFile(file);
-      await uploadStashGroupImage(groupImageTarget.id, preparedFile, groupImageTarget.name || null);
+      const uploadedImage = await uploadStashGroupImage(
+        groupImageTarget.id,
+        preparedFile,
+        groupImageTarget.name || null,
+      );
+      setGroupImages(previousState => ({
+        ...previousState,
+        [toRecordKey(groupImageTarget.id)]: {
+          ...uploadedImage,
+          entityId: groupImageTarget.id,
+          belongsTo: 'item-group',
+          resourceId: groupImageTarget.id,
+          resourceType: 'item-group',
+        },
+      }));
       if (groupImageInputRef.current) {
         groupImageInputRef.current.value = '';
       }
       setGroupImageTarget(null);
       setMarkerPlacement(null);
       setMarkerPreviewPosition(null);
-      await loadStash();
     } catch (error) {
       setFeedback(t('profile.stash.itemImageUploadFailed', 'Unable to upload this image.'));
     } finally {

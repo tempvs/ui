@@ -57,7 +57,9 @@ test('AWS-owned image flows, including Library, use presigned PUTs', async () =>
   await replaceSourceImage('source-2', 'source-image', file, 'replacement');
   await uploadStashItemImage(3, file, 'item');
   await replaceStashItemImage(3, 'item-image', file, 'replacement');
-  await uploadStashGroupImage(4, file, 'group');
+  const uploadedGroupImage = await uploadStashGroupImage(4, file, 'group');
+
+  expect(uploadedGroupImage).toMatchObject({ id: 'image-id' });
 
   const [intentUrl, intentOptions] = fetchMock.mock.calls[0];
   expect(intentUrl).toBe('/api/profile/profile/1/avatar');

@@ -224,7 +224,7 @@ async function requestImageUpload<T>(url: string, method: 'POST' | 'PATCH', file
  * mutation and returns Image API metadata plus a short-lived S3 PUT URL.
  */
 export function uploadStashGroupImage(groupId: Id, file: File, description?: string | null) {
-  return requestImageUpload<unknown>(`/api/stash/group/${groupId}/images`, 'POST', file, description);
+  return requestImageUpload<EntityImage>(`/api/stash/group/${groupId}/images`, 'POST', file, description);
 }
 
 export function deleteStashItemImage(itemId: Id, imageId: Id) {
