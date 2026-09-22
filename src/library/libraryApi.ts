@@ -70,7 +70,10 @@ type LibraryAdminRoleRequests = {
   nextToken?: string | null;
 };
 
-type LibraryAdminMembers = { members?: LibraryMember[] | null };
+type LibraryAdminMembers = {
+  members?: LibraryMember[] | null;
+  memberUserIds?: string[] | null;
+};
 
 type LibrarySourcePage = {
   content: LibrarySource[];

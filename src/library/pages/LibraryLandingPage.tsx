@@ -83,7 +83,7 @@ export default function LibraryLandingPage() {
       )}
       {welcome?.adminPanelAvailable && (
         <Link to="/library/admin" className="btn btn-dark btn-sm">
-          Open admin panel
+          Open Library administration
         </Link>
       )}
       {welcome?.roleRequests?.map(request => (

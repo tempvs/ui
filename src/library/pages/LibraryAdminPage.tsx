@@ -74,6 +74,7 @@ export default function LibraryAdminPage() {
   const [tab, setTab] = useState<AdminTab>("members");
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<LibraryMember[]>([]);
+  const [memberUserIds, setMemberUserIds] = useState<string[]>([]);
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [roleRequests, setRoleRequests] = useState<LibraryRoleRequest[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
@@ -153,6 +154,9 @@ export default function LibraryAdminPage() {
         );
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
+      setMemberUserIds(
+        result.data?.memberUserIds || nextMembers.map((member) => member.userId),
+      );
       setUserInfo(result.userInfo);
       void hydrateMemberProfiles(nextMembers);
     } catch (fetchError) {
@@ -198,6 +202,9 @@ export default function LibraryAdminPage() {
       if (!result.ok) throw new Error("Unable to update the Library role.");
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
+      setMemberUserIds(
+        result.data?.memberUserIds || nextMembers.map((item) => item.userId),
+      );
       void hydrateMemberProfiles(nextMembers);
       setNotice(
         "Library role updated. The member must refresh their session before new permissions appear.",
@@ -208,34 +215,73 @@ export default function LibraryAdminPage() {
       setUpdating(null);
     }
   };
-  const searchUserProfiles: React.FormEventHandler<HTMLFormElement> = async (
-    event,
-  ) => {
-    event.preventDefault();
+  useEffect(() => {
     const query = profileQuery.trim();
-    if (!query) {
+    if (!showAddMember || !query) {
+      setProfileSearchLoading(false);
       setProfileResults([]);
       setProfileSearchComplete(false);
       return;
     }
-    setProfileSearchLoading(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const profiles = await searchProfiles({ query, type: "USER", size: 20 });
-      const nextProfiles = profiles.filter((profile) =>
-        Boolean(profile.userId),
-      );
-      setProfileResults(nextProfiles);
-      void hydrateAvatars(nextProfiles);
-      setProfileSearchComplete(true);
-    } catch (fetchError) {
-      setError(getErrorMessage(fetchError));
-      setProfileSearchComplete(false);
-    } finally {
-      setProfileSearchLoading(false);
-    }
-  };
+
+    let active = true;
+    const timerId = window.setTimeout(() => {
+      void (async () => {
+        setProfileSearchLoading(true);
+        setError(null);
+        try {
+          const profiles = await searchProfiles({
+            query,
+            type: "USER",
+            size: 20,
+          });
+          const assignedUserIds = new Set(memberUserIds);
+          const nextProfiles = profiles.filter(
+            (profile) =>
+              Boolean(profile.userId) && !assignedUserIds.has(profile.userId!),
+          );
+          if (!active) return;
+          setProfileResults(nextProfiles);
+          setProfileSearchComplete(true);
+
+          const entries = await Promise.all(
+            nextProfiles.map(async (profile) => {
+              try {
+                const avatar = await getProfileAvatar(profile.id);
+                return [
+                  profile.id,
+                  avatar?.thumbnailUrl ||
+                    avatar?.url ||
+                    profile.avatarUrl ||
+                    null,
+                ] as const;
+              } catch {
+                return [profile.id, profile.avatarUrl || null] as const;
+              }
+            }),
+          );
+          if (active) {
+            setAvatarUrls((current) => ({
+              ...current,
+              ...Object.fromEntries(entries),
+            }));
+          }
+        } catch (fetchError) {
+          if (active) {
+            setError(getErrorMessage(fetchError));
+            setProfileSearchComplete(false);
+          }
+        } finally {
+          if (active) setProfileSearchLoading(false);
+        }
+      })();
+    }, 150);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timerId);
+    };
+  }, [memberUserIds, profileQuery, showAddMember]);
   const assignProfile = async (profile: Profile, role: string) => {
     if (!profile.userId) return;
     setError(null);
@@ -246,6 +292,9 @@ export default function LibraryAdminPage() {
       if (!result.ok) throw new Error("Unable to assign the Library role.");
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
+      setMemberUserIds(
+        result.data?.memberUserIds || nextMembers.map((item) => item.userId),
+      );
       void hydrateMemberProfiles(nextMembers);
       setNotice(
         "Library role assigned. The member must refresh their session before new permissions appear.",
@@ -320,7 +369,7 @@ export default function LibraryAdminPage() {
             className="ms-auto"
             items={[
               { label: "Library", to: "/library" },
-              { label: "Admin", to: "/library/admin" },
+              { label: "Library administration", to: "/library/admin" },
             ]}
           />
         }
@@ -352,7 +401,7 @@ export default function LibraryAdminPage() {
       {loading && <Spinner />}
       {!loading && tab === "members" && (
         <div className="d-flex flex-column gap-3">
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center justify-content-between gap-2">
             <Form.Control
               aria-label="Filter Library members"
               placeholder="Filter members by profile name or alias"
@@ -392,7 +441,7 @@ export default function LibraryAdminPage() {
             const profile = memberProfiles[member.userId];
             const label = profile
               ? buildProfileLabel(profile)
-              : member.name || member.email || member.userId;
+              : member.name || member.email || "Library member";
             const protectedAdmin = member.role === "ROLE_ADMIN";
             const canChange = !self && !protectedAdmin;
             return (
@@ -414,9 +463,9 @@ export default function LibraryAdminPage() {
                           label
                         )}
                       </div>
-                      <div className="text-muted small">
-                        {member.email || member.userId}
-                      </div>
+                      {member.email && (
+                        <div className="text-muted small">{member.email}</div>
+                      )}
                     </div>
                   </div>
                   <div className="d-flex align-items-center gap-2">
@@ -484,24 +533,14 @@ export default function LibraryAdminPage() {
           <p className="text-muted small">
             Search user profiles by name or alias, then choose a Library role.
           </p>
-          <Form className="d-flex gap-2" onSubmit={searchUserProfiles}>
-            <Form.Control
-              aria-label="Search user profiles to add"
-              placeholder="Search user profiles"
-              value={profileQuery}
-              onChange={(event) => {
-                setProfileQuery(event.target.value);
-                setProfileSearchComplete(false);
-              }}
-            />
-            <Button
-              type="submit"
-              variant="outline-dark"
-              disabled={profileSearchLoading || updating !== null}
-            >
-              {profileSearchLoading ? "Searching..." : "Search"}
-            </Button>
-          </Form>
+          <Form.Control
+            aria-label="Search user profiles to add"
+            placeholder="Start typing a name or alias"
+            value={profileQuery}
+            disabled={updating !== null}
+            onChange={(event) => setProfileQuery(event.target.value)}
+          />
+          {profileSearchLoading && <Spinner />}
           {profileResults.length > 0 && (
             <div className="d-flex flex-column gap-3 mt-3">
               {profileResults.map((profile) => {
@@ -527,9 +566,11 @@ export default function LibraryAdminPage() {
                         >
                           {label}
                         </Link>
-                        <div className="text-muted small">
-                          {profile.alias ? `@${profile.alias}` : profile.id}
-                        </div>
+                        {profile.alias && (
+                          <div className="text-muted small">
+                            @{profile.alias}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="d-flex gap-2">
