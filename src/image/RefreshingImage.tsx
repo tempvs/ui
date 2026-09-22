@@ -23,6 +23,9 @@ function initialUrl(image: ImageReference, variant: 'display' | 'thumbnail') {
     : image.url || image.thumbnailUrl || '';
 }
 
+const IMAGE_REFRESH_INTERVAL_MS = 750;
+const IMAGE_REFRESH_ATTEMPTS = 40;
+
 async function refreshUrl(
   resourceType: string | null | undefined,
   resourceId: string | number | null | undefined,
@@ -60,12 +63,34 @@ export default function RefreshingImage({
   useEffect(() => {
     setCurrentSource(source);
     retried.current = false;
-    if (source || imageId == null) return;
+    if (source || !resourceType || resourceId == null) return;
     let active = true;
-    void refreshUrl(resourceType, resourceId, imageId, variant).then(url => {
-      if (active && url) setCurrentSource(url);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    let retryTimer: number | undefined;
+
+    const refreshPendingImage = async (attempt: number): Promise<void> => {
+      try {
+        const url = await refreshUrl(resourceType, resourceId, imageId, variant);
+        if (!active) return;
+        if (url) {
+          setCurrentSource(url);
+          return;
+        }
+      } catch {
+        // Image processing is asynchronous. Keep trying while this component is mounted.
+      }
+
+      if (active && attempt + 1 < IMAGE_REFRESH_ATTEMPTS) {
+        retryTimer = window.setTimeout(() => {
+          void refreshPendingImage(attempt + 1);
+        }, IMAGE_REFRESH_INTERVAL_MS);
+      }
+    };
+
+    void refreshPendingImage(0);
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
   }, [source, imageId, resourceType, resourceId, variant]);
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = event => {

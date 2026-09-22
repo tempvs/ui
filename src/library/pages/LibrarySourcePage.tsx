@@ -502,7 +502,11 @@ export default function LibrarySourcePage() {
                     )}
 
                     <StackedImageGallery
-                      images={images}
+                      images={images.map(image => ({
+                        ...image,
+                        resourceType: image.resourceType || 'source',
+                        resourceId: image.resourceId || sourceId,
+                      }))}
                       title={source.name || undefined}
                       emptyText="No images uploaded for this source yet."
                       previewSize="compact"

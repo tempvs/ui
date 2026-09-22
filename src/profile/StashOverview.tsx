@@ -991,9 +991,9 @@ export default function StashOverview({
                     onMouseMove={handleImageMouseMove}
                     onClick={handleImageClick}
                   >
-                    {activeGroupImageSrc ? (
+                    {activeGroupImage ? (
                       <RefreshingImage
-                        image={activeGroupImage || { url: activeGroupImageSrc, resourceType: 'item-group', resourceId: activeGroup.id }}
+                        image={activeGroupImage}
                         variant="thumbnail"
                         alt={activeGroup.name || 'Collection'}
                         className="stash-hero-image"
