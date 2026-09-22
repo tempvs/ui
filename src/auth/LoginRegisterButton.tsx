@@ -132,7 +132,7 @@ export default function LoginRegisterButton() {
             <>
               <div className="auth-divider"><span>or</span></div>
               <div className="d-grid auth-oauth-grid">
-                <Button as="a" href="/auth/login?provider=Google" variant="light" className="auth-oauth-button" disabled={busy}>
+                <Button as="a" href={registration ? '/auth/login?provider=Google&returnTo=/profile' : '/auth/login?provider=Google'} variant="light" className="auth-oauth-button" disabled={busy}>
                   <GoogleIcon /> Continue with Google
                 </Button>
               </div>
