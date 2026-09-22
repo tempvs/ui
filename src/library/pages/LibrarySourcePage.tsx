@@ -1,45 +1,50 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
-import { FaHourglassHalf, FaTrashAlt } from 'react-icons/fa';
-import { useIntl } from 'react-intl';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Col, Form, Modal, Row } from "react-bootstrap";
+import { FaHourglassHalf, FaTrashAlt } from "react-icons/fa";
+import { useIntl } from "react-intl";
+import { useNavigate, useParams } from "react-router-dom";
 
-import IconActionButton from '../../component/IconActionButton';
-import EditableDescriptionField from '../../component/EditableDescriptionField';
-import InlineEditableText from '../../component/InlineEditableText';
-import PlusActionButton from '../../component/PlusActionButton';
-import StackedImageGallery from '../../component/StackedImageGallery';
-import Spinner from '../../component/Spinner';
+import IconActionButton from "../../component/IconActionButton";
+import EditableDescriptionField from "../../component/EditableDescriptionField";
+import InlineEditableText from "../../component/InlineEditableText";
+import PlusActionButton from "../../component/PlusActionButton";
+import StackedImageGallery from "../../component/StackedImageGallery";
+import Spinner from "../../component/Spinner";
 import {
   deleteSourceImage,
   getSource,
   getSourceImages,
+  getSourceProposals,
   LibrarySource,
   LibrarySourceImage,
   LibraryUserInfoPayload,
+  SourceChangeProposal,
+  applySourceProposal,
   patchSourceField,
   removeSource,
   replaceSourceImage,
   updateSourceImageDescription,
   uploadSourceImage,
-} from '../libraryApi';
-import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
-import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import { getClassificationLabel, getTypeLabel } from '../libraryShared';
-import { canContribute, canDeleteSource, canEditSource } from '../libraryRoles';
-import { prepareImageFile } from '../../util/fileUtils';
-import { getErrorMessage } from '../../util/errors';
-import { clearAllTimers, clearTimer } from '../../util/timers';
-import { SaveStatus } from '../../component/EditableFieldRow';
+} from "../libraryApi";
+import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
+import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import { getClassificationLabel, getTypeLabel } from "../libraryShared";
+import { canContribute, canDeleteSource, canEditSource } from "../libraryRoles";
+import { prepareImageFile } from "../../util/fileUtils";
+import { getErrorMessage } from "../../util/errors";
+import { clearAllTimers, clearTimer } from "../../util/timers";
+import { SaveStatus } from "../../component/EditableFieldRow";
 
-type SourceField = 'name' | 'description';
+type SourceField = "name" | "description";
 
 type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
 
 type ImageRecord<T> = Record<string | number, T>;
 
 const TrashIcon = FaTrashAlt as React.ComponentType;
-const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
+const SavingIcon = FaHourglassHalf as React.ComponentType<{
+  className?: string;
+}>;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
@@ -51,13 +56,17 @@ export default function LibrarySourcePage() {
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [draftName, setDraftName] = useState('');
-  const [draftDescription, setDraftDescription] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
   const [fieldStatuses, setFieldStatuses] = useState<SourceFieldStatuses>({});
-  const [imageDescription, setImageDescription] = useState('');
+  const [imageDescription, setImageDescription] = useState("");
   const [imageDrafts, setImageDrafts] = useState<ImageRecord<string>>({});
-  const [imageStatuses, setImageStatuses] = useState<ImageRecord<SaveStatus>>({});
+  const [imageStatuses, setImageStatuses] = useState<ImageRecord<SaveStatus>>(
+    {},
+  );
   const imageInputRef = useRef<HTMLInputElement>(null);
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const imageSaveTimersRef = useRef<ImageRecord<number>>({});
@@ -67,29 +76,41 @@ export default function LibrarySourcePage() {
   const loadSource = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     try {
       const sourceResult = await getSource(sourceId);
       if (!sourceResult.ok) {
-        throw new Error('Unable to load the source.');
+        throw new Error("Unable to load the source.");
       }
 
       const imageResult = await getSourceImages(sourceId);
       if (!imageResult.ok) {
-        throw new Error('Unable to load source images.');
+        throw new Error("Unable to load source images.");
+      }
+
+      const proposalResult = canEditSource(sourceResult.userInfo)
+        ? await getSourceProposals(sourceId)
+        : null;
+      if (proposalResult && !proposalResult.ok) {
+        throw new Error("Unable to load source proposals.");
       }
 
       setSource(sourceResult.data);
-      setDraftName(sourceResult.data?.name || '');
-      setDraftDescription(sourceResult.data?.description || '');
+      setDraftName(sourceResult.data?.name || "");
+      setDraftDescription(sourceResult.data?.description || "");
       setFieldStatuses({});
       setImages(Array.isArray(imageResult.data) ? imageResult.data : []);
-      setImageDrafts(Object.fromEntries((Array.isArray(imageResult.data) ? imageResult.data : []).map(image => [
-        image.id,
-        image.description || '',
-      ])));
+      setImageDrafts(
+        Object.fromEntries(
+          (Array.isArray(imageResult.data) ? imageResult.data : []).map(
+            (image) => [image.id, image.description || ""],
+          ),
+        ),
+      );
       setImageStatuses({});
       setUserInfo(sourceResult.userInfo);
+      setProposals(proposalResult?.data || []);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -101,17 +122,19 @@ export default function LibrarySourcePage() {
     loadSource();
   }, [loadSource]);
 
-  useEffect(() => () => {
-    clearAllTimers(imageSaveTimersRef.current);
-    clearAllTimers(fieldSaveTimersRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      clearAllTimers(imageSaveTimersRef.current);
+      clearAllTimers(fieldSaveTimersRef.current);
+    },
+    [],
+  );
 
   const patchSource = async (field: SourceField, value: string) => {
-    const persistedValue = field === 'name'
-      ? (source?.name || '')
-      : (source?.description || '');
-    if ((value || '') === persistedValue) {
-      setFieldStatuses(prevState => ({
+    const persistedValue =
+      field === "name" ? source?.name || "" : source?.description || "";
+    if ((value || "") === persistedValue) {
+      setFieldStatuses((prevState) => ({
         ...prevState,
         [field]: null,
       }));
@@ -120,40 +143,62 @@ export default function LibrarySourcePage() {
 
     try {
       setError(null);
-      setFieldStatuses(prevState => ({
+      setNotice(null);
+      setFieldStatuses((prevState) => ({
         ...prevState,
-        [field]: 'saving',
+        [field]: "saving",
       }));
-      if (!source) throw new Error('Source version is unavailable.');
-      const result = await patchSourceField(sourceId, field, value, source.version);
+      if (!source) throw new Error("Source version is unavailable.");
+      const result = await patchSourceField(
+        sourceId,
+        field,
+        value,
+        source.version,
+      );
 
       if (!result.ok) {
         throw new Error(`Unable to update source ${field}.`);
       }
 
-      setSource(result.data && 'version' in result.data ? result.data as LibrarySource : null);
-      setFieldStatuses(prevState => ({
+      const change =
+        result.data &&
+        typeof result.data === "object" &&
+        !Array.isArray(result.data)
+          ? result.data
+          : null;
+      if (change && "source" in change && change.source) {
+        setSource(change.source as LibrarySource);
+      } else if (change && "proposal" in change && change.proposal) {
+        setProposals((current) => [
+          ...current,
+          change.proposal as SourceChangeProposal,
+        ]);
+        if (field === "name") setDraftName(persistedValue);
+        else setDraftDescription(persistedValue);
+        setNotice("Change proposed for another editor to review and apply.");
+      }
+      setFieldStatuses((prevState) => ({
         ...prevState,
-        [field]: 'saved',
+        [field]: "saved",
       }));
       window.setTimeout(() => {
-        setFieldStatuses(prevState => ({
+        setFieldStatuses((prevState) => ({
           ...prevState,
           [field]: null,
         }));
       }, 1000);
     } catch (fetchError) {
-      if (field === 'name') {
+      if (field === "name") {
         setDraftName(persistedValue);
       } else {
         setDraftDescription(persistedValue);
       }
-      setFieldStatuses(prevState => ({
+      setFieldStatuses((prevState) => ({
         ...prevState,
-        [field]: 'error',
+        [field]: "error",
       }));
       window.setTimeout(() => {
-        setFieldStatuses(prevState => ({
+        setFieldStatuses((prevState) => ({
           ...prevState,
           [field]: null,
         }));
@@ -166,9 +211,13 @@ export default function LibrarySourcePage() {
     if (fieldSaveTimersRef.current[field]) {
       clearTimeout(fieldSaveTimersRef.current[field]);
     }
-    setFieldStatuses(prevState => ({
+    setFieldStatuses((prevState) => ({
       ...prevState,
-      [field]: value === ((field === 'name' ? source?.name : source?.description) || '') ? null : 'pending',
+      [field]:
+        value ===
+        ((field === "name" ? source?.name : source?.description) || "")
+          ? null
+          : "pending",
     }));
     fieldSaveTimersRef.current[field] = window.setTimeout(() => {
       patchSource(field, value);
@@ -177,7 +226,7 @@ export default function LibrarySourcePage() {
 
   const handleFieldBlur = (field: SourceField) => {
     clearTimer(fieldSaveTimersRef.current, field);
-    patchSource(field, field === 'name' ? draftName : draftDescription);
+    patchSource(field, field === "name" ? draftName : draftDescription);
   };
 
   const handleDeleteSource = async () => {
@@ -185,7 +234,7 @@ export default function LibrarySourcePage() {
       return;
     }
 
-    if (!window.confirm('Delete this source?')) {
+    if (!window.confirm("Delete this source?")) {
       return;
     }
 
@@ -193,24 +242,44 @@ export default function LibrarySourcePage() {
       const result = await removeSource(sourceId, source.version);
       if (!result.ok) {
         throw new Error(
-          (typeof result.data === 'string' && result.data)
-          || (result.data && typeof result.data === 'object' && 'message' in result.data ? result.data.message : null)
-          || 'Unable to delete the source.'
+          (typeof result.data === "string" && result.data) ||
+            (result.data &&
+            typeof result.data === "object" &&
+            "message" in result.data
+              ? result.data.message
+              : null) ||
+            "Unable to delete the source.",
         );
       }
 
-      navigate(`/library/period/${(source.period || '').toLowerCase()}`);
+      navigate(`/library/period/${(source.period || "").toLowerCase()}`);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     }
   };
 
-  const handleUploadImage: React.FormEventHandler<HTMLFormElement> = async event => {
+  const handleApplyProposal = async (proposal: SourceChangeProposal) => {
+    try {
+      setError(null);
+      setNotice(null);
+      const result = await applySourceProposal(sourceId, proposal.id);
+      if (!result.ok || !result.data || !("version" in result.data)) {
+        throw new Error("Unable to apply the source proposal.");
+      }
+      await loadSource();
+    } catch (applyError) {
+      setError(getErrorMessage(applyError));
+    }
+  };
+
+  const handleUploadImage: React.FormEventHandler<HTMLFormElement> = async (
+    event,
+  ) => {
     event.preventDefault();
     const file = imageInputRef.current?.files?.[0];
 
     if (!file) {
-      setError('Choose an image to upload.');
+      setError("Choose an image to upload.");
       return;
     }
 
@@ -219,16 +288,20 @@ export default function LibrarySourcePage() {
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const result = await uploadSourceImage(sourceId, preparedFile, imageDescription || null);
+      const result = await uploadSourceImage(
+        sourceId,
+        preparedFile,
+        imageDescription || null,
+      );
 
       if (!result.ok) {
-        throw new Error('Unable to upload the image.');
+        throw new Error("Unable to upload the image.");
       }
 
       if (imageInputRef.current) {
-        imageInputRef.current.value = '';
+        imageInputRef.current.value = "";
       }
-      setImageDescription('');
+      setImageDescription("");
       setShowUploadModal(false);
       await loadSource();
     } catch (fetchError) {
@@ -241,12 +314,14 @@ export default function LibrarySourcePage() {
   const handleOpenReplaceImagePicker = (image: LibrarySourceImage) => {
     replacingImageRef.current = image;
     if (replaceImageInputRef.current) {
-      replaceImageInputRef.current.value = '';
+      replaceImageInputRef.current.value = "";
       replaceImageInputRef.current.click();
     }
   };
 
-  const handleReplaceImage: React.ChangeEventHandler<HTMLInputElement> = async event => {
+  const handleReplaceImage: React.ChangeEventHandler<HTMLInputElement> = async (
+    event,
+  ) => {
     const file = event.target.files?.[0];
     const targetImage = replacingImageRef.current;
 
@@ -267,7 +342,7 @@ export default function LibrarySourcePage() {
       );
 
       if (!uploadResult.ok) {
-        throw new Error('Unable to replace the image.');
+        throw new Error("Unable to replace the image.");
       }
 
       await loadSource();
@@ -276,29 +351,32 @@ export default function LibrarySourcePage() {
     } finally {
       setUploadingImage(false);
       replacingImageRef.current = null;
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
-  const clearImageSaveTimer = (imageId: LibrarySourceImage['id']) => {
+  const clearImageSaveTimer = (imageId: LibrarySourceImage["id"]) => {
     clearTimer(imageSaveTimersRef.current, String(imageId));
   };
 
-  const resetImageStatusLater = (imageId: LibrarySourceImage['id'], delay = 1000) => {
+  const resetImageStatusLater = (
+    imageId: LibrarySourceImage["id"],
+    delay = 1000,
+  ) => {
     window.setTimeout(() => {
-      setImageStatuses(prevState => ({
+      setImageStatuses((prevState) => ({
         ...prevState,
         [imageId]: null,
       }));
     }, delay);
   };
 
-  const handleDeleteImage = async (imageId: LibrarySourceImage['id']) => {
+  const handleDeleteImage = async (imageId: LibrarySourceImage["id"]) => {
     try {
       const result = await deleteSourceImage(sourceId, imageId);
 
       if (!result.ok) {
-        throw new Error('Unable to delete the image.');
+        throw new Error("Unable to delete the image.");
       }
 
       clearImageSaveTimer(imageId);
@@ -308,10 +386,14 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleUpdateImageDescription = async (imageId: LibrarySourceImage['id'], nextValue = imageDrafts[imageId] || '') => {
-    const persistedValue = images.find(image => image.id === imageId)?.description || '';
-    if ((nextValue || '') === persistedValue) {
-      setImageStatuses(prevState => ({
+  const handleUpdateImageDescription = async (
+    imageId: LibrarySourceImage["id"],
+    nextValue = imageDrafts[imageId] || "",
+  ) => {
+    const persistedValue =
+      images.find((image) => image.id === imageId)?.description || "";
+    if ((nextValue || "") === persistedValue) {
+      setImageStatuses((prevState) => ({
         ...prevState,
         [imageId]: null,
       }));
@@ -319,48 +401,59 @@ export default function LibrarySourcePage() {
     }
 
     try {
-      setImageStatuses(prevState => ({
+      setImageStatuses((prevState) => ({
         ...prevState,
-        [imageId]: 'saving',
+        [imageId]: "saving",
       }));
-      const result = await updateSourceImageDescription(sourceId, imageId, nextValue);
+      const result = await updateSourceImageDescription(
+        sourceId,
+        imageId,
+        nextValue,
+      );
 
       if (!result.ok) {
-        throw new Error('Unable to update the image description.');
+        throw new Error("Unable to update the image description.");
       }
 
-      setImages(prevState => prevState.map(image => (
-        image.id === imageId
-          ? { ...image, description: nextValue }
-          : image
-      )));
-      setImageStatuses(prevState => ({
+      setImages((prevState) =>
+        prevState.map((image) =>
+          image.id === imageId ? { ...image, description: nextValue } : image,
+        ),
+      );
+      setImageStatuses((prevState) => ({
         ...prevState,
-        [imageId]: 'saved',
+        [imageId]: "saved",
       }));
       resetImageStatusLater(imageId);
     } catch (fetchError) {
-      setImageDrafts(prevState => ({
+      setImageDrafts((prevState) => ({
         ...prevState,
         [imageId]: persistedValue,
       }));
-      setImageStatuses(prevState => ({
+      setImageStatuses((prevState) => ({
         ...prevState,
-        [imageId]: 'error',
+        [imageId]: "error",
       }));
       resetImageStatusLater(imageId, 1500);
       setError(getErrorMessage(fetchError));
     }
   };
 
-  const handleImageDescriptionChange = (imageId: LibrarySourceImage['id'], value: string) => {
-    setImageDrafts(prevState => ({
+  const handleImageDescriptionChange = (
+    imageId: LibrarySourceImage["id"],
+    value: string,
+  ) => {
+    setImageDrafts((prevState) => ({
       ...prevState,
       [imageId]: value,
     }));
-    setImageStatuses(prevState => ({
+    setImageStatuses((prevState) => ({
       ...prevState,
-      [imageId]: value === (images.find(image => image.id === imageId)?.description || '') ? null : 'pending',
+      [imageId]:
+        value ===
+        (images.find((image) => image.id === imageId)?.description || "")
+          ? null
+          : "pending",
     }));
     clearImageSaveTimer(imageId);
     imageSaveTimersRef.current[imageId] = window.setTimeout(() => {
@@ -368,7 +461,7 @@ export default function LibrarySourcePage() {
     }, 1800);
   };
 
-  const handleImageDescriptionBlur = (imageId: LibrarySourceImage['id']) => {
+  const handleImageDescriptionBlur = (imageId: LibrarySourceImage["id"]) => {
     clearImageSaveTimer(imageId);
     handleUpdateImageDescription(imageId);
   };
@@ -379,20 +472,24 @@ export default function LibrarySourcePage() {
 
   if (!source) {
     return (
-        <div className="px-4 px-xl-5 pb-4">
-        <div className="tempvs-plain-message text-danger">Source not found.</div>
+      <div className="px-4 px-xl-5 pb-4">
+        <div className="tempvs-plain-message text-danger">
+          Source not found.
+        </div>
       </div>
     );
   }
 
   const headerTitle = [
-    'SOURCE',
+    "SOURCE",
     getClassificationLabel(intl, source.classification),
     getTypeLabel(intl, source.type),
-  ].filter(Boolean).join(' \u2022 ');
-  const sourceDescription = draftDescription || source.description || '';
+  ]
+    .filter(Boolean)
+    .join(" \u2022 ");
+  const sourceDescription = draftDescription || source.description || "";
   const sourceDescriptionMissing = !sourceDescription;
-  const sourceDescriptionDisplay = sourceDescription || 'No description';
+  const sourceDescriptionDisplay = sourceDescription || "No description";
 
   return (
     <div className="px-4 px-xl-5 pb-4">
@@ -401,7 +498,7 @@ export default function LibrarySourcePage() {
         subtitle={null}
         period={source.period}
         variant="source"
-        rightContent={(
+        rightContent={
           <LibraryPeriodBreadcrumb
             period={source.period}
             variant="source"
@@ -410,7 +507,7 @@ export default function LibrarySourcePage() {
               to: `/library/source/${source.id}`,
             }}
           />
-        )}
+        }
       />
 
       {canDeleteSource(userInfo) && (
@@ -430,6 +527,57 @@ export default function LibrarySourcePage() {
       )}
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
+      {notice && (
+        <div className="tempvs-plain-message text-muted" role="status">
+          {notice}
+        </div>
+      )}
+
+      {canEditSource(userInfo) && proposals.length > 0 && (
+        <div className="stash-shell p-3 mb-3">
+          <div className="stash-subheading mb-2">Pending source proposals</div>
+          <div className="d-flex flex-column gap-2">
+            {proposals.map((proposal) => {
+              const ownProposal = proposal.proposerId === userInfo?.userId;
+              const canApply = !ownProposal || canDeleteSource(userInfo);
+              const changeSummary = [
+                proposal.changes.name !== undefined
+                  ? `Name: ${proposal.changes.name}`
+                  : null,
+                proposal.changes.description !== undefined
+                  ? "Description change"
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                <div
+                  key={proposal.id}
+                  className="d-flex justify-content-between align-items-center gap-3 flex-wrap"
+                >
+                  <div className="small">
+                    <strong>{changeSummary}</strong>
+                    <span className="text-muted ms-2">Awaiting review</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline-success"
+                    disabled={!canApply}
+                    title={
+                      !canApply
+                        ? "An editor cannot apply their own proposal."
+                        : undefined
+                    }
+                    onClick={() => void handleApplyProposal(proposal)}
+                  >
+                    {canApply ? "Apply proposal" : "Awaiting another editor"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="stash-shell p-3 p-lg-4">
         <Row className="g-3">
@@ -442,12 +590,12 @@ export default function LibrarySourcePage() {
                     <InlineEditableText
                       editable={canEditSource(userInfo)}
                       value={draftName}
-                      onChange={event => {
+                      onChange={(event) => {
                         const value = event.target.value;
                         setDraftName(value);
-                        scheduleFieldSave('name', value);
+                        scheduleFieldSave("name", value);
                       }}
-                      onBlur={() => handleFieldBlur('name')}
+                      onBlur={() => handleFieldBlur("name")}
                       readOnlyValue={source.name}
                       status={fieldStatuses.name}
                       textClassName="stash-item-title"
@@ -459,11 +607,11 @@ export default function LibrarySourcePage() {
                     <EditableDescriptionField
                       editable={canEditSource(userInfo)}
                       value={draftDescription}
-                      onValueChange={value => {
+                      onValueChange={(value) => {
                         setDraftDescription(value);
-                        scheduleFieldSave('description', value);
+                        scheduleFieldSave("description", value);
                       }}
-                      onBlur={() => handleFieldBlur('description')}
+                      onBlur={() => handleFieldBlur("description")}
                       readOnlyValue={sourceDescriptionDisplay}
                       status={fieldStatuses.description}
                       className="mt-1"
@@ -503,24 +651,33 @@ export default function LibrarySourcePage() {
                     )}
 
                     <StackedImageGallery
-                      images={images.map(image => ({
+                      images={images.map((image) => ({
                         ...image,
-                        resourceType: image.resourceType || 'source',
+                        resourceType: image.resourceType || "source",
                         resourceId: image.resourceId || sourceId,
                       }))}
                       title={source.name || undefined}
                       emptyText="No images uploaded for this source yet."
                       previewSize="compact"
                       editable={canEditSource(userInfo)}
-                      onDeleteImage={imageId => handleDeleteImage(String(imageId))}
-                      onReplaceImage={image => {
-                        const sourceImage = images.find(entry => entry.id === String(image.id));
-                        if (sourceImage) handleOpenReplaceImagePicker(sourceImage);
+                      onDeleteImage={(imageId) =>
+                        handleDeleteImage(String(imageId))
+                      }
+                      onReplaceImage={(image) => {
+                        const sourceImage = images.find(
+                          (entry) => entry.id === String(image.id),
+                        );
+                        if (sourceImage)
+                          handleOpenReplaceImagePicker(sourceImage);
                       }}
                       imageDrafts={imageDrafts}
                       imageStatuses={imageStatuses}
-                      onDescriptionChange={(imageId, value) => handleImageDescriptionChange(String(imageId), value)}
-                      onDescriptionBlur={imageId => handleImageDescriptionBlur(String(imageId))}
+                      onDescriptionChange={(imageId, value) =>
+                        handleImageDescriptionChange(String(imageId), value)
+                      }
+                      onDescriptionBlur={(imageId) =>
+                        handleImageDescriptionBlur(String(imageId))
+                      }
                     />
                   </div>
                 </Col>
@@ -547,13 +704,17 @@ export default function LibrarySourcePage() {
             <Modal.Body>
               <Form.Group className="mb-3">
                 <Form.Label>Image file</Form.Label>
-                <Form.Control ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
+                <Form.Control
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                />
               </Form.Group>
               <Form.Group>
                 <Form.Label>Description</Form.Label>
                 <Form.Control
                   value={imageDescription}
-                  onChange={event => setImageDescription(event.target.value)}
+                  onChange={(event) => setImageDescription(event.target.value)}
                   placeholder="Optional description"
                 />
               </Form.Group>
@@ -569,7 +730,7 @@ export default function LibrarySourcePage() {
               </Button>
               <Button type="submit" variant="dark" disabled={uploadingImage}>
                 {uploadingImage && <SavingIcon className="me-2" />}
-                {uploadingImage ? 'Uploading...' : 'Upload'}
+                {uploadingImage ? "Uploading..." : "Upload"}
               </Button>
             </Modal.Footer>
           </Form>
