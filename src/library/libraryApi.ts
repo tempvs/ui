@@ -52,7 +52,7 @@ export type LibraryMember = {
   userId: string;
   email: string | null;
   name: string | null;
-  role: "ROLE_CONTRIBUTOR" | "ROLE_SCRIBE" | "ROLE_ADMIN";
+  role: "ROLE_CONTRIBUTOR" | "ROLE_SCRIBE" | "ROLE_ARCHIVARIUS" | "ROLE_ADMIN";
 };
 
 export type SourceChangeProposal = {

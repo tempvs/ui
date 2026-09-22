@@ -1,10 +1,18 @@
-export const ROLE_ORDER = ['ROLE_ADMIN', 'ROLE_SCRIBE', 'ROLE_CONTRIBUTOR'] as const;
+export const ROLE_ORDER = [
+  "ROLE_ADMIN",
+  "ROLE_ARCHIVARIUS",
+  "ROLE_SCRIBE",
+  "ROLE_CONTRIBUTOR",
+] as const;
 
-export type LibraryRole = typeof ROLE_ORDER[number];
+export type LibraryRole = (typeof ROLE_ORDER)[number];
 
-export type LibraryUserInfo = {
-  roles?: string[] | null;
-} | null | undefined;
+export type LibraryUserInfo =
+  | {
+      roles?: string[] | null;
+    }
+  | null
+  | undefined;
 
 export type RoleMeta = {
   label: string;
@@ -13,16 +21,21 @@ export type RoleMeta = {
 
 const ROLE_META: Record<LibraryRole, RoleMeta> = {
   ROLE_ADMIN: {
-    label: 'Admin',
-    description: 'Can manage role requests and all library sources.',
+    label: "Library Admin",
+    description: "Can manage role requests and all library sources.",
+  },
+  ROLE_ARCHIVARIUS: {
+    label: "Archivarius",
+    description:
+      "Can assign Scribe and Contributor access, and create and edit sources.",
   },
   ROLE_SCRIBE: {
-    label: 'Editor',
-    description: 'Can create and edit source details and attached images.',
+    label: "Scribe",
+    description: "Can create and edit source details and attached images.",
   },
   ROLE_CONTRIBUTOR: {
-    label: 'Creator',
-    description: 'Can add new sources and upload supporting images.',
+    label: "Contributor",
+    description: "Can add new sources and upload supporting images.",
   },
 };
 
@@ -30,26 +43,42 @@ export function getRoles(userInfo: LibraryUserInfo): Set<string> {
   return new Set(userInfo?.roles || []);
 }
 
-export function hasAnyRole(userInfo: LibraryUserInfo, rolesToCheck: LibraryRole[]): boolean {
+export function hasAnyRole(
+  userInfo: LibraryUserInfo,
+  rolesToCheck: LibraryRole[],
+): boolean {
   const roles = getRoles(userInfo);
-  return rolesToCheck.some(role => roles.has(role));
+  return rolesToCheck.some((role) => roles.has(role));
 }
 
 export function canContribute(userInfo: LibraryUserInfo): boolean {
-  return hasAnyRole(userInfo, ['ROLE_CONTRIBUTOR', 'ROLE_SCRIBE', 'ROLE_ADMIN']);
+  return hasAnyRole(userInfo, [
+    "ROLE_CONTRIBUTOR",
+    "ROLE_SCRIBE",
+    "ROLE_ARCHIVARIUS",
+    "ROLE_ADMIN",
+  ]);
 }
 
 export function canEditSource(userInfo: LibraryUserInfo): boolean {
-  return hasAnyRole(userInfo, ['ROLE_SCRIBE', 'ROLE_ADMIN']);
+  return hasAnyRole(userInfo, [
+    "ROLE_SCRIBE",
+    "ROLE_ARCHIVARIUS",
+    "ROLE_ADMIN",
+  ]);
 }
 
 export function canDeleteSource(userInfo: LibraryUserInfo): boolean {
-  return hasAnyRole(userInfo, ['ROLE_ADMIN']);
+  return hasAnyRole(userInfo, ["ROLE_ADMIN"]);
+}
+
+export function canManageAllLibraryRoles(userInfo: LibraryUserInfo): boolean {
+  return hasAnyRole(userInfo, ["ROLE_ADMIN"]);
 }
 
 export function getPrimaryRole(userInfo: LibraryUserInfo): LibraryRole | null {
   const roles = getRoles(userInfo);
-  return ROLE_ORDER.find(role => roles.has(role)) || null;
+  return ROLE_ORDER.find((role) => roles.has(role)) || null;
 }
 
 export function getRoleMeta(role: string | null | undefined): RoleMeta | null {

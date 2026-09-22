@@ -16,13 +16,15 @@ import {
 } from "../libraryApi";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import { PAGE_SIZE } from "../libraryShared";
+import { canManageAllLibraryRoles } from "../libraryRoles";
 
 type AdminTab = "members" | "requests";
 const ROLE_OPTIONS = [
   { value: "ROLE_USER", label: "No Library role" },
-  { value: "ROLE_CONTRIBUTOR", label: "Creator" },
-  { value: "ROLE_SCRIBE", label: "Editor" },
-  { value: "ROLE_ADMIN", label: "Library admin" },
+  { value: "ROLE_CONTRIBUTOR", label: "Contributor" },
+  { value: "ROLE_SCRIBE", label: "Scribe" },
+  { value: "ROLE_ARCHIVARIUS", label: "Archivarius" },
+  { value: "ROLE_ADMIN", label: "Library Admin" },
 ];
 
 export default function LibraryAdminPage() {
@@ -192,6 +194,13 @@ export default function LibraryAdminPage() {
           )}
           {members.map((member) => {
             const self = member.userId === userInfo?.userId;
+            const roleOptions = canManageAllLibraryRoles(userInfo)
+              ? ROLE_OPTIONS
+              : ROLE_OPTIONS.filter((option) =>
+                  ["ROLE_USER", "ROLE_CONTRIBUTOR", "ROLE_SCRIBE"].includes(
+                    option.value,
+                  ),
+                );
             return (
               <Card key={member.userId} className="border-0 shadow-sm">
                 <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
@@ -212,7 +221,7 @@ export default function LibraryAdminPage() {
                     }
                     style={{ maxWidth: "15rem" }}
                   >
-                    {ROLE_OPTIONS.map((option) => (
+                    {roleOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                         {self ? " (your role)" : ""}

@@ -1,15 +1,22 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Col, Form, Modal, Row } from 'react-bootstrap';
-import { useIntl } from 'react-intl';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from "react";
+import { Button, Card, Col, Form, Modal, Row } from "react-bootstrap";
+import { useIntl } from "react-intl";
+import { useNavigate, useParams } from "react-router-dom";
 
-import PlusActionButton from '../../component/PlusActionButton';
-import Spinner from '../../component/Spinner';
-import { getErrorMessage } from '../../util/errors';
-import { createSource, findSources, getSourceImages, LibrarySource, LibrarySourceImage } from '../libraryApi';
-import LibraryPeriodBreadcrumb from '../components/LibraryPeriodBreadcrumb';
-import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import SourceCard from '../components/SourceCard';
+import PlusActionButton from "../../component/PlusActionButton";
+import Spinner from "../../component/Spinner";
+import { getErrorMessage } from "../../util/errors";
+import {
+  createSource,
+  findSources,
+  getSourceImages,
+  getWelcome,
+  LibrarySource,
+  LibrarySourceImage,
+} from "../libraryApi";
+import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
+import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import SourceCard from "../components/SourceCard";
 import {
   CLASSIFICATIONS,
   getClassificationLabel,
@@ -17,9 +24,9 @@ import {
   getTypeLabel,
   PAGE_SIZE,
   TYPES,
-} from '../libraryShared';
-import { canContribute } from '../libraryRoles';
-import { LibraryUserInfoPayload } from '../libraryApi';
+} from "../libraryShared";
+import { canContribute } from "../libraryRoles";
+import { LibraryUserInfoPayload } from "../libraryApi";
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -33,55 +40,66 @@ export default function LibraryPeriodPage() {
   const [sources, setSources] = useState<LibrarySource[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [sourcePreviewImages, setSourcePreviewImages] = useState<Record<string | number, LibrarySourceImage | null>>({});
+  const [sourcePreviewImages, setSourcePreviewImages] = useState<
+    Record<string | number, LibrarySourceImage | null>
+  >({});
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [selectedClassifications, setSelectedClassifications] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
+  const [selectedClassifications, setSelectedClassifications] = useState<
+    string[]
+  >([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [draftSource, setDraftSource] = useState({
-    name: '',
-    description: '',
-    classification: '',
-    type: '',
+    name: "",
+    description: "",
+    classification: "",
+    type: "",
   });
 
-  const periodCode = (period || '').toUpperCase();
+  const periodCode = (period || "").toUpperCase();
 
   const searchSources = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await findSources({
-        query,
-        period: periodCode,
-        classifications: selectedClassifications,
-        types: selectedTypes,
-        page: 0,
-        size: PAGE_SIZE,
-      });
+      const [result, welcomeResult] = await Promise.all([
+        findSources({
+          query,
+          period: periodCode,
+          classifications: selectedClassifications,
+          types: selectedTypes,
+          page: 0,
+          size: PAGE_SIZE,
+        }),
+        getWelcome(),
+      ]);
 
       if (!result.ok) {
-        throw new Error('Unable to load sources for this period.');
+        throw new Error("Unable to load sources for this period.");
       }
 
       const nextSources = Array.isArray(result.data) ? result.data : [];
       setSources(nextSources);
       setNextToken(result.nextToken);
       setSourcePreviewImages({});
-      setUserInfo(result.userInfo);
+      // The welcome endpoint is the authoritative current permission response.
+      // This prevents a cacheable source search from hiding creation controls.
+      setUserInfo(welcomeResult.ok ? welcomeResult.userInfo : result.userInfo);
 
-      const previewEntries = await Promise.all(nextSources.map(async source => {
-        try {
-          const imageResult = await getSourceImages(source.id);
-          if (!imageResult.ok || !Array.isArray(imageResult.data)) {
+      const previewEntries = await Promise.all(
+        nextSources.map(async (source) => {
+          try {
+            const imageResult = await getSourceImages(source.id);
+            if (!imageResult.ok || !Array.isArray(imageResult.data)) {
+              return [source.id, null] as const;
+            }
+            return [source.id, imageResult.data[0] || null] as const;
+          } catch (previewError) {
             return [source.id, null] as const;
           }
-          return [source.id, imageResult.data[0] || null] as const;
-        } catch (previewError) {
-          return [source.id, null] as const;
-        }
-      }));
+        }),
+      );
       setSourcePreviewImages(Object.fromEntries(previewEntries));
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
@@ -102,19 +120,27 @@ export default function LibraryPeriodPage() {
         size: PAGE_SIZE,
         nextToken,
       });
-      if (!result.ok) throw new Error('Unable to load more sources.');
+      if (!result.ok) throw new Error("Unable to load more sources.");
       const nextSources = result.data || [];
-      setSources(current => [...current, ...nextSources]);
+      setSources((current) => [...current, ...nextSources]);
       setNextToken(result.nextToken);
-      const previewEntries = await Promise.all(nextSources.map(async source => {
-        try {
-          const imageResult = await getSourceImages(source.id);
-          return [source.id, imageResult.ok ? imageResult.data?.[0] || null : null] as const;
-        } catch {
-          return [source.id, null] as const;
-        }
+      const previewEntries = await Promise.all(
+        nextSources.map(async (source) => {
+          try {
+            const imageResult = await getSourceImages(source.id);
+            return [
+              source.id,
+              imageResult.ok ? imageResult.data?.[0] || null : null,
+            ] as const;
+          } catch {
+            return [source.id, null] as const;
+          }
+        }),
+      );
+      setSourcePreviewImages((current) => ({
+        ...current,
+        ...Object.fromEntries(previewEntries),
       }));
-      setSourcePreviewImages(current => ({ ...current, ...Object.fromEntries(previewEntries) }));
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -133,16 +159,18 @@ export default function LibraryPeriodPage() {
   const handleToggle = (
     value: string,
     selectedValues: string[],
-    setter: React.Dispatch<React.SetStateAction<string[]>>
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
   ) => {
     setter(
       selectedValues.includes(value)
-        ? selectedValues.filter(entry => entry !== value)
-        : [...selectedValues, value]
+        ? selectedValues.filter((entry) => entry !== value)
+        : [...selectedValues, value],
     );
   };
 
-  const handleCreateSource: React.FormEventHandler<HTMLFormElement> = async event => {
+  const handleCreateSource: React.FormEventHandler<HTMLFormElement> = async (
+    event,
+  ) => {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -154,12 +182,13 @@ export default function LibraryPeriodPage() {
       });
 
       if (!result.ok) {
-        const message = result.data && 'message' in result.data ? result.data.message : null;
-        throw new Error(message || 'Unable to create the source.');
+        const message =
+          result.data && "message" in result.data ? result.data.message : null;
+        throw new Error(message || "Unable to create the source.");
       }
 
-      if (!result.data || !('id' in result.data)) {
-        throw new Error('Unable to create the source.');
+      if (!result.data || !("id" in result.data)) {
+        throw new Error("Unable to create the source.");
       }
 
       setShowCreateModal(false);
@@ -178,12 +207,17 @@ export default function LibraryPeriodPage() {
         subtitle={null}
         period={null}
         variant="period"
-        rightContent={<LibraryPeriodBreadcrumb period={periodCode} variant="period" />}
+        rightContent={
+          <LibraryPeriodBreadcrumb period={periodCode} variant="period" />
+        }
       />
       <div className="mb-4 mt-2">
         <h1 className="mb-2">{getPeriodLabel(intl, periodCode)}</h1>
         <p className="text-muted mb-0">
-          {intl.formatMessage({ id: `period.${period}.shortDescription`, defaultMessage: 'Historical period overview.' })}
+          {intl.formatMessage({
+            id: `period.${period}.shortDescription`,
+            defaultMessage: "Historical period overview.",
+          })}
         </p>
       </div>
 
@@ -194,40 +228,57 @@ export default function LibraryPeriodPage() {
           <Card className="border-0 shadow-sm mb-4">
             <Card.Body>
               <Card.Title>Find sources</Card.Title>
-              <Form className="library-source-filter" onSubmit={event => event.preventDefault()}>
+              <Form
+                className="library-source-filter"
+                onSubmit={(event) => event.preventDefault()}
+              >
                 <Form.Group className="mb-3">
                   <Form.Control
                     value={query}
-                    onChange={event => setQuery(event.target.value)}
+                    onChange={(event) => setQuery(event.target.value)}
                     placeholder="Name or description"
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
-                  <Form.Label className="library-source-filter-heading">Classification</Form.Label>
+                  <Form.Label className="library-source-filter-heading">
+                    Classification
+                  </Form.Label>
                   <div className="d-flex flex-column gap-2">
-                    {CLASSIFICATIONS.map(classification => (
+                    {CLASSIFICATIONS.map((classification) => (
                       <Form.Check
                         key={classification}
                         type="checkbox"
                         id={`classification-${classification}`}
                         label={getClassificationLabel(intl, classification)}
-                        checked={selectedClassifications.includes(classification)}
-                        onChange={() => handleToggle(classification, selectedClassifications, setSelectedClassifications)}
+                        checked={selectedClassifications.includes(
+                          classification,
+                        )}
+                        onChange={() =>
+                          handleToggle(
+                            classification,
+                            selectedClassifications,
+                            setSelectedClassifications,
+                          )
+                        }
                       />
                     ))}
                   </div>
                 </Form.Group>
                 <Form.Group className="mb-3">
-                  <Form.Label className="library-source-filter-heading">Type</Form.Label>
+                  <Form.Label className="library-source-filter-heading">
+                    Type
+                  </Form.Label>
                   <div className="d-flex flex-column gap-2">
-                    {TYPES.map(type => (
+                    {TYPES.map((type) => (
                       <Form.Check
                         key={type}
                         type="checkbox"
                         id={`type-${type}`}
                         label={getTypeLabel(intl, type)}
                         checked={selectedTypes.includes(type)}
-                        onChange={() => handleToggle(type, selectedTypes, setSelectedTypes)}
+                        onChange={() =>
+                          handleToggle(type, selectedTypes, setSelectedTypes)
+                        }
                       />
                     ))}
                   </div>
@@ -235,7 +286,6 @@ export default function LibraryPeriodPage() {
               </Form>
             </Card.Body>
           </Card>
-
         </Col>
         <Col lg={8}>
           {loading && <Spinner />}
@@ -244,17 +294,19 @@ export default function LibraryPeriodPage() {
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <h2 className="mb-0 fs-4">Sources</h2>
                 <div className="d-flex align-items-center gap-2">
-                  <div className="text-muted small">{sources.length} result(s)</div>
+                  <div className="text-muted small">
+                    {sources.length} result(s)
+                  </div>
                   {canContribute(userInfo) && (
                     <PlusActionButton
                       title="Create source"
                       onClick={() => {
                         setError(null);
                         setDraftSource({
-                          name: '',
-                          description: '',
-                          classification: '',
-                          type: '',
+                          name: "",
+                          description: "",
+                          classification: "",
+                          type: "",
                         });
                         setShowCreateModal(true);
                       }}
@@ -263,10 +315,12 @@ export default function LibraryPeriodPage() {
                 </div>
               </div>
               {sources.length === 0 && (
-                <div className="tempvs-plain-message text-muted">No sources matched the current filters.</div>
+                <div className="tempvs-plain-message text-muted">
+                  No sources matched the current filters.
+                </div>
               )}
               <Row className="g-3">
-                {sources.map(source => (
+                {sources.map((source) => (
                   <Col md={6} key={source.id}>
                     <SourceCard
                       source={source}
@@ -278,8 +332,12 @@ export default function LibraryPeriodPage() {
               </Row>
               {nextToken && (
                 <div className="d-flex justify-content-center mt-4">
-                  <Button variant="outline-dark" disabled={loadingMore} onClick={loadMoreSources}>
-                    {loadingMore ? 'Loading...' : 'Load more sources'}
+                  <Button
+                    variant="outline-dark"
+                    disabled={loadingMore}
+                    onClick={loadMoreSources}
+                  >
+                    {loadingMore ? "Loading..." : "Load more sources"}
                   </Button>
                 </div>
               )}
@@ -308,14 +366,24 @@ export default function LibraryPeriodPage() {
                 <Form.Control
                   required
                   value={draftSource.name}
-                  onChange={event => setDraftSource(prev => ({ ...prev, name: event.target.value }))}
+                  onChange={(event) =>
+                    setDraftSource((prev) => ({
+                      ...prev,
+                      name: event.target.value,
+                    }))
+                  }
                 />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control
                   value={draftSource.description}
-                  onChange={event => setDraftSource(prev => ({ ...prev, description: event.target.value }))}
+                  onChange={(event) =>
+                    setDraftSource((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
                 />
               </Form.Group>
               <Form.Group className="mb-3">
@@ -323,11 +391,18 @@ export default function LibraryPeriodPage() {
                 <Form.Select
                   required
                   value={draftSource.classification}
-                  onChange={event => setDraftSource(prev => ({ ...prev, classification: event.target.value }))}
+                  onChange={(event) =>
+                    setDraftSource((prev) => ({
+                      ...prev,
+                      classification: event.target.value,
+                    }))
+                  }
                 >
                   <option value="">Choose classification</option>
-                  {CLASSIFICATIONS.map(classification => (
-                    <option key={classification} value={classification}>{getClassificationLabel(intl, classification)}</option>
+                  {CLASSIFICATIONS.map((classification) => (
+                    <option key={classification} value={classification}>
+                      {getClassificationLabel(intl, classification)}
+                    </option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -336,11 +411,18 @@ export default function LibraryPeriodPage() {
                 <Form.Select
                   required
                   value={draftSource.type}
-                  onChange={event => setDraftSource(prev => ({ ...prev, type: event.target.value }))}
+                  onChange={(event) =>
+                    setDraftSource((prev) => ({
+                      ...prev,
+                      type: event.target.value,
+                    }))
+                  }
                 >
                   <option value="">Choose type</option>
-                  {TYPES.map(type => (
-                    <option key={type} value={type}>{getTypeLabel(intl, type)}</option>
+                  {TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {getTypeLabel(intl, type)}
+                    </option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -355,7 +437,7 @@ export default function LibraryPeriodPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="dark" disabled={submitting}>
-                {submitting ? 'Creating...' : 'Create source'}
+                {submitting ? "Creating..." : "Create source"}
               </Button>
             </Modal.Footer>
           </Form>
