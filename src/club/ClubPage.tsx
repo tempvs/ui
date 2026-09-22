@@ -4,11 +4,11 @@ import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Spinner from '../component/Spinner';
-import { fetchCurrentUserInfo } from '../profile/profileApi';
+import { fetchClubProfiles, fetchCurrentUserInfo } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { PeriodBadge } from '../util/periods';
-import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, getClub, getParticipants, isClubServiceUnavailable, removeAdmin, updateClub } from './clubApi';
+import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, getClub, getParticipants, isClubServiceUnavailable, removeAdmin, requestJoin, updateClub } from './clubApi';
 import ClubForm from './ClubForm';
 import ProfilePicker from './ProfilePicker';
 import JoinRequestsPanel from './JoinRequestsPanel';
@@ -24,6 +24,7 @@ export default function ClubPage() {
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [club, setClub] = useState<Club | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
+  const [ownedClubProfiles, setOwnedClubProfiles] = useState<Profile[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [participantsLoading, setParticipantsLoading] = useState(true);
@@ -34,12 +35,29 @@ export default function ClubPage() {
   const [unavailable, setUnavailable] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [applyingForMembership, setApplyingForMembership] = useState(false);
+  const [membershipMessage, setMembershipMessage] = useState('');
   const [revision, setRevision] = useState(0);
   const loadMoreParticipants = useRef<() => void>(() => {});
   const markUnavailable = useCallback(() => setUnavailable(true), []);
   useEffect(() => {
     let active = true;
-    fetchCurrentUserInfo(result => { if (active) setCurrentUserId(result.currentUserId); });
+    fetchCurrentUserInfo(result => {
+      if (!active) return;
+      setCurrentUserId(result.currentUserId);
+      if (!result.currentUserId) {
+        setOwnedClubProfiles([]);
+        return;
+      }
+      fetchClubProfiles(result.currentUserId, {
+        onSuccess: profiles => {
+          if (active) setOwnedClubProfiles(Array.isArray(profiles) ? profiles : []);
+        },
+        onError: () => {
+          if (active) setOwnedClubProfiles([]);
+        },
+      });
+    });
     return () => { active = false; };
   }, []);
   useEffect(() => {
@@ -94,6 +112,16 @@ export default function ClubPage() {
     finally { setBusy(false); }
   };
   const save = (draft: ClubDraft) => act(async () => { await updateClub(id, draft); setEditing(false); });
+  const applyForMembership = async (profile: Profile) => {
+    setBusy(true); setMembershipMessage(''); setError('');
+    try {
+      await requestJoin(id, profile.id);
+      setMembershipMessage(t('membershipRequested', 'Membership application sent.'));
+    } catch (e) {
+      if (isClubServiceUnavailable(e)) setUnavailable(true);
+      else setError((e as Error).message);
+    } finally { setBusy(false); }
+  };
   const handleParticipantScroll: React.UIEventHandler<HTMLDivElement> = event => {
     const element = event.currentTarget;
     if (hasMore && !participantsLoading && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) {
@@ -105,7 +133,15 @@ export default function ClubPage() {
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loading ? <Spinner /> : club && <>
       <div className="club-page-heading mt-3"><div><h1>{club.name}</h1><PeriodBadge period={club.period} /></div>
-        {club.canManage && !editing && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setEditing(true)}>{t('edit', 'Edit club')}</Button>}
+        <div className="d-flex gap-2">
+          {!editing && <Button
+            variant="outline-dark"
+            disabled={unavailable || currentUserId == null}
+            title={currentUserId == null ? t('signInToApply', 'Sign in to apply for membership') : undefined}
+            onClick={() => { setMembershipMessage(''); setApplyingForMembership(true); }}
+          >{t('applyForMembership', 'Apply for membership')}</Button>}
+          {club.canManage && !editing && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setEditing(true)}>{t('edit', 'Edit club')}</Button>}
+        </div>
       </div>
       <Row><Col lg={8}>
         <ClubPhotoPanel club={club} onChange={setClub} onUnavailable={markUnavailable} />
@@ -118,11 +154,11 @@ export default function ClubPage() {
           </>}
         </section>
         <section className="club-panel">
-          <h2>{t('participants', 'Participants')}</h2>
+          <h2>{t('members', 'Members')}</h2>
           {participantsError && <Alert variant="danger">{participantsError} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
-          <p className="text-muted">{t('participantsHint', 'Participants are club profiles. You can leave beside a profile you own.')}</p>
-          {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noParticipants', 'No participants yet.')}</p>}
-          <div className="club-scroll-list" role="region" aria-label={t('participants', 'Participants')} onScroll={handleParticipantScroll}>
+          <p className="text-muted">{t('membersHint', 'Members are club profiles. You can leave beside a profile you own.')}</p>
+          {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noMembers', 'No members yet.')}</p>}
+          <div className="club-scroll-list" role="region" aria-label={t('members', 'Members')} onScroll={handleParticipantScroll}>
             <ul className="club-member-list">{members.map(profile => {
               const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
               return <li key={profile.id}>
@@ -162,6 +198,23 @@ export default function ClubPage() {
         <Button variant="outline-secondary" disabled={busy} onClick={() => setDeleting(false)}>{t('cancel', 'Cancel')}</Button>
         <Button variant="danger" disabled={busy} onClick={() => { setDeleting(false); act(async () => { await deleteClub(id); navigate('/clubs'); }); }}>{t('delete', 'Delete club')}</Button>
       </Modal.Footer>
+    </Modal>
+    <Modal show={applyingForMembership} onHide={() => { if (!busy) setApplyingForMembership(false); }} centered>
+      <Modal.Header closeButton><Modal.Title>{t('applyForMembership', 'Apply for membership')}</Modal.Title></Modal.Header>
+      <Modal.Body>
+        {membershipMessage && <Alert variant="success">{membershipMessage}</Alert>}
+        <p className="text-muted">{t('chooseProfileToApply', 'Choose one of your club profiles to apply for membership.')}</p>
+        {ownedClubProfiles.length === 0 && <p>{t('noClubProfilesToApply', 'Create a club profile before applying for membership.')}</p>}
+        <div className="d-flex flex-column gap-2">
+          {ownedClubProfiles.map(profile => <div key={profile.id} className="d-flex justify-content-between align-items-center gap-2">
+            <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
+            <Button size="sm" variant="dark" disabled={busy || unavailable || profile.period !== club?.period} onClick={() => void applyForMembership(profile)}>
+              {profile.period !== club?.period ? t('periodDoesNotMatch', 'Period does not match') : t('apply', 'Apply')}
+            </Button>
+          </div>)}
+        </div>
+      </Modal.Body>
+      <Modal.Footer><Button variant="outline-secondary" disabled={busy} onClick={() => setApplyingForMembership(false)}>{t('close', 'Close')}</Button></Modal.Footer>
     </Modal>
   </Container>;
 }

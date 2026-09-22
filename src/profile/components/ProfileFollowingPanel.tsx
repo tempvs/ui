@@ -39,7 +39,7 @@ export default function ProfileFollowingPanel({
         <Button
           type="button"
           className="w-100 mb-3"
-          variant={isFollowing ? 'outline-secondary' : 'outline-dark'}
+          variant={isFollowing ? 'danger' : 'outline-dark'}
           onClick={onToggleFollow}
           disabled={followActionBusy}
         >

@@ -90,6 +90,8 @@ export default function LibraryAdminPage() {
     {},
   );
   const [showAddMember, setShowAddMember] = useState(false);
+  const [memberPendingRemoval, setMemberPendingRemoval] =
+    useState<LibraryMember | null>(null);
   const [profileQuery, setProfileQuery] = useState("");
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
@@ -500,7 +502,7 @@ export default function LibraryAdminPage() {
                       <IconActionButton
                         title={`Remove ${label} from the Library`}
                         aria-label={`Remove ${label} from the Library`}
-                        onClick={() => void updateMember(member, "ROLE_USER")}
+                        onClick={() => setMemberPendingRemoval(member)}
                         disabled={updating !== null}
                         size="2.15rem"
                         fontSize="0.9rem"
@@ -615,6 +617,40 @@ export default function LibraryAdminPage() {
               </div>
             )}
         </Modal.Body>
+      </Modal>
+      <Modal
+        show={memberPendingRemoval !== null}
+        onHide={() => {
+          if (updating === null) setMemberPendingRemoval(null);
+        }}
+        centered
+      >
+        <Modal.Header closeButton={updating === null}>
+          <Modal.Title>Remove Library member</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to remove this user from the Library?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            disabled={updating !== null}
+            onClick={() => setMemberPendingRemoval(null)}
+          >
+            No
+          </Button>
+          <Button
+            variant="danger"
+            disabled={updating !== null}
+            onClick={() => {
+              const member = memberPendingRemoval;
+              setMemberPendingRemoval(null);
+              if (member) void updateMember(member, "ROLE_USER");
+            }}
+          >
+            Yes
+          </Button>
+        </Modal.Footer>
       </Modal>
       {!loading && tab === "requests" && (
         <div className="d-flex flex-column gap-3">

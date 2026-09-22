@@ -168,6 +168,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     fetchProfileById(id, {
       onSuccess: profile => this.renderProfile(profile),
       onMissing: () => this.handleMissingProfile(id),
+      onError: () => this.handleMissingProfile(id),
     });
   }
 

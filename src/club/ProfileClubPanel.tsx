@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
+import { FaPlus } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import defaultImage from '../assets/default-image.png';
 import RefreshingImage from '../image/RefreshingImage';
 import { Id } from '../profile/profileTypes';
 import { Club, getProfileClubs, isClubServiceUnavailable } from './clubApi';
+import IconActionButton from '../component/IconActionButton';
 import JoinClubModal from './JoinClubModal';
 import './clubs.css';
+
+const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
 
 export default function ProfileClubPanel({ profileId, period, editable }: { profileId: Id; period?: string; editable: boolean }) {
   const intl = useIntl();
@@ -36,7 +40,17 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
   return <section className={`club-panel profile-clubs-panel mt-3${unavailable ? ' club-service-unavailable' : ''}`} aria-label={t('title', 'Clubs')}>
     <div className="profile-clubs-heading">
       <h2 className="mb-0">{t('title', 'Clubs')}</h2>
-      {editable && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setJoining(true)}>{t('join', 'Join club')}</Button>}
+      {editable && <IconActionButton
+        title={t('join', 'Join club')}
+        aria-label={t('join', 'Join club')}
+        disabled={unavailable}
+        onClick={() => setJoining(true)}
+        size="2rem"
+        fontSize="0.85rem"
+        borderColor="#000"
+        color="#000"
+        backgroundColor="#fff"
+      ><PlusIcon /></IconActionButton>}
     </div>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>

@@ -63,6 +63,7 @@ export function fetchProfileById(
   doFetch(url, "GET", null, {
     200: (profile) => handlers.onSuccess(profile as Profile),
     404: () => handlers.onMissing?.(),
+    default: () => handlers.onError?.(),
   });
 }
 

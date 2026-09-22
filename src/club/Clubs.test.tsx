@@ -18,7 +18,10 @@ jest.mock('./clubApi', () => ({
   addAdmin: jest.fn(), removeAdmin: jest.fn(), createClub: jest.fn(),
   uploadClubPhoto: jest.fn(), removeClubPhoto: jest.fn(),
 }));
-jest.mock('../profile/profileApi', () => ({ fetchCurrentUserInfo: jest.fn() }));
+jest.mock('../profile/profileApi', () => ({
+  fetchCurrentUserInfo: jest.fn(),
+  fetchClubProfiles: jest.fn(),
+}));
 
 const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
   period: 'HIGH_MIDDLE_AGES', creatorUserId: 'user-10', adminUserIds: ['user-20'], canManage: false, canManageAdmins: false };
@@ -31,6 +34,7 @@ function wrap(child: React.ReactNode, path = '/') {
 beforeEach(() => {
   jest.resetAllMocks();
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
   mock(api.getClub).mockResolvedValue(club);
   mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
@@ -54,7 +58,7 @@ test('profile owners can leave from the scrollable club participant list', async
   mock(api.detachProfile).mockResolvedValue(undefined);
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   const leave = await screen.findByRole('button', { name: 'Leave club' });
-  expect(screen.getByRole('region', { name: 'Participants' })).toHaveClass('club-scroll-list');
+  expect(screen.getByRole('region', { name: 'Members' })).toHaveClass('club-scroll-list');
   fireEvent.click(leave);
   await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith('1', '5'));
 });
@@ -65,7 +69,7 @@ test('scrolling participants appends the next page without pagination buttons', 
     .mockResolvedValueOnce({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   await screen.findByRole('link', { name: 'Alex Archer' });
-  const region = screen.getByRole('region', { name: 'Participants' });
+  const region = screen.getByRole('region', { name: 'Members' });
   Object.defineProperties(region, {
     scrollTop: { value: 260, configurable: true },
     clientHeight: { value: 100, configurable: true },
