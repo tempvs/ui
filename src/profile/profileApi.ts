@@ -1,4 +1,4 @@
-import { doFetch } from '../util/Fetcher';
+import { doFetch } from "../util/Fetcher";
 
 import {
   Avatar,
@@ -6,7 +6,7 @@ import {
   Id,
   OauthProfile,
   Profile,
-} from './profileTypes';
+} from "./profileTypes";
 
 type JsonRecord = Record<string, unknown>;
 type RequestOptions = RequestInit & {
@@ -31,18 +31,23 @@ type ProfileHandlers<TData> = {
 function requestJson(url: string, options: RequestOptions = {}) {
   return fetch(url, {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers || {}),
     },
     ...options,
   });
 }
 
-export function fetchCurrentUserInfo(onResult: (result: CurrentUserInfo) => void): void {
-  doFetch('/api/user/me', 'GET', null, {
-    200: profile => {
+export function fetchCurrentUserInfo(
+  onResult: (result: CurrentUserInfo) => void,
+): void {
+  doFetch("/api/user/me", "GET", null, {
+    200: (profile) => {
       const data = (profile || {}) as OauthProfile;
-      onResult({ currentUserId: data.userId || null, oauthProfile: data || null });
+      onResult({
+        currentUserId: data.userId || null,
+        oauthProfile: data || null,
+      });
     },
     401: () => onResult({ currentUserId: null, oauthProfile: null }),
     404: () => onResult({ currentUserId: null, oauthProfile: null }),
@@ -50,25 +55,52 @@ export function fetchCurrentUserInfo(onResult: (result: CurrentUserInfo) => void
   });
 }
 
-export function fetchProfileById(id: Id | null | undefined, handlers: ProfileHandlers<Profile>): void {
-  const url = id ? `/api/profile/profile/${id}` : '/api/profile/profile';
-  doFetch(url, 'GET', null, {
-    200: profile => handlers.onSuccess(profile as Profile),
+export function fetchProfileById(
+  id: Id | null | undefined,
+  handlers: ProfileHandlers<Profile>,
+): void {
+  const url = id ? `/api/profile/profile/${id}` : "/api/profile/profile";
+  doFetch(url, "GET", null, {
+    200: (profile) => handlers.onSuccess(profile as Profile),
     404: () => handlers.onMissing?.(),
   });
 }
 
-export function fetchUserProfileByUserId(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
-  doFetch(`/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`, 'GET', null, {
-    200: profile => handlers.onSuccess((profile as Profile | null) || null),
-    404: () => handlers.onMissing?.(),
-    default: () => handlers.onError?.(),
-  });
+export function fetchUserProfileByUserId(
+  userId: Id,
+  handlers: ProfileHandlers<Profile | null>,
+): void {
+  doFetch(
+    `/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`,
+    "GET",
+    null,
+    {
+      200: (profile) => handlers.onSuccess((profile as Profile | null) || null),
+      404: () => handlers.onMissing?.(),
+      default: () => handlers.onError?.(),
+    },
+  );
 }
 
-export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): void {
-  doFetch(`/api/images/profile/${profileId}?limit=1`, 'GET', null, {
-    200: result => {
+export async function getUserProfileByUserId(
+  userId: Id,
+): Promise<Profile | null> {
+  const response = await requestJson(
+    `/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`,
+  );
+  if (response.status === 404) return null;
+  if (!response.ok)
+    throw new Error(`Request failed with status ${response.status}`);
+  const text = await response.text();
+  return text ? (JSON.parse(text) as Profile | null) : null;
+}
+
+export function fetchAvatar(
+  profileId: Id,
+  handlers: ProfileHandlers<Avatar>,
+): void {
+  doFetch(`/api/images/profile/${profileId}?limit=1`, "GET", null, {
+    200: (result) => {
       const avatars = (result as { content?: Avatar[] } | null)?.content;
       if (Array.isArray(avatars) && avatars.length) {
         handlers.onSuccess(avatars[0]);
@@ -84,7 +116,9 @@ export function fetchAvatar(profileId: Id, handlers: ProfileHandlers<Avatar>): v
 }
 
 export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
-  const response = await requestJson(`/api/images/profile/${profileId}?limit=1`);
+  const response = await requestJson(
+    `/api/images/profile/${profileId}?limit=1`,
+  );
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -95,37 +129,51 @@ export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
   return data.content[0] as Avatar;
 }
 
-export function fetchClubProfiles(userId: Id, handlers: ProfileHandlers<Profile[]>): void {
-  doFetch(`/api/profile/club-profile?userId=${userId}`, 'GET', null, {
-    200: profiles => handlers.onSuccess(Array.isArray(profiles) ? profiles : []),
+export function fetchClubProfiles(
+  userId: Id,
+  handlers: ProfileHandlers<Profile[]>,
+): void {
+  doFetch(`/api/profile/club-profile?userId=${userId}`, "GET", null, {
+    200: (profiles) =>
+      handlers.onSuccess(Array.isArray(profiles) ? profiles : []),
     default: () => handlers.onError?.(),
   });
 }
 
-export async function searchProfiles({ query, period, type, page = 0, size = 20 }: ProfileSearchParams) {
+export async function searchProfiles({
+  query,
+  period,
+  type,
+  page = 0,
+  size = 20,
+}: ProfileSearchParams) {
   const params = new URLSearchParams();
 
   if (query) {
-    params.set('query', query);
+    params.set("query", query);
   }
 
   if (period) {
-    params.set('period', period);
+    params.set("period", period);
   }
 
   if (type) {
-    params.set('type', type);
+    params.set("type", type);
   }
 
-  params.set('page', String(page));
-  params.set('size', String(size));
+  params.set("page", String(page));
+  params.set("size", String(size));
 
-  const response = await requestJson(`/api/profile/profile/search?${params.toString()}`);
+  const response = await requestJson(
+    `/api/profile/profile/search?${params.toString()}`,
+  );
   const text = await response.text();
   const data = text ? JSON.parse(text) : [];
 
   if (!response.ok) {
-    const error = new Error(`Request failed with status ${response.status}`) as Error & {
+    const error = new Error(
+      `Request failed with status ${response.status}`,
+    ) as Error & {
       status?: number;
       data?: unknown;
     };
@@ -134,11 +182,13 @@ export async function searchProfiles({ query, period, type, page = 0, size = 20 
     throw error;
   }
 
-  return Array.isArray(data) ? data as Profile[] : [];
+  return Array.isArray(data) ? (data as Profile[]) : [];
 }
 
 export async function getFollowingProfiles(profileId: Id) {
-  const response = await requestJson(`/api/profile/profile/${profileId}/following`);
+  const response = await requestJson(
+    `/api/profile/profile/${profileId}/following`,
+  );
   const text = await response.text();
   const data = text ? JSON.parse(text) : [];
 
@@ -146,11 +196,13 @@ export async function getFollowingProfiles(profileId: Id) {
     throw new Error(`Request failed with status ${response.status}`);
   }
 
-  return Array.isArray(data) ? data as Profile[] : [];
+  return Array.isArray(data) ? (data as Profile[]) : [];
 }
 
 export async function getFollowState(targetProfileId: Id, asProfileId: Id) {
-  const response = await requestJson(`/api/profile/profile/${targetProfileId}/follow-state?asProfileId=${asProfileId}`);
+  const response = await requestJson(
+    `/api/profile/profile/${targetProfileId}/follow-state?asProfileId=${asProfileId}`,
+  );
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -162,18 +214,27 @@ export async function getFollowState(targetProfileId: Id, asProfileId: Id) {
 }
 
 export function followProfile(targetProfileId: Id, asProfileId: Id) {
-  return requestJson(`/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`, {
-    method: 'POST',
-  });
+  return requestJson(
+    `/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function unfollowProfile(targetProfileId: Id, asProfileId: Id) {
-  return requestJson(`/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`, {
-    method: 'DELETE',
-  });
+  return requestJson(
+    `/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
-export function fetchOwnerUserProfile(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
+export function fetchOwnerUserProfile(
+  userId: Id,
+  handlers: ProfileHandlers<Profile | null>,
+): void {
   fetchUserProfileByUserId(userId, handlers);
 }
 
@@ -182,66 +243,89 @@ type FetchFormEvent = {
   target?: EventTarget | null;
 };
 
-export function createUserProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
-  doFetch('/api/profile/user-profile', 'POST', event, handlers, { 'Idempotency-Key': crypto.randomUUID() });
+export function createUserProfile(
+  event: FetchFormEvent,
+  handlers: Record<string | number, (data?: unknown) => unknown>,
+): void {
+  doFetch("/api/profile/user-profile", "POST", event, handlers, {
+    "Idempotency-Key": crypto.randomUUID(),
+  });
 }
 
-export function createClubProfile(event: FetchFormEvent, handlers: Record<string | number, (data?: unknown) => unknown>): void {
-  doFetch('/api/profile/club-profile', 'POST', event, handlers, { 'Idempotency-Key': crypto.randomUUID() });
+export function createClubProfile(
+  event: FetchFormEvent,
+  handlers: Record<string | number, (data?: unknown) => unknown>,
+): void {
+  doFetch("/api/profile/club-profile", "POST", event, handlers, {
+    "Idempotency-Key": crypto.randomUUID(),
+  });
 }
 
 export function updateProfile(profileId: Id, payload: JsonRecord) {
   return requestJson(`/api/profile/profile/${profileId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }
 
 export function deleteProfile(profileId: Id) {
   return requestJson(`/api/profile/profile/${profileId}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
-export async function uploadAvatar(profileId: Id, file: File, description?: string | null) {
-  const intentResponse = await requestJson(`/api/profile/profile/${profileId}/avatar`, {
-    method: 'POST',
-    body: JSON.stringify({
-      fileName: file.name,
-      contentType: file.type,
-      byteSize: file.size,
-      ...(description !== undefined ? { description } : {}),
-    }),
-  });
+export async function uploadAvatar(
+  profileId: Id,
+  file: File,
+  description?: string | null,
+) {
+  const intentResponse = await requestJson(
+    `/api/profile/profile/${profileId}/avatar`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        byteSize: file.size,
+        ...(description !== undefined ? { description } : {}),
+      }),
+    },
+  );
   if (!intentResponse.ok) return intentResponse;
 
-  const intent = await intentResponse.json() as {
+  const intent = (await intentResponse.json()) as {
     upload?: { url?: unknown; method?: unknown; headers?: unknown };
   };
   if (
-    typeof intent.upload?.url !== 'string'
-    || intent.upload.method !== 'PUT'
-    || !intent.upload.headers
-    || typeof intent.upload.headers !== 'object'
+    typeof intent.upload?.url !== "string" ||
+    intent.upload.method !== "PUT" ||
+    !intent.upload.headers ||
+    typeof intent.upload.headers !== "object"
   ) {
-    return new Response(null, { status: 502, statusText: 'Invalid upload intent' });
+    return new Response(null, {
+      status: 502,
+      statusText: "Invalid upload intent",
+    });
   }
   return fetch(intent.upload.url, {
-    method: 'PUT',
+    method: "PUT",
     headers: intent.upload.headers as HeadersInit,
     body: file,
   });
 }
 
-export function updateAvatarDescription(profileId: Id, description: string | null) {
+export function updateAvatarDescription(
+  profileId: Id,
+  description: string | null,
+) {
   return requestJson(`/api/profile/profile/${profileId}/avatar/description`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({ description }),
   });
 }
 
 export function deleteAvatar(profileId: Id) {
   return requestJson(`/api/profile/profile/${profileId}/avatar`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
