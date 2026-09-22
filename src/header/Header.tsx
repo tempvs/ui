@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import { Col, Container, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import Cookies from 'js-cookie';
 
 import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
@@ -14,7 +13,6 @@ import LogOutButton from '../auth/LogOutButton';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
 import {
   buildOwnedProfileOptions,
-  clearStoredCurrentProfileValue,
   CurrentProfileOption,
   resolveCurrentProfileOption,
   setStoredCurrentProfileValue,
@@ -27,14 +25,14 @@ type OAuthProfile = {
   picture?: string | null;
   name?: string | null;
   email?: string | null;
-  userId?: number | null;
+  userId?: string | null;
 };
 
 type HeaderState = {
-  loggedIn: string | boolean | undefined;
+  loggedIn: boolean | undefined;
   avatarUrl: string | null;
   avatarText: string | null;
-  currentUserId: number | null;
+  currentUserId: string | null;
   currentProfileValue: string | null;
   currentProfilePath: string;
   profileOptions: CurrentProfileOption[];
@@ -43,9 +41,8 @@ type HeaderState = {
 class Header extends Component<Record<string, never>, HeaderState> {
   constructor(props: Record<string, never>) {
     super(props);
-    const loggedIn = Cookies.get('TEMPVS_LOGGED_IN');
     this.state = {
-      loggedIn,
+      loggedIn: undefined,
       avatarUrl: null,
       avatarText: null,
       currentUserId: null,
@@ -53,37 +50,17 @@ class Header extends Component<Record<string, never>, HeaderState> {
       currentProfilePath: '/profile',
       profileOptions: [],
     };
-    this.logIn = this.logIn.bind(this);
-    this.logOut = this.logOut.bind(this);
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
     this.handleCurrentProfileChange = this.handleCurrentProfileChange.bind(this);
   }
 
   componentDidMount() {
-    if (this.state.loggedIn) {
-      this.loadOAuthProfile();
-    }
-  }
-
-  logIn() {
-    this.setState({ loggedIn: true }, this.loadOAuthProfile);
-  }
-
-  logOut() {
-    clearStoredCurrentProfileValue();
-    this.setState({
-      loggedIn: false,
-      avatarUrl: null,
-      avatarText: null,
-      currentUserId: null,
-      currentProfileValue: null,
-      currentProfilePath: '/profile',
-      profileOptions: [],
-    });
+    this.loadOAuthProfile();
   }
 
   loadOAuthProfile() {
     const clearAvatar = () => this.setState({
+      loggedIn: false,
       avatarUrl: null,
       avatarText: null,
       currentUserId: null,
@@ -101,14 +78,15 @@ class Header extends Component<Record<string, never>, HeaderState> {
       this.setState({
         avatarUrl: oauthProfile?.picture || null,
         avatarText: this.buildAvatarText(oauthProfile),
-        currentUserId: Number(result.currentUserId),
+        loggedIn: true,
+        currentUserId: String(result.currentUserId),
       }, () => {
-        this.loadOwnedProfiles(Number(result.currentUserId));
+        this.loadOwnedProfiles(String(result.currentUserId));
       });
     });
   }
 
-  loadOwnedProfiles(userId: number) {
+  loadOwnedProfiles(userId: string) {
     const toPromiseUserProfile = () => new Promise<Profile | null>(resolve => {
       fetchUserProfileByUserId(userId, {
         onSuccess: profile => resolve(profile || null),
@@ -228,8 +206,8 @@ class Header extends Component<Record<string, never>, HeaderState> {
             </Col>
             <Col sm={1}>
               {this.state.loggedIn
-                ? <LogOutButton logOut={this.logOut} avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
-                : <LoginRegisterButton logIn={this.logIn} />}
+                ? <LogOutButton avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
+                : <LoginRegisterButton />}
             </Col>
           </Row>
         </Container>

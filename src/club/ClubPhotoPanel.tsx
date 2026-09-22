@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { FaHourglassHalf } from 'react-icons/fa';
 import { Alert, Button, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Club, isClubServiceUnavailable, removeClubPhoto, uploadClubPhoto } from './clubApi';
 import RefreshingImage from '../image/RefreshingImage';
+
+const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
 export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
   club: Club; onChange: (club: Club) => void; onUnavailable?: () => void;
@@ -51,7 +54,7 @@ export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
       </Form.Group>
       {(club.hasPhoto || club.photoUrl) && <Button variant="outline-danger" size="sm" className="mt-2" disabled={busy} onClick={remove}>{t('removePhoto', 'Remove photo')}</Button>}
     </div>}
-    {busy && <p role="status" className="mt-2">{t('savingPhoto', 'Saving photo…')}</p>}
+    {busy && <p role="status" className="mt-2"><SavingIcon className="me-2" />{t('savingPhoto', 'Saving photo…')}</p>}
     {error && <Alert variant="danger" className="mt-2">{error}</Alert>}
   </section>;
 }

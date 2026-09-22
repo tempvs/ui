@@ -34,7 +34,7 @@ const uuidClub = {
   location: draft.location,
   contactEmail: draft.contactEmail,
   period: draft.period,
-  creatorUserId: 1,
+  creatorUserId: 'user-1',
   adminUserIds: [],
   canManage: true,
   canManageAdmins: true,
@@ -185,8 +185,8 @@ test('every club page action targets the migrated API contract and uses cursor p
   await deleteClub(uuidClub.id);
   await attachProfile(uuidClub.id, 2);
   await detachProfile(uuidClub.id, 2);
-  await addAdmin(uuidClub.id, 3);
-  await removeAdmin(uuidClub.id, 3);
+  await addAdmin(uuidClub.id, 'user-3');
+  await removeAdmin(uuidClub.id, 'user-3');
 
   expect(fetchMock.mock.calls.map(([url, options]) => [url, options?.method])).toEqual([
     ['/api/club/clubs?query=long&limit=20&period=OTHER&nextToken=clubs-cursor', 'GET'],
@@ -200,7 +200,7 @@ test('every club page action targets the migrated API contract and uses cursor p
     [`/api/club/clubs/${uuidClub.id}`, 'DELETE'],
     [`/api/club/clubs/${uuidClub.id}/participants/2`, 'PUT'],
     [`/api/club/clubs/${uuidClub.id}/participants/2`, 'DELETE'],
-    [`/api/club/clubs/${uuidClub.id}/admins/3`, 'PUT'],
-    [`/api/club/clubs/${uuidClub.id}/admins/3`, 'DELETE'],
+    [`/api/club/clubs/${uuidClub.id}/admins/user-3`, 'PUT'],
+    [`/api/club/clubs/${uuidClub.id}/admins/user-3`, 'DELETE'],
   ]);
 });

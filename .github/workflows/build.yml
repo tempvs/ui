@@ -38,8 +38,6 @@ jobs:
         with:
           context: .
           push: true
-          build-args: |
-            REACT_APP_GOOGLE_ONLY_AUTH=${{ vars.REACT_APP_GOOGLE_ONLY_AUTH || 'false' }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/tempvs-ui:${{ github.run_number }}

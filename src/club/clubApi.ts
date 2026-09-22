@@ -8,8 +8,8 @@ export type Club = {
   location: string | null;
   contactEmail: string | null;
   period: Period;
-  creatorUserId: number;
-  adminUserIds: number[];
+  creatorUserId: string;
+  adminUserIds: string[];
   canManage: boolean;
   canManageAdmins: boolean;
   hasPhoto?: boolean;
@@ -79,7 +79,8 @@ function clubValue(value: unknown): Club {
   const club = value as Club | null;
   if (!club || (typeof club.id !== 'number' && typeof club.id !== 'string')
       || typeof club.name !== 'string' || typeof club.period !== 'string'
-      || !Array.isArray(club.adminUserIds) || !club.adminUserIds.every(id => typeof id === 'number')
+      || typeof club.creatorUserId !== 'string'
+      || !Array.isArray(club.adminUserIds) || !club.adminUserIds.every(id => typeof id === 'string')
       || typeof club.canManage !== 'boolean' || typeof club.canManageAdmins !== 'boolean'
       || ![club.description, club.location, club.contactEmail, club.photoUrl].every(text => text == null || typeof text === 'string')) {
     return invalidResponse();
@@ -204,11 +205,11 @@ export const decideJoinRequest = async (clubId: Id, requestId: Id, decision: 'ac
 export const getParticipants = async (id: Id, nextToken?: string): Promise<ParticipantsPage> => pageValue(await request<unknown>(`/clubs/${id}/participants?${new URLSearchParams({ limit: '20', ...(nextToken ? { nextToken } : {}) })}`), profileValue);
 export const attachProfile = (id: Id, profileId: Id) => request<void>(`/clubs/${id}/participants/${profileId}`, 'PUT');
 export const detachProfile = (id: Id, profileId: Id) => request<void>(`/clubs/${id}/participants/${profileId}`, 'DELETE');
-export const addAdmin = async (id: Id, userId: Id) => clubValue(
-  await request<unknown>(`/clubs/${id}/admins/${userId}`, 'PUT'),
+export const addAdmin = async (id: Id, userId: string) => clubValue(
+  await request<unknown>(`/clubs/${id}/admins/${encodeURIComponent(userId)}`, 'PUT'),
 );
-export const removeAdmin = async (id: Id, userId: Id) => clubValue(
-  await request<unknown>(`/clubs/${id}/admins/${userId}`, 'DELETE'),
+export const removeAdmin = async (id: Id, userId: string) => clubValue(
+  await request<unknown>(`/clubs/${id}/admins/${encodeURIComponent(userId)}`, 'DELETE'),
 );
 
 async function waitForClubPhoto(clubId: Id, imageId: string): Promise<ClubImage> {

@@ -77,7 +77,7 @@
   "password.label": "Password",
   "login.popover": "Log in",
   "login.button": "Log in",
-  "login.google.button": "Authenticate with Gmail",
+  "login.google.button": "Continue with Google",
   "login.failed": "Wrong login or password",
   "auth.modal.title": "Welcome back",
   "auth.divider": "or continue with",

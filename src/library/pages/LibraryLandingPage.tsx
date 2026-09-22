@@ -41,16 +41,12 @@ export default function LibraryLandingPage() {
     loadWelcome();
   }, []);
 
-  const handleRoleAction = async () => {
-    if (!welcome?.role) {
-      return;
-    }
-
+  const handleRoleAction = async (role: string, pending: boolean) => {
     setError(null);
-    const method = welcome.roleRequestAvailable ? 'POST' : 'DELETE';
+    const method = pending ? 'DELETE' : 'POST';
 
     try {
-      const result = await updateRoleRequest(welcome.role, method);
+      const result = await updateRoleRequest(role, method);
       if (!result.ok) {
         throw new Error('Unable to update the role request.');
       }
@@ -90,11 +86,18 @@ export default function LibraryLandingPage() {
           Open admin panel
         </Link>
       )}
-      {!welcome?.adminPanelAvailable && welcome?.buttonText && welcome?.role && (
-        <Button variant="outline-dark" size="sm" onClick={handleRoleAction}>
-          {welcome.buttonText}
-        </Button>
-      )}
+      {welcome?.roleRequests?.map(request => (
+        <OverlayTrigger
+          key={request.role}
+          trigger={['hover', 'focus']}
+          placement="bottom"
+          overlay={<HoverPopover text="" default={request.description} />}
+        >
+          <Button variant="outline-dark" size="sm" onClick={() => handleRoleAction(request.role, request.pending)}>
+            {request.pending ? `Cancel ${request.label.toLowerCase()}` : request.label}
+          </Button>
+        </OverlayTrigger>
+      ))}
     </div>
   );
 

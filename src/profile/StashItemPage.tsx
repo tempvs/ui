@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, Container, Form, Modal, Row } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FaLink, FaPlus, FaUnlink } from 'react-icons/fa';
+import { FaHourglassHalf, FaLink, FaPlus, FaUnlink } from 'react-icons/fa';
 
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import EditableDescriptionField from '../component/EditableDescriptionField';
@@ -61,6 +61,7 @@ const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
 const UnlinkIcon = FaUnlink as React.ComponentType<{ className?: string }>;
+const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
 function toRecordKey(value: Id) {
   return String(value);
@@ -761,7 +762,8 @@ function StashItemPage({ intl }: StashItemPageProps) {
               {t('profile.action.cancel', 'Cancel')}
             </Button>
             <Button type="submit" variant="secondary" disabled={imageUploading}>
-              {t('profile.stash.itemImageUpload', 'Upload image')}
+              {imageUploading && <SavingIcon className="me-2" />}
+              {imageUploading ? t('profile.stash.itemImageUploading', 'Uploading...') : t('profile.stash.itemImageUpload', 'Upload image')}
             </Button>
           </Modal.Footer>
         </Form>

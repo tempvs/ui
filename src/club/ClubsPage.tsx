@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie';
 import defaultImage from '../assets/default-image.png';
 import RefreshingImage from '../image/RefreshingImage';
+import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
 import { Club, ClubDraft, createClub, isClubServiceUnavailable, listClubs } from './clubApi';
 import ClubForm from './ClubForm';
@@ -24,8 +24,11 @@ export default function ClubsPage() {
   const [searchError, setSearchError] = useState('');
   const [unavailable, setUnavailable] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
+
+  useEffect(() => fetchCurrentUserInfo(result => setSignedIn(Boolean(result.currentUserId))), []);
 
   useEffect(() => {
     if (creating) return;
@@ -88,7 +91,7 @@ export default function ClubsPage() {
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
     <div className="club-page-heading">
       <div><h1>{t('title', 'Clubs')}</h1><p>{t('intro', 'Find the people who bring your period to life.')}</p></div>
-      {Cookies.get('TEMPVS_LOGGED_IN') && !creating && <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button>}
+      {signedIn && !creating && <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button>}
     </div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="club-panel"><h2>{t('create', 'Create club')}</h2><ClubForm busy={busy || unavailable} onSave={save} onCancel={() => setCreating(false)} /></section> : <>

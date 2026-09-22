@@ -64,7 +64,7 @@ function formatDate(value?: string | null) {
   return date.toLocaleString();
 }
 
-function toPromiseUserProfile(userId: number) {
+function toPromiseUserProfile(userId: string) {
   return new Promise<Profile | null>((resolve, reject) => {
     fetchUserProfileByUserId(userId, {
       onSuccess: profile => resolve(profile || null),
@@ -74,7 +74,7 @@ function toPromiseUserProfile(userId: number) {
   });
 }
 
-function toPromiseClubProfiles(userId: number) {
+function toPromiseClubProfiles(userId: string) {
   return new Promise<Profile[]>((resolve, reject) => {
     fetchClubProfiles(userId, {
       onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
@@ -83,8 +83,8 @@ function toPromiseClubProfiles(userId: number) {
   });
 }
 
-function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number | null) {
-  const seenUserIds = new Set<number>();
+function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: string | null) {
+  const seenUserIds = new Set<string>();
 
   return profiles.filter(profile => {
     const profileId = String(profile.id);
@@ -92,8 +92,8 @@ function deduplicateProfilesByUser(profiles: Profile[], excludedUserId?: number 
       return false;
     }
 
-    const userId = profile.userId != null ? Number(profile.userId) : null;
-    if (userId != null && Number.isFinite(userId)) {
+    const userId = profile.userId != null ? String(profile.userId) : null;
+    if (userId) {
       if (excludedUserId != null && userId === excludedUserId) {
         return false;
       }
@@ -121,7 +121,7 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
 
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [senderProfiles, setSenderProfiles] = useState<Profile[]>([]);
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
@@ -155,7 +155,7 @@ export default function ChatPage() {
         return;
       }
 
-      setCurrentUserId(Number(result.currentUserId));
+      setCurrentUserId(String(result.currentUserId));
     });
   }, []);
 
@@ -351,14 +351,14 @@ export default function ChatPage() {
         if (!cancelled) {
           const selectedUserIds = new Set(
             selectedParticipants
-              .map(profile => profile.userId != null ? Number(profile.userId) : null)
-              .filter((userId): userId is number => userId != null && Number.isFinite(userId))
+              .map(profile => profile.userId != null ? String(profile.userId) : null)
+              .filter((userId): userId is string => Boolean(userId))
           );
 
           const filteredResults = deduplicateProfilesByUser(results, currentUserId)
             .filter(profile => String(profile.id) !== selectedSenderId)
             .filter(profile => {
-              const userId = profile.userId != null ? Number(profile.userId) : null;
+              const userId = profile.userId != null ? String(profile.userId) : null;
               return userId == null || !selectedUserIds.has(userId);
             });
 

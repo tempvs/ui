@@ -39,7 +39,7 @@ function requestJson(url: string, options: RequestOptions = {}) {
 }
 
 export function fetchCurrentUserInfo(onResult: (result: CurrentUserInfo) => void): void {
-  doFetch('/api/user/oauth/me', 'GET', null, {
+  doFetch('/api/user/me', 'GET', null, {
     200: profile => {
       const data = (profile || {}) as OauthProfile;
       onResult({ currentUserId: data.userId || null, oauthProfile: data || null });
@@ -59,7 +59,7 @@ export function fetchProfileById(id: Id | null | undefined, handlers: ProfileHan
 }
 
 export function fetchUserProfileByUserId(userId: Id, handlers: ProfileHandlers<Profile | null>): void {
-  doFetch(`/api/profile/user-profile?userId=${userId}`, 'GET', null, {
+  doFetch(`/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`, 'GET', null, {
     200: profile => handlers.onSuccess((profile as Profile | null) || null),
     404: () => handlers.onMissing?.(),
     default: () => handlers.onError?.(),
