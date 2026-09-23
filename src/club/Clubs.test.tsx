@@ -23,6 +23,7 @@ jest.mock('../profile/profileApi', () => ({
   fetchCurrentUserInfo: jest.fn(),
   fetchClubProfiles: jest.fn(),
   fetchOwnerUserProfile: jest.fn(),
+  searchProfiles: jest.fn(),
 }));
 
 const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
@@ -38,6 +39,7 @@ beforeEach(() => {
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
   mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
   mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess(null));
+  mock(profileApi.searchProfiles).mockResolvedValue([]);
   mock(api.getClub).mockResolvedValue(club);
   mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
@@ -106,11 +108,13 @@ test('scrolling participants appends the next page without pagination buttons', 
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 });
 
-test('admins can edit and manage participants but cannot assign admins or delete clubs', async () => {
+test('admins edit Club fields inline and manage participants but cannot assign admins or delete clubs', async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit club' }));
-  expect(screen.getByLabelText('Club name')).toHaveValue('Longbow Company');
+  const name = await screen.findByDisplayValue('Longbow Company');
+  fireEvent.click(name);
+  expect(name).not.toHaveAttribute('readonly');
+  expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
   expect(screen.getByText('Join requests')).toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Delete club' })).not.toBeInTheDocument();
@@ -124,6 +128,22 @@ test('creator can revoke admin access and sees refreshed management', async () =
   const adminLink = screen.getByRole('link', { name: 'View profile #user-20' });
   fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
   await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith('1', 'user-20'));
+});
+
+test('creator administration searches matching club profiles while typing', async () => {
+  mock(api.getClub).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true });
+  mock(profileApi.searchProfiles).mockResolvedValue([{
+    id: 'club-profile-1', userId: 'user-30', type: 'CLUB', firstName: 'York', lastName: 'Archers', period: 'HIGH_MIDDLE_AGES',
+  }]);
+  mock(api.addAdmin).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true, adminUserIds: ['user-30'] });
+  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Search profiles by name or alias' }), { target: { value: 'york' } });
+  await waitFor(() => expect(profileApi.searchProfiles).toHaveBeenCalledWith({
+    query: 'york', type: 'CLUB', period: 'HIGH_MIDDLE_AGES', size: 20,
+  }));
+  expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: 'Assign' }));
+  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith('1', 'user-30'));
 });
 
 test('owner opens search modal and requests membership without immediately joining', async () => {
