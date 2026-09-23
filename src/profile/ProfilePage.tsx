@@ -26,7 +26,6 @@ import {
   fetchAvatar,
   fetchClubProfiles,
   fetchCurrentUserInfo,
-  fetchOwnerUserProfile,
   fetchProfileById,
   followProfile,
   getFollowState,
@@ -62,6 +61,10 @@ type ProfileInputChangeEvent =
 class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   autoSaveTimers: TimerRecord = {};
   statusResetTimers: TimerRecord = {};
+  private readonly clubProfilesCache = new Map<string, Profile[]>();
+  private readonly pendingClubProfiles = new Map<string, Promise<Profile[]>>();
+  private readonly userProfilesCache = new Map<string, Profile | null>();
+  private readonly pendingUserProfiles = new Map<string, Promise<Profile | null>>();
 
   constructor(props: ProfilePageProps) {
     super(props);
@@ -189,11 +192,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   loadRequestedProfile() {
     if (this.props.userId) {
-      fetchUserProfileByUserId(this.props.userId, {
-        onSuccess: profile => profile ? this.renderProfile(profile) : this.handleMissingProfile(this.props.userId),
-        onMissing: () => this.handleMissingProfile(this.props.userId),
-        onError: () => this.handleMissingProfile(this.props.userId),
-      });
+      this.loadUserProfile(this.props.userId)
+        .then(profile => profile ? this.renderProfile(profile) : this.handleMissingProfile(this.props.userId))
+        .catch(() => this.handleMissingProfile(this.props.userId));
       return;
     }
 
@@ -211,18 +212,17 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     this.setState({ clubProfilesLoaded: false, clubProfilesMessage: null });
-    fetchClubProfiles(userId, {
-      onSuccess: profiles => this.setState({
+    this.loadClubProfiles(userId)
+      .then(profiles => this.setState({
         clubProfiles: Array.isArray(profiles) ? profiles : [],
         clubProfilesLoaded: true,
         clubProfilesMessage: null,
-      }),
-      onError: () => this.setState({
+      }))
+      .catch(() => this.setState({
         clubProfiles: [],
         clubProfilesLoaded: true,
         clubProfilesMessage: this.t('profile.clubProfiles.loadFailed', 'Unable to load club profiles.'),
-      }),
-    });
+      }));
   }
 
   fetchOwnerUserProfile(userId: Id | null | undefined) {
@@ -232,10 +232,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     this.setState({ ownerUserProfileLoaded: false });
-    fetchOwnerUserProfile(userId, {
-      onSuccess: profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }),
-      onError: () => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
-    });
+    this.loadUserProfile(userId)
+      .then(profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }))
+      .catch(() => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }));
   }
 
   fetchCurrentOwnedProfiles(userId: Id | null | undefined) {
@@ -245,25 +244,84 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     Promise.all([
-      new Promise<Profile | null>(resolve => {
-        fetchUserProfileByUserId(userId, {
-          onSuccess: profile => resolve(profile || null),
-          onMissing: () => resolve(null),
-          onError: () => resolve(null),
-        });
-      }),
-      new Promise<Profile[]>(resolve => {
-        fetchClubProfiles(userId, {
-          onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
-          onError: () => resolve([]),
-        });
-      }),
+      this.loadUserProfile(userId).catch(() => null),
+      this.loadClubProfiles(userId).catch(() => []),
     ]).then(([userProfile, clubProfiles]) => {
       const currentOwnedProfiles = [userProfile, ...clubProfiles]
         .filter((profile): profile is Profile => Boolean(profile && profile.id != null));
       const currentProfileId = resolveCurrentOwnedProfileId(currentOwnedProfiles);
       this.setState({ currentOwnedProfiles, currentProfileId }, () => this.refreshFollowState());
     });
+  }
+
+  profileCacheKey(userId: Id) {
+    return String(userId);
+  }
+
+  loadUserProfile(userId: Id): Promise<Profile | null> {
+    const key = this.profileCacheKey(userId);
+    if (this.userProfilesCache.has(key)) {
+      return Promise.resolve(this.userProfilesCache.get(key) || null);
+    }
+
+    const pending = this.pendingUserProfiles.get(key);
+    if (pending) {
+      return pending;
+    }
+
+    const request = new Promise<Profile | null>((resolve, reject) => {
+      fetchUserProfileByUserId(userId, {
+        onSuccess: profile => resolve(profile || null),
+        onMissing: () => resolve(null),
+        onError: reject,
+      });
+    }).then(profile => {
+      this.userProfilesCache.set(key, profile);
+      return profile;
+    });
+
+    this.pendingUserProfiles.set(key, request);
+    request.then(
+      () => this.pendingUserProfiles.delete(key),
+      () => this.pendingUserProfiles.delete(key),
+    );
+    return request;
+  }
+
+  loadClubProfiles(userId: Id): Promise<Profile[]> {
+    const key = this.profileCacheKey(userId);
+    const cached = this.clubProfilesCache.get(key);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+
+    const pending = this.pendingClubProfiles.get(key);
+    if (pending) {
+      return pending;
+    }
+
+    const request = new Promise<Profile[]>((resolve, reject) => {
+      fetchClubProfiles(userId, {
+        onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
+        onError: reject,
+      });
+    }).then(profiles => {
+      this.clubProfilesCache.set(key, profiles);
+      return profiles;
+    });
+
+    this.pendingClubProfiles.set(key, request);
+    request.then(
+      () => this.pendingClubProfiles.delete(key),
+      () => this.pendingClubProfiles.delete(key),
+    );
+    return request;
+  }
+
+  invalidateClubProfiles(userId: Id | null | undefined) {
+    if (userId) {
+      this.clubProfilesCache.delete(this.profileCacheKey(userId));
+    }
   }
 
   fetchFollowingProfiles(profileId: Id | null | undefined) {
@@ -540,9 +598,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     event.preventDefault();
     this.setState({ clubProfileCreateError: false });
 
+    const renderCreatedClubProfile = (result: unknown) => {
+      const profile = result as Profile;
+      this.invalidateClubProfiles(profile.userId);
+      this.renderProfile(profile);
+    };
+
     createClubProfile(event, {
-      200: profile => this.renderProfile(profile as Profile),
-      201: profile => this.renderProfile(profile as Profile),
+      200: renderCreatedClubProfile,
+      201: renderCreatedClubProfile,
       400: () => this.setState({ clubProfileCreateError: true }),
       401: () => this.setState({ clubProfileCreateError: true }),
       409: () => this.setState({ clubProfileCreateError: true }),
@@ -590,6 +654,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         return;
       }
 
+      this.invalidateClubProfiles(clubProfile.userId);
       this.fetchClubProfiles(clubProfile.userId);
     } catch (error) {
       this.setState({ clubProfileDeleteError: true });
@@ -623,6 +688,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   applyProfile(profile: Profile, refreshAvatar = true, savedField: ProfileField | null = null) {
+    if (profile.type === 'USER' && profile.userId) {
+      this.userProfilesCache.set(this.profileCacheKey(profile.userId), profile);
+    }
+
     this.setState(prevState => ({
       loaded: true,
       notFound: false,
@@ -664,7 +733,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     this.fetchClubProfiles(profile.userId);
-    this.fetchOwnerUserProfile(profile.userId);
+    if (profile.type === 'CLUB') {
+      this.fetchOwnerUserProfile(profile.userId);
+    } else {
+      this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true });
+    }
   }
 
   renderProfile(profile: Profile) {
