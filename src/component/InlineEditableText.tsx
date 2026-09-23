@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Form, OverlayTrigger } from 'react-bootstrap';
 import { FaPen } from 'react-icons/fa';
 
 import HoverPopover from './HoverPopover';
 import InlineSaveStatus from './InlineSaveStatus';
 import useIsTruncated from './useIsTruncated';
+import useInlineEditing from './useInlineEditing';
 import { SaveStatus } from './EditableFieldRow';
 
 type InlineEditableTextProps = {
@@ -50,8 +51,7 @@ export default function InlineEditableText({
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: InlineEditableTextProps) {
-  const [editing, setEditing] = useState(false);
-  const [blurredAfterEdit, setBlurredAfterEdit] = useState(false);
+  const { editing, beginEditing, endEditing } = useInlineEditing(editable);
   const controlRef = useRef<HTMLElement | null>(null);
   const readOnlyRef = useRef<HTMLDivElement | null>(null);
   const readOnlyDisplayValue = typeof readOnlyValue === 'string' || typeof readOnlyValue === 'number'
@@ -103,39 +103,19 @@ export default function InlineEditableText({
     }
   }, [controlValue, editing, multiline, multilineUseContentEditable]);
 
-  useEffect(() => {
-    if (!editing || !blurredAfterEdit) {
-      return undefined;
-    }
-
-    if (!status) {
-      setEditing(false);
-      return undefined;
-    }
-
-    if (status === 'saved' || status === 'error') {
-      const timerId = window.setTimeout(() => {
-        setEditing(false);
-      }, 900);
-      return () => window.clearTimeout(timerId);
-    }
-
-    return undefined;
-  }, [blurredAfterEdit, editing, status]);
-
   const handleInputBlur: React.FocusEventHandler<HTMLInputElement> = event => {
     onBlur?.(event);
-    setBlurredAfterEdit(true);
+    endEditing();
   };
 
   const handleTextareaBlur: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
     onBlur?.(event);
-    setBlurredAfterEdit(true);
+    endEditing();
   };
 
   const handleContentEditableBlur: React.FocusEventHandler<HTMLDivElement> = event => {
     onBlur?.(event);
-    setBlurredAfterEdit(true);
+    endEditing();
   };
 
   const handleTextareaChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
@@ -179,10 +159,7 @@ export default function InlineEditableText({
     <div
       className={`inline-editable-control ${editing ? 'inline-editable-active' : 'inline-editable-readonly'}`}
       onClick={() => {
-        if (!editing) {
-          setBlurredAfterEdit(false);
-          setEditing(true);
-        }
+        if (!editing) beginEditing();
       }}
     >
       {multiline ? (

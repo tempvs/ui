@@ -298,12 +298,28 @@ export default function LibrarySourcePage() {
         throw new Error("Unable to upload the image.");
       }
 
+      const uploadedImage = result.data;
+      if (!uploadedImage || !("id" in uploadedImage)) {
+        throw new Error("Library returned an invalid image upload response.");
+      }
+
+      // The Image processor is asynchronous. Keep its pending record in the
+      // shared gallery immediately; RefreshingImage then polls this exact
+      // image until a signed display/thumbnail URL is available.
+      setImages((current) => [
+        ...current.filter((image) => image.id !== uploadedImage.id),
+        uploadedImage,
+      ]);
+      setImageDrafts((current) => ({
+        ...current,
+        [uploadedImage.id]: uploadedImage.description || "",
+      }));
+
       if (imageInputRef.current) {
         imageInputRef.current.value = "";
       }
       setImageDescription("");
       setShowUploadModal(false);
-      await loadSource();
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -345,7 +361,23 @@ export default function LibrarySourcePage() {
         throw new Error("Unable to replace the image.");
       }
 
-      await loadSource();
+      const uploadedImage = uploadResult.data;
+      if (!uploadedImage || !("id" in uploadedImage)) {
+        throw new Error("Library returned an invalid image replacement response.");
+      }
+
+      setImages((current) =>
+        current.map((image) =>
+          image.id === targetImage.id ? uploadedImage : image,
+        ),
+      );
+      setImageDrafts((current) => {
+        const next = { ...current };
+        delete next[targetImage.id];
+        next[uploadedImage.id] = uploadedImage.description || "";
+        return next;
+      });
+
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {

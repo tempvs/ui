@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { FaPen } from 'react-icons/fa';
 
 import InlineSaveStatus from './InlineSaveStatus';
+import useInlineEditing from './useInlineEditing';
 
 export type SaveStatus = 'pending' | 'saving' | 'saved' | 'error' | string | null | undefined;
 
@@ -40,28 +41,7 @@ export default function EditableFieldRow({
   errorTitle = 'Save failed',
   className = 'mb-2',
 }: EditableFieldRowProps) {
-  const [editing, setEditing] = useState(false);
-  const [blurredAfterEdit, setBlurredAfterEdit] = useState(false);
-
-  useEffect(() => {
-    if (!editing || !blurredAfterEdit) {
-      return undefined;
-    }
-
-    if (!status) {
-      setEditing(false);
-      return undefined;
-    }
-
-    if (status === 'saved' || status === 'error') {
-      const timerId = window.setTimeout(() => {
-        setEditing(false);
-      }, 900);
-      return () => window.clearTimeout(timerId);
-    }
-
-    return undefined;
-  }, [blurredAfterEdit, editing, status]);
+  const { editing, beginEditing, endEditing } = useInlineEditing(editable);
 
   const controlProps = React.isValidElement(control)
     ? control.props as {
@@ -79,7 +59,7 @@ export default function EditableFieldRow({
       className: `${controlProps.className || ''} inline-editable-input ${editing ? 'inline-editable-active-input' : 'inline-editable-readonly-input'} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim(),
       onBlur: (event: React.FocusEvent<HTMLElement>) => {
         controlProps.onBlur?.(event);
-        setBlurredAfterEdit(true);
+        endEditing();
       },
     })
     : control;
@@ -94,10 +74,7 @@ export default function EditableFieldRow({
           <div
             className={`inline-editable-control ${editing ? 'inline-editable-active' : 'inline-editable-readonly'}`}
             onClick={() => {
-              if (!editing) {
-                setBlurredAfterEdit(false);
-                setEditing(true);
-              }
+              if (!editing) beginEditing();
             }}
           >
             {editableControl}
