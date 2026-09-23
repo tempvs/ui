@@ -83,7 +83,11 @@ export default function RefreshingImage({
         // Image processing is asynchronous. Keep trying while this component is mounted.
       }
 
-      if (active && attempt + 1 < IMAGE_REFRESH_ATTEMPTS) {
+      // A known image ID represents a pending upload and can be polled until
+      // the processor publishes it. A profile/club reference without an
+      // image ID only needs one metadata lookup: repeatedly polling a profile
+      // that simply has no avatar creates needless Lambda/API traffic.
+      if (active && imageId != null && attempt + 1 < IMAGE_REFRESH_ATTEMPTS) {
         retryTimer = window.setTimeout(() => {
           void refreshPendingImage(attempt + 1);
         }, IMAGE_REFRESH_INTERVAL_MS);

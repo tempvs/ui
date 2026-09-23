@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import RefreshingImage from './RefreshingImage';
 
@@ -25,6 +25,27 @@ test('loads a signed URL when a known image has no URL in the owner response', a
   await waitFor(() => expect(view.getByRole('img')).toHaveAttribute('src', 'https://s3/club-photo'));
   expect(fetchMock).toHaveBeenCalledWith('/api/images/club/club-1?limit=1&imageIds=image-1');
   fetchMock.mockRestore();
+});
+
+test('looks up an unknown profile avatar once instead of treating it as a pending upload', async () => {
+  jest.useFakeTimers();
+  const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: [] }),
+  } as Response);
+  render(
+    <RefreshingImage
+      image={{ resourceType: 'profile', resourceId: 'profile-1' }}
+      fallbackSrc="/placeholder.png"
+      alt="Profile"
+    />,
+  );
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  act(() => { jest.advanceTimersByTime(60_000); });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  fetchMock.mockRestore();
+  jest.useRealTimers();
 });
 
 test('keeps polling a pending image until processing provides a signed URL', async () => {
