@@ -4,12 +4,14 @@ import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Spinner from '../component/Spinner';
-import { fetchClubProfiles, fetchCurrentUserInfo } from '../profile/profileApi';
+import { fetchClubProfiles, fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { PeriodBadge } from '../util/periods';
-import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, getClub, getParticipants, isClubServiceUnavailable, removeAdmin, requestJoin, updateClub } from './clubApi';
+import { Club, ClubDraft, addAdmin, deleteClub, detachProfile, followClub, getClub, getClubFollowState, getParticipants, isClubServiceUnavailable, removeAdmin, requestJoin, unfollowClub, updateClub } from './clubApi';
 import ClubForm from './ClubForm';
+import ClubFollowModal from './ClubFollowModal';
+import ClubFollowersPanel from './ClubFollowersPanel';
 import ProfilePicker from './ProfilePicker';
 import JoinRequestsPanel from './JoinRequestsPanel';
 import ClubPhotoPanel from './ClubPhotoPanel';
@@ -25,6 +27,8 @@ export default function ClubPage() {
   const [club, setClub] = useState<Club | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [ownedClubProfiles, setOwnedClubProfiles] = useState<Profile[]>([]);
+  const [ownedUserProfile, setOwnedUserProfile] = useState<Profile | null>(null);
+  const [followingProfileIds, setFollowingProfileIds] = useState<Set<string>>(new Set());
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [participantsLoading, setParticipantsLoading] = useState(true);
@@ -37,6 +41,9 @@ export default function ClubPage() {
   const [deleting, setDeleting] = useState(false);
   const [applyingForMembership, setApplyingForMembership] = useState(false);
   const [membershipMessage, setMembershipMessage] = useState('');
+  const [followingClub, setFollowingClub] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followError, setFollowError] = useState('');
   const [revision, setRevision] = useState(0);
   const loadMoreParticipants = useRef<() => void>(() => {});
   const markUnavailable = useCallback(() => setUnavailable(true), []);
@@ -47,6 +54,8 @@ export default function ClubPage() {
       setCurrentUserId(result.currentUserId);
       if (!result.currentUserId) {
         setOwnedClubProfiles([]);
+        setOwnedUserProfile(null);
+        setFollowingProfileIds(new Set());
         return;
       }
       fetchClubProfiles(result.currentUserId, {
@@ -57,9 +66,33 @@ export default function ClubPage() {
           if (active) setOwnedClubProfiles([]);
         },
       });
+      fetchOwnerUserProfile(result.currentUserId, {
+        onSuccess: profile => { if (active) setOwnedUserProfile(profile); },
+        onMissing: () => { if (active) setOwnedUserProfile(null); },
+        onError: () => { if (active) setOwnedUserProfile(null); },
+      });
     });
     return () => { active = false; };
   }, []);
+  useEffect(() => {
+    let active = true;
+    const profiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
+    if (!currentUserId || profiles.length === 0) {
+      setFollowingProfileIds(new Set());
+      return () => { active = false; };
+    }
+    Promise.all(profiles.map(async profile => [String(profile.id), await getClubFollowState(id, profile.id)] as const))
+      .then(states => {
+        if (!active) return;
+        setFollowingProfileIds(new Set(states.filter(([, following]) => following).map(([profileId]) => profileId)));
+      })
+      .catch(error => {
+        if (!active) return;
+        if (isClubServiceUnavailable(error)) markUnavailable();
+        else setFollowError((error as Error).message);
+      });
+    return () => { active = false; };
+  }, [currentUserId, id, ownedClubProfiles, ownedUserProfile, markUnavailable]);
   useEffect(() => {
     let active = true; setLoading(true); setError(''); setUnavailable(false);
     getClub(id).then(data => { if (active) setClub(data); })
@@ -122,6 +155,26 @@ export default function ClubPage() {
       else setError((e as Error).message);
     } finally { setBusy(false); }
   };
+  const toggleClubFollow = async (profile: Profile) => {
+    const profileId = String(profile.id);
+    const wasFollowing = followingProfileIds.has(profileId);
+    setFollowBusy(true); setFollowError('');
+    try {
+      if (wasFollowing) await unfollowClub(id, profile.id);
+      else await followClub(id, profile.id);
+      setFollowingProfileIds(current => {
+        const next = new Set(current);
+        if (wasFollowing) next.delete(profileId);
+        else next.add(profileId);
+        return next;
+      });
+      setRevision(value => value + 1);
+    } catch (error) {
+      if (isClubServiceUnavailable(error)) markUnavailable();
+      else setFollowError((error as Error).message || t('followFailed', 'Unable to update club follow state right now.'));
+    } finally { setFollowBusy(false); }
+  };
+  const ownedProfiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
   const handleParticipantScroll: React.UIEventHandler<HTMLDivElement> = event => {
     const element = event.currentTarget;
     if (hasMore && !participantsLoading && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) {
@@ -140,6 +193,12 @@ export default function ClubPage() {
             title={currentUserId == null ? t('signInToApply', 'Sign in to apply for membership') : undefined}
             onClick={() => { setMembershipMessage(''); setApplyingForMembership(true); }}
           >{t('applyForMembership', 'Apply for membership')}</Button>}
+          {!editing && <Button
+            variant={followingProfileIds.size > 0 ? 'danger' : 'outline-dark'}
+            disabled={unavailable || currentUserId == null}
+            title={currentUserId == null ? t('signInToFollow', 'Sign in to follow this club') : undefined}
+            onClick={() => { setFollowError(''); setFollowingClub(true); }}
+          >{followingProfileIds.size > 0 ? t('following', 'Following') : t('follow', 'Follow')}</Button>}
           {club.canManage && !editing && <Button variant="outline-secondary" disabled={unavailable} onClick={() => setEditing(true)}>{t('edit', 'Edit club')}</Button>}
         </div>
       </div>
@@ -171,6 +230,7 @@ export default function ClubPage() {
             {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
           </div>
         </section>
+        <ClubFollowersPanel clubId={id} revision={revision} onUnavailable={markUnavailable} />
         {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} onUnavailable={markUnavailable} />}
       </Col><Col lg={4}>
         <section className="club-panel">
@@ -216,5 +276,14 @@ export default function ClubPage() {
       </Modal.Body>
       <Modal.Footer><Button variant="outline-secondary" disabled={busy} onClick={() => setApplyingForMembership(false)}>{t('close', 'Close')}</Button></Modal.Footer>
     </Modal>
+    <ClubFollowModal
+      show={followingClub}
+      profiles={ownedProfiles}
+      followingProfileIds={followingProfileIds}
+      busy={followBusy || unavailable}
+      error={followError}
+      onHide={() => setFollowingClub(false)}
+      onToggle={profile => { void toggleClubFollow(profile); }}
+    />
   </Container>;
 }

@@ -12,6 +12,7 @@ import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
 import ProfileClubPanel from '../club/ProfileClubPanel';
+import ProfileFollowedClubsPanel from '../club/ProfileFollowedClubsPanel';
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
@@ -1068,6 +1069,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 t={this.t.bind(this)}
                 onToggleFollow={this.handleToggleFollow}
               />
+              {this.state.profileId && <ProfileFollowedClubsPanel profileId={this.state.profileId} />}
             </div>
           </Col>
           <Col lg={5} md={8}>

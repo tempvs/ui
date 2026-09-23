@@ -16,11 +16,13 @@ jest.mock('./clubApi', () => ({
   getJoinOptions: jest.fn(), requestJoin: jest.fn(), getJoinRequests: jest.fn(), decideJoinRequest: jest.fn(),
   attachProfile: jest.fn(), detachProfile: jest.fn(), updateClub: jest.fn(), deleteClub: jest.fn(),
   addAdmin: jest.fn(), removeAdmin: jest.fn(), createClub: jest.fn(),
+  getClubFollowers: jest.fn(), getClubFollowState: jest.fn(), followClub: jest.fn(), unfollowClub: jest.fn(), getFollowedClubs: jest.fn(),
   uploadClubPhoto: jest.fn(), removeClubPhoto: jest.fn(),
 }));
 jest.mock('../profile/profileApi', () => ({
   fetchCurrentUserInfo: jest.fn(),
   fetchClubProfiles: jest.fn(),
+  fetchOwnerUserProfile: jest.fn(),
 }));
 
 const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
@@ -35,11 +37,15 @@ beforeEach(() => {
   jest.resetAllMocks();
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
   mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess(null));
   mock(api.getClub).mockResolvedValue(club);
   mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
   mock(api.getJoinRequests).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getJoinOptions).mockResolvedValue({ content: [{ club, status: null }], hasMore: false });
+  mock(api.getClubFollowers).mockResolvedValue({ content: [], hasMore: false });
+  mock(api.getFollowedClubs).mockResolvedValue([]);
+  mock(api.getClubFollowState).mockResolvedValue(false);
 });
 
 test('visitors see participants linked to profiles and no management controls', async () => {
@@ -50,6 +56,24 @@ test('visitors see participants linked to profiles and no management controls', 
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+});
+
+test('a signed-in user can follow and unfollow a club through any owned profile', async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-42', oauthProfile: null }));
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess({ id: 'personal-1', firstName: 'Alex', lastName: 'Archer', type: 'USER' }));
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([{ id: 'club-1', firstName: 'Longbow', lastName: 'Company', type: 'CLUB' }]));
+  mock(api.followClub).mockResolvedValue(undefined);
+  mock(api.unfollowClub).mockResolvedValue(undefined);
+  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
+  const modal = await screen.findByRole('dialog');
+  expect(within(modal).getByText('Alex Archer')).toBeInTheDocument();
+  expect(within(modal).getByText('Longbow Company')).toBeInTheDocument();
+  fireEvent.click(within(modal).getAllByRole('button', { name: 'Follow' })[0]);
+  await waitFor(() => expect(api.followClub).toHaveBeenCalledWith('1', 'personal-1'));
+  expect(await within(modal).findByRole('button', { name: 'Unfollow' })).toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole('button', { name: 'Unfollow' }));
+  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith('1', 'personal-1'));
 });
 
 test('profile owners can leave from the scrollable club participant list', async () => {

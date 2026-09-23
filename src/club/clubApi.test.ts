@@ -8,14 +8,19 @@ import {
   deleteClub,
   detachProfile,
   getClub,
+  getClubFollowers,
+  getClubFollowState,
   getJoinOptions,
   getJoinRequests,
   getParticipants,
   getProfileClubs,
+  getFollowedClubs,
+  followClub,
   listClubs,
   removeAdmin,
   requestJoin,
   updateClub,
+  unfollowClub,
   uploadClubPhoto,
 } from './clubApi';
 
@@ -202,5 +207,28 @@ test('every club page action targets the migrated API contract and uses cursor p
     [`/api/club/clubs/${uuidClub.id}/participants/2`, 'DELETE'],
     [`/api/club/clubs/${uuidClub.id}/admins/user-3`, 'PUT'],
     [`/api/club/clubs/${uuidClub.id}/admins/user-3`, 'DELETE'],
+  ]);
+});
+
+test('club following uses the deployed public/read and owned-profile mutation routes', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(response({ content: [], hasMore: false }))
+    .mockResolvedValueOnce(response([]))
+    .mockResolvedValueOnce(response({ following: true }))
+    .mockResolvedValueOnce(response(null, 204))
+    .mockResolvedValueOnce(response(null, 204));
+
+  await getClubFollowers(uuidClub.id, 'follower-cursor');
+  await getFollowedClubs('profile-1');
+  await expect(getClubFollowState(uuidClub.id, 'profile-1')).resolves.toBe(true);
+  await followClub(uuidClub.id, 'profile-1');
+  await unfollowClub(uuidClub.id, 'profile-1');
+
+  expect(fetchMock.mock.calls.map(([url, options]) => [url, options?.method])).toEqual([
+    [`/api/club/clubs/${uuidClub.id}/followers?limit=20&nextToken=follower-cursor`, 'GET'],
+    ['/api/club/profiles/profile-1/followed-clubs', 'GET'],
+    [`/api/club/clubs/${uuidClub.id}/follow-state?asProfileId=profile-1`, 'GET'],
+    [`/api/club/clubs/${uuidClub.id}/followers/profile-1`, 'PUT'],
+    [`/api/club/clubs/${uuidClub.id}/followers/profile-1`, 'DELETE'],
   ]);
 });

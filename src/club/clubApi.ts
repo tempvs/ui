@@ -203,6 +203,15 @@ export const decideJoinRequest = async (clubId: Id, requestId: Id, decision: 'ac
   await request<unknown>(`/clubs/${clubId}/join-requests/${requestId}/${decision}`, 'POST'),
 );
 export const getParticipants = async (id: Id, nextToken?: string): Promise<ParticipantsPage> => pageValue(await request<unknown>(`/clubs/${id}/participants?${new URLSearchParams({ limit: '20', ...(nextToken ? { nextToken } : {}) })}`), profileValue);
+export type FollowersPage = ParticipantsPage;
+export const getClubFollowers = async (id: Id, nextToken?: string): Promise<FollowersPage> => pageValue(await request<unknown>(`/clubs/${id}/followers?${new URLSearchParams({ limit: '20', ...(nextToken ? { nextToken } : {}) })}`), profileValue);
+export const getFollowedClubs = async (profileId: Id): Promise<Club[]> => arrayValue(await request<unknown>(`/profiles/${profileId}/followed-clubs`), clubValue);
+export async function getClubFollowState(clubId: Id, asProfileId: Id): Promise<boolean> {
+  const result = await request<{ following?: unknown }>(`/clubs/${clubId}/follow-state?asProfileId=${encodeURIComponent(String(asProfileId))}`);
+  return result?.following === true;
+}
+export const followClub = (clubId: Id, profileId: Id) => request<void>(`/clubs/${clubId}/followers/${profileId}`, 'PUT');
+export const unfollowClub = (clubId: Id, profileId: Id) => request<void>(`/clubs/${clubId}/followers/${profileId}`, 'DELETE');
 export const attachProfile = (id: Id, profileId: Id) => request<void>(`/clubs/${id}/participants/${profileId}`, 'PUT');
 export const detachProfile = (id: Id, profileId: Id) => request<void>(`/clubs/${id}/participants/${profileId}`, 'DELETE');
 export const addAdmin = async (id: Id, userId: string) => clubValue(
