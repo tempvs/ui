@@ -26,7 +26,55 @@ function initialUrl(image: ImageReference, variant: 'display' | 'thumbnail') {
 
 const IMAGE_REFRESH_INTERVAL_MS = 750;
 const IMAGE_REFRESH_ATTEMPTS = 40;
+const IMAGE_METADATA_CACHE_MS = 10_000;
 const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+
+type CachedImageRead = {
+  expiresAt: number;
+  request: Promise<ImageReference | null>;
+};
+
+// The same image can be rendered in the page body and a navigation/admin
+// tile at once. Share that metadata lookup across all RefreshingImage
+// instances; a missing pending image is deliberately not cached so uploads
+// can still be observed promptly.
+const imageMetadataReads = new Map<string, CachedImageRead>();
+
+function readImageMetadata(
+  resourceType: string,
+  resourceId: string | number,
+  imageId: string | number | null | undefined,
+): Promise<ImageReference | null> {
+  const key = `${resourceType}:${resourceId}:${imageId ?? ''}`;
+  const now = Date.now();
+  const existing = imageMetadataReads.get(key);
+  if (existing && existing.expiresAt > now) return existing.request;
+
+  const params = new URLSearchParams({ limit: '1' });
+  if (imageId != null) params.set('imageIds', String(imageId));
+  const request = fetch(
+    `/api/images/${encodeURIComponent(resourceType)}/${encodeURIComponent(String(resourceId))}?${params}`,
+  ).then(async response => {
+    if (!response.ok) return null;
+    const page = await response.json() as { content?: ImageReference[] };
+    return page.content?.[0] || null;
+  });
+  const entry: CachedImageRead = { request, expiresAt: now + IMAGE_METADATA_CACHE_MS };
+  imageMetadataReads.set(key, entry);
+  request.then(
+    image => {
+      // Pending/absent images need a later retry. A published image with an
+      // actual URL can be safely reused for this short page-session window.
+      if ((!image || (!image.url && !image.thumbnailUrl)) && imageMetadataReads.get(key) === entry) {
+        imageMetadataReads.delete(key);
+      }
+    },
+    () => {
+      if (imageMetadataReads.get(key) === entry) imageMetadataReads.delete(key);
+    },
+  );
+  return request;
+}
 
 async function refreshUrl(
   resourceType: string | null | undefined,
@@ -35,15 +83,7 @@ async function refreshUrl(
   variant: 'display' | 'thumbnail',
 ) {
   if (!resourceType || resourceId == null) return null;
-
-  const params = new URLSearchParams({ limit: '1' });
-  if (imageId != null) params.set('imageIds', String(imageId));
-  const response = await fetch(
-    `/api/images/${encodeURIComponent(resourceType)}/${encodeURIComponent(String(resourceId))}?${params}`,
-  );
-  if (!response.ok) return null;
-  const page = await response.json() as { content?: ImageReference[] };
-  const refreshed = page.content?.[0];
+  const refreshed = await readImageMetadata(resourceType, resourceId, imageId);
   return refreshed ? initialUrl(refreshed, variant) : null;
 }
 

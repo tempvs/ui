@@ -28,6 +28,51 @@ type ProfileHandlers<TData> = {
   onError?: () => void;
 };
 
+type UserProfileRead = {
+  profile: Profile | null;
+  missing: boolean;
+};
+
+type CachedRead<T> = {
+  expiresAt: number;
+  request: Promise<T>;
+};
+
+// Header, Profile, and Club pages all need the active user's personal and
+// Club profiles. Keep the cache deliberately short: it coalesces a page-load
+// burst without turning the browser into a second source of profile data.
+const PROFILE_READ_CACHE_MS = 10_000;
+const userProfileReads = new Map<string, CachedRead<UserProfileRead>>();
+const clubProfileReads = new Map<string, CachedRead<Profile[]>>();
+
+function cachedRead<T>(
+  cache: Map<string, CachedRead<T>>,
+  key: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  const now = Date.now();
+  const existing = cache.get(key);
+  if (existing && existing.expiresAt > now) {
+    return existing.request;
+  }
+
+  const request = load();
+  const entry: CachedRead<T> = { request, expiresAt: now + PROFILE_READ_CACHE_MS };
+  cache.set(key, entry);
+  request.then(
+    () => undefined,
+    () => {
+      if (cache.get(key) === entry) cache.delete(key);
+    },
+  );
+  return request;
+}
+
+export function invalidateProfileReadCache() {
+  userProfileReads.clear();
+  clubProfileReads.clear();
+}
+
 function requestJson(url: string, options: RequestOptions = {}) {
   return fetch(url, {
     headers: {
@@ -71,29 +116,37 @@ export function fetchUserProfileByUserId(
   userId: Id,
   handlers: ProfileHandlers<Profile | null>,
 ): void {
-  doFetch(
-    `/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`,
-    "GET",
-    null,
-    {
-      200: (profile) => handlers.onSuccess((profile as Profile | null) || null),
-      404: () => handlers.onMissing?.(),
-      default: () => handlers.onError?.(),
-    },
-  );
+  readUserProfile(userId)
+    .then(result => {
+      if (result.missing) handlers.onMissing?.();
+      else handlers.onSuccess(result.profile);
+    })
+    .catch(() => handlers.onError?.());
 }
 
 export async function getUserProfileByUserId(
   userId: Id,
 ): Promise<Profile | null> {
-  const response = await requestJson(
-    `/api/profile/user-profile?userId=${encodeURIComponent(String(userId))}`,
-  );
-  if (response.status === 404) return null;
-  if (!response.ok)
-    throw new Error(`Request failed with status ${response.status}`);
-  const text = await response.text();
-  return text ? (JSON.parse(text) as Profile | null) : null;
+  const result = await readUserProfile(userId);
+  return result.profile;
+}
+
+function readUserProfile(userId: Id): Promise<UserProfileRead> {
+  const key = String(userId);
+  return cachedRead(userProfileReads, key, async () => {
+    const response = await requestJson(
+      `/api/profile/user-profile?userId=${encodeURIComponent(key)}`,
+    );
+    if (response.status === 404) return { profile: null, missing: true };
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    const text = await response.text();
+    return {
+      profile: text ? (JSON.parse(text) as Profile | null) : null,
+      missing: false,
+    };
+  });
 }
 
 export function fetchAvatar(
@@ -134,10 +187,23 @@ export function fetchClubProfiles(
   userId: Id,
   handlers: ProfileHandlers<Profile[]>,
 ): void {
-  doFetch(`/api/profile/club-profile?userId=${userId}`, "GET", null, {
-    200: (profiles) =>
-      handlers.onSuccess(Array.isArray(profiles) ? profiles : []),
-    default: () => handlers.onError?.(),
+  readClubProfiles(userId)
+    .then(handlers.onSuccess)
+    .catch(() => handlers.onError?.());
+}
+
+function readClubProfiles(userId: Id): Promise<Profile[]> {
+  const key = String(userId);
+  return cachedRead(clubProfileReads, key, async () => {
+    const response = await requestJson(
+      `/api/profile/club-profile?userId=${encodeURIComponent(key)}`,
+    );
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    const text = await response.text();
+    const profiles = text ? JSON.parse(text) : [];
+    return Array.isArray(profiles) ? (profiles as Profile[]) : [];
   });
 }
 
@@ -248,6 +314,7 @@ export function createUserProfile(
   event: FetchFormEvent,
   handlers: Record<string | number, (data?: unknown) => unknown>,
 ): void {
+  invalidateProfileReadCache();
   doFetch("/api/profile/user-profile", "POST", event, handlers, {
     "Idempotency-Key": crypto.randomUUID(),
   });
@@ -257,12 +324,14 @@ export function createClubProfile(
   event: FetchFormEvent,
   handlers: Record<string | number, (data?: unknown) => unknown>,
 ): void {
+  invalidateProfileReadCache();
   doFetch("/api/profile/club-profile", "POST", event, handlers, {
     "Idempotency-Key": crypto.randomUUID(),
   });
 }
 
 export function updateProfile(profileId: Id, payload: JsonRecord) {
+  invalidateProfileReadCache();
   return requestJson(`/api/profile/profile/${profileId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -270,6 +339,7 @@ export function updateProfile(profileId: Id, payload: JsonRecord) {
 }
 
 export function deleteProfile(profileId: Id) {
+  invalidateProfileReadCache();
   return requestJson(`/api/profile/profile/${profileId}`, {
     method: "DELETE",
   });
