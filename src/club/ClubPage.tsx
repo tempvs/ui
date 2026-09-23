@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Col, Container, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
@@ -21,6 +21,21 @@ import ClubPhotoPanel from './ClubPhotoPanel';
 import './clubs.css';
 
 const LeaveIcon = FaSignOutAlt as React.ComponentType<{ 'aria-hidden'?: string }>;
+const FOLLOW_STATE_RETRY_DELAY_MS = 300;
+
+function wait(delayMs: number) {
+  return new Promise<void>(resolve => window.setTimeout(resolve, delayMs));
+}
+
+async function getClubFollowStateWithRetry(clubId: string, profileId: string | number) {
+  try {
+    return await getClubFollowState(clubId, profileId);
+  } catch (error) {
+    if (!isClubServiceUnavailable(error)) throw error;
+    await wait(FOLLOW_STATE_RETRY_DELAY_MS);
+    return getClubFollowState(clubId, profileId);
+  }
+}
 
 function clubDraft(club: Club): ClubDraft {
   return {
@@ -59,9 +74,9 @@ export default function ClubPage() {
   const [followBusy, setFollowBusy] = useState(false);
   const [followError, setFollowError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [followersRevision, setFollowersRevision] = useState(0);
   const draftRef = useRef<ClubDraft | null>(null);
   const loadMoreParticipants = useRef<() => void>(() => {});
-  const markUnavailable = useCallback(() => setUnavailable(true), []);
   useEffect(() => {
     let active = true;
     fetchCurrentUserInfo(result => {
@@ -96,18 +111,28 @@ export default function ClubPage() {
       setFollowingProfileIds(new Set());
       return () => { active = false; };
     }
-    Promise.all(profiles.map(async profile => [String(profile.id), await getClubFollowState(id, profile.id)] as const))
+    const loadFollowStates = async () => {
+      const states: Array<readonly [string, boolean]> = [];
+      // These are optional display-state reads. Running them sequentially
+      // avoids a burst of Lambda invocations when a user owns several Club
+      // profiles, while the retry handles a transient cold-start throttle.
+      for (const profile of profiles) {
+        states.push([String(profile.id), await getClubFollowStateWithRetry(id, profile.id)] as const);
+      }
+      return states;
+    };
+    void loadFollowStates()
       .then(states => {
         if (!active) return;
         setFollowingProfileIds(new Set(states.filter(([, following]) => following).map(([profileId]) => profileId)));
       })
       .catch(error => {
         if (!active) return;
-        if (isClubServiceUnavailable(error)) markUnavailable();
-        else setFollowError((error as Error).message);
+        setFollowingProfileIds(new Set());
+        setFollowError((error as Error).message || 'Unable to load club follow status right now.');
       });
     return () => { active = false; };
-  }, [currentUserId, id, ownedClubProfiles, ownedUserProfile, markUnavailable]);
+  }, [currentUserId, id, ownedClubProfiles, ownedUserProfile]);
   useEffect(() => {
     let active = true; setLoading(true); setError(''); setUnavailable(false);
     getClub(id).then(data => {
@@ -156,8 +181,7 @@ export default function ClubPage() {
       } catch (e) {
         failed = true;
         if (active) {
-          if (isClubServiceUnavailable(e)) setUnavailable(true);
-          else setParticipantsError((e as Error).message);
+          setParticipantsError((e as Error).message || 'Unable to load members right now.');
         }
       } finally {
         fetching = false;
@@ -172,8 +196,7 @@ export default function ClubPage() {
     setBusy(true); setError('');
     try { await action(); setRevision(value => value + 1); }
     catch (e) {
-      if (isClubServiceUnavailable(e)) setUnavailable(true);
-      else setError((e as Error).message);
+      setError((e as Error).message || t('actionFailed', 'The club request could not be completed.'));
     }
     finally { setBusy(false); }
   };
@@ -194,7 +217,6 @@ export default function ClubPage() {
       setClub(saved);
       setFieldStatuses(current => ({ ...current, [field]: 'success' }));
     } catch (caught) {
-      if (isClubServiceUnavailable(caught)) markUnavailable();
       setFieldStatuses(current => ({ ...current, [field]: 'error' }));
     }
   };
@@ -204,8 +226,7 @@ export default function ClubPage() {
       await requestJoin(id, profile.id);
       setMembershipMessage(t('membershipRequested', 'Membership application sent.'));
     } catch (e) {
-      if (isClubServiceUnavailable(e)) setUnavailable(true);
-      else setError((e as Error).message);
+      setError((e as Error).message || t('membershipFailed', 'Unable to submit membership application right now.'));
     } finally { setBusy(false); }
   };
   const toggleClubFollow = async (profile: Profile) => {
@@ -221,10 +242,9 @@ export default function ClubPage() {
         else next.add(profileId);
         return next;
       });
-      setRevision(value => value + 1);
+      setFollowersRevision(value => value + 1);
     } catch (error) {
-      if (isClubServiceUnavailable(error)) markUnavailable();
-      else setFollowError((error as Error).message || t('followFailed', 'Unable to update club follow state right now.'));
+      setFollowError((error as Error).message || t('followFailed', 'Unable to update club follow state right now.'));
     } finally { setFollowBusy(false); }
   };
   const ownedProfiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
@@ -255,7 +275,7 @@ export default function ClubPage() {
         </div>
       </div>
       <Row><Col lg={8}>
-        <ClubPhotoPanel club={club} onChange={setClub} onUnavailable={markUnavailable} />
+        <ClubPhotoPanel club={club} onChange={setClub} />
         <ClubFieldsPanel club={club} editable={club.canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
         <section className="club-panel">
           <h2>{t('members', 'Members')}</h2>
@@ -275,8 +295,8 @@ export default function ClubPage() {
             {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
           </div>
         </section>
-        <ClubFollowersPanel clubId={id} revision={revision} onUnavailable={markUnavailable} />
-        {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} onUnavailable={markUnavailable} />}
+        <ClubFollowersPanel clubId={id} revision={followersRevision} />
+        {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} />}
       </Col><Col lg={4}>
         <section className="club-panel">
           <h2>{t('management', 'Club administration')}</h2>

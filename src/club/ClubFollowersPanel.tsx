@@ -6,15 +6,14 @@ import { useIntl } from 'react-intl';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { Profile } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
-import { getClubFollowers, isClubServiceUnavailable } from './clubApi';
+import { getClubFollowers } from './clubApi';
 
 type ClubFollowersPanelProps = {
   clubId: string;
   revision: number;
-  onUnavailable: () => void;
 };
 
-export default function ClubFollowersPanel({ clubId, revision, onUnavailable }: ClubFollowersPanelProps) {
+export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPanelProps) {
   const intl = useIntl();
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [followers, setFollowers] = useState<Profile[]>([]);
@@ -49,8 +48,7 @@ export default function ClubFollowersPanel({ clubId, revision, onUnavailable }: 
         setHasMore(more);
       } catch (caught) {
         if (!active) return;
-        if (isClubServiceUnavailable(caught)) onUnavailable();
-        else setError((caught as Error).message);
+        setError((caught as Error).message || 'Unable to load followers right now.');
       } finally {
         fetching = false;
         if (active) setLoading(false);
@@ -60,7 +58,7 @@ export default function ClubFollowersPanel({ clubId, revision, onUnavailable }: 
     loadMoreRef.current = load;
     void load();
     return () => { active = false; };
-  }, [clubId, revision, onUnavailable]);
+  }, [clubId, revision]);
 
   return <section className="club-panel">
     <h2>{t('followers', 'Followers')}</h2>

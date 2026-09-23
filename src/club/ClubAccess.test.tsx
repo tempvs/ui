@@ -42,13 +42,13 @@ test('HTML fallback greys and disables the clubs page without an error alert', a
   expect(screen.getByRole('heading', { name: 'Clubs' })).toBeInTheDocument();
 });
 
-test('club details become muted and disabled when a dependency makes club-service unavailable', async () => {
+test('a failed optional members read leaves the Club page usable and shows a local retry error', async () => {
   jest.spyOn(global, 'fetch').mockImplementation(async input => String(input).includes('/participants')
     ? response({ detail: 'Profile service is unavailable' }, 503) : response(club));
   const view = wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   expect(await screen.findByRole('heading', { name: club.name })).toBeInTheDocument();
-  expect(view.container.querySelector('.clubs-page')).toHaveClass('club-service-unavailable');
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(view.container.querySelector('.clubs-page')).not.toHaveClass('club-service-unavailable');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Profile service is unavailable');
 });
 
 test('network failure greys and disables club content without showing fallback copy', async () => {

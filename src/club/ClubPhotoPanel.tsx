@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { FaHourglassHalf } from 'react-icons/fa';
 import { Alert, Button, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
-import { Club, isClubServiceUnavailable, removeClubPhoto, uploadClubPhoto } from './clubApi';
+import { Club, removeClubPhoto, uploadClubPhoto } from './clubApi';
 import RefreshingImage from '../image/RefreshingImage';
 
 const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
-export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
-  club: Club; onChange: (club: Club) => void; onUnavailable?: () => void;
+export default function ClubPhotoPanel({ club, onChange }: {
+  club: Club; onChange: (club: Club) => void;
 }) {
   const intl = useIntl();
   const t = (id: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
@@ -22,19 +22,13 @@ export default function ClubPhotoPanel({ club, onChange, onUnavailable }: {
     }
     setBusy(true); setError('');
     try { onChange(await uploadClubPhoto(club.id, file)); }
-    catch (e) {
-      if (isClubServiceUnavailable(e)) onUnavailable?.();
-      else setError((e as Error).message);
-    }
+    catch (e) { setError((e as Error).message || t('photoUploadFailed', 'Unable to upload the photo right now.')); }
     finally { setBusy(false); }
   };
   const remove = async () => {
     setBusy(true); setError('');
     try { onChange(await removeClubPhoto(club.id)); }
-    catch (e) {
-      if (isClubServiceUnavailable(e)) onUnavailable?.();
-      else setError((e as Error).message);
-    }
+    catch (e) { setError((e as Error).message || t('photoRemoveFailed', 'Unable to remove the photo right now.')); }
     finally { setBusy(false); }
   };
   if (!club.photoUrl && !club.hasPhoto && !club.canManage) return null;

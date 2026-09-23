@@ -4,10 +4,10 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
-import { decideJoinRequest, getJoinRequests, isClubServiceUnavailable, JoinRequest } from './clubApi';
+import { decideJoinRequest, getJoinRequests, JoinRequest } from './clubApi';
 
-export default function JoinRequestsPanel({ clubId, onDecision, onUnavailable }: {
-  clubId: Id; onDecision: () => void; onUnavailable?: () => void;
+export default function JoinRequestsPanel({ clubId, onDecision }: {
+  clubId: Id; onDecision: () => void;
 }) {
   const intl = useIntl();
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
@@ -37,8 +37,7 @@ export default function JoinRequestsPanel({ clubId, onDecision, onUnavailable }:
       } catch (e) {
         failed = true;
         if (active) {
-          if (isClubServiceUnavailable(e)) onUnavailable?.();
-          else setError((e as Error).message);
+          setError((e as Error).message || 'Unable to load join requests right now.');
         }
       } finally {
         fetching = false;
@@ -48,15 +47,12 @@ export default function JoinRequestsPanel({ clubId, onDecision, onUnavailable }:
     loadMore.current = () => fetchNext(true);
     fetchNext();
     return () => { active = false; };
-  }, [clubId, revision, onUnavailable]);
+  }, [clubId, revision]);
 
   const decide = async (request: JoinRequest, decision: 'accept' | 'reject') => {
     setBusy(true); setError('');
     try { await decideJoinRequest(clubId, request.id, decision); onDecision(); setRevision(value => value + 1); }
-    catch (e) {
-      if (isClubServiceUnavailable(e)) onUnavailable?.();
-      else setError((e as Error).message);
-    }
+    catch (e) { setError((e as Error).message || t('joinDecisionFailed', 'Unable to update this join request right now.')); }
     finally { setBusy(false); }
   };
 
