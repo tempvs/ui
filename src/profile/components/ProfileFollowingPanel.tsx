@@ -35,7 +35,7 @@ export default function ProfileFollowingPanel({
   onToggleFollow,
 }: ProfileFollowingPanelProps) {
   return (
-    <div className="profile-following-panel">
+    <>
       {canFollow && (
         <Button
           type="button"
@@ -50,36 +50,36 @@ export default function ProfileFollowingPanel({
         </Button>
       )}
 
-      <div className="profile-following-heading">
-        {t('profile.following.heading', 'Following')}
-      </div>
-      {!loaded && <div className="profile-following-empty">{t('profile.following.loading', 'Loading...')}</div>}
-      {loaded && profiles.length === 0 && (
-        <div className="profile-following-empty">
+      <section className="club-panel profile-clubs-panel" aria-label={t('profile.following.heading', 'Followed profiles')}>
+        <div className="profile-clubs-heading"><h2 className="mb-0">{t('profile.following.heading', 'Followed profiles')}</h2></div>
+        {!loaded && <p className="text-muted mt-3 mb-0">{t('profile.following.loading', 'Loading...')}</p>}
+        {loaded && profiles.length === 0 && (
+          <p className="text-muted mt-3 mb-0">
           {t('profile.following.empty', 'No followed profiles yet.')}
-        </div>
-      )}
-      {loaded && profiles.length > 0 && (
-        <div className="profile-following-list">
+          </p>
+        )}
+        {loaded && profiles.length > 0 && (
+          <ul className="club-member-list profile-club-list mb-0">
           {profiles.map(profile => {
             return (
-              <Link key={String(profile.id)} to={getProfileLink(profile)} className="profile-following-item">
-                <span className="profile-following-thumb">
+              <li key={String(profile.id)}>
+                <Link to={getProfileLink(profile)} className="club-thumbnail-link">
                   <RefreshingImage
                     image={{ resourceType: 'profile', resourceId: profile.id, thumbnailUrl: profile.avatarUrl }}
                     variant="thumbnail"
                     fallbackSrc={defaultImage}
-                    alt={buildProfileLabel(profile)}
-                    className="profile-following-thumb-image"
+                    alt=""
+                    className="club-list-thumbnail"
                     loading="lazy"
                   />
-                </span>
-                <span className="profile-following-name">{buildProfileLabel(profile)}</span>
-              </Link>
+                  <span>{buildProfileLabel(profile)}</span>
+                </Link>
+              </li>
             );
           })}
-        </div>
-      )}
-    </div>
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
