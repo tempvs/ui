@@ -41,7 +41,7 @@ export default function EditableFieldRow({
   errorTitle = 'Save failed',
   className = 'mb-2',
 }: EditableFieldRowProps) {
-  const { editing, beginEditing, endEditing } = useInlineEditing(editable);
+  const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing(editable);
 
   const controlProps = React.isValidElement(control)
     ? control.props as {
@@ -72,6 +72,7 @@ export default function EditableFieldRow({
       <div style={{ width: '100%', maxWidth: fieldMaxWidth }}>
         {editable ? (
           <div
+            ref={editRootRef}
             className={`inline-editable-control ${editing ? 'inline-editable-active' : 'inline-editable-readonly'}`}
             onClick={() => {
               if (!editing) beginEditing();

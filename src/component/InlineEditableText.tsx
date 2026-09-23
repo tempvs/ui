@@ -51,7 +51,7 @@ export default function InlineEditableText({
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: InlineEditableTextProps) {
-  const { editing, beginEditing, endEditing } = useInlineEditing(editable);
+  const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing(editable);
   const controlRef = useRef<HTMLElement | null>(null);
   const readOnlyRef = useRef<HTMLDivElement | null>(null);
   const readOnlyDisplayValue = typeof readOnlyValue === 'string' || typeof readOnlyValue === 'number'
@@ -157,6 +157,7 @@ export default function InlineEditableText({
 
   const control = (
     <div
+      ref={editRootRef}
       className={`inline-editable-control ${editing ? 'inline-editable-active' : 'inline-editable-readonly'}`}
       onClick={() => {
         if (!editing) beginEditing();
