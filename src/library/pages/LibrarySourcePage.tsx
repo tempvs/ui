@@ -8,7 +8,6 @@ import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
-import PlusActionButton from "../../component/PlusActionButton";
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import {
@@ -721,15 +720,6 @@ export default function LibrarySourcePage() {
           <section>
             <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
               <div className="stash-subheading mb-0">Images</div>
-              {canContribute(userInfo) && (
-                <PlusActionButton
-                  title="Upload image"
-                  onClick={() => {
-                    setError(null);
-                    setShowUploadModal(true);
-                  }}
-                />
-              )}
             </div>
 
             {canContribute(userInfo) && (
@@ -752,6 +742,13 @@ export default function LibrarySourcePage() {
               emptyText="No images uploaded for this source yet."
               previewSize="compact"
               editable={canEditSource(userInfo)}
+              canAddImage={canContribute(userInfo)}
+              onAddImage={() => {
+                setError(null);
+                setShowUploadModal(true);
+              }}
+              addTitle="Upload image"
+              addPopover="Upload image"
               onDeleteImage={(imageId) => handleDeleteImage(String(imageId))}
               onReplaceImage={(image) => {
                 const sourceImage = images.find(
