@@ -54,7 +54,7 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
     </div>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>
-      <Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
+      <Link className="club-thumbnail-link" to={`/clubs/${club.alias || club.id}`}>
         <RefreshingImage
           image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
           variant="thumbnail"

@@ -9,12 +9,17 @@ export default function ClubForm({ initial, busy, onSave, onCancel }: {
 }) {
   const intl = useIntl();
   const t = (id: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
-  const [draft, setDraft] = useState<ClubDraft>(initial || { name: '', description: '', location: '', contactEmail: '', period: 'OTHER' });
+  const [draft, setDraft] = useState<ClubDraft>(initial || { name: '', alias: '', description: '', location: '', contactEmail: '', period: 'OTHER' });
   return <Form className="club-form" onSubmit={event => { event.preventDefault(); onSave(draft); }}>
     <fieldset disabled={busy}>
       <Form.Group controlId="club-name" className="mb-3">
         <Form.Label>{t('name', 'Club name')}</Form.Label>
         <Form.Control required maxLength={120} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} />
+      </Form.Group>
+      <Form.Group controlId="club-alias" className="mb-3">
+        <Form.Label>{t('alias', 'Alias')}</Form.Label>
+        <Form.Control maxLength={40} pattern="[a-z][a-z0-9-]{2,39}" value={draft.alias || ''} onChange={e => setDraft({ ...draft, alias: e.target.value })} />
+        <Form.Text>3–40 lowercase letters, numbers, or hyphens; starts with a letter.</Form.Text>
       </Form.Group>
       <Form.Group controlId="club-description" className="mb-3">
         <Form.Label>{t('description', 'Description')}</Form.Label>

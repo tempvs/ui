@@ -74,10 +74,11 @@ test('club creation sends an idempotency key and accepts a UUID club id', async 
   }));
 });
 
-test('club reads accept UUID ids returned by the migrated API', async () => {
+test('club reads accept UUID and alias identifiers returned by the migrated API', async () => {
   jest.spyOn(global, 'fetch').mockResolvedValue(response(uuidClub));
 
   await expect(getClub(uuidClub.id)).resolves.toEqual(uuidClub);
+  await expect(getClub('longbow-company')).resolves.toEqual(uuidClub);
 });
 
 test('API errors expose the Lambda message', async () => {

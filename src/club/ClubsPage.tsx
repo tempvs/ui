@@ -81,7 +81,7 @@ export default function ClubsPage() {
 
   const save = async (draft: ClubDraft) => {
     setBusy(true); setError('');
-    try { const club = await createClub(draft); navigate(`/clubs/${club.id}`); }
+    try { const club = await createClub(draft); navigate(`/clubs/${club.alias || club.id}`); }
     catch (e) {
       if (isClubServiceUnavailable(e)) setUnavailable(true);
       else setError((e as Error).message);
@@ -104,7 +104,7 @@ export default function ClubsPage() {
       </div>
       <div className="club-card-grid">{clubs.map(club => <article key={club.id} className="club-panel">
         <PeriodBadge period={club.period} />
-        <h2 className="mt-3"><Link className="club-thumbnail-link" to={`/clubs/${club.id}`}>
+        <h2 className="mt-3"><Link className="club-thumbnail-link" to={`/clubs/${club.alias || club.id}`}>
           <RefreshingImage
             image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
             variant="thumbnail"

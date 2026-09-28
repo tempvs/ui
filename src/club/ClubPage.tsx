@@ -40,6 +40,7 @@ async function getClubFollowStateWithRetry(clubId: string, profileId: string | n
 function clubDraft(club: Club): ClubDraft {
   return {
     name: club.name,
+    alias: club.alias,
     description: club.description,
     location: club.location,
     contactEmail: club.contactEmail,
@@ -75,6 +76,7 @@ export default function ClubPage() {
   const [followError, setFollowError] = useState('');
   const [revision, setRevision] = useState(0);
   const [followersRevision, setFollowersRevision] = useState(0);
+  const loadedClubId = club?.id;
   const draftRef = useRef<ClubDraft | null>(null);
   const loadMoreParticipants = useRef<() => void>(() => {});
   useEffect(() => {
@@ -140,6 +142,8 @@ export default function ClubPage() {
       draftRef.current = clubDraft(data);
       setClub(data);
       setFieldStatuses({});
+      const canonicalPath = `/clubs/${data.alias || data.id}`;
+      if (window.location.pathname !== canonicalPath) navigate(canonicalPath, { replace: true });
     })
       .catch(e => {
         if (active) {
@@ -149,7 +153,7 @@ export default function ClubPage() {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [id, revision]);
+  }, [id, navigate, revision]);
   useEffect(() => {
     if (!club?.creatorUserId) {
       setOwnerProfile(null);
@@ -164,6 +168,10 @@ export default function ClubPage() {
     return () => { active = false; };
   }, [club?.creatorUserId]);
   useEffect(() => {
+    // Load the primary Club record before secondary panels. On a constrained
+    // account this prevents the initial page render from fanning out into a
+    // burst of authorizer/read Lambdas.
+    if (!loadedClubId || String(loadedClubId) !== id) return undefined;
     let active = true, fetching = false, more = true, failed = false;
     let nextToken: string | undefined;
     setMembers([]); setHasMore(false); setParticipantsError(''); setParticipantsLoading(true);
@@ -191,7 +199,7 @@ export default function ClubPage() {
     loadMoreParticipants.current = () => fetchNext(true);
     fetchNext();
     return () => { active = false; };
-  }, [id, revision]);
+  }, [id, revision, loadedClubId]);
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true); setError('');
     try { await action(); setRevision(value => value + 1); }
@@ -209,12 +217,14 @@ export default function ClubPage() {
   };
   const saveClubField = async (field: ClubField) => {
     const draft = draftRef.current;
-    if (!draft || !club?.canManage) return;
+    if (!draft || !canManage) return;
     setFieldStatuses(current => ({ ...current, [field]: 'saving' }));
     try {
       const saved = await updateClub(id, draft);
       draftRef.current = clubDraft(saved);
       setClub(saved);
+      const canonicalPath = `/clubs/${saved.alias || saved.id}`;
+      if (window.location.pathname !== canonicalPath) navigate(canonicalPath, { replace: true });
       setFieldStatuses(current => ({ ...current, [field]: 'success' }));
     } catch (caught) {
       setFieldStatuses(current => ({ ...current, [field]: 'error' }));
@@ -254,6 +264,20 @@ export default function ClubPage() {
       loadMoreParticipants.current();
     }
   };
+  const viewerUserId = currentUserId == null ? null : String(currentUserId);
+  // The API remains the authority for mutations. This client-side fallback
+  // keeps the management controls available when a cached/public club read
+  // has not carried the authenticated viewer context yet.
+  const canManage = club != null && (
+    club.canManage
+    || (viewerUserId != null && (club.creatorUserId === viewerUserId || club.adminUserIds.includes(viewerUserId)))
+  );
+  const canManageAdmins = club != null && (
+    club.canManageAdmins || (viewerUserId != null && club.creatorUserId === viewerUserId)
+  );
+  const managedClub = club && canManage && !club.canManage
+    ? { ...club, canManage: true, canManageAdmins }
+    : club;
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
     <Link to="/clubs">{t('back', 'All clubs')}</Link>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
@@ -275,8 +299,8 @@ export default function ClubPage() {
         </div>
       </div>
       <Row><Col lg={8}>
-        <ClubPhotoPanel club={club} onChange={setClub} />
-        <ClubFieldsPanel club={club} editable={club.canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
+        <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
+        <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
         <section className="club-panel">
           <h2>{t('members', 'Members')}</h2>
           {participantsError && <Alert variant="danger">{participantsError} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
@@ -289,14 +313,14 @@ export default function ClubPage() {
                 <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
                 {owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>
                   <LeaveIcon aria-hidden="true" /> <span>{t('leave', 'Leave club')}</span>
-                </Button> : club.canManage && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>{t('remove', 'Remove')}</Button>}
+                </Button> : canManage && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>{t('remove', 'Remove')}</Button>}
               </li>;
             })}</ul>
             {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
           </div>
         </section>
-        <ClubFollowersPanel clubId={id} revision={followersRevision} />
-        {club.canManage && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} />}
+        {!participantsLoading && <ClubFollowersPanel clubId={id} revision={followersRevision} />}
+        {canManage && !participantsLoading && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} />}
       </Col><Col lg={4}>
         <section className="club-panel">
           <h2>{t('management', 'Club administration')}</h2>
@@ -309,9 +333,9 @@ export default function ClubPage() {
           {club.adminUserIds.length === 0 && <p>{t('noAdmins', 'No additional admins.')}</p>}
           <ul className="club-member-list">{club.adminUserIds.map(userId => <li key={userId}>
             <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-            {club.canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => removeAdmin(id, userId))}>{t('remove', 'Remove')}</Button>}
+            {canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => removeAdmin(id, userId))}>{t('remove', 'Remove')}</Button>}
           </li>)}</ul>
-          {club.canManageAdmins && <>
+          {canManageAdmins && <>
             <h3 className="h6">{t('assignAdmin', 'Assign an admin')}</h3>
             <p className="text-muted">{t('adminHint', 'Choose a club profile from this period. Its owner becomes a club administrator.')}</p>
             <ProfilePicker type="CLUB" period={club.period} busy={busy} onSelect={profile => { if (profile.userId) act(() => addAdmin(id, profile.userId!)); }} />

@@ -4,6 +4,7 @@ import { Period } from '../util/periods';
 export type Club = {
   id: Id;
   name: string;
+  alias?: string | null;
   description: string | null;
   location: string | null;
   contactEmail: string | null;
@@ -17,7 +18,9 @@ export type Club = {
   photoUrl?: string | null;
   photoThumbnailUrl?: string | null;
 };
-export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period'>;
+export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period'> & {
+  alias?: string | null;
+};
 
 export class ClubApiError extends Error {
   constructor(public status: number, message: string, public unavailable = false) { super(message); }
@@ -82,7 +85,7 @@ function clubValue(value: unknown): Club {
       || typeof club.creatorUserId !== 'string'
       || !Array.isArray(club.adminUserIds) || !club.adminUserIds.every(id => typeof id === 'string')
       || typeof club.canManage !== 'boolean' || typeof club.canManageAdmins !== 'boolean'
-      || ![club.description, club.location, club.contactEmail, club.photoUrl].every(text => text == null || typeof text === 'string')) {
+      || ![club.alias, club.description, club.location, club.contactEmail, club.photoUrl].every(text => text == null || typeof text === 'string')) {
     return invalidResponse();
   }
   return club;

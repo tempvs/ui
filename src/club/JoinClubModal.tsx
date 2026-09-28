@@ -106,7 +106,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
               loading="lazy"
             />
           )}
-          <Link to={`/clubs/${club.id}`} aria-disabled={unavailable || undefined} tabIndex={unavailable ? -1 : undefined} onClick={onClose}>{club.name}</Link>
+          <Link to={`/clubs/${club.alias || club.id}`} aria-disabled={unavailable || undefined} tabIndex={unavailable ? -1 : undefined} onClick={onClose}>{club.name}</Link>
           <PeriodBadge period={club.period} />
           <Button size="sm" variant="outline-secondary" disabled={busy || unavailable || status === 'MEMBER' || status === 'PENDING'} onClick={() => send(club.id)}>
             {status === 'MEMBER' ? t('member', 'Member') : status === 'PENDING' ? t('pending', 'Request pending') : status === 'REJECTED' ? t('requestAgain', 'Request again') : t('requestJoin', 'Request to join')}
