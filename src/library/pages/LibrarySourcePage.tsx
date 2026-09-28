@@ -772,6 +772,8 @@ export default function LibrarySourcePage() {
               title={source.name || undefined}
               emptyText="No images uploaded for this source yet."
               previewSize="compact"
+              previewStyle={{ width: "100%" }}
+              previewImageStyle={{ objectFit: "cover" }}
               editable={canEditSource(userInfo)}
               canAddImage={canContribute(userInfo)}
               onAddImage={() => {

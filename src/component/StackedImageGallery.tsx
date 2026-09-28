@@ -52,6 +52,7 @@ type StackedImageGalleryProps = {
   wrapperClassName?: string;
   imageClassName?: string;
   previewStyle?: React.CSSProperties;
+  previewImageStyle?: React.CSSProperties;
   modalSize?: "sm" | "lg" | "xl";
   showInlineDescription?: boolean;
 };
@@ -90,6 +91,7 @@ export default function StackedImageGallery({
   wrapperClassName = "",
   imageClassName,
   previewStyle,
+  previewImageStyle,
   modalSize = "xl",
   showInlineDescription = false,
 }: StackedImageGalleryProps) {
@@ -282,6 +284,7 @@ export default function StackedImageGallery({
                           objectFit: "contain",
                           backgroundColor: "#f8faf8",
                           display: "block",
+                          ...previewImageStyle,
                         }}
                       />
                     </div>
