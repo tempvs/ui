@@ -1713,6 +1713,11 @@ button.stash-item-media-empty:disabled {
   color: #1f2623;
 }
 
+.stash-item-page-collection-link {
+  display: inline-flex;
+  margin-top: 0.3rem;
+}
+
 .stash-marker-dot {
   position: absolute;
   width: 1rem;

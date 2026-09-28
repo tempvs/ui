@@ -595,6 +595,9 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 />
               )}
             </div>
+            <Link className="stash-inline-link stash-item-page-collection-link" to={`/stash/${profile.alias || profile.id}?group=${item.itemGroup?.id}`}>
+              {item.itemGroup?.name || t('profile.stash.groupName', 'Collection')}
+            </Link>
             <EditableDescriptionField
               editable={isEditable}
               value={itemDrafts.description}
@@ -639,22 +642,17 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 className="stash-source-filter"
               />
             </div>
-            <div className="d-flex align-items-center gap-2">
-              <Link className="stash-inline-link" to={`/stash/${profile.alias || profile.id}?group=${item.itemGroup?.id}`}>
-                {item.itemGroup?.name || t('profile.stash.groupName', 'Collection')}
-              </Link>
-              {isEditable && (
-                <button
-                  type="button"
-                  className="stash-inline-icon-button"
-                  title={t('profile.stash.sourceAdd', 'Add source')}
-                  aria-label={t('profile.stash.sourceAdd', 'Add source')}
-                  onClick={() => setSourceLinkModalVisible(true)}
-                >
-                  <PlusIcon />
-                </button>
-              )}
-            </div>
+            {isEditable && (
+              <button
+                type="button"
+                className="stash-inline-icon-button"
+                title={t('profile.stash.sourceAdd', 'Add source')}
+                aria-label={t('profile.stash.sourceAdd', 'Add source')}
+                onClick={() => setSourceLinkModalVisible(true)}
+              >
+                <PlusIcon />
+              </button>
+            )}
           </div>
 
           {sources.length === 0 && (
