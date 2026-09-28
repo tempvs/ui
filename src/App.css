@@ -1513,6 +1513,23 @@ button.stash-item-media-empty:disabled {
   z-index: 1;
 }
 
+.stash-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+.stash-items-title {
+  margin: 0;
+  color: #1f2623;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
 .stash-item-list-card,
 .stash-source-card {
   display: grid;
@@ -1536,7 +1553,6 @@ button.stash-item-media-empty:disabled {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.stash-item-delete-trigger,
 .stash-inline-icon-button {
   display: inline-flex;
   align-items: center;
@@ -1549,9 +1565,6 @@ button.stash-item-media-empty:disabled {
 .stash-item-delete-trigger {
   grid-column: 3;
   grid-row: 1;
-  border: 1px solid rgba(160, 68, 68, 0.24);
-  background: rgba(252, 241, 241, 0.92);
-  color: #9c3b3b;
   flex: 0 0 2rem;
   align-self: center;
 }
@@ -1681,12 +1694,6 @@ button.stash-item-media-empty:disabled {
   grid-template-columns: minmax(18rem, 28rem) minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
-}
-
-.stash-item-add-row {
-  display: flex;
-  justify-content: center;
-  padding-top: 0.1rem;
 }
 
 .stash-item-page-main-image-shell {

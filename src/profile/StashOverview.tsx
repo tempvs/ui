@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
-import { FaArrowLeft, FaHourglassHalf, FaPlus, FaTimes, FaTrash, FaUpload } from 'react-icons/fa';
+import { FaArrowLeft, FaHourglassHalf, FaPlus, FaTimes, FaUpload } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,7 +46,6 @@ const ALL_CLASSIFICATIONS = ['ARMOR', 'CLOTHING', 'FOOTWEAR', 'ACCESSORY', 'WEAP
 const ArrowLeftIcon = FaArrowLeft as React.ComponentType<{ className?: string }>;
 const CloseIcon = FaTimes as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
-const TrashIcon = FaTrash as React.ComponentType<{ className?: string }>;
 const UploadIcon = FaUpload as React.ComponentType<{ className?: string }>;
 const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
@@ -1123,6 +1122,19 @@ export default function StashOverview({
                 </aside>
 
                 <section className="stash-items-pane">
+                  <div className="stash-items-header">
+                    <h2 className="stash-items-title">{t('profile.stash.itemsTitle', 'Items')}</h2>
+                    {isEditable && (
+                      <button
+                        type="button"
+                        className="stash-inline-icon-button"
+                        title={t('profile.stash.itemCreate', 'Add item')}
+                        onClick={() => setItemCreateTarget(activeGroup)}
+                      >
+                        <PlusIcon />
+                      </button>
+                    )}
+                  </div>
                   {activeItems.length === 0 && (
                     <div className="stash-empty-state stash-empty-state--compact">
                       <div className="fw-semibold mb-1">{t('profile.stash.itemsEmptyTitle', 'No items yet')}</div>
@@ -1175,17 +1187,19 @@ export default function StashOverview({
                         }}
                       >
                         {isEditable && (
-                          <button
-                            type="button"
+                          <ConfirmingTrashButton
                             className="stash-item-delete-trigger"
                             title={t('profile.stash.itemDelete', 'Delete item')}
-                            onClick={event => {
-                              event.stopPropagation();
-                              void handleDeleteItem(item.id);
-                            }}
-                          >
-                            <TrashIcon />
-                          </button>
+                            confirmTitle={t('profile.stash.itemDelete', 'Delete item')}
+                            confirmMessage={t('profile.stash.itemDeleteConfirm', 'Delete this item?')}
+                            confirmLabel={t('profile.action.delete', 'Delete')}
+                            cancelLabel={t('profile.action.cancel', 'Cancel')}
+                            onConfirm={() => { void handleDeleteItem(item.id); }}
+                            borderColor="rgba(160, 68, 68, 0.24)"
+                            color="#9c3b3b"
+                            backgroundColor="rgba(252, 241, 241, 0.92)"
+                            size="2rem"
+                          />
                         )}
                         <div className="stash-item-media-column">
                           {isEditable && activeGroupImageSrc && (
@@ -1252,18 +1266,6 @@ export default function StashOverview({
                       </div>
                     );
                   })}
-                  {isEditable && activeGroup && (
-                    <div className="stash-item-add-row">
-                      <button
-                        type="button"
-                        className="stash-inline-icon-button"
-                        title={t('profile.stash.itemCreate', 'Add item')}
-                        onClick={() => setItemCreateTarget(activeGroup)}
-                      >
-                        <PlusIcon />
-                      </button>
-                    </div>
-                  )}
                 </section>
               </div>
             )}
