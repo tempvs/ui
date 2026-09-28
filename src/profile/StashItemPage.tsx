@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, Container, Form, Modal, Row } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FaHourglassHalf, FaLink, FaPlus, FaUnlink } from 'react-icons/fa';
+import { FaLink, FaPlus, FaUnlink } from 'react-icons/fa';
 
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import ConfirmationModal from '../component/ConfirmationModal';
@@ -63,7 +63,6 @@ const ALL_SOURCE_TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'];
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
 const UnlinkIcon = FaUnlink as React.ComponentType<{ className?: string }>;
-const SavingIcon = FaHourglassHalf as React.ComponentType<{ className?: string }>;
 
 function toRecordKey(value: Id) {
   return String(value);
@@ -120,10 +119,8 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [sourcePendingUnlink, setSourcePendingUnlink] = useState<LibrarySourceSummary | null>(null);
   const [imageUploadVisible, setImageUploadVisible] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
-  const [imageDescription, setImageDescription] = useState('');
   const itemSaveTimersRef = useRef<Record<string, number>>({});
   const imageSaveTimersRef = useRef<Record<string, number>>({});
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const replacingImageRef = useRef<EntityImage | null>(null);
 
@@ -316,9 +313,9 @@ function StashItemPage({ intl }: StashItemPageProps) {
     }
   }
 
-  async function handleUploadImage(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const file = imageInputRef.current?.files?.[0];
+  async function handleUploadImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file || !item) {
       return;
     }
@@ -326,13 +323,20 @@ function StashItemPage({ intl }: StashItemPageProps) {
     setImageUploading(true);
     try {
       const preparedFile = await prepareImageFile(file);
-      await uploadStashItemImage(item.id, preparedFile, imageDescription || null);
+      const uploadedImage = await uploadStashItemImage(item.id, preparedFile);
+      const pendingImage: EntityImage = {
+        ...uploadedImage,
+        entityId: item.id,
+        belongsTo: 'item',
+        resourceId: item.id,
+        resourceType: 'item',
+      };
+      setItemImages(current => [
+        pendingImage,
+        ...current.filter(image => image.id !== pendingImage.id),
+      ]);
+      setImageDrafts(current => ({ ...current, [toRecordKey(pendingImage.id)]: pendingImage.description || '' }));
       setImageUploadVisible(false);
-      setImageDescription('');
-      if (imageInputRef.current) {
-        imageInputRef.current.value = '';
-      }
-      await refreshItemData();
     } finally {
       setImageUploading(false);
     }
@@ -413,7 +417,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
       return;
     }
     await deleteStashItem(item.id);
-    navigate(`/stash/${profile.alias || profile.id}${item.itemGroup?.id ? `?group=${item.itemGroup.id}` : ''}`);
+    navigate(`/stash/${profile.alias || profile.id}${item.itemGroup?.id ? `?group=${item.itemGroup.id}` : ''}`, { replace: true });
   }
 
   async function handleUnlinkSource(sourceId: string) {
@@ -793,31 +797,18 @@ function StashItemPage({ intl }: StashItemPageProps) {
         <Modal.Header closeButton={!imageUploading}>
           <Modal.Title>{t('profile.stash.itemImageUpload', 'Upload image')}</Modal.Title>
         </Modal.Header>
-        <Form onSubmit={handleUploadImage}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
-              <Form.Control ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>{t('profile.stash.itemImageDescription', 'Description')}</Form.Label>
-              <Form.Control
-                value={imageDescription}
-                onChange={event => setImageDescription(event.target.value)}
-                placeholder={t('profile.stash.itemImageDescriptionPlaceholder', 'Optional description')}
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="outline-secondary" onClick={() => setImageUploadVisible(false)} disabled={imageUploading}>
-              {t('profile.action.cancel', 'Cancel')}
-            </Button>
-            <Button type="submit" variant="secondary" disabled={imageUploading}>
-              {imageUploading && <SavingIcon className="me-2" />}
-              {imageUploading ? t('profile.stash.itemImageUploading', 'Uploading...') : t('profile.stash.itemImageUpload', 'Upload image')}
-            </Button>
-          </Modal.Footer>
-        </Form>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
+            <Form.Control
+              type="file"
+              accept="image/jpeg,image/png,image/gif"
+              disabled={imageUploading}
+              onChange={event => { void handleUploadImage(event as React.ChangeEvent<HTMLInputElement>); }}
+            />
+          </Form.Group>
+          {imageUploading && <div className="small text-muted mt-3">{t('profile.stash.itemImageUploading', 'Uploading...')}</div>}
+        </Modal.Body>
       </Modal>
     </Container>
   );

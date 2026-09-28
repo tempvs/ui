@@ -302,7 +302,6 @@ export default function StashOverview({
   const [hoveredMarkerItemId, setHoveredMarkerItemId] = useState<Id | null>(null);
   const [markerBusy, setMarkerBusy] = useState(false);
   const [arrowLayouts, setArrowLayouts] = useState<ArrowLayout[]>([]);
-  const groupImageInputRef = useRef<HTMLInputElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const imageShellRef = useRef<HTMLDivElement>(null);
   const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -402,7 +401,7 @@ export default function StashOverview({
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
   const activeGroupImage = activeGroup ? groupImages[toRecordKey(activeGroup.id)] : null;
-  const activeGroupImageSrc = getImageSrc(activeGroupImage);
+  const hasActiveGroupImage = Boolean(activeGroupImage);
   const activeMarkers = useMemo(
     () => (activeGroup ? (markersByGroup[toRecordKey(activeGroup.id)] || []) : []),
     [activeGroup, markersByGroup]
@@ -472,7 +471,7 @@ export default function StashOverview({
     const layoutElement = layoutRef.current;
     const imageShellElement = imageShellRef.current;
 
-    if (!layoutElement || !imageShellElement || !activeGroupImageSrc) {
+    if (!layoutElement || !imageShellElement || !hasActiveGroupImage) {
       setArrowLayouts([]);
       return;
     }
@@ -501,7 +500,7 @@ export default function StashOverview({
     });
 
     setArrowLayouts(nextArrowLayouts);
-  }, [activeGroupImageSrc, activeItems, activeMarkersByItemId, activePreviewMarker]);
+  }, [activeItems, activeMarkersByItemId, activePreviewMarker, hasActiveGroupImage]);
 
   useLayoutEffect(() => {
     recalculateArrows();
@@ -512,7 +511,7 @@ export default function StashOverview({
   }, [filteredActiveItems, recalculateArrows]);
 
   useLayoutEffect(() => {
-    if (!activeGroup || !activeGroupImageSrc) {
+    if (!activeGroup || !hasActiveGroupImage) {
       return;
     }
 
@@ -579,7 +578,7 @@ export default function StashOverview({
       ...previousState,
       [groupKey]: nextOrder,
     }));
-  }, [activeGroup, activeGroupImageSrc, activeItems, activeMarkersByItemId]);
+  }, [activeGroup, activeItems, activeMarkersByItemId, hasActiveGroupImage]);
 
   useEffect(() => {
     const layoutElement = layoutRef.current;
@@ -718,14 +717,13 @@ export default function StashOverview({
     setFeedback(null);
 
     try {
-      await createStashItem(itemCreateTarget.id, {
+      const createdItem = await createStashItem(itemCreateTarget.id, {
         ...itemForm,
         period: profile.period,
       });
       setItemForm(emptyItemForm);
       setItemCreateTarget(null);
-      await loadStash();
-      setActiveGroupId(itemCreateTarget.id);
+      navigate(`/stash/${profile.alias || profile.id}/items/${createdItem.id}`);
     } catch (error) {
       setFeedback(t('profile.stash.itemCreateFailed', 'Unable to add this item.'));
     } finally {
@@ -757,9 +755,9 @@ export default function StashOverview({
     }
   }
 
-  async function handleUploadGroupImage(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const file = groupImageInputRef.current?.files?.[0];
+  async function handleUploadGroupImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
 
     if (!file || !groupImageTarget) {
       setFeedback(t('profile.stash.itemImageChooseFile', 'Choose an image to upload.'));
@@ -774,7 +772,6 @@ export default function StashOverview({
       const uploadedImage = await uploadStashGroupImage(
         groupImageTarget.id,
         preparedFile,
-        groupImageTarget.name || null,
       );
       setGroupImages(previousState => ({
         ...previousState,
@@ -786,9 +783,6 @@ export default function StashOverview({
           resourceType: 'item-group',
         },
       }));
-      if (groupImageInputRef.current) {
-        groupImageInputRef.current.value = '';
-      }
       setGroupImageTarget(null);
       setMarkerPlacement(null);
       setMarkerPreviewPosition(null);
@@ -835,7 +829,7 @@ export default function StashOverview({
   }
 
   function handleImageMouseMove(event: React.MouseEvent<HTMLDivElement>) {
-    if (!activeGroup || !markerPlacement || !activeGroupImageSrc || markerBusy) {
+    if (!activeGroup || !markerPlacement || !hasActiveGroupImage || markerBusy) {
       return;
     }
 
@@ -843,7 +837,7 @@ export default function StashOverview({
   }
 
   async function handleImageClick(event: React.MouseEvent<HTMLDivElement>) {
-    if (!activeGroup || !markerPlacement || !activeGroupImageSrc || markerBusy) {
+    if (!activeGroup || !markerPlacement || !hasActiveGroupImage || markerBusy) {
       return;
     }
 
@@ -1033,7 +1027,7 @@ export default function StashOverview({
                       </div>
                     )}
 
-                    {activeGroupImageSrc && activeMarkers.map(marker => (
+                    {hasActiveGroupImage && activeMarkers.map(marker => (
                       <button
                         key={marker.id || marker.itemId}
                         type="button"
@@ -1086,7 +1080,7 @@ export default function StashOverview({
                         {groupUploadControl}
                       </ImageOverlayActionButton>
                     )}
-                    {isEditable && activeGroupImageSrc && (
+                    {isEditable && hasActiveGroupImage && (
                       <ConfirmingTrashButton
                         className="position-absolute top-0 end-0 m-2"
                         fontSize="0.85rem"
@@ -1232,7 +1226,7 @@ export default function StashOverview({
                           />
                         )}
                         <div className="stash-item-media-column">
-                          {isEditable && activeGroupImageSrc && (
+                          {isEditable && hasActiveGroupImage && (
                             <div className="stash-item-marker-controls">
                               <button
                                 type="button"
@@ -1385,25 +1379,18 @@ export default function StashOverview({
         <Modal.Header closeButton={!groupImageUploading}>
           <Modal.Title>{t('profile.stash.itemImageUpload', 'Upload image')}</Modal.Title>
         </Modal.Header>
-        <Form onSubmit={handleUploadGroupImage}>
-          <Modal.Body>
-            <Form.Group>
-              <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
-              <Form.Control ref={groupImageInputRef} type="file" accept="image/jpeg,image/png,image/gif" />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="outline-secondary" onClick={() => setGroupImageTarget(null)} disabled={groupImageUploading}>
-              {t('profile.action.cancel', 'Cancel')}
-            </Button>
-            <Button type="submit" variant="secondary" disabled={groupImageUploading}>
-              {groupImageUploading && <SavingIcon className="me-2" />}
-              {groupImageUploading
-                ? t('profile.stash.itemImageUploading', 'Uploading...')
-                : t('profile.stash.itemImageUpload', 'Upload image')}
-            </Button>
-          </Modal.Footer>
-        </Form>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>{t('profile.stash.itemImageFile', 'Image file')}</Form.Label>
+            <Form.Control
+              type="file"
+              accept="image/jpeg,image/png,image/gif"
+              disabled={groupImageUploading}
+              onChange={event => { void handleUploadGroupImage(event as React.ChangeEvent<HTMLInputElement>); }}
+            />
+          </Form.Group>
+          {groupImageUploading && <div className="small text-muted mt-3">{t('profile.stash.itemImageUploading', 'Uploading...')}</div>}
+        </Modal.Body>
       </Modal>
     </div>
   );
