@@ -743,13 +743,41 @@ export default function StashOverview({
   async function handleDeleteItem(itemId: Id) {
     try {
       await deleteStashItem(itemId);
+      const groupKey = activeGroup ? toRecordKey(activeGroup.id) : null;
+      if (groupKey) {
+        setItemsByGroup(previousState => ({
+          ...previousState,
+          [groupKey]: (previousState[groupKey] || []).filter(item => !idsEqual(item.id, itemId)),
+        }));
+        setMarkersByGroup(previousState => ({
+          ...previousState,
+          [groupKey]: (previousState[groupKey] || []).filter(marker => !idsEqual(marker.itemId, itemId)),
+        }));
+        setItemOrderByGroup(previousState => ({
+          ...previousState,
+          [groupKey]: (previousState[groupKey] || []).filter(orderedItemId => !idsEqual(orderedItemId, itemId)),
+        }));
+      }
+      setItemImages(previousState => {
+        const nextState = { ...previousState };
+        delete nextState[toRecordKey(itemId)];
+        return nextState;
+      });
+      setItemImageCounts(previousState => {
+        const nextState = { ...previousState };
+        delete nextState[toRecordKey(itemId)];
+        return nextState;
+      });
+      delete itemRowRefs.current[toRecordKey(itemId)];
       setMarkerPlacement(previousState => (
         previousState?.itemId === itemId ? null : previousState
       ));
       setMarkerPreviewPosition(previousState => (
         markerPlacement?.itemId === itemId ? null : previousState
       ));
-      await loadStash();
+      setHoveredMarkerItemId(previousState => (
+        previousState === itemId ? null : previousState
+      ));
     } catch (error) {
       setFeedback(t('profile.stash.itemDeleteFailed', 'Unable to delete this item.'));
     }
