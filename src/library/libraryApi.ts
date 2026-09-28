@@ -30,6 +30,13 @@ export type LibrarySource = {
   type?: string | null;
 };
 
+export type LibrarySourceProfile = {
+  id: string;
+  name?: string | null;
+  alias?: string | null;
+  period?: string | null;
+};
+
 export type LibrarySourceImage = {
   id: string;
   url?: string | null;
@@ -272,6 +279,18 @@ export function getSourceImages(sourceId: string | undefined) {
         ...result,
         data: result.data?.content || [],
       }) as ApiResponse<LibrarySourceImage[]>,
+  );
+}
+
+export function getSourceProfiles(sourceId: string | undefined) {
+  return fetchJson<LibrarySourceProfile[]>(
+    `/api/stash/source/${sourceId}/profiles`,
+  ).then(
+    (result) =>
+      ({
+        ...result,
+        data: Array.isArray(result.data) ? result.data : [],
+      }) as ApiResponse<LibrarySourceProfile[]>,
   );
 }
 

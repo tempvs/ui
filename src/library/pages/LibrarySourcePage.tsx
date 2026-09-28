@@ -14,9 +14,11 @@ import {
   deleteSourceImage,
   getSource,
   getSourceImages,
+  getSourceProfiles,
   getSourceProposals,
   LibrarySource,
   LibrarySourceImage,
+  LibrarySourceProfile,
   LibraryUserInfoPayload,
   SourceChangeProposal,
   applySourceProposal,
@@ -34,6 +36,7 @@ import { prepareImageFile } from "../../util/fileUtils";
 import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
 import { SaveStatus } from "../../component/EditableFieldRow";
+import ProfileThumbnailLink from "../../profile/components/ProfileThumbnailLink";
 
 type SourceField = "name" | "description";
 
@@ -55,6 +58,13 @@ export default function LibrarySourcePage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
+  const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
+    [],
+  );
+  const [sourceProfilesLoaded, setSourceProfilesLoaded] = useState(false);
+  const [sourceProfilesError, setSourceProfilesError] = useState<string | null>(
+    null,
+  );
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +87,8 @@ export default function LibrarySourcePage() {
     setLoading(true);
     setError(null);
     setNotice(null);
+    setSourceProfilesLoaded(false);
+    setSourceProfilesError(null);
 
     try {
       const sourceResult = await getSource(sourceId);
@@ -88,6 +100,10 @@ export default function LibrarySourcePage() {
       if (!imageResult.ok) {
         throw new Error("Unable to load source images.");
       }
+
+      const sourceProfilesResult = await getSourceProfiles(sourceId).catch(
+        () => null,
+      );
 
       const proposalResult = canEditSource(sourceResult.userInfo)
         ? await getSourceProposals(sourceId)
@@ -101,6 +117,13 @@ export default function LibrarySourcePage() {
       setDraftDescription(sourceResult.data?.description || "");
       setFieldStatuses({});
       setImages(Array.isArray(imageResult.data) ? imageResult.data : []);
+      setSourceProfiles(sourceProfilesResult?.data || []);
+      setSourceProfilesError(
+        sourceProfilesResult?.ok
+          ? null
+          : "Unable to load profiles using this source.",
+      );
+      setSourceProfilesLoaded(true);
       setImageDrafts(
         Object.fromEntries(
           (Array.isArray(imageResult.data) ? imageResult.data : []).map(
@@ -363,7 +386,9 @@ export default function LibrarySourcePage() {
 
       const uploadedImage = uploadResult.data;
       if (!uploadedImage || !("id" in uploadedImage)) {
-        throw new Error("Library returned an invalid image replacement response.");
+        throw new Error(
+          "Library returned an invalid image replacement response.",
+        );
       }
 
       setImages((current) =>
@@ -377,7 +402,6 @@ export default function LibrarySourcePage() {
         next[uploadedImage.id] = uploadedImage.description || "";
         return next;
       });
-
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -611,113 +635,132 @@ export default function LibrarySourcePage() {
         </div>
       )}
 
-      <div className="stash-shell p-3 p-lg-4">
-        <Row className="g-3">
-          <Col lg={12}>
-            <article className="stash-item-card source-display-tile p-3 position-relative">
-              <Row className="g-3">
-                <Col md={7}>
-                  <div className="stash-subheading">Source details</div>
-                  <div className="stash-source-copy stash-item-display-copy">
-                    <InlineEditableText
-                      editable={canEditSource(userInfo)}
-                      value={draftName}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setDraftName(value);
-                        scheduleFieldSave("name", value);
-                      }}
-                      onBlur={() => handleFieldBlur("name")}
-                      readOnlyValue={source.name}
-                      status={fieldStatuses.name}
-                      textClassName="stash-item-title"
-                      popoverValue={source.name}
-                      truncateSingleLine
-                      savingTitle="Saving"
-                      errorTitle="Save failed"
-                    />
-                    <EditableDescriptionField
-                      editable={canEditSource(userInfo)}
-                      value={draftDescription}
-                      onValueChange={(value) => {
-                        setDraftDescription(value);
-                        scheduleFieldSave("description", value);
-                      }}
-                      onBlur={() => handleFieldBlur("description")}
-                      readOnlyValue={sourceDescriptionDisplay}
-                      status={fieldStatuses.description}
-                      className="mt-1"
-                      textClassName="stash-item-description"
-                      placeholderDisplay={sourceDescriptionMissing}
-                      placeholder="No description"
-                      rows={5}
-                      multilineUseContentEditable
-                      savingTitle="Saving"
-                      errorTitle="Save failed"
-                    />
-                  </div>
-                </Col>
-                <Col md={5}>
-                  <div className="stash-image-stack-panel">
-                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-                      <div className="stash-subheading mb-0">Images</div>
-                      {canContribute(userInfo) && (
-                        <PlusActionButton
-                          title="Upload image"
-                          onClick={() => {
-                            setError(null);
-                            setShowUploadModal(true);
-                          }}
-                        />
-                      )}
-                    </div>
+      <Row className="g-4 align-items-start">
+        <Col md={7}>
+          <div className="stash-subheading">Source details</div>
+          <div className="stash-source-copy stash-item-display-copy">
+            <InlineEditableText
+              editable={canEditSource(userInfo)}
+              value={draftName}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraftName(value);
+                scheduleFieldSave("name", value);
+              }}
+              onBlur={() => handleFieldBlur("name")}
+              readOnlyValue={source.name}
+              status={fieldStatuses.name}
+              textClassName="stash-item-title"
+              popoverValue={source.name}
+              truncateSingleLine
+              savingTitle="Saving"
+              errorTitle="Save failed"
+            />
+            <EditableDescriptionField
+              editable={canEditSource(userInfo)}
+              value={draftDescription}
+              onValueChange={(value) => {
+                setDraftDescription(value);
+                scheduleFieldSave("description", value);
+              }}
+              onBlur={() => handleFieldBlur("description")}
+              readOnlyValue={sourceDescriptionDisplay}
+              status={fieldStatuses.description}
+              className="mt-1"
+              textClassName="stash-item-description"
+              placeholderDisplay={sourceDescriptionMissing}
+              placeholder="No description"
+              rows={5}
+              multilineUseContentEditable
+              savingTitle="Saving"
+              errorTitle="Save failed"
+            />
+          </div>
+          <section
+            className="source-profile-links mt-4"
+            aria-label="Profiles using this source"
+          >
+            <div className="stash-subheading">Profiles using this source</div>
+            {!sourceProfilesLoaded && (
+              <p className="text-muted mt-2 mb-0">Loading profiles...</p>
+            )}
+            {sourceProfilesError && (
+              <p className="text-danger mt-2 mb-0">{sourceProfilesError}</p>
+            )}
+            {sourceProfilesLoaded &&
+              !sourceProfilesError &&
+              sourceProfiles.length === 0 && (
+                <p className="text-muted mt-2 mb-0">
+                  No profiles use this source yet.
+                </p>
+              )}
+            {sourceProfilesLoaded &&
+              !sourceProfilesError &&
+              sourceProfiles.length > 0 && (
+                <ul className="source-profile-list">
+                  {sourceProfiles.map((profile) => (
+                    <li key={profile.id}>
+                      <ProfileThumbnailLink profile={profile} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+          </section>
+        </Col>
+        <Col md={5}>
+          <section>
+            <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <div className="stash-subheading mb-0">Images</div>
+              {canContribute(userInfo) && (
+                <PlusActionButton
+                  title="Upload image"
+                  onClick={() => {
+                    setError(null);
+                    setShowUploadModal(true);
+                  }}
+                />
+              )}
+            </div>
 
-                    {canContribute(userInfo) && (
-                      <Form.Control
-                        ref={replaceImageInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif"
-                        onChange={handleReplaceImage}
-                        className="d-none"
-                      />
-                    )}
+            {canContribute(userInfo) && (
+              <Form.Control
+                ref={replaceImageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleReplaceImage}
+                className="d-none"
+              />
+            )}
 
-                    <StackedImageGallery
-                      images={images.map((image) => ({
-                        ...image,
-                        resourceType: image.resourceType || "source",
-                        resourceId: image.resourceId || sourceId,
-                      }))}
-                      title={source.name || undefined}
-                      emptyText="No images uploaded for this source yet."
-                      previewSize="compact"
-                      editable={canEditSource(userInfo)}
-                      onDeleteImage={(imageId) =>
-                        handleDeleteImage(String(imageId))
-                      }
-                      onReplaceImage={(image) => {
-                        const sourceImage = images.find(
-                          (entry) => entry.id === String(image.id),
-                        );
-                        if (sourceImage)
-                          handleOpenReplaceImagePicker(sourceImage);
-                      }}
-                      imageDrafts={imageDrafts}
-                      imageStatuses={imageStatuses}
-                      onDescriptionChange={(imageId, value) =>
-                        handleImageDescriptionChange(String(imageId), value)
-                      }
-                      onDescriptionBlur={(imageId) =>
-                        handleImageDescriptionBlur(String(imageId))
-                      }
-                    />
-                  </div>
-                </Col>
-              </Row>
-            </article>
-          </Col>
-        </Row>
-      </div>
+            <StackedImageGallery
+              images={images.map((image) => ({
+                ...image,
+                resourceType: image.resourceType || "source",
+                resourceId: image.resourceId || sourceId,
+              }))}
+              title={source.name || undefined}
+              emptyText="No images uploaded for this source yet."
+              previewSize="compact"
+              editable={canEditSource(userInfo)}
+              onDeleteImage={(imageId) => handleDeleteImage(String(imageId))}
+              onReplaceImage={(image) => {
+                const sourceImage = images.find(
+                  (entry) => entry.id === String(image.id),
+                );
+                if (sourceImage) handleOpenReplaceImagePicker(sourceImage);
+              }}
+              imageDrafts={imageDrafts}
+              imageStatuses={imageStatuses}
+              onDescriptionChange={(imageId, value) =>
+                handleImageDescriptionChange(String(imageId), value)
+              }
+              onDescriptionBlur={(imageId) =>
+                handleImageDescriptionBlur(String(imageId))
+              }
+            />
+          </section>
+        </Col>
+      </Row>
 
       {canContribute(userInfo) && (
         <Modal
