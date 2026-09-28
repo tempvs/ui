@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Button, Modal } from 'react-bootstrap';
 import { FaTrashAlt } from 'react-icons/fa';
 
+import ConfirmationModal from './ConfirmationModal';
 import IconActionButton, { IconActionButtonProps } from './IconActionButton';
 
 type ConfirmingTrashButtonProps = Omit<IconActionButtonProps, 'children' | 'title' | 'onClick'> & {
@@ -43,20 +43,15 @@ export default function ConfirmingTrashButton({
         <TrashIcon />
       </IconActionButton>
 
-      <Modal show={show} onHide={closeModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{confirmTitle}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>{confirmMessage}</Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={closeModal}>
-            {cancelLabel}
-          </Button>
-          <Button variant="danger" onClick={handleConfirm}>
-            {confirmLabel}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmationModal
+        show={show}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={confirmLabel}
+        cancelLabel={cancelLabel}
+        onHide={closeModal}
+        onConfirm={handleConfirm}
+      />
     </>
   );
 }

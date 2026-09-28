@@ -4,6 +4,7 @@ import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import defaultImage from '../assets/default-image.png';
+import ConfirmationModal from '../component/ConfirmationModal';
 import { SaveStatus } from '../component/EditableFieldRow';
 import Spinner from '../component/Spinner';
 import RefreshingImage from '../image/RefreshingImage';
@@ -344,14 +345,16 @@ export default function ClubPage() {
         </section>
       </Col></Row>
     </>}
-    <Modal show={deleting} onHide={() => { if (!busy) setDeleting(false); }} centered>
-      <Modal.Header closeButton><Modal.Title>{t('delete', 'Delete club')}</Modal.Title></Modal.Header>
-      <Modal.Body>{t('deleteConfirm', 'Delete this club and detach all participants? Their profiles will be kept.')}</Modal.Body>
-      <Modal.Footer>
-        <Button variant="outline-secondary" disabled={busy} onClick={() => setDeleting(false)}>{t('cancel', 'Cancel')}</Button>
-        <Button variant="danger" disabled={busy} onClick={() => { setDeleting(false); act(async () => { await deleteClub(id); navigate('/clubs'); }); }}>{t('delete', 'Delete club')}</Button>
-      </Modal.Footer>
-    </Modal>
+    <ConfirmationModal
+      show={deleting}
+      title={t('delete', 'Delete club')}
+      message={t('deleteConfirm', 'Delete this club and detach all participants? Their profiles will be kept.')}
+      confirmLabel={t('delete', 'Delete club')}
+      cancelLabel={t('cancel', 'Cancel')}
+      busy={busy}
+      onHide={() => setDeleting(false)}
+      onConfirm={() => { setDeleting(false); act(async () => { await deleteClub(id); navigate('/clubs'); }); }}
+    />
     <Modal show={applyingForMembership} onHide={() => { if (!busy) setApplyingForMembership(false); }} centered>
       <Modal.Header closeButton><Modal.Title>{t('applyForMembership', 'Apply for membership')}</Modal.Title></Modal.Header>
       <Modal.Body>

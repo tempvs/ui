@@ -4,6 +4,7 @@ import { FaPlus, FaTrash } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
+import ConfirmationModal from "../../component/ConfirmationModal";
 import SectionBreadcrumb from "../../component/SectionBreadcrumb";
 import Spinner from "../../component/Spinner";
 import { buildProfileLabel } from "../../profile/currentProfile";
@@ -618,40 +619,20 @@ export default function LibraryAdminPage() {
             )}
         </Modal.Body>
       </Modal>
-      <Modal
+      <ConfirmationModal
         show={memberPendingRemoval !== null}
-        onHide={() => {
-          if (updating === null) setMemberPendingRemoval(null);
+        title="Remove Library member"
+        message="Are you sure you want to remove this user from the Library?"
+        cancelLabel="No"
+        confirmLabel="Yes"
+        busy={updating !== null}
+        onHide={() => setMemberPendingRemoval(null)}
+        onConfirm={() => {
+          const member = memberPendingRemoval;
+          setMemberPendingRemoval(null);
+          if (member) void updateMember(member, "ROLE_USER");
         }}
-        centered
-      >
-        <Modal.Header closeButton={updating === null}>
-          <Modal.Title>Remove Library member</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to remove this user from the Library?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="outline-secondary"
-            disabled={updating !== null}
-            onClick={() => setMemberPendingRemoval(null)}
-          >
-            No
-          </Button>
-          <Button
-            variant="danger"
-            disabled={updating !== null}
-            onClick={() => {
-              const member = memberPendingRemoval;
-              setMemberPendingRemoval(null);
-              if (member) void updateMember(member, "ROLE_USER");
-            }}
-          >
-            Yes
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      />
       {!loading && tab === "requests" && (
         <div className="d-flex flex-column gap-3">
           {roleRequests.length === 0 && (

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaHourglassHalf, FaLink, FaPlus, FaUnlink } from 'react-icons/fa';
 
 import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
+import ConfirmationModal from '../component/ConfirmationModal';
 import EditableDescriptionField from '../component/EditableDescriptionField';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import InlineEditableText from '../component/InlineEditableText';
@@ -115,6 +116,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [sourceLinkModalVisible, setSourceLinkModalVisible] = useState(false);
   const [sourceSearch, setSourceSearch] = useState<SourceSearchState>({});
   const [sourceFilter, setSourceFilter] = useState('');
+  const [sourcePendingUnlink, setSourcePendingUnlink] = useState<LibrarySourceSummary | null>(null);
   const [imageUploadVisible, setImageUploadVisible] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageDescription, setImageDescription] = useState('');
@@ -706,7 +708,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
                     type="button"
                     className="stash-source-unlink-button"
                     title={t('profile.stash.sourceUnlink', 'Unlink source')}
-                    onClick={() => { void handleUnlinkSource(source.id); }}
+                    onClick={() => setSourcePendingUnlink(source)}
                   >
                     <UnlinkIcon />
                   </button>
@@ -768,6 +770,19 @@ function StashItemPage({ intl }: StashItemPageProps) {
               )}
         </Modal.Body>
       </Modal>
+
+      <ConfirmationModal
+        show={sourcePendingUnlink !== null}
+        title={t('profile.stash.sourceUnlink', 'Unlink source')}
+        message={t('profile.stash.sourceUnlinkConfirm', 'Are you sure you want to unlink this source?')}
+        confirmLabel={t('profile.stash.sourceUnlink', 'Unlink source')}
+        onHide={() => setSourcePendingUnlink(null)}
+        onConfirm={() => {
+          const source = sourcePendingUnlink;
+          setSourcePendingUnlink(null);
+          if (source) void handleUnlinkSource(source.id);
+        }}
+      />
 
       <Form.Control
         ref={replaceImageInputRef}

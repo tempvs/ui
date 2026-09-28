@@ -5,6 +5,7 @@ import { useIntl } from "react-intl";
 import { useNavigate, useParams } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
+import ConfirmationModal from "../../component/ConfirmationModal";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
 import PlusActionButton from "../../component/PlusActionButton";
@@ -56,6 +57,7 @@ export default function LibrarySourcePage() {
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
@@ -254,10 +256,6 @@ export default function LibrarySourcePage() {
 
   const handleDeleteSource = async () => {
     if (!source) {
-      return;
-    }
-
-    if (!window.confirm("Delete this source?")) {
       return;
     }
 
@@ -570,7 +568,7 @@ export default function LibrarySourcePage() {
         <div className="d-flex justify-content-end mb-4">
           <IconActionButton
             title="Delete source"
-            onClick={handleDeleteSource}
+            onClick={() => setShowDeleteConfirmation(true)}
             borderColor="#c77d7d"
             color="#8e2323"
             backgroundColor="#fff"
@@ -581,6 +579,18 @@ export default function LibrarySourcePage() {
           </IconActionButton>
         </div>
       )}
+
+      <ConfirmationModal
+        show={showDeleteConfirmation}
+        title="Delete source"
+        message="Delete this source?"
+        confirmLabel="Delete"
+        onHide={() => setShowDeleteConfirmation(false)}
+        onConfirm={() => {
+          setShowDeleteConfirmation(false);
+          void handleDeleteSource();
+        }}
+      />
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {notice && (
