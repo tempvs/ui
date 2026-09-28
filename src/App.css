@@ -1256,6 +1256,7 @@ button.stash-item-media-empty:disabled {
   margin-bottom: 0.85rem;
 }
 
+.stash-items-heading,
 .stash-source-list-heading {
   display: flex;
   align-items: center;
@@ -1263,6 +1264,7 @@ button.stash-item-media-empty:disabled {
   min-width: 0;
 }
 
+.stash-items-filter,
 .stash-source-filter {
   width: min(18rem, 40vw);
 }
@@ -1714,7 +1716,8 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-item-page-collection-link {
-  display: inline-flex;
+  display: flex;
+  justify-content: flex-start;
   margin-top: 0.3rem;
 }
 

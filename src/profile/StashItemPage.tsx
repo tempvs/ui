@@ -14,6 +14,7 @@ import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import SectionHeaderBar from '../component/SectionHeaderBar';
 import Spinner from '../component/Spinner';
 import StackedImageGallery from '../component/StackedImageGallery';
+import TextFilterInput from '../component/TextFilterInput';
 import { SaveStatus } from '../component/EditableFieldRow';
 import { getClassificationLabel, getTypeLabel } from '../library/libraryShared';
 import { clearAllTimers, clearTimer } from '../util/timers';
@@ -633,12 +634,10 @@ function StashItemPage({ intl }: StashItemPageProps) {
           <div className="stash-source-list-header">
             <div className="stash-source-list-heading">
               <h2 className="stash-source-list-title">{t('profile.stash.sourcesTitle', 'Sources')}</h2>
-              <Form.Control
-                size="sm"
+              <TextFilterInput
                 value={sourceFilter}
-                onChange={event => setSourceFilter(event.target.value)}
+                onChange={setSourceFilter}
                 placeholder={t('profile.stash.sourceFilterPlaceholder', 'Filter sources')}
-                aria-label={t('profile.stash.sourceFilterPlaceholder', 'Filter sources')}
                 className="stash-source-filter"
               />
             </div>

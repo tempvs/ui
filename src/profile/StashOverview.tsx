@@ -8,6 +8,7 @@ import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import EditableDescriptionField from '../component/EditableDescriptionField';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import Spinner from '../component/Spinner';
+import TextFilterInput from '../component/TextFilterInput';
 import defaultImage from '../assets/default-image.png';
 import { getClassificationLabel } from '../library/libraryShared';
 import { SaveStatus } from '../component/EditableFieldRow';
@@ -288,6 +289,7 @@ export default function StashOverview({
   const [groupCreateSubmitting, setGroupCreateSubmitting] = useState(false);
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(null);
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
+  const [itemFilter, setItemFilter] = useState('');
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [itemForm, setItemForm] = useState(emptyItemForm);
   const [groupImageTarget, setGroupImageTarget] = useState<StashGroup | null>(null);
@@ -394,6 +396,9 @@ export default function StashOverview({
     clearTimer(groupDescriptionTimersRef.current, 'description');
   }, [activeGroup?.id, activeGroup?.description]);
   useEffect(() => {
+    setItemFilter('');
+  }, [activeGroup?.id]);
+  useEffect(() => {
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
   const activeGroupImage = activeGroup ? groupImages[toRecordKey(activeGroup.id)] : null;
@@ -435,6 +440,13 @@ export default function StashOverview({
     (count, item) => count + (itemImageCounts[toRecordKey(item.id)] || 0),
     0
   );
+  const filteredActiveItems = useMemo(() => {
+    const query = itemFilter.trim().toLowerCase();
+    if (!query) return activeItems;
+    return activeItems.filter(item => [item.name, item.description, item.classification]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(query)));
+  }, [activeItems, itemFilter]);
 
   const headerStats = useMemo(() => [
     `${groups.length} ${t('profile.stash.collectionsCount', 'collection(s)')}`,
@@ -494,6 +506,10 @@ export default function StashOverview({
   useLayoutEffect(() => {
     recalculateArrows();
   }, [recalculateArrows]);
+
+  useLayoutEffect(() => {
+    scheduleArrowRefresh(recalculateArrows);
+  }, [filteredActiveItems, recalculateArrows]);
 
   useLayoutEffect(() => {
     if (!activeGroup || !activeGroupImageSrc) {
@@ -1123,7 +1139,15 @@ export default function StashOverview({
 
                 <section className="stash-items-pane">
                   <div className="stash-items-header">
-                    <h2 className="stash-items-title">{t('profile.stash.itemsTitle', 'Items')}</h2>
+                    <div className="stash-items-heading">
+                      <h2 className="stash-items-title">{t('profile.stash.itemsTitle', 'Items')}</h2>
+                      <TextFilterInput
+                        value={itemFilter}
+                        onChange={setItemFilter}
+                        placeholder={t('profile.stash.itemFilterPlaceholder', 'Filter items')}
+                        className="stash-items-filter"
+                      />
+                    </div>
                     {isEditable && (
                       <button
                         type="button"
@@ -1147,7 +1171,13 @@ export default function StashOverview({
                     </div>
                   )}
 
-                  {activeItems.map(item => {
+                  {activeItems.length > 0 && filteredActiveItems.length === 0 && (
+                    <div className="stash-empty-state stash-empty-state--compact">
+                      <div className="small text-muted">{t('profile.stash.itemFilterEmpty', 'No items match this filter.')}</div>
+                    </div>
+                  )}
+
+                  {filteredActiveItems.map(item => {
                     const marker = activeMarkersByItemId[toRecordKey(item.id)];
                     const itemImage = itemImages[toRecordKey(item.id)];
                     const itemImageSrc = getImageSrc(itemImage);
