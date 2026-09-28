@@ -112,8 +112,9 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [sources, setSources] = useState<LibrarySourceSummary[]>([]);
   const [sourceImages, setSourceImages] = useState<IdRecord<EntityImage>>({});
   const [currentUserId, setCurrentUserId] = useState<Id | null>(null);
-  const [sourceSearchVisible, setSourceSearchVisible] = useState(false);
+  const [sourceLinkModalVisible, setSourceLinkModalVisible] = useState(false);
   const [sourceSearch, setSourceSearch] = useState<SourceSearchState>({});
+  const [sourceFilter, setSourceFilter] = useState('');
   const [imageUploadVisible, setImageUploadVisible] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageDescription, setImageDescription] = useState('');
@@ -130,6 +131,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const getPeriodLabel = (period?: string | null) => getSharedPeriodLabel(intl, period);
   const isEditable = profile?.type === 'CLUB' && currentUserId != null && currentUserId === profile?.userId;
   const availableSourceResults = (sourceSearch.results || []).filter(sourceResult => !((item?.sources || []).includes(sourceResult.id)));
+  const filteredSources = sources.filter(source => {
+    const query = sourceFilter.trim().toLowerCase();
+    if (!query) return true;
+    return [source.name, source.description, source.type, source.classification]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(query));
+  });
   const sourceSearchFailedMessage = intl.formatMessage({
     id: 'profile.stash.sourceSearchFailed',
     defaultMessage: 'Unable to search library sources.',
@@ -417,9 +425,25 @@ function StashItemPage({ intl }: StashItemPageProps) {
     if (!item) {
       return;
     }
-    await linkStashItemSource(item.id, sourceId);
-    setSourceSearchVisible(false);
-    await refreshItemData();
+    const linkedItem = await linkStashItemSource(item.id, sourceId);
+    const linkedSource = (sourceSearch.results || []).find(source => source.id === sourceId);
+    setItem(previousState => previousState
+      ? { ...previousState, sources: linkedItem.sources || previousState.sources }
+      : linkedItem,
+    );
+    if (linkedSource) {
+      setSources(previousState => previousState.some(source => source.id === sourceId)
+        ? previousState
+        : [...previousState, linkedSource],
+      );
+      const images = await getStashEntityImages('source', [sourceId]);
+      setSourceImages(previousState => ({ ...previousState, ...buildFirstImageMap(images) }));
+    }
+  }
+
+  function closeSourceLinkModal() {
+    setSourceLinkModalVisible(false);
+    setSourceSearch({});
   }
 
   const handleSearchSources = useCallback(async (nextToken?: string) => {
@@ -454,7 +478,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
   }, [item, sourceSearch.query, sourceSearchFailedMessage]);
 
   useEffect(() => {
-    if (!sourceSearchVisible || !item) {
+    if (!sourceLinkModalVisible || !item) {
       return;
     }
 
@@ -463,7 +487,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     }, 250);
 
     return () => window.clearTimeout(timerId);
-  }, [handleSearchSources, item, sourceSearch.query, sourceSearchVisible]);
+  }, [handleSearchSources, item, sourceSearch.query, sourceLinkModalVisible]);
 
   if (!loaded) {
     return <Spinner />;
@@ -602,10 +626,33 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
         <section className="stash-source-list-shell">
           <div className="stash-source-list-header">
-            <h2 className="stash-source-list-title">{t('profile.stash.sourcesTitle', 'Sources')}</h2>
-            <Link className="stash-inline-link" to={`/stash/${profile.alias || profile.id}?group=${item.itemGroup?.id}`}>
-              {item.itemGroup?.name || t('profile.stash.groupName', 'Collection')}
-            </Link>
+            <div className="stash-source-list-heading">
+              <h2 className="stash-source-list-title">{t('profile.stash.sourcesTitle', 'Sources')}</h2>
+              <Form.Control
+                size="sm"
+                value={sourceFilter}
+                onChange={event => setSourceFilter(event.target.value)}
+                placeholder={t('profile.stash.sourceFilterPlaceholder', 'Filter sources')}
+                aria-label={t('profile.stash.sourceFilterPlaceholder', 'Filter sources')}
+                className="stash-source-filter"
+              />
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <Link className="stash-inline-link" to={`/stash/${profile.alias || profile.id}?group=${item.itemGroup?.id}`}>
+                {item.itemGroup?.name || t('profile.stash.groupName', 'Collection')}
+              </Link>
+              {isEditable && (
+                <button
+                  type="button"
+                  className="stash-inline-icon-button"
+                  title={t('profile.stash.sourceAdd', 'Add source')}
+                  aria-label={t('profile.stash.sourceAdd', 'Add source')}
+                  onClick={() => setSourceLinkModalVisible(true)}
+                >
+                  <PlusIcon />
+                </button>
+              )}
+            </div>
           </div>
 
           {sources.length === 0 && (
@@ -614,7 +661,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
             </div>
           )}
 
-          {sources.map(source => {
+          {sources.length > 0 && filteredSources.length === 0 && (
+            <div className="stash-empty-state stash-empty-state--compact">
+              <div className="small text-muted">{t('profile.stash.sourceFilterEmpty', 'No linked sources match this filter.')}</div>
+            </div>
+          )}
+
+          {filteredSources.map(source => {
             const sourceImage = sourceImages[toRecordKey(source.id)];
             const sourceImageSrc = getImageSrc(sourceImage);
 
@@ -662,27 +715,14 @@ function StashItemPage({ intl }: StashItemPageProps) {
             );
           })}
 
-          {isEditable && (
-            <div className="stash-item-add-row">
-              <button
-                type="button"
-                className="stash-inline-icon-button"
-                title={t('profile.stash.sourceAdd', 'Add source')}
-                onClick={() => setSourceSearchVisible(previousState => {
-                  const nextVisible = !previousState;
-                  if (!nextVisible) {
-                    setSourceSearch({});
-                  }
-                  return nextVisible;
-                })}
-              >
-                <LinkIcon />
-              </button>
-            </div>
-          )}
+        </section>
+      </div>
 
-          {isEditable && sourceSearchVisible && (
-            <div className="stash-source-search-panel mt-2">
+      <Modal show={sourceLinkModalVisible} onHide={closeSourceLinkModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>{t('profile.stash.sourceAdd', 'Add source')}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
               <div className="input-group input-group-sm mb-2">
                 <Form.Control
                   value={sourceSearch.query || ''}
@@ -702,15 +742,16 @@ function StashItemPage({ intl }: StashItemPageProps) {
                         </Link>
                         <div className="text-muted">{getTypeLabel(intl, source.type)}</div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
+                      <button
+                        type="button"
+                        className="stash-inline-icon-button"
                         disabled={(item.sources || []).includes(source.id)}
+                        title={t('profile.stash.link', 'Link')}
+                        aria-label={`${t('profile.stash.link', 'Link')} ${source.name || ''}`.trim()}
                         onClick={() => { void handleLinkSource(source.id); }}
                       >
-                        <LinkIcon className="me-2" />
-                        {t('profile.stash.link', 'Link')}
-                      </Button>
+                        <LinkIcon />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -720,15 +761,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
                   {t('profile.action.loadMore', 'Load more')}
                 </Button>
               )}
-              {!sourceSearch.loading && !sourceSearch.error && sourceSearchVisible && availableSourceResults.length === 0 && !sourceSearch.nextToken && (
+              {!sourceSearch.loading && !sourceSearch.error && availableSourceResults.length === 0 && !sourceSearch.nextToken && (
                 <div className="small text-muted">
                   {t('profile.stash.sourceSearchEmpty', 'No matching sources available to link.')}
                 </div>
               )}
-            </div>
-          )}
-        </section>
-      </div>
+        </Modal.Body>
+      </Modal>
 
       <Form.Control
         ref={replaceImageInputRef}

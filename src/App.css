@@ -1256,6 +1256,17 @@ button.stash-item-media-empty:disabled {
   margin-bottom: 0.85rem;
 }
 
+.stash-source-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.stash-source-filter {
+  width: min(18rem, 40vw);
+}
+
 .stash-overview-title,
 .stash-source-list-title {
   margin: 0;
