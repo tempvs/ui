@@ -53,7 +53,7 @@ beforeEach(() => {
 test('visitors see participants linked to profiles and no management controls', async () => {
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   expect(await screen.findByRole('heading', { name: 'Longbow Company' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Alex Archer' })).toHaveAttribute('href', '/profile/alex-archer');
+  expect(await screen.findByRole('link', { name: 'Alex Archer' })).toHaveAttribute('href', '/profile/alex-archer');
   expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
@@ -118,6 +118,16 @@ test('admins edit Club fields inline and manage participants but cannot assign a
   expect(screen.getByText('Join requests')).toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Delete club' })).not.toBeInTheDocument();
+});
+
+test('the signed-in creator can edit an alias even when an initial club read is public', async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-10', oauthProfile: null }));
+  mock(api.getClub).mockResolvedValue({ ...club, alias: 'longbow-company' });
+  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/longbow-company');
+
+  const alias = await screen.findByDisplayValue('longbow-company');
+  fireEvent.click(alias);
+  expect(alias).not.toHaveAttribute('readonly');
 });
 
 test('creator can revoke admin access and sees refreshed management', async () => {
