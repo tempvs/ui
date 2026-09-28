@@ -1202,7 +1202,14 @@ export default function StashOverview({
                         onMouseLeave={() => setHoveredMarkerItemId(previousState => (
                           previousState === item.id ? null : previousState
                         ))}
-                        onClick={() => navigate(`/stash/${profile?.alias || profile?.id}/items/${item.id}`)}
+                        onClick={event => {
+                          // React portal events from a modal bubble through this component tree,
+                          // even though the modal is not a DOM child of this card.
+                          if (!event.currentTarget.contains(event.target as Node)) {
+                            return;
+                          }
+                          navigate(`/stash/${profile?.alias || profile?.id}/items/${item.id}`);
+                        }}
                         onKeyDown={event => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
