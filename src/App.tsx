@@ -13,6 +13,7 @@ import HomePage from './HomePage';
 import ChatPage from './chat/ChatPage';
 import ClubsPage from './club/ClubsPage';
 import ClubPage from './club/ClubPage';
+import ClubAdminPage from './club/ClubAdminPage';
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -63,6 +64,7 @@ function App() {
           <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/clubs" element={<ClubsPage />} />
+          <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
           <Route path="/clubs/:id" element={<ClubPageWithParam />} />
           <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
         </Routes>

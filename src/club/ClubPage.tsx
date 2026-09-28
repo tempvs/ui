@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Col, Container, Modal, Row } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { FaSignOutAlt } from 'react-icons/fa';
@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import defaultImage from '../assets/default-image.png';
 import ConfirmationModal from '../component/ConfirmationModal';
 import { SaveStatus } from '../component/EditableFieldRow';
+import TextFilterInput from '../component/TextFilterInput';
 import Spinner from '../component/Spinner';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
@@ -17,7 +18,6 @@ import ClubFollowModal from './ClubFollowModal';
 import ClubFollowersPanel from './ClubFollowersPanel';
 import ClubFieldsPanel, { ClubField } from './ClubFieldsPanel';
 import ProfilePicker from './ProfilePicker';
-import JoinRequestsPanel from './JoinRequestsPanel';
 import ClubPhotoPanel from './ClubPhotoPanel';
 import './clubs.css';
 
@@ -77,6 +77,7 @@ export default function ClubPage() {
   const [followError, setFollowError] = useState('');
   const [revision, setRevision] = useState(0);
   const [followersRevision, setFollowersRevision] = useState(0);
+  const [memberFilter, setMemberFilter] = useState('');
   const loadedClubId = club?.id;
   const draftRef = useRef<ClubDraft | null>(null);
   const loadMoreParticipants = useRef<() => void>(() => {});
@@ -110,7 +111,7 @@ export default function ClubPage() {
   useEffect(() => {
     let active = true;
     const profiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
-    if (!currentUserId || profiles.length === 0) {
+    if (!currentUserId || profiles.length === 0 || !loadedClubId) {
       setFollowingProfileIds(new Set());
       return () => { active = false; };
     }
@@ -120,7 +121,7 @@ export default function ClubPage() {
       // avoids a burst of Lambda invocations when a user owns several Club
       // profiles, while the retry handles a transient cold-start throttle.
       for (const profile of profiles) {
-        states.push([String(profile.id), await getClubFollowStateWithRetry(id, profile.id)] as const);
+        states.push([String(profile.id), await getClubFollowStateWithRetry(String(loadedClubId), profile.id)] as const);
       }
       return states;
     };
@@ -135,7 +136,7 @@ export default function ClubPage() {
         setFollowError((error as Error).message || 'Unable to load club follow status right now.');
       });
     return () => { active = false; };
-  }, [currentUserId, id, ownedClubProfiles, ownedUserProfile]);
+  }, [currentUserId, loadedClubId, ownedClubProfiles, ownedUserProfile]);
   useEffect(() => {
     let active = true; setLoading(true); setError(''); setUnavailable(false);
     getClub(id).then(data => {
@@ -172,7 +173,7 @@ export default function ClubPage() {
     // Load the primary Club record before secondary panels. On a constrained
     // account this prevents the initial page render from fanning out into a
     // burst of authorizer/read Lambdas.
-    if (!loadedClubId || String(loadedClubId) !== id) return undefined;
+    if (!loadedClubId) return undefined;
     let active = true, fetching = false, more = true, failed = false;
     let nextToken: string | undefined;
     setMembers([]); setHasMore(false); setParticipantsError(''); setParticipantsLoading(true);
@@ -180,7 +181,7 @@ export default function ClubPage() {
       if (!active || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setParticipantsLoading(true); setParticipantsError('');
       try {
-        const profiles = await getParticipants(id, nextToken);
+        const profiles = await getParticipants(loadedClubId, nextToken);
         if (!active) return;
         setMembers(current => {
           const ids = new Set(current.map(profile => String(profile.id)));
@@ -200,7 +201,7 @@ export default function ClubPage() {
     loadMoreParticipants.current = () => fetchNext(true);
     fetchNext();
     return () => { active = false; };
-  }, [id, revision, loadedClubId]);
+  }, [revision, loadedClubId]);
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true); setError('');
     try { await action(); setRevision(value => value + 1); }
@@ -221,7 +222,7 @@ export default function ClubPage() {
     if (!draft || !canManage) return;
     setFieldStatuses(current => ({ ...current, [field]: 'saving' }));
     try {
-      const saved = await updateClub(id, draft);
+      const saved = await updateClub(club!.id, draft);
       draftRef.current = clubDraft(saved);
       setClub(saved);
       const canonicalPath = `/clubs/${saved.alias || saved.id}`;
@@ -234,7 +235,7 @@ export default function ClubPage() {
   const applyForMembership = async (profile: Profile) => {
     setBusy(true); setMembershipMessage(''); setError('');
     try {
-      await requestJoin(id, profile.id);
+      await requestJoin(club!.id, profile.id);
       setMembershipMessage(t('membershipRequested', 'Membership application sent.'));
     } catch (e) {
       setError((e as Error).message || t('membershipFailed', 'Unable to submit membership application right now.'));
@@ -245,8 +246,8 @@ export default function ClubPage() {
     const wasFollowing = followingProfileIds.has(profileId);
     setFollowBusy(true); setFollowError('');
     try {
-      if (wasFollowing) await unfollowClub(id, profile.id);
-      else await followClub(id, profile.id);
+      if (wasFollowing) await unfollowClub(club!.id, profile.id);
+      else await followClub(club!.id, profile.id);
       setFollowingProfileIds(current => {
         const next = new Set(current);
         if (wasFollowing) next.delete(profileId);
@@ -259,6 +260,11 @@ export default function ClubPage() {
     } finally { setFollowBusy(false); }
   };
   const ownedProfiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
+  const visibleMembers = useMemo(() => {
+    const query = memberFilter.trim().toLocaleLowerCase();
+    if (!query) return members;
+    return members.filter(profile => buildProfileLabel(profile).toLocaleLowerCase().includes(query));
+  }, [memberFilter, members]);
   const handleParticipantScroll: React.UIEventHandler<HTMLDivElement> = event => {
     const element = event.currentTarget;
     if (hasMore && !participantsLoading && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) {
@@ -297,31 +303,43 @@ export default function ClubPage() {
             title={currentUserId == null ? t('signInToFollow', 'Sign in to follow this club') : undefined}
             onClick={() => { setFollowError(''); setFollowingClub(true); }}
           >{followingProfileIds.size > 0 ? t('following', 'Following') : t('follow', 'Follow')}</Button>
+          {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>
+            {t('adminActions', 'Admin actions')}
+          </Link>}
         </div>
       </div>
       <Row><Col lg={8}>
         <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
         <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
         <section className="club-panel">
-          <h2>{t('members', 'Members')}</h2>
+          <div className="club-list-heading">
+            <h2>{t('members', 'Members')}</h2>
+            <TextFilterInput
+              value={memberFilter}
+              onChange={setMemberFilter}
+              placeholder={t('filterMembers', 'Filter members')}
+              ariaLabel={t('filterMembers', 'Filter members')}
+              className="club-list-filter"
+            />
+          </div>
           {participantsError && <Alert variant="danger">{participantsError} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
           <p className="text-muted">{t('membersHint', 'Members are profiles linked to this club. You can leave beside a profile you own.')}</p>
           {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noMembers', 'No members yet.')}</p>}
+          {!participantsLoading && !participantsError && members.length > 0 && visibleMembers.length === 0 && <p>{t('noMatchingMembers', 'No members match this filter.')}</p>}
           <div className="club-scroll-list" role="region" aria-label={t('members', 'Members')} onScroll={handleParticipantScroll}>
-            <ul className="club-member-list">{members.map(profile => {
+            <ul className="club-member-list">{visibleMembers.map(profile => {
               const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
               return <li key={profile.id}>
                 <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
-                {owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>
+                {owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy || unavailable} onClick={() => act(() => detachProfile(club.id, profile.id))}>
                   <LeaveIcon aria-hidden="true" /> <span>{t('leave', 'Leave club')}</span>
-                </Button> : canManage && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => detachProfile(id, profile.id))}>{t('remove', 'Remove')}</Button>}
+                </Button> : canManage && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => detachProfile(club.id, profile.id))}>{t('remove', 'Remove')}</Button>}
               </li>;
             })}</ul>
             {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
           </div>
         </section>
-        {!participantsLoading && <ClubFollowersPanel clubId={id} revision={followersRevision} />}
-        {canManage && !participantsLoading && <JoinRequestsPanel clubId={id} onDecision={() => setRevision(value => value + 1)} />}
+        <ClubFollowersPanel clubId={String(club.id)} revision={followersRevision} />
       </Col><Col lg={4}>
         <section className="club-panel">
           <h2>{t('management', 'Club administration')}</h2>
@@ -334,12 +352,12 @@ export default function ClubPage() {
           {club.adminUserIds.length === 0 && <p>{t('noAdmins', 'No additional admins.')}</p>}
           <ul className="club-member-list">{club.adminUserIds.map(userId => <li key={userId}>
             <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-            {canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => removeAdmin(id, userId))}>{t('remove', 'Remove')}</Button>}
+            {canManageAdmins && <Button size="sm" variant="outline-danger" disabled={busy || unavailable} onClick={() => act(() => removeAdmin(club.id, userId))}>{t('remove', 'Remove')}</Button>}
           </li>)}</ul>
           {canManageAdmins && <>
             <h3 className="h6">{t('assignAdmin', 'Assign an admin')}</h3>
             <p className="text-muted">{t('adminHint', 'Choose a club profile from this period. Its owner becomes a club administrator.')}</p>
-            <ProfilePicker type="CLUB" period={club.period} busy={busy} onSelect={profile => { if (profile.userId) act(() => addAdmin(id, profile.userId!)); }} />
+            <ProfilePicker type="CLUB" period={club.period} busy={busy} onSelect={profile => { if (profile.userId) act(() => addAdmin(club.id, profile.userId!)); }} />
             <Button variant="outline-danger" className="mt-4" onClick={() => setDeleting(true)}>{t('delete', 'Delete club')}</Button>
           </>}
         </section>
@@ -353,7 +371,7 @@ export default function ClubPage() {
       cancelLabel={t('cancel', 'Cancel')}
       busy={busy}
       onHide={() => setDeleting(false)}
-      onConfirm={() => { setDeleting(false); act(async () => { await deleteClub(id); navigate('/clubs'); }); }}
+      onConfirm={() => { setDeleting(false); act(async () => { await deleteClub(club?.id ?? id); navigate('/clubs'); }); }}
     />
     <Modal show={applyingForMembership} onHide={() => { if (!busy) setApplyingForMembership(false); }} centered>
       <Modal.Header closeButton><Modal.Title>{t('applyForMembership', 'Apply for membership')}</Modal.Title></Modal.Header>

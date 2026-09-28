@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
@@ -6,6 +6,7 @@ import { useIntl } from 'react-intl';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { Profile } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
+import TextFilterInput from '../component/TextFilterInput';
 import { getClubFollowers } from './clubApi';
 
 type ClubFollowersPanelProps = {
@@ -20,6 +21,7 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(false);
+  const [filter, setFilter] = useState('');
   const loadMoreRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -60,10 +62,26 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
     return () => { active = false; };
   }, [clubId, revision]);
 
+  const visibleFollowers = useMemo(() => {
+    const query = filter.trim().toLocaleLowerCase();
+    if (!query) return followers;
+    return followers.filter(profile => buildProfileLabel(profile).toLocaleLowerCase().includes(query));
+  }, [filter, followers]);
+
   return <section className="club-panel">
-    <h2>{t('followers', 'Followers')}</h2>
+    <div className="club-list-heading">
+      <h2>{t('followers', 'Followers')}</h2>
+      <TextFilterInput
+        value={filter}
+        onChange={setFilter}
+        placeholder={t('filterFollowers', 'Filter followers')}
+        ariaLabel={t('filterFollowers', 'Filter followers')}
+        className="club-list-filter"
+      />
+    </div>
     {error && <Alert variant="danger">{error} <Button variant="link" onClick={() => void loadMoreRef.current()}>{t('retry', 'Retry')}</Button></Alert>}
     {!loading && !error && followers.length === 0 && <p>{t('noFollowers', 'No followers yet.')}</p>}
+    {!loading && !error && followers.length > 0 && visibleFollowers.length === 0 && <p>{t('noMatchingFollowers', 'No followers match this filter.')}</p>}
     <div
       className="club-scroll-list"
       role="region"
@@ -75,7 +93,7 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
         }
       }}
     >
-      <ul className="club-member-list">{followers.map(profile => <li key={profile.id}>
+      <ul className="club-member-list">{visibleFollowers.map(profile => <li key={profile.id}>
         <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
       </li>)}</ul>
       {loading && <p role="status" className="text-muted mb-2">{t('loadingFollowers', 'Loading followers…')}</p>}

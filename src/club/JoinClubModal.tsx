@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
 import RefreshingImage from '../image/RefreshingImage';
-import { getJoinOptions, isClubServiceUnavailable, JoinOption, requestJoin } from './clubApi';
+import { followClub, getJoinOptions, isClubServiceUnavailable, JoinOption, requestJoin, unfollowClub } from './clubApi';
 
 export default function JoinClubModal({ profileId, period, onClose, onUnavailable }: {
   profileId: Id; period?: string; onClose: () => void; onUnavailable?: () => void;
@@ -21,6 +21,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [followingClubIds, setFollowingClubIds] = useState<Set<string>>(new Set());
   const results = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
 
@@ -32,7 +33,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
     let more = true;
     let ready = false;
     let available = true;
-    setOptions([]); setLoading(true); setHasMore(false); setSearchError(''); setUnavailable(false);
+    setOptions([]); setLoading(true); setHasMore(false); setSearchError(''); setUnavailable(false); setFollowingClubIds(new Set());
     if (results.current) results.current.scrollTop = 0;
 
     const fetchNext = async () => {
@@ -84,6 +85,24 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
     }
     finally { setBusy(false); }
   };
+  const toggleFollow = async (clubId: Id) => {
+    const key = String(clubId);
+    const wasFollowing = followingClubIds.has(key);
+    setBusy(true); setError('');
+    try {
+      if (wasFollowing) await unfollowClub(clubId, profileId);
+      else await followClub(clubId, profileId);
+      setFollowingClubIds(current => {
+        const next = new Set(current);
+        if (wasFollowing) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    } catch (caught) {
+      if (isClubServiceUnavailable(caught)) { setUnavailable(true); onUnavailable?.(); }
+      else setError((caught as Error).message || t('followFailed', 'Unable to update club follow state right now.'));
+    } finally { setBusy(false); }
+  };
   return <Modal show onHide={onClose} backdrop keyboard centered dialogClassName={`join-club-dialog${unavailable ? ' club-service-unavailable' : ''}`} aria-labelledby="join-club-title">
     <Modal.Header><Modal.Title id="join-club-title">{t('join', 'Join club')}</Modal.Title></Modal.Header>
     <Modal.Body>
@@ -108,9 +127,14 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
           )}
           <Link to={`/clubs/${club.alias || club.id}`} aria-disabled={unavailable || undefined} tabIndex={unavailable ? -1 : undefined} onClick={onClose}>{club.name}</Link>
           <PeriodBadge period={club.period} />
-          <Button size="sm" variant="outline-secondary" disabled={busy || unavailable || status === 'MEMBER' || status === 'PENDING'} onClick={() => send(club.id)}>
-            {status === 'MEMBER' ? t('member', 'Member') : status === 'PENDING' ? t('pending', 'Request pending') : status === 'REJECTED' ? t('requestAgain', 'Request again') : t('requestJoin', 'Request to join')}
-          </Button>
+          <div className="join-club-actions">
+            <Button size="sm" variant="outline-secondary" disabled={busy || unavailable || status === 'MEMBER' || status === 'PENDING'} onClick={() => send(club.id)}>
+              {status === 'MEMBER' ? t('member', 'Member') : status === 'PENDING' ? t('pending', 'Request pending') : status === 'REJECTED' ? t('requestAgain', 'Join') : t('join', 'Join')}
+            </Button>
+            <Button size="sm" variant={followingClubIds.has(String(club.id)) ? 'outline-danger' : 'outline-dark'} disabled={busy || unavailable} onClick={() => void toggleFollow(club.id)}>
+              {followingClubIds.has(String(club.id)) ? t('unfollow', 'Unfollow') : t('follow', 'Follow')}
+            </Button>
+          </div>
         </li>)}</ul>
         {loading && <p className="mt-3" role="status">{t('searching', 'Searching clubs…')}</p>}
         {!loading && !unavailable && !searchError && options.length === 0 && <p>{t('noMatches', 'No matching clubs.')}</p>}

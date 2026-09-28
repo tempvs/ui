@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { IntlProvider } from 'react-intl';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ClubPage from './ClubPage';
+import ClubAdminPage from './ClubAdminPage';
 import ClubsPage from './ClubsPage';
 import ProfileClubPanel from './ProfileClubPanel';
 import JoinClubModal from './JoinClubModal';
@@ -60,6 +61,16 @@ test('visitors see participants linked to profiles and no management controls', 
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 });
 
+test('alias club pages load members and followers using the resolved club id', async () => {
+  mock(api.getClub).mockResolvedValue({ ...club, id: 'club-uuid', alias: 'longbow-company' });
+  mock(api.getClubFollowers).mockResolvedValue({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
+  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/longbow-company');
+  expect(await screen.findByRole('link', { name: 'Alex Archer' })).toBeInTheDocument();
+  expect(await screen.findByRole('link', { name: 'Robin Hood' })).toBeInTheDocument();
+  expect(api.getParticipants).toHaveBeenCalledWith('club-uuid', undefined);
+  expect(api.getClubFollowers).toHaveBeenCalledWith('club-uuid', undefined);
+});
+
 test('a signed-in user can follow and unfollow a club through any owned profile', async () => {
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-42', oauthProfile: null }));
   mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess({ id: 'personal-1', firstName: 'Alex', lastName: 'Archer', type: 'USER' }));
@@ -72,10 +83,10 @@ test('a signed-in user can follow and unfollow a club through any owned profile'
   expect(within(modal).getByText('Alex Archer')).toBeInTheDocument();
   expect(within(modal).getByText('Longbow Company')).toBeInTheDocument();
   fireEvent.click(within(modal).getAllByRole('button', { name: 'Follow' })[0]);
-  await waitFor(() => expect(api.followClub).toHaveBeenCalledWith('1', 'personal-1'));
+  await waitFor(() => expect(api.followClub).toHaveBeenCalledWith(1, 'personal-1'));
   expect(await within(modal).findByRole('button', { name: 'Unfollow' })).toBeInTheDocument();
   fireEvent.click(within(modal).getByRole('button', { name: 'Unfollow' }));
-  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith('1', 'personal-1'));
+  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, 'personal-1'));
 });
 
 test('profile owners can leave from the scrollable club participant list', async () => {
@@ -86,7 +97,7 @@ test('profile owners can leave from the scrollable club participant list', async
   const leave = await screen.findByRole('button', { name: 'Leave club' });
   expect(screen.getByRole('region', { name: 'Members' })).toHaveClass('club-scroll-list');
   fireEvent.click(leave);
-  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith('1', '5'));
+  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith(1, '5'));
 });
 
 test('scrolling participants appends the next page without pagination buttons', async () => {
@@ -103,7 +114,7 @@ test('scrolling participants appends the next page without pagination buttons', 
   });
   fireEvent.scroll(region);
   expect(await screen.findByRole('link', { name: 'Robin Hood' })).toBeInTheDocument();
-  expect(api.getParticipants).toHaveBeenLastCalledWith('1', 'participants-2');
+  expect(api.getParticipants).toHaveBeenLastCalledWith(1, 'participants-2');
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 });
@@ -115,7 +126,8 @@ test('admins edit Club fields inline and manage participants but cannot assign a
   fireEvent.click(name);
   expect(name).not.toHaveAttribute('readonly');
   expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
-  expect(screen.getByText('Join requests')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Admin actions' })).toHaveAttribute('href', '/clubs/1/admin');
+  expect(screen.queryByText('Join requests')).not.toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Delete club' })).not.toBeInTheDocument();
 });
@@ -137,7 +149,7 @@ test('creator can revoke admin access and sees refreshed management', async () =
   expect(await screen.findByText('Assign an admin')).toBeInTheDocument();
   const adminLink = screen.getByRole('link', { name: 'View profile #user-20' });
   fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
-  await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith('1', 'user-20'));
+  await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith(1, 'user-20'));
 });
 
 test('creator administration searches matching club profiles while typing', async () => {
@@ -153,7 +165,7 @@ test('creator administration searches matching club profiles while typing', asyn
   }));
   expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button', { name: 'Assign' }));
-  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith('1', 'user-30'));
+  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith(1, 'user-30'));
 });
 
 test('owner opens search modal and requests membership without immediately joining', async () => {
@@ -165,11 +177,24 @@ test('owner opens search modal and requests membership without immediately joini
   const modal = await screen.findByRole('dialog');
   expect(within(modal).getByText('Clubs matching this profile’s period')).toBeInTheDocument();
   await waitFor(() => expect(api.getJoinOptions).toHaveBeenCalledWith(5, '', undefined, expect.any(AbortSignal)));
-  fireEvent.click(await within(modal).findByRole('button', { name: 'Request to join' }));
+  fireEvent.click(await within(modal).findByRole('button', { name: 'Join' }));
   await waitFor(() => expect(api.requestJoin).toHaveBeenCalledWith(1, 5));
   expect(await within(modal).findByRole('button', { name: 'Request pending' })).toBeDisabled();
   expect(api.attachProfile).not.toHaveBeenCalled();
   expect(screen.queryByRole('button', { name: 'Leave club' })).not.toBeInTheDocument();
+});
+
+test('the profile club chooser gives every club row Join and Follow actions', async () => {
+  mock(api.getProfileClubs).mockResolvedValue([]);
+  mock(api.followClub).mockResolvedValue(undefined);
+  wrap(<ProfileClubPanel profileId={5} editable />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Join club' }));
+  const modal = await screen.findByRole('dialog');
+  await within(modal).findByRole('link', { name: 'Longbow Company' });
+  expect(within(modal).getByRole('button', { name: 'Join' })).toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole('button', { name: 'Follow' }));
+  await waitFor(() => expect(api.followClub).toHaveBeenCalledWith(1, 5));
+  expect(await within(modal).findByRole('button', { name: 'Unfollow' })).toBeInTheDocument();
 });
 
 test('profile visitors see club references without join or leave controls', async () => {
@@ -188,9 +213,9 @@ test('failed join request keeps the modal available and explains the failure', a
   mock(api.requestJoin).mockRejectedValue(new Error('The club and profile must have the same period'));
   wrap(<ProfileClubPanel profileId={5} editable />);
   fireEvent.click(await screen.findByRole('button', { name: 'Join club' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Request to join' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Join' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('same period');
-  expect(screen.getByRole('button', { name: 'Request to join' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
 });
 
 test('unattached profiles render no club section or controls to visitors', async () => {
@@ -207,16 +232,22 @@ test('owners with existing memberships still have a join button', async () => {
   expect(screen.getByRole('button', { name: 'Join club' })).toBeInTheDocument();
 });
 
-test.each(['accept', 'reject'] as const)('club admins can %s a pending request', async decision => {
+test.each(['accept', 'reject'] as const)('club admins can %s a pending request from the admin page', async decision => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
   const request: api.JoinRequest = { id: 9, clubId: 1, profileId: '6', status: 'PENDING', requestedDate: '', profile: { id: '6', firstName: 'Robin', lastName: 'Hood' } };
   mock(api.getJoinRequests).mockResolvedValueOnce({ content: [request], hasMore: false })
     .mockResolvedValue({ content: [], hasMore: false });
   mock(api.decideJoinRequest).mockResolvedValue({ ...request, status: decision === 'accept' ? 'ACCEPTED' : 'REJECTED' });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
   fireEvent.click(await screen.findByRole('button', { name: decision === 'accept' ? 'Accept' : 'Reject' }));
-  await waitFor(() => expect(api.decideJoinRequest).toHaveBeenCalledWith('1', 9, decision));
+  await waitFor(() => expect(api.decideJoinRequest).toHaveBeenCalledWith(1, 9, decision));
   expect(await screen.findByText('No pending join requests.')).toBeInTheDocument();
+});
+
+test('non-admins cannot see membership applications on the admin page', async () => {
+  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
+  expect(await screen.findByText('Club administration is available only to club admins.')).toBeInTheDocument();
+  expect(api.getJoinRequests).not.toHaveBeenCalled();
 });
 
 test('club browsing searches as the user types and changes period', async () => {
