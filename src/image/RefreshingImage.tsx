@@ -81,10 +81,16 @@ async function refreshUrl(
   resourceId: string | number | null | undefined,
   imageId: string | number | null | undefined,
   variant: 'display' | 'thumbnail',
-) {
-  if (!resourceType || resourceId == null) return null;
+): Promise<{ url: string | null; pending: boolean }> {
+  if (!resourceType || resourceId == null) return { url: null, pending: false };
   const refreshed = await readImageMetadata(resourceType, resourceId, imageId);
-  return refreshed ? initialUrl(refreshed, variant) : null;
+  const url = refreshed ? initialUrl(refreshed, variant) : null;
+  return {
+    url,
+    // A known image with no published URL is the upload-processing case.
+    // Empty/error responses are not pending uploads and must not be polled.
+    pending: imageId != null && refreshed != null && !url,
+  };
 }
 
 export default function RefreshingImage({
@@ -112,22 +118,24 @@ export default function RefreshingImage({
     let retryTimer: number | undefined;
 
     const refreshPendingImage = async (attempt: number): Promise<void> => {
+      let pending = false;
       try {
-        const url = await refreshUrl(resourceType, resourceId, imageId, variant);
+        const result = await refreshUrl(resourceType, resourceId, imageId, variant);
         if (!active) return;
-        if (url) {
-          setCurrentSource(url);
+        if (result.url) {
+          setCurrentSource(result.url);
           return;
         }
+        pending = result.pending;
       } catch {
-        // Image processing is asynchronous. Keep trying while this component is mounted.
+        // A service failure is not evidence of an upload in progress.
       }
 
       // A known image ID represents a pending upload and can be polled until
       // the processor publishes it. A profile/club reference without an
       // image ID only needs one metadata lookup: repeatedly polling a profile
       // that simply has no avatar creates needless Lambda/API traffic.
-      if (active && imageId != null && attempt + 1 < IMAGE_REFRESH_ATTEMPTS) {
+      if (active && pending && attempt + 1 < IMAGE_REFRESH_ATTEMPTS) {
         retryTimer = window.setTimeout(() => {
           void refreshPendingImage(attempt + 1);
         }, IMAGE_REFRESH_INTERVAL_MS);
@@ -148,8 +156,8 @@ export default function RefreshingImage({
       return;
     }
     retried.current = true;
-    void refreshUrl(resourceType, resourceId, imageId, variant).then(url => {
-      if (url && url !== currentSource) setCurrentSource(url);
+    void refreshUrl(resourceType, resourceId, imageId, variant).then(result => {
+      if (result.url && result.url !== currentSource) setCurrentSource(result.url);
       else if (fallbackSrc) setCurrentSource(fallbackSrc);
     }).catch(() => {
       if (fallbackSrc) setCurrentSource(fallbackSrc);

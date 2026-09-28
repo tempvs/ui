@@ -48,6 +48,27 @@ test('looks up an unknown profile avatar once instead of treating it as a pendin
   jest.useRealTimers();
 });
 
+test('does not keep polling a known image that is absent from the image service', async () => {
+  jest.useFakeTimers();
+  const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({ content: [] }),
+  } as Response);
+  render(
+    <RefreshingImage
+      image={{ id: 'missing-image', resourceType: 'source', resourceId: 'source-missing' }}
+      fallbackSrc="/placeholder.png"
+      alt="Source"
+    />,
+  );
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  act(() => { jest.advanceTimersByTime(60_000); });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  fetchMock.mockRestore();
+  jest.useRealTimers();
+});
+
 test('keeps polling a pending image until processing provides a signed URL', async () => {
   const fetchMock = jest.spyOn(window, 'fetch')
     .mockResolvedValueOnce({
