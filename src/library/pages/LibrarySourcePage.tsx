@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Col, Form, Modal, Row } from "react-bootstrap";
 import { FaHourglassHalf, FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
@@ -10,6 +10,7 @@ import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
+import TextFilterInput from "../../component/TextFilterInput";
 import {
   deleteSourceImage,
   getSource,
@@ -66,6 +67,7 @@ export default function LibrarySourcePage() {
   const [sourceProfilesError, setSourceProfilesError] = useState<string | null>(
     null,
   );
+  const [profileFilter, setProfileFilter] = useState("");
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function LibrarySourcePage() {
       setFieldStatuses({});
       setImages(Array.isArray(imageResult.data) ? imageResult.data : []);
       setSourceProfiles(sourceProfilesResult?.data || []);
+      setProfileFilter("");
       setSourceProfilesError(
         sourceProfilesResult?.ok
           ? null
@@ -519,6 +522,17 @@ export default function LibrarySourcePage() {
     handleUpdateImageDescription(imageId);
   };
 
+  const filteredSourceProfiles = useMemo(() => {
+    const normalizedFilter = profileFilter.trim().toLocaleLowerCase();
+    if (!normalizedFilter) return sourceProfiles;
+
+    return sourceProfiles.filter((profile) =>
+      [profile.name, profile.alias, profile.period].some((value) =>
+        value?.toLocaleLowerCase().includes(normalizedFilter),
+      ),
+    );
+  }, [profileFilter, sourceProfiles]);
+
   if (loading) {
     return <Spinner />;
   }
@@ -646,7 +660,6 @@ export default function LibrarySourcePage() {
 
       <Row className="g-4 align-items-start">
         <Col md={7}>
-          <div className="stash-subheading">Source details</div>
           <div className="stash-source-copy stash-item-display-copy">
             <InlineEditableText
               editable={canEditSource(userInfo)}
@@ -689,7 +702,17 @@ export default function LibrarySourcePage() {
             className="source-profile-links mt-4"
             aria-label="Profiles using this source"
           >
-            <div className="stash-subheading">Profiles using this source</div>
+            <div className="source-profile-links-heading">
+              <div className="stash-subheading mb-0">
+                Profiles using this source
+              </div>
+              <TextFilterInput
+                value={profileFilter}
+                onChange={setProfileFilter}
+                placeholder="Filter profiles"
+                className="source-profile-filter"
+              />
+            </div>
             {!sourceProfilesLoaded && (
               <p className="text-muted mt-2 mb-0">Loading profiles...</p>
             )}
@@ -705,9 +728,17 @@ export default function LibrarySourcePage() {
               )}
             {sourceProfilesLoaded &&
               !sourceProfilesError &&
-              sourceProfiles.length > 0 && (
+              sourceProfiles.length > 0 &&
+              filteredSourceProfiles.length === 0 && (
+                <p className="text-muted mt-2 mb-0">
+                  No profiles match this filter.
+                </p>
+              )}
+            {sourceProfilesLoaded &&
+              !sourceProfilesError &&
+              filteredSourceProfiles.length > 0 && (
                 <ul className="source-profile-list">
-                  {sourceProfiles.map((profile) => (
+                  {filteredSourceProfiles.map((profile) => (
                     <li key={profile.id}>
                       <ProfileThumbnailLink profile={profile} />
                     </li>
@@ -749,6 +780,7 @@ export default function LibrarySourcePage() {
               }}
               addTitle="Upload image"
               addPopover="Upload image"
+              wrapperClassName="source-image-gallery"
               onDeleteImage={(imageId) => handleDeleteImage(String(imageId))}
               onReplaceImage={(image) => {
                 const sourceImage = images.find(

@@ -337,7 +337,7 @@ export default function StackedImageGallery({
             >
               {displayImages.map((image, index) => (
                 <Carousel.Item key={image.id || index}>
-                  <div className="position-relative p-3 p-lg-4 pb-5">
+                  <div className="position-relative p-3 p-lg-4">
                     {imageActions(image)}
                     <RefreshingImage
                       image={image}
@@ -350,7 +350,10 @@ export default function StackedImageGallery({
                         backgroundColor: "#f7f4ee",
                       }}
                     />
-                    {descriptionContent(image, "mt-3 px-5")}
+                    {descriptionContent(
+                      image,
+                      "border-top mt-3 px-5 py-3",
+                    )}
                   </div>
                 </Carousel.Item>
               ))}

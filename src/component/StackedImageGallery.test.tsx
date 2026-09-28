@@ -4,7 +4,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import StackedImageGallery from './StackedImageGallery';
 
 const images = [
-  { id: 'image-1', url: 'https://example.test/one.jpg', fileName: 'One' },
+  {
+    id: 'image-1',
+    url: 'https://example.test/one.jpg',
+    fileName: 'One',
+    description: 'Front view of the source',
+  },
   { id: 'image-2', url: 'https://example.test/two.jpg', fileName: 'Two' },
 ];
 
@@ -30,4 +35,6 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(screen.getByText('Source images')).toBeInTheDocument();
   expect(document.querySelector('.carousel')).toBeInTheDocument();
   expect(document.querySelector('.carousel-control-next')).toBeInTheDocument();
+  expect(screen.getByText('Front view of the source')).toBeInTheDocument();
+  expect(document.querySelector('.carousel .border-top')).toBeInTheDocument();
 });

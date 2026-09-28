@@ -1185,6 +1185,22 @@ button.stash-item-media-empty:disabled {
   list-style: none;
 }
 
+.source-profile-links-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.source-profile-filter {
+  width: min(15rem, 100%);
+}
+
+.source-image-gallery {
+  border: 1px solid #d8cbb4;
+  border-radius: 0.5rem;
+  padding: 0.35rem;
+}
+
 .source-card-body {
   align-items: flex-start;
   min-height: 10rem;
@@ -1223,6 +1239,15 @@ button.stash-item-media-empty:disabled {
     flex-basis: auto;
     width: 100%;
     height: 9rem;
+  }
+
+  .source-profile-links-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .source-profile-filter {
+    width: 100%;
   }
 }
 
