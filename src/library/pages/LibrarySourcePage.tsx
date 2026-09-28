@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Col, Form, Modal, Row } from "react-bootstrap";
-import { FaHourglassHalf, FaTrashAlt } from "react-icons/fa";
+import { Button, Col, Form, Row } from "react-bootstrap";
+import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -8,6 +8,7 @@ import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
+import ImmediateImageUploadModal from "../../component/ImmediateImageUploadModal";
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
@@ -46,10 +47,6 @@ type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
 type ImageRecord<T> = Record<string | number, T>;
 
 const TrashIcon = FaTrashAlt as React.ComponentType;
-const SavingIcon = FaHourglassHalf as React.ComponentType<{
-  className?: string;
-}>;
-
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
   const navigate = useNavigate();
@@ -75,12 +72,10 @@ export default function LibrarySourcePage() {
   const [draftName, setDraftName] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
   const [fieldStatuses, setFieldStatuses] = useState<SourceFieldStatuses>({});
-  const [imageDescription, setImageDescription] = useState("");
   const [imageDrafts, setImageDrafts] = useState<ImageRecord<string>>({});
   const [imageStatuses, setImageStatuses] = useState<ImageRecord<SaveStatus>>(
     {},
   );
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const imageSaveTimersRef = useRef<ImageRecord<number>>({});
   const fieldSaveTimersRef = useRef<Partial<Record<SourceField, number>>>({});
@@ -295,16 +290,12 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleUploadImage: React.FormEventHandler<HTMLFormElement> = async (
+  const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
   ) => {
-    event.preventDefault();
-    const file = imageInputRef.current?.files?.[0];
-
-    if (!file) {
-      setError("Choose an image to upload.");
-      return;
-    }
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
 
     setUploadingImage(true);
     setError(null);
@@ -314,7 +305,7 @@ export default function LibrarySourcePage() {
       const result = await uploadSourceImage(
         sourceId,
         preparedFile,
-        imageDescription || null,
+        null,
       );
 
       if (!result.ok) {
@@ -338,10 +329,6 @@ export default function LibrarySourcePage() {
         [uploadedImage.id]: uploadedImage.description || "",
       }));
 
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
-      setImageDescription("");
       setShowUploadModal(false);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
@@ -804,53 +791,14 @@ export default function LibrarySourcePage() {
       </Row>
 
       {canContribute(userInfo) && (
-        <Modal
+        <ImmediateImageUploadModal
           show={showUploadModal}
-          onHide={() => {
-            if (!uploadingImage) {
-              setShowUploadModal(false);
-            }
-          }}
-          centered
-        >
-          <Modal.Header closeButton={!uploadingImage}>
-            <Modal.Title>Upload source image</Modal.Title>
-          </Modal.Header>
-          <Form onSubmit={handleUploadImage}>
-            <Modal.Body>
-              <Form.Group className="mb-3">
-                <Form.Label>Image file</Form.Label>
-                <Form.Control
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif"
-                />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Description</Form.Label>
-                <Form.Control
-                  value={imageDescription}
-                  onChange={(event) => setImageDescription(event.target.value)}
-                  placeholder="Optional description"
-                />
-              </Form.Group>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                type="button"
-                variant="outline-secondary"
-                onClick={() => setShowUploadModal(false)}
-                disabled={uploadingImage}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="dark" disabled={uploadingImage}>
-                {uploadingImage && <SavingIcon className="me-2" />}
-                {uploadingImage ? "Uploading..." : "Upload"}
-              </Button>
-            </Modal.Footer>
-          </Form>
-        </Modal>
+          title="Upload source image"
+          fileLabel="Image file"
+          onHide={() => setShowUploadModal(false)}
+          onFileChange={handleUploadImage}
+          uploading={uploadingImage}
+        />
       )}
     </div>
   );

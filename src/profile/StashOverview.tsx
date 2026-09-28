@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import EditableDescriptionField from "../component/EditableDescriptionField";
+import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
@@ -1942,39 +1943,15 @@ export default function StashOverview({
         </Form>
       </Modal>
 
-      <Modal
+      <ImmediateImageUploadModal
         show={Boolean(groupImageTarget)}
-        onHide={() => !groupImageUploading && setGroupImageTarget(null)}
-        centered
-      >
-        <Modal.Header closeButton={!groupImageUploading}>
-          <Modal.Title>
-            {t("profile.stash.itemImageUpload", "Upload image")}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group>
-            <Form.Label>
-              {t("profile.stash.itemImageFile", "Image file")}
-            </Form.Label>
-            <Form.Control
-              type="file"
-              accept="image/jpeg,image/png,image/gif"
-              disabled={groupImageUploading}
-              onChange={(event) => {
-                void handleUploadGroupImage(
-                  event as React.ChangeEvent<HTMLInputElement>,
-                );
-              }}
-            />
-          </Form.Group>
-          {groupImageUploading && (
-            <div className="small text-muted mt-3">
-              {t("profile.stash.itemImageUploading", "Uploading...")}
-            </div>
-          )}
-        </Modal.Body>
-      </Modal>
+        title={t("profile.stash.itemImageUpload", "Upload image")}
+        fileLabel={t("profile.stash.itemImageFile", "Image file")}
+        onHide={() => setGroupImageTarget(null)}
+        onFileChange={handleUploadGroupImage}
+        uploading={groupImageUploading}
+        uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
+      />
     </div>
   );
 }

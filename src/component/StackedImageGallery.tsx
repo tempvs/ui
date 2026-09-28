@@ -140,7 +140,7 @@ export default function StackedImageGallery({
     <>
       {editable && onReplaceImage && (
         <ImageOverlayActionButton
-          className={`position-absolute top-0 start-0 m-3 ${className}`.trim()}
+          className={`position-absolute top-0 start-0 m-3 stacked-image-gallery-image-action ${className}`.trim()}
           fontSize="0.9rem"
           onClick={(event) => {
             event.stopPropagation();
@@ -155,7 +155,7 @@ export default function StackedImageGallery({
       )}
       {editable && onDeleteImage && (
         <ConfirmingTrashButton
-          className={`position-absolute top-0 end-0 m-3 ${className}`.trim()}
+          className={`position-absolute top-0 end-0 m-3 stacked-image-gallery-image-action ${className}`.trim()}
           fontSize="0.9rem"
           title={deleteTitle}
           confirmTitle={deleteConfirmTitle}

@@ -7,6 +7,7 @@ import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import ConfirmationModal from "../component/ConfirmationModal";
 import EditableDescriptionField from "../component/EditableDescriptionField";
+import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import InlineEditableText from "../component/InlineEditableText";
 import defaultImage from "../assets/default-image.png";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -982,39 +983,15 @@ function StashItemPage({ intl }: StashItemPageProps) {
         className="d-none"
       />
 
-      <Modal
+      <ImmediateImageUploadModal
         show={imageUploadVisible}
-        onHide={() => !imageUploading && setImageUploadVisible(false)}
-        centered
-      >
-        <Modal.Header closeButton={!imageUploading}>
-          <Modal.Title>
-            {t("profile.stash.itemImageUpload", "Upload image")}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group>
-            <Form.Label>
-              {t("profile.stash.itemImageFile", "Image file")}
-            </Form.Label>
-            <Form.Control
-              type="file"
-              accept="image/jpeg,image/png,image/gif"
-              disabled={imageUploading}
-              onChange={(event) => {
-                void handleUploadImage(
-                  event as React.ChangeEvent<HTMLInputElement>,
-                );
-              }}
-            />
-          </Form.Group>
-          {imageUploading && (
-            <div className="small text-muted mt-3">
-              {t("profile.stash.itemImageUploading", "Uploading...")}
-            </div>
-          )}
-        </Modal.Body>
-      </Modal>
+        title={t("profile.stash.itemImageUpload", "Upload image")}
+        fileLabel={t("profile.stash.itemImageFile", "Image file")}
+        onHide={() => setImageUploadVisible(false)}
+        onFileChange={handleUploadImage}
+        uploading={imageUploading}
+        uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
+      />
     </Container>
   );
 }

@@ -1198,11 +1198,28 @@ button.stash-item-media-empty:disabled {
 .source-image-gallery {
   border: 1px solid #d8cbb4;
   border-radius: 0.5rem;
-  padding: 0.35rem;
+  padding: 0.6rem;
 }
 
+.stacked-image-gallery-image-action,
 .stacked-image-gallery-add-image {
   z-index: 5;
+}
+
+.stacked-image-gallery-carousel .carousel-control-prev,
+.stacked-image-gallery-carousel .carousel-control-next {
+  opacity: 1;
+}
+
+.stacked-image-gallery-carousel .carousel-control-prev-icon,
+.stacked-image-gallery-carousel .carousel-control-next-icon {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(51, 58, 54, 0.6);
+  border-radius: 0.4rem;
+  background-color: rgba(51, 58, 54, 0.75);
+  background-size: 48% 48%;
+  box-shadow: 0 0.08rem 0.25rem rgba(31, 38, 35, 0.2);
 }
 
 .source-card-body {
