@@ -53,6 +53,7 @@ type StackedImageGalleryProps = {
   imageClassName?: string;
   previewStyle?: React.CSSProperties;
   previewImageStyle?: React.CSSProperties;
+  fitPreviewHeightToImage?: boolean;
   modalSize?: "sm" | "lg" | "xl";
   showInlineDescription?: boolean;
 };
@@ -92,6 +93,7 @@ export default function StackedImageGallery({
   imageClassName,
   previewStyle,
   previewImageStyle,
+  fitPreviewHeightToImage = false,
   modalSize = "xl",
   showInlineDescription = false,
 }: StackedImageGalleryProps) {
@@ -271,7 +273,13 @@ export default function StackedImageGallery({
                   : isCompact
                     ? "min(100%, 10.5rem)"
                     : "min(100%, 22rem)",
-                height: isInventory ? "11rem" : isCompact ? "7.25rem" : "18rem",
+                height: fitPreviewHeightToImage
+                  ? "auto"
+                  : isInventory
+                    ? "11rem"
+                    : isCompact
+                      ? "7.25rem"
+                      : "18rem",
                 ...previewStyle,
               }}
             >
@@ -280,13 +288,15 @@ export default function StackedImageGallery({
                 .reverse()
                 .map((image, index) => {
                   const depth = previewImages.length - 1 - index;
+                  const establishesPreviewHeight =
+                    fitPreviewHeightToImage && depth === 0;
                   return (
                     <div
                       key={image.id || index}
-                      className="position-absolute top-0 start-0 rounded shadow-sm overflow-hidden border bg-white"
+                      className={`${establishesPreviewHeight ? "position-relative" : "position-absolute top-0 start-0"} rounded shadow-sm overflow-hidden border bg-white`}
                       style={{
                         width: "100%",
-                        height: "100%",
+                        height: establishesPreviewHeight ? "auto" : "100%",
                         transform: `translate(${depth * (isCompact ? 8 : isInventory ? 6 : 16)}px, ${depth * (isCompact ? 7 : isInventory ? 5 : 14)}px)`,
                         zIndex: index + 1,
                         borderColor: "#d8cbb4",
@@ -298,7 +308,7 @@ export default function StackedImageGallery({
                         alt={image.fileName || title}
                         style={{
                           width: "100%",
-                          height: "100%",
+                          height: establishesPreviewHeight ? "auto" : "100%",
                           objectFit: "contain",
                           backgroundColor: "#f8faf8",
                           display: "block",
@@ -308,7 +318,10 @@ export default function StackedImageGallery({
                     </div>
                   );
                 })}
-              <div className="position-absolute bottom-0 start-0 m-2">
+              <div
+                className="position-absolute bottom-0 start-0 m-2"
+                style={{ zIndex: 4 }}
+              >
                 <Badge bg="dark">{displayImages.length} image(s)</Badge>
               </div>
             </div>
