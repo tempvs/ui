@@ -1198,7 +1198,10 @@ button.stash-item-media-empty:disabled {
 .source-image-gallery {
   border: 1px solid #d8cbb4;
   border-radius: 0.5rem;
-  padding: 0.6rem;
+}
+
+.source-image-gallery.stacked-image-gallery-multiple {
+  padding: 0.9rem;
 }
 
 .stacked-image-gallery-image-action,

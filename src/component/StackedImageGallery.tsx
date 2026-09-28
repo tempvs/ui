@@ -111,6 +111,15 @@ export default function StackedImageGallery({
   const isCompact = previewSize === "compact";
   const isInventory = previewSize === "inventory";
   const activeImage = displayImages[activeIndex] || displayImages[0];
+  const galleryWrapperClassName = [
+    "position-relative",
+    isSingle
+      ? "stacked-image-gallery-single"
+      : "stacked-image-gallery-multiple",
+    wrapperClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const descriptionContent = (image: GalleryImage, className = "") =>
     editable ? (
@@ -223,7 +232,7 @@ export default function StackedImageGallery({
 
   if (!displayImages.length) {
     return (
-      <div className={`position-relative ${wrapperClassName}`.trim()}>
+      <div className={galleryWrapperClassName}>
         {emptyContent || <div className="small text-muted">{emptyText}</div>}
         {isSingle ? uploadImageAction : addImageAction}
       </div>
@@ -233,7 +242,7 @@ export default function StackedImageGallery({
   return (
     <>
       {isSingle && activeImage ? (
-        <div className={`position-relative ${wrapperClassName}`.trim()}>
+        <div className={galleryWrapperClassName}>
           <button
             type="button"
             className="btn p-0 border-0 bg-transparent text-start w-100"
@@ -255,7 +264,7 @@ export default function StackedImageGallery({
           {showInlineDescription && descriptionContent(activeImage, "mt-2")}
         </div>
       ) : (
-        <div className={`position-relative ${wrapperClassName}`.trim()}>
+        <div className={galleryWrapperClassName}>
           <button
             type="button"
             className="btn p-0 border-0 bg-transparent text-start w-100"
