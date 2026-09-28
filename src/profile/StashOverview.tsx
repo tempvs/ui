@@ -8,6 +8,7 @@ import ConfirmingTrashButton from '../component/ConfirmingTrashButton';
 import EditableDescriptionField from '../component/EditableDescriptionField';
 import ImageOverlayActionButton from '../component/ImageOverlayActionButton';
 import Spinner from '../component/Spinner';
+import StackedImageGallery from '../component/StackedImageGallery';
 import TextFilterInput from '../component/TextFilterInput';
 import defaultImage from '../assets/default-image.png';
 import { getClassificationLabel } from '../library/libraryShared';
@@ -28,6 +29,7 @@ import {
   getStashEntityImages,
   getStashItemMarkers,
   updateStashGroupDescription,
+  updateStashGroupImageDescription,
   updateStashItemMarker,
   uploadStashGroupImage,
 } from './stashApi';
@@ -297,6 +299,8 @@ export default function StashOverview({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [groupDescriptionDraft, setGroupDescriptionDraft] = useState('');
   const [groupDescriptionStatus, setGroupDescriptionStatus] = useState<SaveStatus>(null);
+  const [groupImageDescriptionDraft, setGroupImageDescriptionDraft] = useState('');
+  const [groupImageDescriptionStatus, setGroupImageDescriptionStatus] = useState<SaveStatus>(null);
   const [markerPlacement, setMarkerPlacement] = useState<MarkerPlacementState>(null);
   const [markerPreviewPosition, setMarkerPreviewPosition] = useState<MarkerPreviewPosition>(null);
   const [hoveredMarkerItemId, setHoveredMarkerItemId] = useState<Id | null>(null);
@@ -306,6 +310,7 @@ export default function StashOverview({
   const imageShellRef = useRef<HTMLDivElement>(null);
   const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const groupDescriptionTimersRef = useRef<Record<string, number>>({});
+  const groupImageDescriptionTimersRef = useRef<Record<string, number>>({});
 
   const profileId = profile?.id;
   const groupUploadControl = groupImageUploading ? <SavingIcon className="text-muted" /> : <UploadIcon />;
@@ -371,6 +376,7 @@ export default function StashOverview({
 
   useEffect(() => () => {
     clearAllTimers(groupDescriptionTimersRef.current);
+    clearAllTimers(groupImageDescriptionTimersRef.current);
   }, []);
 
   useEffect(() => {
@@ -401,6 +407,11 @@ export default function StashOverview({
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
   const activeGroupImage = activeGroup ? groupImages[toRecordKey(activeGroup.id)] : null;
+  useEffect(() => {
+    setGroupImageDescriptionDraft(activeGroupImage?.description || '');
+    setGroupImageDescriptionStatus(null);
+    clearTimer(groupImageDescriptionTimersRef.current, 'description');
+  }, [activeGroupImage?.description, activeGroupImage?.id]);
   const hasActiveGroupImage = Boolean(activeGroupImage);
   const activeMarkers = useMemo(
     () => (activeGroup ? (markersByGroup[toRecordKey(activeGroup.id)] || []) : []),
@@ -682,6 +693,48 @@ export default function StashOverview({
     } catch (error) {
       setGroupDescriptionDraft(persisted);
       setGroupDescriptionStatus('error');
+    }
+  }
+
+  function handleGroupImageDescriptionChange(value: string) {
+    const persisted = activeGroupImage?.description || '';
+    setGroupImageDescriptionDraft(value);
+    setGroupImageDescriptionStatus(value === persisted ? null : 'pending');
+    clearTimer(groupImageDescriptionTimersRef.current, 'description');
+    groupImageDescriptionTimersRef.current.description = window.setTimeout(() => {
+      void handleSaveGroupImageDescription();
+    }, 1800);
+  }
+
+  async function handleSaveGroupImageDescription() {
+    if (!activeGroup || !activeGroupImage || !isEditable) {
+      return;
+    }
+
+    const persisted = activeGroupImage.description || '';
+    const draft = groupImageDescriptionDraft || '';
+    clearTimer(groupImageDescriptionTimersRef.current, 'description');
+    if (draft === persisted) {
+      setGroupImageDescriptionStatus(null);
+      return;
+    }
+
+    try {
+      setGroupImageDescriptionStatus('saving');
+      const updatedImage = await updateStashGroupImageDescription(activeGroup.id, activeGroupImage.id, draft);
+      setGroupImages(previousState => ({
+        ...previousState,
+        [toRecordKey(activeGroup.id)]: {
+          ...previousState[toRecordKey(activeGroup.id)],
+          ...updatedImage,
+          entityId: activeGroup.id,
+        },
+      }));
+      setGroupImageDescriptionStatus('saved');
+      window.setTimeout(() => setGroupImageDescriptionStatus(null), 1000);
+    } catch (error) {
+      setGroupImageDescriptionDraft(persisted);
+      setGroupImageDescriptionStatus('error');
     }
   }
 
@@ -1042,12 +1095,27 @@ export default function StashOverview({
                     onClick={handleImageClick}
                   >
                     {activeGroupImage ? (
-                      <RefreshingImage
-                        image={activeGroupImage}
-                        variant="display"
-                        alt={activeGroup.name || 'Collection'}
-                        className="stash-hero-image"
-                        onLoad={() => scheduleArrowRefresh(recalculateArrows)}
+                      <StackedImageGallery
+                        mode="single"
+                        images={[activeGroupImage]}
+                        title={activeGroup.name || t('profile.stash.groupName', 'Collection')}
+                        editable={isEditable}
+                        onReplaceImage={isEditable ? () => setGroupImageTarget(activeGroup) : undefined}
+                        onDeleteImage={isEditable ? () => { void handleDeleteGroupImage(activeGroup.id); } : undefined}
+                        imageDrafts={{ [toRecordKey(activeGroupImage.id)]: groupImageDescriptionDraft }}
+                        imageStatuses={{ [toRecordKey(activeGroupImage.id)]: groupImageDescriptionStatus }}
+                        onDescriptionChange={(_, value) => handleGroupImageDescriptionChange(value)}
+                        onDescriptionBlur={() => { void handleSaveGroupImageDescription(); }}
+                        replaceTitle={t('profile.stash.itemImageUpload', 'Replace image')}
+                        replacePopover={t('profile.stash.itemImageUpload', 'Replace image')}
+                        deleteTitle={t('profile.stash.delete', 'Delete')}
+                        deleteConfirmTitle={t('profile.stash.delete', 'Delete')}
+                        deleteConfirmMessage={t('profile.stash.groupImageDeleteConfirm', 'Delete this collection image?')}
+                        deleteLabel={t('profile.action.delete', 'Delete')}
+                        cancelLabel={t('profile.action.cancel', 'Cancel')}
+                        imageClassName="stash-hero-image"
+                        previewStyle={{ height: '100%', objectFit: 'cover' }}
+                        wrapperClassName="h-100"
                       />
                     ) : (
                       <div className="stash-hero-image stash-hero-image--empty">
@@ -1095,7 +1163,7 @@ export default function StashOverview({
                       />
                     ))}
 
-                    {isEditable && (
+                    {isEditable && !hasActiveGroupImage && (
                       <ImageOverlayActionButton
                         className="position-absolute top-0 start-0 m-2"
                         onClick={event => {
@@ -1107,20 +1175,6 @@ export default function StashOverview({
                       >
                         {groupUploadControl}
                       </ImageOverlayActionButton>
-                    )}
-                    {isEditable && hasActiveGroupImage && (
-                      <ConfirmingTrashButton
-                        className="position-absolute top-0 end-0 m-2"
-                        fontSize="0.85rem"
-                        title={t('profile.stash.delete', 'Delete')}
-                        confirmTitle={t('profile.stash.delete', 'Delete')}
-                        confirmMessage={t('profile.stash.groupImageDeleteConfirm', 'Delete this collection image?')}
-                        confirmLabel={t('profile.action.delete', 'Delete')}
-                        cancelLabel={t('profile.action.cancel', 'Cancel')}
-                        onConfirm={() => {
-                          void handleDeleteGroupImage(activeGroup.id);
-                        }}
-                      />
                     )}
                   </div>
 

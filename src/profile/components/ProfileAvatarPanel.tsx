@@ -2,12 +2,10 @@ import React from 'react';
 import { Form } from 'react-bootstrap';
 import { FaHourglassHalf, FaUpload } from 'react-icons/fa';
 
-import ConfirmingTrashButton from '../../component/ConfirmingTrashButton';
-import EditableImageDescription from '../../component/EditableImageDescription';
 import ImageOverlayActionButton from '../../component/ImageOverlayActionButton';
-import ModalImage from '../../component/ModalImage';
 import Spinner from '../../component/Spinner';
 import { SaveStatus } from '../../component/EditableFieldRow';
+import StackedImageGallery from '../../component/StackedImageGallery';
 import { MessageFormatter } from '../profileTypes';
 
 type ProfileAvatarPanelProps = {
@@ -25,10 +23,10 @@ type ProfileAvatarPanelProps = {
   initials?: string;
   t: MessageFormatter;
   onUploadChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onOpenFilePicker?: React.MouseEventHandler<HTMLElement>;
+  onOpenFilePicker?: () => void;
   onDelete?: () => void;
-  onDescriptionChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onDescriptionBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onDescriptionChange?: (value: string) => void;
+  onDescriptionBlur?: () => void;
 };
 
 type IconProps = {
@@ -58,7 +56,6 @@ export default function ProfileAvatarPanel({
   onDescriptionChange,
   onDescriptionBlur,
 }: ProfileAvatarPanelProps) {
-  const hasDescription = Boolean((avatarInfo || '').trim());
   const uploadControl = avatarUploadStatus === 'uploading' ? <SavingIcon className="text-muted" /> : <UploadIcon />;
 
   return (
@@ -74,48 +71,32 @@ export default function ProfileAvatarPanel({
         >
           {avatarVisible
             ? (
-              <ModalImage
-                url={avatarUrl}
-                resourceType="profile"
-                resourceId={profileId}
-                alt={avatarInfo || undefined}
-                description={avatarInfo}
-                wrapperStyle={{ maxWidth: '100%' }}
-                modalTopLeftAction={isEditable ? (
-                  <ImageOverlayActionButton
-                    className="position-absolute top-0 start-0 m-3"
-                    onClick={onOpenFilePicker}
-                    title="Replace"
-                    popover="Replace"
-                  >
-                    {uploadControl}
-                  </ImageOverlayActionButton>
-                ) : null}
-                modalTopRightAction={isEditable ? (
-                  <ConfirmingTrashButton
-                    fontSize="0.85rem"
-                    title="Delete"
-                    confirmTitle={t('profile.avatar.deleteTitle', 'Delete image')}
-                    confirmMessage={t('profile.avatar.deleteConfirm', 'Delete this image?')}
-                    confirmLabel={t('profile.action.delete', 'Delete')}
-                    cancelLabel={t('profile.action.cancel', 'Cancel')}
-                    onConfirm={onDelete}
-                  />
-                ) : null}
-                modalDescriptionContent={(
-                  <EditableImageDescription
-                    editable={isEditable}
-                    value={isEditable ? avatarDescriptionDraft : avatarInfo}
-                    status={avatarDescriptionStatus}
-                    placeholder={t('profile.avatar.description.placeholder', 'Add a description')}
-                    onChange={onDescriptionChange}
-                    onBlur={onDescriptionBlur}
-                    savingTitle={t('profile.status.saving', 'Saving')}
-                    errorTitle={t('profile.status.saveFailed', 'Save failed')}
-                    className="mt-3"
-                    bordered={false}
-                  />
-                )}
+              <StackedImageGallery
+                mode="single"
+                images={[{
+                  id: profileId || 'profile-avatar',
+                  url: avatarUrl,
+                  resourceType: 'profile',
+                  resourceId: profileId,
+                  description: avatarInfo,
+                }]}
+                title={t('profile.avatar.title', 'Profile picture')}
+                editable={isEditable}
+                onReplaceImage={isEditable ? () => onOpenFilePicker?.() : undefined}
+                onDeleteImage={isEditable ? () => onDelete?.() : undefined}
+                imageDrafts={{ [String(profileId || 'profile-avatar')]: avatarDescriptionDraft || '' }}
+                imageStatuses={{ [String(profileId || 'profile-avatar')]: avatarDescriptionStatus || null }}
+                onDescriptionChange={(_, value) => onDescriptionChange?.(value)}
+                onDescriptionBlur={() => onDescriptionBlur?.()}
+                replaceTitle={t('profile.avatar.replace', 'Replace image')}
+                replacePopover={t('profile.avatar.replace', 'Replace image')}
+                deleteTitle={t('profile.avatar.delete', 'Delete image')}
+                deleteConfirmTitle={t('profile.avatar.deleteTitle', 'Delete image')}
+                deleteConfirmMessage={t('profile.avatar.deleteConfirm', 'Delete this image?')}
+                deleteLabel={t('profile.action.delete', 'Delete')}
+                cancelLabel={t('profile.action.cancel', 'Cancel')}
+                previewStyle={{ maxWidth: '100%' }}
+                showInlineDescription
               />
             ) : avatarLoaded ? (
               <div
@@ -137,18 +118,6 @@ export default function ProfileAvatarPanel({
             ) : (
               <div className="p-4 text-center"><Spinner /></div>
           )}
-          {avatarVisible && (isEditable || hasDescription) && (
-            <EditableImageDescription
-              editable={isEditable}
-              value={isEditable ? avatarDescriptionDraft : avatarInfo}
-              status={avatarDescriptionStatus}
-              placeholder={t('profile.avatar.description.placeholder', 'Add a description')}
-              onChange={onDescriptionChange}
-              onBlur={onDescriptionBlur}
-              savingTitle={t('profile.status.saving', 'Saving')}
-              errorTitle={t('profile.status.saveFailed', 'Save failed')}
-            />
-          )}
         </div>
         {isEditable && (
           <ImageOverlayActionButton
@@ -159,18 +128,6 @@ export default function ProfileAvatarPanel({
           >
             {uploadControl}
           </ImageOverlayActionButton>
-        )}
-        {isEditable && avatarVisible && (
-          <ConfirmingTrashButton
-            className="position-absolute top-0 end-0 m-2"
-            fontSize="0.85rem"
-            title="Delete"
-            confirmTitle={t('profile.avatar.deleteTitle', 'Delete image')}
-            confirmMessage={t('profile.avatar.deleteConfirm', 'Delete this image?')}
-            confirmLabel={t('profile.action.delete', 'Delete')}
-            cancelLabel={t('profile.action.cancel', 'Cancel')}
-            onConfirm={onDelete}
-          />
         )}
       </div>
       {isEditable && (

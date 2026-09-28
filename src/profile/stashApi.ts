@@ -250,6 +250,13 @@ export function deleteStashGroupImage(groupId: Id) {
   });
 }
 
+export function updateStashGroupImageDescription(groupId: Id, imageId: Id, description: string) {
+  return requestJson<EntityImage>(`/api/stash/group/${groupId}/images/${imageId}/description`, {
+    method: 'PATCH',
+    body: JSON.stringify({ description }),
+  });
+}
+
 export function searchLibrarySources({ query, period, classifications, types, page = 0, size = 20, nextToken }: SourceSearchParams) {
   if (page !== 0) throw new Error('Offset Library pages are no longer supported');
   const encodedQuery = encodeLibraryQuery({

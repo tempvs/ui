@@ -938,8 +938,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     return `${normalizedName.slice(0, lastDotIndex)}.${extension}`;
   }
 
-  handleAvatarDescriptionChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
-    const value = event.target.value;
+  handleAvatarDescriptionChangeValue = (value: string) => {
     this.setState({
       avatarDescriptionDraft: value,
       avatarDescriptionStatus: value === this.state.avatarDescriptionPersisted ? null : 'pending',
@@ -949,6 +948,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     this.autoSaveTimers.avatarDescription = setTimeout(() => {
       this.handleAvatarDescriptionSave();
     }, 1800);
+  };
+
+  handleAvatarDescriptionChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
+    this.handleAvatarDescriptionChangeValue(event.target.value);
   };
 
   handleAvatarDescriptionBlur = () => {
@@ -1129,7 +1132,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onUploadChange={this.handleAvatarUpload}
               onOpenFilePicker={this.openAvatarFilePicker}
               onDelete={this.handleDeleteAvatar}
-              onDescriptionChange={this.handleAvatarDescriptionChange}
+              onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
             <div className="mt-3">

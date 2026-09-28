@@ -543,6 +543,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
                   images={itemImages}
                   title={item.name || t('profile.stash.itemName', 'Item')}
                   previewSize="default"
+                  mode="single"
                   editable={isEditable}
                   onReplaceImage={isEditable ? handleOpenReplaceImagePicker : undefined}
                   onDeleteImage={isEditable ? handleDeleteItemImage : undefined}
@@ -551,16 +552,6 @@ function StashItemPage({ intl }: StashItemPageProps) {
                   onDescriptionChange={handleImageDescriptionChange}
                   onDescriptionBlur={handleImageDescriptionBlur}
                 />
-                {isEditable && (
-                  <ImageOverlayActionButton
-                    className="position-absolute top-0 end-0 m-2"
-                    onClick={() => setImageUploadVisible(true)}
-                    title={t('profile.stash.itemImageAdd', 'Add image')}
-                    popover={t('profile.stash.itemImageAdd', 'Add image')}
-                  >
-                    <PlusIcon />
-                  </ImageOverlayActionButton>
-                )}
               </div>
             ) : (
               <div className="stash-empty-state stash-empty-state--compact position-relative">
