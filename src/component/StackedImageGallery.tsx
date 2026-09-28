@@ -170,7 +170,7 @@ export default function StackedImageGallery({
   const addImageAction =
     !isSingle && canAddImage && onAddImage ? (
       <ImageOverlayActionButton
-        className="position-absolute top-0 end-0 m-2"
+        className="position-absolute top-0 end-0 m-2 stacked-image-gallery-add-image"
         fontSize="0.9rem"
         onClick={(event) => {
           event.stopPropagation();
@@ -200,6 +200,24 @@ export default function StackedImageGallery({
         <UploadIcon />
       </ImageOverlayActionButton>
     ) : null;
+
+  const modalImagePanel = (image: GalleryImage, index = 0) => (
+    <div className="position-relative p-3 p-lg-4">
+      {imageActions(image)}
+      <RefreshingImage
+        image={image}
+        alt={image.fileName || (isSingle ? title : `${title} ${index + 1}`)}
+        className="img-fluid"
+        style={{
+          width: "100%",
+          maxHeight: "65vh",
+          objectFit: "contain",
+          backgroundColor: "#f7f4ee",
+        }}
+      />
+      {descriptionContent(image, "border-top mt-3 px-5 py-3")}
+    </div>
+  );
 
   if (!displayImages.length) {
     return (
@@ -310,54 +328,17 @@ export default function StackedImageGallery({
         </Modal.Header>
         <Modal.Body>
           {isSingle && activeImage ? (
-            <div className="position-relative p-3 p-lg-4">
-              {imageActions(activeImage)}
-              <RefreshingImage
-                image={activeImage}
-                alt={activeImage.fileName || title}
-                className="img-fluid"
-                style={{
-                  width: "100%",
-                  maxHeight: "65vh",
-                  objectFit: "contain",
-                  backgroundColor: "#f7f4ee",
-                }}
-              />
-              {descriptionContent(activeImage, "mt-3 px-5")}
-            </div>
+            modalImagePanel(activeImage)
           ) : (
             <Carousel
               className="stacked-image-gallery-carousel"
               activeIndex={activeIndex}
               onSelect={(selectedIndex) => setActiveIndex(selectedIndex || 0)}
               interval={null}
-              style={{
-                border: "1px solid #d8cbb4",
-                borderRadius: "0.75rem",
-                overflow: "hidden",
-                backgroundColor: "#f7f4ee",
-              }}
             >
               {displayImages.map((image, index) => (
                 <Carousel.Item key={image.id || index}>
-                  <div className="position-relative p-3 p-lg-4">
-                    {imageActions(image)}
-                    <RefreshingImage
-                      image={image}
-                      alt={image.fileName || `${title} ${index + 1}`}
-                      className="img-fluid"
-                      style={{
-                        width: "100%",
-                        maxHeight: "65vh",
-                        objectFit: "contain",
-                        backgroundColor: "#f7f4ee",
-                      }}
-                    />
-                    {descriptionContent(
-                      image,
-                      "border-top mt-3 px-5 py-3",
-                    )}
-                  </div>
+                  {modalImagePanel(image, index)}
                 </Carousel.Item>
               ))}
             </Carousel>

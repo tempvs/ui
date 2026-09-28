@@ -1201,6 +1201,10 @@ button.stash-item-media-empty:disabled {
   padding: 0.35rem;
 }
 
+.stacked-image-gallery-add-image {
+  z-index: 5;
+}
+
 .source-card-body {
   align-items: flex-start;
   min-height: 10rem;

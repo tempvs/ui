@@ -23,6 +23,8 @@ test('renders a simple modal without carousel controls in single-image mode', ()
   expect(screen.getByText('Profile picture')).toBeInTheDocument();
   expect(document.querySelector('.carousel')).not.toBeInTheDocument();
   expect(document.querySelector('.carousel-control-next')).not.toBeInTheDocument();
+  expect(screen.getByText('Front view of the source')).toBeInTheDocument();
+  expect(document.querySelector('.modal .border-top')).toBeInTheDocument();
 });
 
 test('renders carousel controls in multiple-image mode', () => {
