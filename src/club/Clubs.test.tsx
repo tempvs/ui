@@ -25,6 +25,7 @@ jest.mock('../profile/profileApi', () => ({
   fetchCurrentUserInfo: jest.fn(),
   fetchClubProfiles: jest.fn(),
   fetchOwnerUserProfile: jest.fn(),
+  getUserProfileByUserId: jest.fn(),
   searchProfiles: jest.fn(),
 }));
 
@@ -41,6 +42,7 @@ beforeEach(() => {
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
   mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
   mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess(null));
+  mock(profileApi.getUserProfileByUserId).mockResolvedValue(null);
   mock(profileApi.searchProfiles).mockResolvedValue([]);
   mock(api.getClub).mockResolvedValue(club);
   mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
