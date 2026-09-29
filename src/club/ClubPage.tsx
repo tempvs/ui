@@ -49,6 +49,70 @@ function clubDraft(club: Club): ClubDraft {
   };
 }
 
+type ClubMembersPanelProps = {
+  members: Profile[];
+  visibleMembers: Profile[];
+  memberFilter: string;
+  onMemberFilterChange: (value: string) => void;
+  participantsError: string;
+  participantsLoading: boolean;
+  onRetry: () => void;
+  onScroll: React.UIEventHandler<HTMLDivElement>;
+  currentUserId: string | number | null;
+  canManage: boolean;
+  busy: boolean;
+  unavailable: boolean;
+  onRemove: (profile: Profile) => void;
+  onLeave: (profile: Profile) => void;
+  t: (key: string, defaultMessage: string) => string;
+};
+
+function ClubMembersPanel({
+  members,
+  visibleMembers,
+  memberFilter,
+  onMemberFilterChange,
+  participantsError,
+  participantsLoading,
+  onRetry,
+  onScroll,
+  currentUserId,
+  canManage,
+  busy,
+  unavailable,
+  onRemove,
+  onLeave,
+  t,
+}: ClubMembersPanelProps) {
+  return <section className="club-panel">
+    <div className="club-list-heading">
+      <h2>{t('members', 'Members')}</h2>
+      <TextFilterInput
+        value={memberFilter}
+        onChange={onMemberFilterChange}
+        placeholder={t('filterMembers', 'Filter members')}
+        ariaLabel={t('filterMembers', 'Filter members')}
+        className="club-list-filter"
+      />
+    </div>
+    {participantsError && <Alert variant="danger">{participantsError} <Button variant="link" onClick={onRetry}>{t('retry', 'Retry')}</Button></Alert>}
+    <p className="text-muted">{t('membersHint', 'Members are profiles linked to this club. You can leave beside a profile you own.')}</p>
+    {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noMembers', 'No members yet.')}</p>}
+    {!participantsLoading && !participantsError && members.length > 0 && visibleMembers.length === 0 && <p>{t('noMatchingMembers', 'No members match this filter.')}</p>}
+    <div className="club-scroll-list" role="region" aria-label={t('members', 'Members')} onScroll={onScroll}>
+      <ProfileList profiles={visibleMembers} className="club-member-list" renderActions={profile => {
+        const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
+        return owned ? <Button className="club-icon-action" size="sm" variant="outline-secondary" title={t('leave', 'Leave club')} aria-label={t('leave', 'Leave club')} disabled={busy || unavailable} onClick={() => onLeave(profile)}>
+            <LeaveIcon aria-hidden="true" />
+          </Button> : canManage ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeMember', 'Remove member')} aria-label={t('removeMember', 'Remove member')} disabled={busy || unavailable} onClick={() => onRemove(profile)}>
+            <RemoveMemberIcon aria-hidden="true" />
+          </Button> : null;
+      }} />
+      {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
+    </div>
+  </section>;
+}
+
 export default function ClubPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -305,7 +369,6 @@ export default function ClubPage() {
     ? { ...club, canManage: true }
     : club;
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
-    <Link to="/clubs">{t('back', 'All clubs')}</Link>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loading ? <Spinner /> : club && <>
       <div className="club-page-heading mt-3"><div><h1>{club.name}</h1><PeriodBadge period={club.period} /></div>
@@ -329,48 +392,23 @@ export default function ClubPage() {
       </div>
       <Row className="club-page-columns"><Col lg={3}>
         <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
-        <section className="club-panel">
-          <h3 className="h6">{t('owner', 'Owner')}</h3>
-          {ownerProfile ? <ProfileList profiles={[ownerProfile]} className="club-member-list mb-3" /> : <p>{t('ownerUnavailable', 'Owner profile unavailable.')}</p>}
-          {club.adminUserIds.length > 0 && <>
-            <h3 className="h6">{t('admins', 'Admins')}</h3>
-            {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
-            {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
-              <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-            </li>)}</ul>}
-          </>}
-        </section>
-      </Col><Col lg={6}>
-        <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
-        <PostPanel targetType="CLUB" targetId={club.id} canCreate={canManage && !unavailable} />
-      </Col><Col lg={3}>
-        <section className="club-panel">
-          <div className="club-list-heading">
-            <h2>{t('members', 'Members')}</h2>
-            <TextFilterInput
-              value={memberFilter}
-              onChange={setMemberFilter}
-              placeholder={t('filterMembers', 'Filter members')}
-              ariaLabel={t('filterMembers', 'Filter members')}
-              className="club-list-filter"
-            />
-          </div>
-          {participantsError && <Alert variant="danger">{participantsError} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
-          <p className="text-muted">{t('membersHint', 'Members are profiles linked to this club. You can leave beside a profile you own.')}</p>
-          {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noMembers', 'No members yet.')}</p>}
-          {!participantsLoading && !participantsError && members.length > 0 && visibleMembers.length === 0 && <p>{t('noMatchingMembers', 'No members match this filter.')}</p>}
-          <div className="club-scroll-list" role="region" aria-label={t('members', 'Members')} onScroll={handleParticipantScroll}>
-            <ProfileList profiles={visibleMembers} className="club-member-list" renderActions={profile => {
-              const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
-              return owned ? <Button className="club-icon-action" size="sm" variant="outline-secondary" title={t('leave', 'Leave club')} aria-label={t('leave', 'Leave club')} disabled={busy || unavailable} onClick={() => setMemberRemoval({ profile, leave: true })}>
-                  <LeaveIcon aria-hidden="true" />
-                </Button> : canManage ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeMember', 'Remove member')} aria-label={t('removeMember', 'Remove member')} disabled={busy || unavailable} onClick={() => setMemberRemoval({ profile, leave: false })}>
-                  <RemoveMemberIcon aria-hidden="true" />
-                </Button> : null;
-            }} />
-            {participantsLoading && <p role="status" className="text-muted mb-2">{t('loadingParticipants', 'Loading participants…')}</p>}
-          </div>
-        </section>
+        <ClubMembersPanel
+          members={members}
+          visibleMembers={visibleMembers}
+          memberFilter={memberFilter}
+          onMemberFilterChange={setMemberFilter}
+          participantsError={participantsError}
+          participantsLoading={participantsLoading}
+          onRetry={() => setRevision(value => value + 1)}
+          onScroll={handleParticipantScroll}
+          currentUserId={currentUserId}
+          canManage={canManage}
+          busy={busy}
+          unavailable={unavailable}
+          onRemove={profile => setMemberRemoval({ profile, leave: false })}
+          onLeave={profile => setMemberRemoval({ profile, leave: true })}
+          t={t}
+        />
         <ClubFollowersPanel
           clubId={String(club.id)}
           revision={followersRevision}
@@ -384,6 +422,21 @@ export default function ClubPage() {
             });
           }}
         />
+      </Col><Col lg={6}>
+        <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
+        <PostPanel targetType="CLUB" targetId={club.id} canCreate={canManage && !unavailable} />
+      </Col><Col lg={3}>
+        <section className="club-panel">
+          <h3 className="h6">{t('owner', 'Owner')}</h3>
+          {ownerProfile ? <ProfileList profiles={[ownerProfile]} className="club-member-list mb-3" /> : <p>{t('ownerUnavailable', 'Owner profile unavailable.')}</p>}
+          {club.adminUserIds.length > 0 && <>
+            <h3 className="h6">{t('admins', 'Admins')}</h3>
+            {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
+            {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
+              <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
+            </li>)}</ul>}
+          </>}
+        </section>
       </Col></Row>
     </>}
     <ConfirmationModal
