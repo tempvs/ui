@@ -326,8 +326,22 @@ export default function ClubPage() {
           </Link>}
         </div>
       </div>
-      <Row className="club-page-columns"><Col lg={4}>
+      <Row className="club-page-columns"><Col lg={3}>
         <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
+        <section className="club-panel">
+          <h3 className="h6">{t('owner', 'Owner')}</h3>
+          {ownerProfile ? <ProfileList profiles={[ownerProfile]} className="club-member-list mb-3" /> : <p>{t('ownerUnavailable', 'Owner profile unavailable.')}</p>}
+          {club.adminUserIds.length > 0 && <>
+            <h3 className="h6">{t('admins', 'Admins')}</h3>
+            {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
+            {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
+              <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
+            </li>)}</ul>}
+          </>}
+        </section>
+      </Col><Col lg={6}>
+        <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
+      </Col><Col lg={3}>
         <section className="club-panel">
           <div className="club-list-heading">
             <h2>{t('members', 'Members')}</h2>
@@ -368,19 +382,6 @@ export default function ClubPage() {
             });
           }}
         />
-      </Col><Col lg={8}>
-        <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
-        <section className="club-panel">
-          <h3 className="h6">{t('owner', 'Owner')}</h3>
-          {ownerProfile ? <ProfileList profiles={[ownerProfile]} className="club-member-list mb-3" /> : <p>{t('ownerUnavailable', 'Owner profile unavailable.')}</p>}
-          {club.adminUserIds.length > 0 && <>
-            <h3 className="h6">{t('admins', 'Admins')}</h3>
-            {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
-            {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
-            <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-            </li>)}</ul>}
-          </>}
-        </section>
       </Col></Row>
     </>}
     <ConfirmationModal
