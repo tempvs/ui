@@ -6,7 +6,7 @@ import ConfirmationModal from "../component/ConfirmationModal";
 import IconActionButton from "../component/IconActionButton";
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, getUserProfileByUserId } from "../profile/profileApi";
 import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
-import { resolveCurrentOwnedProfileId } from "../profile/currentProfile";
+import { buildProfileLabel, resolveCurrentOwnedProfileId } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
 
@@ -48,9 +48,12 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
+  const [selectedAuthorProfileId, setSelectedAuthorProfileId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [editAuthorProfileId, setEditAuthorProfileId] = useState<string | null>(null);
   const [deletingPost, setDeletingPost] = useState<Post | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,12 +64,17 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     fetchCurrentUserInfo(result => {
       if (!active) return;
       setCurrentUserId(result.currentUserId);
-      if (!result.currentUserId) { setCurrentProfileId(null); return; }
+      if (!result.currentUserId) { setCurrentProfileId(null); setOwnedProfiles([]); setSelectedAuthorProfileId(null); return; }
       Promise.all([getUserProfileByUserId(result.currentUserId), getClubProfiles(result.currentUserId)])
         .then(([userProfile, clubProfiles]) => {
-          if (active) setCurrentProfileId(resolveCurrentOwnedProfileId([...(userProfile ? [userProfile] : []), ...clubProfiles]));
+          if (!active) return;
+          const profiles = [...(userProfile ? [userProfile] : []), ...clubProfiles];
+          const currentId = resolveCurrentOwnedProfileId(profiles);
+          setOwnedProfiles(profiles);
+          setCurrentProfileId(currentId);
+          setSelectedAuthorProfileId(currentId);
         })
-        .catch(() => { if (active) setCurrentProfileId(null); });
+        .catch(() => { if (active) { setCurrentProfileId(null); setOwnedProfiles([]); setSelectedAuthorProfileId(null); } });
     });
     return () => { active = false; };
   }, []);
@@ -110,8 +118,8 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     if (!draft.trim()) return;
     setBusy(true); setError("");
     try {
-      if (!currentProfileId) throw new Error();
-      const response = await fetch("/api/post/posts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ targetType, targetId: String(targetId), authorProfileId: currentProfileId, content: draft }) });
+      if (!selectedAuthorProfileId) throw new Error();
+      const response = await fetch("/api/post/posts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ targetType, targetId: String(targetId), authorProfileId: selectedAuthorProfileId, content: draft }) });
       if (!response.ok) throw new Error();
       const post = await response.json() as Post;
       setPosts(current => [post, ...current]);
@@ -124,11 +132,12 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     if (!editingPostId || !editDraft.trim()) return;
     setBusy(true); setError("");
     try {
-      const response = await fetch(`/api/post/posts/${encodeURIComponent(editingPostId)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: editDraft }) });
+      if (!editAuthorProfileId) throw new Error();
+      const response = await fetch(`/api/post/posts/${encodeURIComponent(editingPostId)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: editDraft, authorProfileId: editAuthorProfileId }) });
       if (!response.ok) throw new Error();
       const updatedPost = await response.json() as Post;
       setPosts(current => current.map(post => post.id === updatedPost.id ? updatedPost : post));
-      setEditingPostId(null); setEditDraft("");
+      setEditingPostId(null); setEditDraft(""); setEditAuthorProfileId(null);
     } catch { setError("Unable to save this post right now."); }
     finally { setBusy(false); }
   };
@@ -150,7 +159,7 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     {error && <p className="text-danger">{error}</p>}
     {canCreate && <div className="post-composer-wrap">
       <Form.Control as="textarea" rows={3} className="post-composer" value={draft} maxLength={5000} placeholder="Write a post" onChange={event => setDraft(event.target.value)} />
-      <div className="post-composer-actions"><IconActionButton title="Publish post" disabled={busy || !draft.trim() || !currentProfileId} onClick={() => void publish()} size="2rem" fontSize="0.8rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SendIcon aria-hidden /></IconActionButton></div>
+      <div className="post-composer-actions"><label className="post-author-select">Send as <Form.Select aria-label="Post author profile" value={selectedAuthorProfileId ?? ""} disabled={busy || !ownedProfiles.length} onChange={event => setSelectedAuthorProfileId(event.target.value || null)}>{ownedProfiles.map(profile => <option key={String(profile.id)} value={String(profile.id)}>{buildProfileLabel(profile)}</option>)}</Form.Select></label><IconActionButton title="Publish post" disabled={busy || !draft.trim() || !selectedAuthorProfileId} onClick={() => void publish()} size="2rem" fontSize="0.8rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SendIcon aria-hidden /></IconActionButton></div>
     </div>}
     {posts.length === 0 ? <p className="text-muted mb-0">No posts yet.</p> : <div className="d-flex flex-column gap-2">
       {posts.map(post => {
@@ -161,12 +170,12 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
         return <article key={post.id} className="post-entry">
           <div className="post-entry-header">{author ? <ProfileThumbnailLink profile={author} className="post-author" /> : authorKey in authors ? <span className="post-author-unavailable">Profile unavailable</span> : <span className="post-author-unavailable">Loading profile...</span>}</div>
           {canManagePost && !editing && <div className="post-entry-controls">
-            <IconActionButton title="Edit post" disabled={busy} onClick={() => { setEditingPostId(post.id); setEditDraft(post.content); }} size="1.75rem" fontSize="0.72rem"><EditIcon aria-hidden /></IconActionButton>
+            <IconActionButton title="Edit post" disabled={busy} onClick={() => { setEditingPostId(post.id); setEditDraft(post.content); setEditAuthorProfileId(post.authorProfileId ?? currentProfileId); }} size="1.75rem" fontSize="0.72rem"><EditIcon aria-hidden /></IconActionButton>
             <IconActionButton title="Delete post" disabled={busy} onClick={() => setDeletingPost(post)} size="1.75rem" fontSize="0.72rem" borderColor="rgba(160, 68, 68, 0.24)" color="#9c3b3b" backgroundColor="rgba(252, 241, 241, 0.92)"><DeleteIcon aria-hidden /></IconActionButton>
           </div>}
           {editing ? <div className="post-edit-wrap">
             <Form.Control as="textarea" rows={3} className="post-composer" value={editDraft} maxLength={5000} onChange={event => setEditDraft(event.target.value)} />
-            <div className="post-composer-actions"><IconActionButton title="Save post" disabled={busy || !editDraft.trim()} onClick={() => void saveEdit()} size="1.75rem" fontSize="0.72rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SaveIcon aria-hidden /></IconActionButton><IconActionButton title="Cancel editing" disabled={busy} onClick={() => { setEditingPostId(null); setEditDraft(""); }} size="1.75rem" fontSize="0.72rem"><CancelIcon aria-hidden /></IconActionButton></div>
+            <div className="post-composer-actions"><label className="post-author-select">Send as <Form.Select aria-label="Edit post author profile" value={editAuthorProfileId ?? ""} disabled={busy || !ownedProfiles.length} onChange={event => setEditAuthorProfileId(event.target.value || null)}>{ownedProfiles.map(profile => <option key={String(profile.id)} value={String(profile.id)}>{buildProfileLabel(profile)}</option>)}</Form.Select></label><div className="post-edit-controls"><IconActionButton title="Save post" disabled={busy || !editDraft.trim() || !editAuthorProfileId} onClick={() => void saveEdit()} size="1.75rem" fontSize="0.72rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SaveIcon aria-hidden /></IconActionButton><IconActionButton title="Cancel editing" disabled={busy} onClick={() => { setEditingPostId(null); setEditDraft(""); setEditAuthorProfileId(null); }} size="1.75rem" fontSize="0.72rem"><CancelIcon aria-hidden /></IconActionButton></div></div>
           </div> : <div className="post-entry-content">{post.content}</div>}
           <div className="post-entry-meta"><time className="text-muted small" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString()}</time>{hasBeenEdited(post) && <span className="post-edited">Edited</span>}</div>
         </article>;
