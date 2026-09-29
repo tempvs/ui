@@ -1,0 +1,8 @@
+.profile-picker { display: inline-flex; min-width: 0; }
+.profile-picker-toggle.btn { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; border: 1px solid rgba(111, 116, 121, .22); background: rgba(255, 255, 255, .96); color: #40382d; box-shadow: 0 .1rem .45rem rgba(31, 38, 35, .06); }
+.profile-picker-toggle.btn:hover, .profile-picker-toggle.btn:focus, .profile-picker-toggle.btn:active { border-color: rgba(63, 71, 79, .3); background: #fff; color: #40382d; box-shadow: 0 0 0 .12rem rgba(63, 71, 79, .1); }
+.profile-picker-image { width: 1.45rem; height: 1.45rem; flex: 0 0 1.45rem; border-radius: 50%; object-fit: cover; }
+.profile-picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-picker-menu { min-width: 100%; max-width: 18rem; padding: .25rem; }
+.profile-picker-option.dropdown-item { display: flex; align-items: center; gap: .5rem; max-width: 100%; padding: .35rem .45rem; }
+.profile-picker-option span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

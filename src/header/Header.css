@@ -93,7 +93,7 @@
   text-decoration: none;
 }
 
-.header-profile-select.form-select {
+.header-profile-select .profile-picker-toggle.btn {
   min-height: 2.1rem;
   max-width: 10.5rem;
   padding: 0.2rem 1.85rem 0.2rem 0.45rem;
@@ -103,7 +103,7 @@
   box-shadow: 0 0.1rem 0.45rem rgba(31, 38, 35, 0.06);
 }
 
-.header-profile-select.form-select:focus {
+.header-profile-select .profile-picker-toggle.btn:focus {
   border-color: rgba(63, 71, 79, 0.3);
   box-shadow: 0 0 0 0.12rem rgba(63, 71, 79, 0.1);
 }

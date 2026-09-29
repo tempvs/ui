@@ -32,11 +32,12 @@ test("renders the posting profile and lets authors edit posts", async () => {
   expect(await screen.findByRole("link", { name: "Red Company" })).toHaveAttribute("href", "/profile/red-company");
   expect(screen.getByText("Edited")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Publish post" })).toBeInTheDocument();
-  expect(await screen.findByRole("combobox", { name: "Post author profile" })).toHaveValue("profile-1");
+  expect(await screen.findByRole("button", { name: "Post author profile" })).toHaveTextContent("Alex Archer");
   expect(screen.queryByRole("button", { name: "Post" })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Edit post" }));
-  fireEvent.change(screen.getByRole("combobox", { name: "Edit post author profile" }), { target: { value: "profile-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Edit post author profile" }));
+  fireEvent.click(screen.getByRole("button", { name: "Alex Archer" }));
   fireEvent.change(screen.getByDisplayValue("Original post"), { target: { value: "Updated post" } });
   fireEvent.click(screen.getByRole("button", { name: "Save post" }));
 

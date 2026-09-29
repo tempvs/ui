@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Col, Container, Form, Row } from 'react-bootstrap';
+import { Col, Container, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
 import HomeButton from '../home/HomeButton';
@@ -18,6 +18,7 @@ import {
   setStoredCurrentProfileValue,
 } from '../profile/currentProfile';
 import { Profile } from '../profile/profileTypes';
+import ProfilePicker from '../profile/components/ProfilePicker';
 
 import './Header.css';
 
@@ -121,8 +122,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
       });
   }
 
-  handleCurrentProfileChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    const nextValue = event.target.value;
+  handleCurrentProfileChange(nextValue: string) {
     if (!nextValue || nextValue === this.state.currentProfileValue) {
       return;
     }
@@ -176,17 +176,13 @@ class Header extends Component<Record<string, never>, HeaderState> {
                   <Link to={this.state.currentProfilePath} reloadDocument>
                     <ProfileButton />
                   </Link>
-                  <Form.Select
+                  <ProfilePicker
                     className="header-profile-select"
-                    value={this.state.currentProfileValue || ''}
+                    ariaLabel="Current profile"
+                    value={this.state.currentProfileValue}
+                    options={this.state.profileOptions}
                     onChange={this.handleCurrentProfileChange}
-                  >
-                    {this.state.profileOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  />
                 </div>
               )}
             </Col>

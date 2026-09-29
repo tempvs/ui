@@ -6,6 +6,7 @@ import ConfirmationModal from "../component/ConfirmationModal";
 import IconActionButton from "../component/IconActionButton";
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, getUserProfileByUserId } from "../profile/profileApi";
 import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
+import ProfilePicker from "../profile/components/ProfilePicker";
 import { buildProfileLabel, resolveCurrentOwnedProfileId } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
@@ -100,6 +101,8 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     [posts],
   );
 
+  const ownedProfileOptions = useMemo(() => ownedProfiles.map(profile => ({ value: String(profile.id), label: buildProfileLabel(profile), profile })), [ownedProfiles]);
+
   useEffect(() => {
     let active = true;
     const missingAuthors = authorReferences.filter(author => !(author.key in authors));
@@ -159,7 +162,7 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     {error && <p className="text-danger">{error}</p>}
     {canCreate && <div className="post-composer-wrap">
       <Form.Control as="textarea" rows={3} className="post-composer" value={draft} maxLength={5000} placeholder="Write a post" onChange={event => setDraft(event.target.value)} />
-      <div className="post-composer-actions"><label className="post-author-select">Send as <Form.Select aria-label="Post author profile" value={selectedAuthorProfileId ?? ""} disabled={busy || !ownedProfiles.length} onChange={event => setSelectedAuthorProfileId(event.target.value || null)}>{ownedProfiles.map(profile => <option key={String(profile.id)} value={String(profile.id)}>{buildProfileLabel(profile)}</option>)}</Form.Select></label><IconActionButton title="Publish post" disabled={busy || !draft.trim() || !selectedAuthorProfileId} onClick={() => void publish()} size="2rem" fontSize="0.8rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SendIcon aria-hidden /></IconActionButton></div>
+      <div className="post-composer-actions"><div className="post-author-select"><span>Send as</span><ProfilePicker ariaLabel="Post author profile" value={selectedAuthorProfileId} options={ownedProfileOptions} disabled={busy || !ownedProfiles.length} onChange={value => setSelectedAuthorProfileId(value)} /></div><IconActionButton title="Publish post" disabled={busy || !draft.trim() || !selectedAuthorProfileId} onClick={() => void publish()} size="2rem" fontSize="0.8rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SendIcon aria-hidden /></IconActionButton></div>
     </div>}
     {posts.length === 0 ? <p className="text-muted mb-0">No posts yet.</p> : <div className="d-flex flex-column gap-2">
       {posts.map(post => {
@@ -175,7 +178,7 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
           </div>}
           {editing ? <div className="post-edit-wrap">
             <Form.Control as="textarea" rows={3} className="post-composer" value={editDraft} maxLength={5000} onChange={event => setEditDraft(event.target.value)} />
-            <div className="post-composer-actions"><label className="post-author-select">Send as <Form.Select aria-label="Edit post author profile" value={editAuthorProfileId ?? ""} disabled={busy || !ownedProfiles.length} onChange={event => setEditAuthorProfileId(event.target.value || null)}>{ownedProfiles.map(profile => <option key={String(profile.id)} value={String(profile.id)}>{buildProfileLabel(profile)}</option>)}</Form.Select></label><div className="post-edit-controls"><IconActionButton title="Save post" disabled={busy || !editDraft.trim() || !editAuthorProfileId} onClick={() => void saveEdit()} size="1.75rem" fontSize="0.72rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SaveIcon aria-hidden /></IconActionButton><IconActionButton title="Cancel editing" disabled={busy} onClick={() => { setEditingPostId(null); setEditDraft(""); setEditAuthorProfileId(null); }} size="1.75rem" fontSize="0.72rem"><CancelIcon aria-hidden /></IconActionButton></div></div>
+            <div className="post-composer-actions"><div className="post-author-select"><span>Send as</span><ProfilePicker ariaLabel="Edit post author profile" value={editAuthorProfileId} options={ownedProfileOptions} disabled={busy || !ownedProfiles.length} onChange={value => setEditAuthorProfileId(value)} /></div><div className="post-edit-controls"><IconActionButton title="Save post" disabled={busy || !editDraft.trim() || !editAuthorProfileId} onClick={() => void saveEdit()} size="1.75rem" fontSize="0.72rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SaveIcon aria-hidden /></IconActionButton><IconActionButton title="Cancel editing" disabled={busy} onClick={() => { setEditingPostId(null); setEditDraft(""); setEditAuthorProfileId(null); }} size="1.75rem" fontSize="0.72rem"><CancelIcon aria-hidden /></IconActionButton></div></div>
           </div> : <div className="post-entry-content">{post.content}</div>}
           <div className="post-entry-meta"><time className="text-muted small" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString()}</time>{hasBeenEdited(post) && <span className="post-edited">Edited</span>}</div>
         </article>;
