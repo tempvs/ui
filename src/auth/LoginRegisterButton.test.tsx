@@ -10,11 +10,9 @@ function show() {
   fireEvent.click(screen.getByRole('button'));
 }
 
-test('keeps email sign-in and registration inside the regular UI modal', () => {
+test('sends sign-in and registration to the managed Cognito flow', () => {
   show();
-  expect(screen.getByRole('tab', { name: /register/i })).toBeInTheDocument();
-  expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/auth/login?provider=Google');
-  fireEvent.click(screen.getByRole('tab', { name: /register/i }));
-  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/auth/login?provider=Google&returnTo=/profile');
+  expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign in' })).toHaveAttribute('href', '/auth/login');
+  expect(screen.getByRole('button', { name: 'Create account' })).toHaveAttribute('href', '/auth/login?returnTo=/profile');
 });
