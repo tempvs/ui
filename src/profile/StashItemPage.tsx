@@ -6,10 +6,10 @@ import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import ConfirmationModal from "../component/ConfirmationModal";
+import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import InlineEditableText from "../component/InlineEditableText";
-import defaultImage from "../assets/default-image.png";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
@@ -675,8 +675,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
               showInlineDescription
               emptyContent={
                 <div className="stash-empty-state stash-empty-state--compact">
-                  <img
-                    src={defaultImage}
+                  <DefaultHourglassImage
                     alt={t(
                       "profile.stash.imagesEmpty",
                       "No images uploaded for this item yet.",

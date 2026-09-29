@@ -3,6 +3,7 @@ import { Badge, Carousel, Modal } from "react-bootstrap";
 import { FaPlus, FaUpload } from "react-icons/fa";
 
 import ConfirmingTrashButton from "./ConfirmingTrashButton";
+import DefaultHourglassImage from "./DefaultHourglassImage";
 import EditableImageDescription from "./EditableImageDescription";
 import ImageOverlayActionButton from "./ImageOverlayActionButton";
 import ImageDescriptionBlock from "./ImageDescriptionBlock";
@@ -233,7 +234,14 @@ export default function StackedImageGallery({
   if (!displayImages.length) {
     return (
       <div className={galleryWrapperClassName}>
-        {emptyContent || <div className="small text-muted">{emptyText}</div>}
+        {emptyContent || (
+          <div className="stacked-image-gallery-empty-content">
+            <DefaultHourglassImage
+              alt={emptyText}
+              className="stacked-image-gallery-empty-image"
+            />
+          </div>
+        )}
         {isSingle ? uploadImageAction : addImageAction}
       </div>
     );

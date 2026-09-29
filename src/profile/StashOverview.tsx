@@ -12,12 +12,12 @@ import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
+import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
-import defaultImage from "../assets/default-image.png";
 import { getClassificationLabel } from "../library/libraryShared";
 import { SaveStatus } from "../component/EditableFieldRow";
 import { clearAllTimers, clearTimer } from "../util/timers";
@@ -1426,8 +1426,7 @@ export default function StashOverview({
                       showInlineDescription
                       emptyContent={
                         <div className="stash-hero-image stash-hero-image--empty">
-                          <img
-                            src={defaultImage}
+                          <DefaultHourglassImage
                             alt={t(
                               "profile.stash.imagesEmptyShort",
                               "No images",
@@ -1739,8 +1738,8 @@ export default function StashOverview({
                               )}
                             </div>
                           )}
-                          {itemImageSrc && (
-                            <div className="stash-item-thumb-shell">
+                          <div className="stash-item-thumb-shell">
+                            {itemImageSrc ? (
                               <RefreshingImage
                                 image={
                                   itemImage || {
@@ -1753,8 +1752,16 @@ export default function StashOverview({
                                 alt={item.name || "Item"}
                                 className="stash-item-thumb"
                               />
-                            </div>
-                          )}
+                            ) : (
+                              <DefaultHourglassImage
+                                alt={t(
+                                  "profile.stash.imagesEmptyShort",
+                                  "No images",
+                                )}
+                                className="stash-item-thumb"
+                              />
+                            )}
+                          </div>
                         </div>
                         <div className="stash-item-list-copy">
                           <div className="stash-item-list-head">

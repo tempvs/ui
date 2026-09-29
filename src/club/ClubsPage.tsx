@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
-import defaultImage from '../assets/default-image.png';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
@@ -108,7 +108,7 @@ export default function ClubsPage() {
           <RefreshingImage
             image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
             variant="thumbnail"
-            fallbackSrc={defaultImage}
+            fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
             className="club-list-thumbnail"
             alt=""
             loading="lazy"

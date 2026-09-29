@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-import defaultImage from "../../assets/default-image.png";
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../../component/DefaultHourglassImage";
 import RefreshingImage from "../../image/RefreshingImage";
 import { buildProfileLabel } from "../currentProfile";
 import { Profile } from "../profileTypes";
@@ -38,7 +38,7 @@ export default function ProfileThumbnailLink({
           thumbnailUrl: profile.avatarUrl,
         }}
         variant="thumbnail"
-        fallbackSrc={defaultImage}
+        fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
         className="profile-thumbnail-link-image"
         alt=""
         loading="lazy"

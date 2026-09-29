@@ -1204,6 +1204,21 @@ button.stash-item-media-empty:disabled {
   padding: 2rem;
 }
 
+.stacked-image-gallery-empty-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  padding: 1rem;
+}
+
+.stacked-image-gallery-empty-image {
+  display: block;
+  width: min(100%, 8rem);
+  height: auto;
+  opacity: 0.92;
+}
+
 .stacked-image-gallery-image-action,
 .stacked-image-gallery-add-image {
   z-index: 5;

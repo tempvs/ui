@@ -3,7 +3,7 @@ import { Alert, Button } from 'react-bootstrap';
 import { FaPlus } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
-import defaultImage from '../assets/default-image.png';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import RefreshingImage from '../image/RefreshingImage';
 import { Id } from '../profile/profileTypes';
 import { Club, getProfileClubs, isClubServiceUnavailable } from './clubApi';
@@ -73,7 +73,7 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
         <RefreshingImage
           image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
           variant="thumbnail"
-          fallbackSrc={defaultImage}
+          fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
           className="club-list-thumbnail"
           alt=""
           loading="lazy"

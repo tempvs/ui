@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 
-import defaultImage from '../../assets/default-image.png';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../../component/DefaultHourglassImage';
 import RefreshingImage from '../../image/RefreshingImage';
 import { PeriodBadge } from '../../util/periods';
 import { buildProfileLabel } from '../currentProfile';
@@ -78,7 +78,7 @@ export default function ProfileSearchPicker({
           <RefreshingImage
             image={{ resourceType: 'profile', resourceId: profile.id }}
             variant="thumbnail"
-            fallbackSrc={defaultImage}
+            fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
             className="club-list-thumbnail"
             alt=""
             loading="lazy"

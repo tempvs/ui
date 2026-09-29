@@ -40,3 +40,9 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(screen.getByText('Front view of the source')).toBeInTheDocument();
   expect(document.querySelector('.carousel .border-top')).toBeInTheDocument();
 });
+
+test('renders the shared hourglass placeholder when no images exist', () => {
+  render(<StackedImageGallery images={[]} emptyText="No source images" />);
+
+  expect(screen.getByRole('img', { name: 'No source images' })).toHaveAttribute('src', 'default-image.png');
+});
