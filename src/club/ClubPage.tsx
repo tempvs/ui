@@ -11,7 +11,6 @@ import { fetchClubProfiles, fetchCurrentUserInfo, fetchOwnerUserProfile } from '
 import { Profile } from '../profile/profileTypes';
 import ProfileList from '../profile/components/ProfileList';
 import { buildProfileLabel } from '../profile/currentProfile';
-import { PeriodBadge } from '../util/periods';
 import { Club, ClubDraft, detachProfile, followClub, getClub, getClubFollowState, getParticipants, isClubServiceUnavailable, requestJoin, unfollowClub, updateClub } from './clubApi';
 import ClubFollowModal from './ClubFollowModal';
 import ClubFollowersPanel from './ClubFollowersPanel';
@@ -374,24 +373,24 @@ export default function ClubPage() {
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
     {loading ? <Spinner /> : club && <>
-      <div className="club-page-heading mt-3"><div><h1>{club.name}</h1><PeriodBadge period={club.period} /></div>
+      <div className="club-page-heading mt-3"><div><h1>{club.name}</h1></div>
         <div className="d-flex gap-2">
-          <Button
-            variant={memberProfile ? 'outline-secondary' : 'outline-dark'}
-            disabled={unavailable || currentUserId == null}
-            title={currentUserId == null ? t('signInToApply', 'Sign in to apply for membership') : undefined}
-            aria-label={memberProfile ? t('leaveClubAction', 'Leave this club') : undefined}
-            onClick={() => {
-              if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
-              else { setMembershipMessage(''); setApplyingForMembership(true); }
-            }}
-          >{memberProfile ? t('leave', 'Leave club') : t('applyForMembership', 'Apply for membership')}</Button>
-          <Button
-            variant={followingProfileIds.size > 0 ? 'danger' : 'outline-dark'}
-            disabled={unavailable || currentUserId == null}
-            title={currentUserId == null ? t('signInToFollow', 'Sign in to follow this club') : undefined}
-            onClick={() => { setFollowError(''); setFollowingClub(true); }}
-          >{followingProfileIds.size > 0 ? t('following', 'Following') : t('follow', 'Follow')}</Button>
+          {currentUserId != null && <>
+            <Button
+              variant={memberProfile ? 'outline-secondary' : 'outline-dark'}
+              disabled={unavailable}
+              aria-label={memberProfile ? t('leaveClubAction', 'Leave this club') : undefined}
+              onClick={() => {
+                if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
+                else { setMembershipMessage(''); setApplyingForMembership(true); }
+              }}
+            >{memberProfile ? t('leave', 'Leave club') : t('applyForMembership', 'Apply for membership')}</Button>
+            <Button
+              variant={followingProfileIds.size > 0 ? 'danger' : 'outline-dark'}
+              disabled={unavailable}
+              onClick={() => { setFollowError(''); setFollowingClub(true); }}
+            >{followingProfileIds.size > 0 ? t('following', 'Following') : t('follow', 'Follow')}</Button>
+          </>}
           {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>
             {t('adminActions', 'Admin actions')}
           </Link>}

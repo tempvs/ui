@@ -58,6 +58,8 @@ test('visitors see participants linked to profiles and no management controls', 
   expect(screen.getByRole('region', { name: 'Members' }).querySelector('.profile-thumbnail-link-image')).toHaveAttribute('src', 'default-image.png');
   expect(screen.getByRole('searchbox', { name: 'Filter members' })).toBeInTheDocument();
   expect(screen.getByRole('searchbox', { name: 'Filter followers' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Apply for membership' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Follow' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
