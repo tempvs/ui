@@ -2,9 +2,8 @@ import React from 'react';
 import { Alert, Button, Modal } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 
-import { buildProfileLabel } from '../profile/currentProfile';
 import { Profile } from '../profile/profileTypes';
-import { PeriodBadge } from '../util/periods';
+import ProfileList from '../profile/components/ProfileList';
 
 type ClubFollowModalProps = {
   show: boolean;
@@ -26,17 +25,12 @@ export default function ClubFollowModal({
     <Modal.Body>
       {error && <Alert variant="danger">{error}</Alert>}
       <p className="text-muted">{t('followAsProfile', 'Choose which of your profiles follows this club.')}</p>
-      {profiles.length === 0 ? <p>{t('noProfilesToFollow', 'Create a profile before following this club.')}</p> : <ul className="club-member-list mb-0">
-        {profiles.map(profile => {
+      {profiles.length === 0 ? <p>{t('noProfilesToFollow', 'Create a profile before following this club.')}</p> : <ProfileList profiles={profiles} showPeriod className="club-member-list mb-0" renderActions={profile => {
           const following = followingProfileIds.has(String(profile.id));
-          return <li key={profile.id}>
-            <span>{buildProfileLabel(profile)} <PeriodBadge period={profile.period} /></span>
-            <Button size="sm" variant={following ? 'danger' : 'dark'} disabled={busy} onClick={() => onToggle(profile)}>
+          return <Button size="sm" variant={following ? 'danger' : 'dark'} disabled={busy} onClick={() => onToggle(profile)}>
               {following ? t('unfollow', 'Unfollow') : t('follow', 'Follow')}
-            </Button>
-          </li>;
-        })}
-      </ul>}
+            </Button>;
+        }} />}
     </Modal.Body>
     <Modal.Footer><Button variant="outline-secondary" disabled={busy} onClick={onHide}>{t('close', 'Close')}</Button></Modal.Footer>
   </Modal>;

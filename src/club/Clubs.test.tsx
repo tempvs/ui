@@ -55,10 +55,23 @@ test('visitors see participants linked to profiles and no management controls', 
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   expect(await screen.findByRole('heading', { name: 'Longbow Company' })).toBeInTheDocument();
   expect(await screen.findByRole('link', { name: 'Alex Archer' })).toHaveAttribute('href', '/profile/alex-archer');
+  expect(screen.getByRole('region', { name: 'Members' }).querySelector('.profile-thumbnail-link-image')).toHaveAttribute('src', 'default-image.png');
+  expect(screen.getByRole('searchbox', { name: 'Filter members' })).toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'Filter followers' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
   expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+});
+
+test('club admins can remove a follower after confirming', async () => {
+  mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
+  mock(api.getClubFollowers).mockResolvedValue({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
+  mock(api.unfollowClub).mockResolvedValue(undefined);
+  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove follower' }));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
+  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, '6'));
 });
 
 test('alias club pages load members and followers using the resolved club id', async () => {
@@ -86,6 +99,9 @@ test('a signed-in user can follow and unfollow a club through any owned profile'
   await waitFor(() => expect(api.followClub).toHaveBeenCalledWith(1, 'personal-1'));
   expect(await within(modal).findByRole('button', { name: 'Unfollow' })).toBeInTheDocument();
   fireEvent.click(within(modal).getByRole('button', { name: 'Unfollow' }));
+  await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(2));
+  const confirmUnfollow = screen.getAllByRole('dialog')[1];
+  fireEvent.click(within(confirmUnfollow).getByRole('button', { name: 'Unfollow' }));
   await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, 'personal-1'));
 });
 
@@ -97,6 +113,8 @@ test('profile owners can leave from the scrollable club participant list', async
   const leave = await screen.findByRole('button', { name: 'Leave club' });
   expect(screen.getByRole('region', { name: 'Members' })).toHaveClass('club-scroll-list');
   fireEvent.click(leave);
+  const confirmLeave = await screen.findByRole('dialog');
+  fireEvent.click(within(confirmLeave).getByRole('button', { name: 'Leave club' }));
   await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith(1, '5'));
 });
 
@@ -145,10 +163,11 @@ test('the signed-in creator can edit an alias even when an initial club read is 
 test('creator can revoke admin access and sees refreshed management', async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true });
   mock(api.removeAdmin).mockResolvedValue({ ...club, adminUserIds: [] });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
   expect(await screen.findByText('Assign an admin')).toBeInTheDocument();
   const adminLink = screen.getByRole('link', { name: 'View profile #user-20' });
   fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
   await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith(1, 'user-20'));
 });
 
@@ -158,7 +177,7 @@ test('creator administration searches matching club profiles while typing', asyn
     id: 'club-profile-1', userId: 'user-30', type: 'CLUB', firstName: 'York', lastName: 'Archers', period: 'HIGH_MIDDLE_AGES',
   }]);
   mock(api.addAdmin).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true, adminUserIds: ['user-30'] });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
+  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
   fireEvent.change(await screen.findByRole('textbox', { name: 'Search profiles by name or alias' }), { target: { value: 'york' } });
   await waitFor(() => expect(profileApi.searchProfiles).toHaveBeenCalledWith({
     query: 'york', type: 'CLUB', period: 'HIGH_MIDDLE_AGES', size: 20,

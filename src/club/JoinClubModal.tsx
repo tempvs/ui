@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
 import RefreshingImage from '../image/RefreshingImage';
+import ConfirmationModal from '../component/ConfirmationModal';
 import { followClub, getJoinOptions, isClubServiceUnavailable, JoinOption, requestJoin, unfollowClub } from './clubApi';
 
 export default function JoinClubModal({ profileId, period, onClose, onUnavailable }: {
@@ -22,6 +23,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [followingClubIds, setFollowingClubIds] = useState<Set<string>>(new Set());
+  const [unfollowTarget, setUnfollowTarget] = useState<JoinOption['club'] | null>(null);
   const results = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
 
@@ -103,7 +105,7 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
       else setError((caught as Error).message || t('followFailed', 'Unable to update club follow state right now.'));
     } finally { setBusy(false); }
   };
-  return <Modal show onHide={onClose} backdrop keyboard centered dialogClassName={`join-club-dialog${unavailable ? ' club-service-unavailable' : ''}`} aria-labelledby="join-club-title">
+  return <><Modal show onHide={onClose} backdrop keyboard centered dialogClassName={`join-club-dialog${unavailable ? ' club-service-unavailable' : ''}`} aria-labelledby="join-club-title">
     <Modal.Header><Modal.Title id="join-club-title">{t('join', 'Join club')}</Modal.Title></Modal.Header>
     <Modal.Body>
       <p className="join-club-period">{t('matchingPeriod', 'Clubs matching this profile’s period')} <PeriodBadge period={period} /></p>
@@ -131,7 +133,10 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
             <Button size="sm" variant="outline-secondary" disabled={busy || unavailable || status === 'MEMBER' || status === 'PENDING'} onClick={() => send(club.id)}>
               {status === 'MEMBER' ? t('member', 'Member') : status === 'PENDING' ? t('pending', 'Request pending') : status === 'REJECTED' ? t('requestAgain', 'Join') : t('join', 'Join')}
             </Button>
-            <Button size="sm" variant={followingClubIds.has(String(club.id)) ? 'outline-danger' : 'outline-dark'} disabled={busy || unavailable} onClick={() => void toggleFollow(club.id)}>
+            <Button size="sm" variant={followingClubIds.has(String(club.id)) ? 'outline-danger' : 'outline-dark'} disabled={busy || unavailable} onClick={() => {
+              if (followingClubIds.has(String(club.id))) setUnfollowTarget(club);
+              else void toggleFollow(club.id);
+            }}>
               {followingClubIds.has(String(club.id)) ? t('unfollow', 'Unfollow') : t('follow', 'Follow')}
             </Button>
           </div>
@@ -141,5 +146,19 @@ export default function JoinClubModal({ profileId, period, onClose, onUnavailabl
         {searchError && <Alert variant="danger">{searchError} <Button variant="link" onClick={() => loadMore.current()}>{t('retry', 'Retry')}</Button></Alert>}
       </div>
     </Modal.Body>
-  </Modal>;
+  </Modal><ConfirmationModal
+    show={unfollowTarget != null}
+    title={t('unfollow', 'Unfollow club')}
+    message={t('unfollowClubConfirm', 'Are you sure you want to unfollow this club?')}
+    confirmLabel={t('unfollow', 'Unfollow')}
+    cancelLabel={t('cancel', 'Cancel')}
+    busy={busy}
+    onHide={() => { if (!busy) setUnfollowTarget(null); }}
+    onConfirm={() => {
+      if (!unfollowTarget) return;
+      const club = unfollowTarget;
+      setUnfollowTarget(null);
+      void toggleFollow(club.id);
+    }}
+  /></>;
 }

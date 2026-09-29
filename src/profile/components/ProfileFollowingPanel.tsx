@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "react-bootstrap";
 
 import { MessageFormatter, Profile } from "../profileTypes";
-import ProfileThumbnailLink from "./ProfileThumbnailLink";
+import ProfileList from "./ProfileList";
 
 type ProfileFollowingPanelProps = {
   profiles: Profile[];
@@ -58,17 +58,7 @@ export default function ProfileFollowingPanel({
             {t("profile.following.empty", "No followed profiles yet.")}
           </p>
         )}
-        {loaded && profiles.length > 0 && (
-          <ul className="club-member-list profile-club-list mb-0">
-            {profiles.map((profile) => {
-              return (
-                <li key={String(profile.id)}>
-                  <ProfileThumbnailLink profile={profile} />
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {loaded && profiles.length > 0 && <ProfileList profiles={profiles} className="club-member-list profile-club-list mb-0" />}
       </section>
     </>
   );

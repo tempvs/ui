@@ -38,7 +38,7 @@ import { prepareImageFile } from "../../util/fileUtils";
 import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
 import { SaveStatus } from "../../component/EditableFieldRow";
-import ProfileThumbnailLink from "../../profile/components/ProfileThumbnailLink";
+import ProfileList from "../../profile/components/ProfileList";
 
 type SourceField = "name" | "description";
 
@@ -723,15 +723,7 @@ export default function LibrarySourcePage() {
               )}
             {sourceProfilesLoaded &&
               !sourceProfilesError &&
-              filteredSourceProfiles.length > 0 && (
-                <ul className="source-profile-list">
-                  {filteredSourceProfiles.map((profile) => (
-                    <li key={profile.id}>
-                      <ProfileThumbnailLink profile={profile} />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              filteredSourceProfiles.length > 0 && <ProfileList profiles={filteredSourceProfiles} className="source-profile-list" />}
           </section>
         </Col>
         <Col md={5}>

@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
-import { Link } from 'react-router-dom';
 import { Id } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
+import ProfileList from '../profile/components/ProfileList';
+import TextFilterInput from '../component/TextFilterInput';
 import { decideJoinRequest, getJoinRequests, JoinRequest } from './clubApi';
 
 export default function JoinRequestsPanel({ clubId, onDecision }: {
@@ -17,6 +18,7 @@ export default function JoinRequestsPanel({ clubId, onDecision }: {
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState('');
   const loadMore = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -56,23 +58,36 @@ export default function JoinRequestsPanel({ clubId, onDecision }: {
     finally { setBusy(false); }
   };
 
+  const visibleRequests = useMemo(() => {
+    const query = filter.trim().toLocaleLowerCase();
+    if (!query) return requests;
+    return requests.filter(request => request.profile != null && buildProfileLabel(request.profile).toLocaleLowerCase().includes(query));
+  }, [filter, requests]);
+  const visibleProfiles = visibleRequests.flatMap(request => request.profile ? [request.profile] : []);
+
   return <section className="club-panel">
-    <div className="club-page-heading"><h2>{t('joinRequests', 'Join requests')}</h2>
-      <Button size="sm" variant="outline-secondary" disabled={busy || loading} onClick={() => setRevision(value => value + 1)}>{t('refresh', 'Refresh')}</Button>
+    <div className="club-list-heading"><h2>{t('joinRequests', 'Join requests')}</h2>
+      <div className="d-flex gap-2">
+        <TextFilterInput value={filter} onChange={setFilter} placeholder={t('filterRequests', 'Filter requests')} ariaLabel={t('filterRequests', 'Filter requests')} className="club-list-filter" />
+        <Button size="sm" variant="outline-secondary" disabled={busy || loading} onClick={() => setRevision(value => value + 1)}>{t('refresh', 'Refresh')}</Button>
+      </div>
     </div>
     {error && <Alert variant="danger">{error} <Button variant="link" onClick={() => loadMore.current()}>{t('retry', 'Retry')}</Button></Alert>}
     {!loading && !error && requests.length === 0 && <p>{t('noRequests', 'No pending join requests.')}</p>}
+    {!loading && !error && requests.length > 0 && visibleRequests.length === 0 && <p>{t('noMatchingRequests', 'No requests match this filter.')}</p>}
     {requests.length > 0 && <div className="club-scroll-list" role="region" aria-label={t('joinRequests', 'Join requests')} onScroll={event => {
       const element = event.currentTarget;
       if (hasMore && !loading && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) loadMore.current();
     }}>
-      <ul className="club-member-list">{requests.map(request => <li key={request.id}>
-        {request.profile ? <Link to={`/profile/${request.profile.alias || request.profileId}`}>{buildProfileLabel(request.profile)}</Link> : <span>{t('unavailableProfile', 'Profile no longer available')}</span>}
-        <div className="club-actions">
-          <Button size="sm" variant="outline-success" disabled={busy || !request.profile} onClick={() => decide(request, 'accept')}>{t('accept', 'Accept')}</Button>
+      <ProfileList profiles={visibleProfiles} showPeriod className="club-member-list" renderActions={profile => {
+        const request = visibleRequests.find(candidate => String(candidate.profile?.id) === String(profile.id));
+        if (!request) return null;
+        return <div className="club-actions">
+          <Button size="sm" variant="outline-success" disabled={busy} onClick={() => decide(request, 'accept')}>{t('accept', 'Accept')}</Button>
           <Button size="sm" variant="outline-danger" disabled={busy} onClick={() => decide(request, 'reject')}>{t('reject', 'Reject')}</Button>
-        </div>
-      </li>)}</ul>
+        </div>;
+      }} />
+      {visibleRequests.filter(request => !request.profile).map(request => <p key={request.id}>{t('unavailableProfile', 'Profile no longer available')}</p>)}
     </div>}
     {loading && <p role="status">{t('loadingRequests', 'Loading requests…')}</p>}
   </section>;

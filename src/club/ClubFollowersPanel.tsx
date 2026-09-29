@@ -1,20 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
+import { FaUserMinus } from 'react-icons/fa';
 
 import { buildProfileLabel } from '../profile/currentProfile';
 import { Profile } from '../profile/profileTypes';
-import { PeriodBadge } from '../util/periods';
 import TextFilterInput from '../component/TextFilterInput';
+import ConfirmationModal from '../component/ConfirmationModal';
+import ProfileList from '../profile/components/ProfileList';
 import { getClubFollowers } from './clubApi';
 
 type ClubFollowersPanelProps = {
   clubId: string;
   revision: number;
+  canManage?: boolean;
+  onRemove?: (profile: Profile) => Promise<void>;
 };
 
-export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPanelProps) {
+const RemoveFollowerIcon = FaUserMinus as React.ComponentType<{ 'aria-hidden'?: string }>;
+
+export default function ClubFollowersPanel({ clubId, revision, canManage = false, onRemove }: ClubFollowersPanelProps) {
   const intl = useIntl();
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [followers, setFollowers] = useState<Profile[]>([]);
@@ -22,6 +27,9 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState('');
+  const [removing, setRemoving] = useState<Profile | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeError, setRemoveError] = useState('');
   const loadMoreRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -67,6 +75,17 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
     if (!query) return followers;
     return followers.filter(profile => buildProfileLabel(profile).toLocaleLowerCase().includes(query));
   }, [filter, followers]);
+  const removeFollower = async () => {
+    if (!removing || !onRemove) return;
+    setRemoveBusy(true); setRemoveError('');
+    try {
+      await onRemove(removing);
+      setFollowers(current => current.filter(profile => String(profile.id) !== String(removing.id)));
+      setRemoving(null);
+    } catch (caught) {
+      setRemoveError((caught as Error).message || t('removeFollowerFailed', 'Unable to remove this follower right now.'));
+    } finally { setRemoveBusy(false); }
+  };
 
   return <section className="club-panel">
     <div className="club-list-heading">
@@ -80,6 +99,7 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
       />
     </div>
     {error && <Alert variant="danger">{error} <Button variant="link" onClick={() => void loadMoreRef.current()}>{t('retry', 'Retry')}</Button></Alert>}
+    {removeError && <Alert variant="danger">{removeError}</Alert>}
     {!loading && !error && followers.length === 0 && <p>{t('noFollowers', 'No followers yet.')}</p>}
     {!loading && !error && followers.length > 0 && visibleFollowers.length === 0 && <p>{t('noMatchingFollowers', 'No followers match this filter.')}</p>}
     <div
@@ -93,10 +113,20 @@ export default function ClubFollowersPanel({ clubId, revision }: ClubFollowersPa
         }
       }}
     >
-      <ul className="club-member-list">{visibleFollowers.map(profile => <li key={profile.id}>
-        <span><Link to={`/profile/${profile.alias || profile.id}`}>{buildProfileLabel(profile)}</Link> <PeriodBadge period={profile.period} /></span>
-      </li>)}</ul>
+      <ProfileList profiles={visibleFollowers} showPeriod className="club-member-list" renderActions={profile => canManage && onRemove ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeFollower', 'Remove follower')} aria-label={t('removeFollower', 'Remove follower')} onClick={() => { setRemoveError(''); setRemoving(profile); }}>
+        <RemoveFollowerIcon aria-hidden="true" />
+      </Button> : null} />
       {loading && <p role="status" className="text-muted mb-2">{t('loadingFollowers', 'Loading followers…')}</p>}
     </div>
+    <ConfirmationModal
+      show={removing != null}
+      title={t('removeFollower', 'Remove follower')}
+      message={<>Remove <strong>{removing ? buildProfileLabel(removing) : ''}</strong> as a follower of this club?</>}
+      confirmLabel={t('remove', 'Remove')}
+      cancelLabel={t('cancel', 'Cancel')}
+      busy={removeBusy}
+      onHide={() => { if (!removeBusy) setRemoving(null); }}
+      onConfirm={() => { void removeFollower(); }}
+    />
   </section>;
 }

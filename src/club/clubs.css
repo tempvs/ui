@@ -19,9 +19,16 @@
 .club-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
 .club-description { white-space: pre-wrap; overflow-wrap: anywhere; }
 .club-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1rem; }
-.club-member-list { list-style: none; padding: 0; margin: 1rem 0; }
+.profile-list, .club-member-list { list-style: none; padding: 0; margin: 1rem 0; }
 .club-member-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #eee9e2; padding: .8rem 0; }
 .club-member-list li span, .club-page-heading h1 { overflow-wrap: anywhere; }
+.profile-list-entry { display: inline-flex; align-items: center; gap: .5rem; min-width: 0; }
+.club-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; padding: 0; flex: 0 0 2rem; }
+.club-page-columns > [class*="col-"] { display: flex; flex-direction: column; }
+.club-page-columns .club-panel { width: 100%; }
+.club-management-panel { text-align: right; }
+.club-management-panel .club-member-list li { justify-content: flex-end; }
+.club-management-panel .profile-list-entry, .club-management-panel .profile-thumbnail-link { justify-content: flex-end; }
 .club-thumbnail-link { display: inline-flex; align-items: center; gap: .7rem; min-width: 0; }
 .club-list-thumbnail { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; object-fit: cover; border: 1px solid #ddd8d0; border-radius: .4rem; background: #f4f1ec; }
 .profile-club-list li { justify-content: flex-start; }
