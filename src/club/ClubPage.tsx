@@ -380,6 +380,7 @@ export default function ClubPage() {
             variant={memberProfile ? 'outline-secondary' : 'outline-dark'}
             disabled={unavailable || currentUserId == null}
             title={currentUserId == null ? t('signInToApply', 'Sign in to apply for membership') : undefined}
+            aria-label={memberProfile ? t('leaveClubAction', 'Leave this club') : undefined}
             onClick={() => {
               if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
               else { setMembershipMessage(''); setApplyingForMembership(true); }
