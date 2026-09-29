@@ -19,7 +19,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
+    runs-on: ubuntu-latest
+    env:
+      REACT_APP_AWS_DARK_WEB: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build and test UI
+        run: |
+          npm ci
+          CI=true npm test -- --watchAll=false
+          npm run typecheck
+          npm run build
+
+      - name: Upload UI build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-build-${{ github.sha }}
+          path: build/
+          if-no-files-found: error
+          retention-days: 1
+
   deploy:
+    needs: build
+    if: >-
+      ${{ always() && (needs.build.result == 'success'
+        || (github.event_name == 'workflow_dispatch' && inputs.rollback_release != '')) }}
     runs-on: ubuntu-latest
     environment: dev
     permissions:
@@ -31,10 +63,7 @@ jobs:
       WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
       ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
-      REACT_APP_AWS_DARK_WEB: 'true'
     steps:
-      - uses: actions/checkout@v4
-
       - name: Verify deployment configuration
         shell: bash
         run: |
@@ -47,19 +76,12 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-node@v4
+      - name: Download UI build
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
+        uses: actions/download-artifact@v4
         with:
-          node-version: 24
-          cache: npm
-
-      - name: Build and test UI
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
-        run: |
-          npm ci
-          CI=true npm test -- --watchAll=false
-          npm run typecheck
-          npm run build
+          name: ui-build-${{ github.sha }}
+          path: build
 
       - name: Configure AWS credentials through OIDC
         uses: aws-actions/configure-aws-credentials@v4
