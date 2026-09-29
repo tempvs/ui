@@ -346,6 +346,9 @@ export default function ClubPage() {
     } finally { setFollowBusy(false); }
   };
   const ownedProfiles = [ownedUserProfile, ...ownedClubProfiles].filter((profile): profile is Profile => profile !== null);
+  const memberProfile = currentUserId == null
+    ? undefined
+    : members.find(profile => profile.userId != null && String(profile.userId) === String(currentUserId));
   const visibleMembers = useMemo(() => {
     const query = memberFilter.trim().toLocaleLowerCase();
     if (!query) return members;
@@ -374,11 +377,14 @@ export default function ClubPage() {
       <div className="club-page-heading mt-3"><div><h1>{club.name}</h1><PeriodBadge period={club.period} /></div>
         <div className="d-flex gap-2">
           <Button
-            variant="outline-dark"
+            variant={memberProfile ? 'outline-secondary' : 'outline-dark'}
             disabled={unavailable || currentUserId == null}
             title={currentUserId == null ? t('signInToApply', 'Sign in to apply for membership') : undefined}
-            onClick={() => { setMembershipMessage(''); setApplyingForMembership(true); }}
-          >{t('applyForMembership', 'Apply for membership')}</Button>
+            onClick={() => {
+              if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
+              else { setMembershipMessage(''); setApplyingForMembership(true); }
+            }}
+          >{memberProfile ? t('leave', 'Leave club') : t('applyForMembership', 'Apply for membership')}</Button>
           <Button
             variant={followingProfileIds.size > 0 ? 'danger' : 'outline-dark'}
             disabled={unavailable || currentUserId == null}
