@@ -6,6 +6,7 @@ import ClubPage from './ClubPage';
 import ClubAdminPage from './ClubAdminPage';
 import ClubsPage from './ClubsPage';
 import ProfileClubPanel from './ProfileClubPanel';
+import ProfileFollowedClubsPanel from './ProfileFollowedClubsPanel';
 import JoinClubModal from './JoinClubModal';
 import ClubPhotoPanel from './ClubPhotoPanel';
 import * as api from './clubApi';
@@ -263,6 +264,26 @@ test.each(['accept', 'reject'] as const)('club admins can %s a pending request f
   fireEvent.click(await screen.findByRole('button', { name: decision === 'accept' ? 'Accept' : 'Reject' }));
   await waitFor(() => expect(api.decideJoinRequest).toHaveBeenCalledWith(1, 9, decision));
   expect(await screen.findByText('No pending join requests.')).toBeInTheDocument();
+});
+
+test('profile club memberships use the shared text filter', async () => {
+  mock(api.getProfileClubs).mockResolvedValue([club, { ...club, id: 2, name: 'Sherwood Foresters', alias: 'sherwood' }]);
+  wrap(<ProfileClubPanel profileId={5} editable />);
+
+  fireEvent.change(await screen.findByRole('searchbox', { name: 'Filter club memberships' }), { target: { value: 'sherwood' } });
+
+  expect(screen.getByRole('link', { name: 'Sherwood Foresters' })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Longbow Company' })).not.toBeInTheDocument();
+});
+
+test('followed clubs use the shared text filter', async () => {
+  mock(api.getFollowedClubs).mockResolvedValue([club, { ...club, id: 2, name: 'Sherwood Foresters', alias: 'sherwood' }]);
+  wrap(<ProfileFollowedClubsPanel profileId={5} />);
+
+  fireEvent.change(await screen.findByRole('searchbox', { name: 'Filter followed clubs' }), { target: { value: 'sherwood' } });
+
+  expect(screen.getByRole('link', { name: 'Sherwood Foresters' })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Longbow Company' })).not.toBeInTheDocument();
 });
 
 test('non-admins cannot see membership applications on the admin page', async () => {

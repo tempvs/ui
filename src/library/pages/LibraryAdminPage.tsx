@@ -7,6 +7,7 @@ import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
 import SectionBreadcrumb from "../../component/SectionBreadcrumb";
 import Spinner from "../../component/Spinner";
+import TextFilterInput from "../../component/TextFilterInput";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import {
   getProfileAvatar,
@@ -405,13 +406,14 @@ export default function LibraryAdminPage() {
       {!loading && tab === "members" && (
         <div className="d-flex flex-column gap-3">
           <div className="d-flex align-items-center justify-content-between gap-2">
-            <Form.Control
-              aria-label="Filter Library members"
-              placeholder="Filter members by profile name or alias"
-              value={memberFilter}
-              onChange={(event) => setMemberFilter(event.target.value)}
-              style={{ maxWidth: "28rem" }}
-            />
+            <div style={{ maxWidth: "28rem", width: "100%" }}>
+              <TextFilterInput
+                ariaLabel="Filter Library members"
+                placeholder="Filter members by profile name or alias"
+                value={memberFilter}
+                onChange={setMemberFilter}
+              />
+            </div>
             <IconActionButton
               title="Add Library member"
               onClick={() => {

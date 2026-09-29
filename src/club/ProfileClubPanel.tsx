@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { FaPlus } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
@@ -8,6 +8,7 @@ import RefreshingImage from '../image/RefreshingImage';
 import { Id } from '../profile/profileTypes';
 import { Club, getProfileClubs, isClubServiceUnavailable } from './clubApi';
 import IconActionButton from '../component/IconActionButton';
+import TextFilterInput from '../component/TextFilterInput';
 import JoinClubModal from './JoinClubModal';
 import './clubs.css';
 
@@ -22,6 +23,7 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
   const [unavailable, setUnavailable] = useState(false);
   const [joining, setJoining] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [filter, setFilter] = useState('');
   const markUnavailable = useCallback(() => setUnavailable(true), []);
   useEffect(() => {
     let active = true; setLoaded(false); setError(''); setUnavailable(false);
@@ -35,11 +37,23 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
       });
     return () => { active = false; };
   }, [profileId, revision]);
+  const visibleClubs = useMemo(() => {
+    const query = filter.trim().toLocaleLowerCase();
+    if (!query) return clubs;
+    return clubs.filter(club => `${club.name} ${club.alias || ''}`.toLocaleLowerCase().includes(query));
+  }, [clubs, filter]);
   // An unattached profile has no club UI for visitors, including while loading.
   if (!editable && (!loaded || clubs.length === 0)) return null;
   return <section className={`club-panel profile-clubs-panel mt-3${unavailable ? ' club-service-unavailable' : ''}`} aria-label={t('title', 'Clubs')}>
     <div className="profile-clubs-heading">
       <h2 className="mb-0">{t('title', 'Clubs')}</h2>
+      <TextFilterInput
+        value={filter}
+        onChange={setFilter}
+        placeholder={t('filterMemberships', 'Filter clubs')}
+        ariaLabel={t('filterMemberships', 'Filter club memberships')}
+        className="club-list-filter"
+      />
       {editable && <IconActionButton
         title={t('join', 'Join club')}
         aria-label={t('join', 'Join club')}
@@ -53,7 +67,8 @@ export default function ProfileClubPanel({ profileId, period, editable }: { prof
       ><PlusIcon /></IconActionButton>}
     </div>
     {error && <Alert variant="danger" className="mt-3">{error} <Button variant="link" onClick={() => setRevision(value => value + 1)}>{t('retry', 'Retry')}</Button></Alert>}
-    {loaded && clubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{clubs.map(club => <li key={club.id}>
+    {loaded && clubs.length > 0 && visibleClubs.length === 0 && <p className="text-muted mt-3 mb-0">{t('noMatchingMemberships', 'No club memberships match this filter.')}</p>}
+    {loaded && visibleClubs.length > 0 && <ul className="club-member-list profile-club-list mb-0">{visibleClubs.map(club => <li key={club.id}>
       <Link className="club-thumbnail-link" to={`/clubs/${club.alias || club.id}`}>
         <RefreshingImage
           image={{ id: club.photoImageId, resourceType: 'club', resourceId: club.id, url: club.photoUrl, thumbnailUrl: club.photoThumbnailUrl }}
