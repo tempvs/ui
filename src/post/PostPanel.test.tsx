@@ -3,10 +3,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import PostPanel from "./PostPanel";
-import { fetchCurrentUserInfo, getUserProfileByUserId } from "../profile/profileApi";
+import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, getUserProfileByUserId } from "../profile/profileApi";
 
 jest.mock("../profile/profileApi", () => ({
   fetchCurrentUserInfo: jest.fn(),
+  fetchClubProfiles: jest.fn(),
+  fetchProfileById: jest.fn(),
   getUserProfileByUserId: jest.fn(),
 }));
 
@@ -16,16 +18,18 @@ const response = (body: unknown, ok = true) => ({ ok, json: async () => body }) 
 beforeEach(() => {
   jest.resetAllMocks();
   mock(fetchCurrentUserInfo).mockImplementation(callback => callback({ currentUserId: "user-1", oauthProfile: null }));
+  mock(fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
   mock(getUserProfileByUserId).mockResolvedValue({ id: "profile-1", alias: "alex", firstName: "Alex", lastName: "Archer" });
+  mock(fetchProfileById).mockImplementation((_profileId, handlers) => handlers.onSuccess({ id: "club-profile-2", alias: "red-company", firstName: "Red", lastName: "Company" }));
   global.fetch = jest.fn().mockResolvedValue(response({ content: [{
-    id: "post-1", authorUserId: "user-1", content: "Original post", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z",
+    id: "post-1", authorUserId: "user-1", authorProfileId: "club-profile-2", content: "Original post", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z",
   }] }));
 });
 
-test("renders clickable post authors and lets authors edit posts", async () => {
+test("renders the posting profile and lets authors edit posts", async () => {
   render(<MemoryRouter><PostPanel targetType="PROFILE" targetId="profile-1" canCreate /></MemoryRouter>);
 
-  expect(await screen.findByRole("link", { name: "Alex Archer" })).toHaveAttribute("href", "/profile/alex");
+  expect(await screen.findByRole("link", { name: "Red Company" })).toHaveAttribute("href", "/profile/red-company");
   expect(screen.getByText("Edited")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Publish post" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Post" })).not.toBeInTheDocument();
