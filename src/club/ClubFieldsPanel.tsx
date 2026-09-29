@@ -30,7 +30,7 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       status={statuses.alias} savingTitle="Saving" errorTitle="Save failed" />
     <EditableDescriptionField editable={editable} value={club.description || ''} readOnlyValue={club.description || 'No description yet.'}
       onValueChange={value => onChange('description', value)} onBlur={() => onBlur('description')}
-      status={statuses.description} className="mb-2" textClassName="club-description" savingTitle="Saving" errorTitle="Save failed" />
+      status={statuses.description} className="mb-2" textClassName="club-description club-description-input" savingTitle="Saving" errorTitle="Save failed" />
     <EditableTextFieldRow label="Location" editable={editable} value={club.location || ''} readOnlyValue={club.location || '-'}
       onChange={event => onChange('location', event.target.value)} onBlur={() => onBlur('location')}
       status={statuses.location} savingTitle="Saving" errorTitle="Save failed" />

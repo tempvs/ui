@@ -23,7 +23,7 @@ export default function ClubForm({ initial, busy, onSave, onCancel }: {
       </Form.Group>
       <Form.Group controlId="club-description" className="mb-3">
         <Form.Label>{t('description', 'Description')}</Form.Label>
-        <Form.Control as="textarea" rows={4} maxLength={5000} value={draft.description || ''} onChange={e => setDraft({ ...draft, description: e.target.value })} />
+        <Form.Control as="textarea" className="club-description-input" rows={4} maxLength={5000} value={draft.description || ''} onChange={e => setDraft({ ...draft, description: e.target.value })} />
       </Form.Group>
       <div className="club-form-grid">
         <Form.Group controlId="club-period">

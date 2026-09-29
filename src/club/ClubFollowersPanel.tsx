@@ -113,7 +113,7 @@ export default function ClubFollowersPanel({ clubId, revision, canManage = false
         }
       }}
     >
-      <ProfileList profiles={visibleFollowers} showPeriod className="club-member-list" renderActions={profile => canManage && onRemove ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeFollower', 'Remove follower')} aria-label={t('removeFollower', 'Remove follower')} onClick={() => { setRemoveError(''); setRemoving(profile); }}>
+      <ProfileList profiles={visibleFollowers} className="club-member-list" renderActions={profile => canManage && onRemove ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeFollower', 'Remove follower')} aria-label={t('removeFollower', 'Remove follower')} onClick={() => { setRemoveError(''); setRemoving(profile); }}>
         <RemoveFollowerIcon aria-hidden="true" />
       </Button> : null} />
       {loading && <p role="status" className="text-muted mb-2">{t('loadingFollowers', 'Loading followers…')}</p>}

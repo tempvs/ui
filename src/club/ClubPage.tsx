@@ -326,7 +326,7 @@ export default function ClubPage() {
           </Link>}
         </div>
       </div>
-      <Row className="club-page-columns"><Col lg={3}>
+      <Row className="club-page-columns"><Col lg={4}>
         <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
         <section className="club-panel">
           <div className="club-list-heading">
@@ -344,10 +344,10 @@ export default function ClubPage() {
           {!participantsLoading && !participantsError && members.length === 0 && <p>{t('noMembers', 'No members yet.')}</p>}
           {!participantsLoading && !participantsError && members.length > 0 && visibleMembers.length === 0 && <p>{t('noMatchingMembers', 'No members match this filter.')}</p>}
           <div className="club-scroll-list" role="region" aria-label={t('members', 'Members')} onScroll={handleParticipantScroll}>
-            <ProfileList profiles={visibleMembers} showPeriod className="club-member-list" renderActions={profile => {
+            <ProfileList profiles={visibleMembers} className="club-member-list" renderActions={profile => {
               const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
-              return owned ? <Button className="club-leave-button" size="sm" variant="outline-secondary" disabled={busy || unavailable} onClick={() => setMemberRemoval({ profile, leave: true })}>
-                  <LeaveIcon aria-hidden="true" /> <span>{t('leave', 'Leave club')}</span>
+              return owned ? <Button className="club-icon-action" size="sm" variant="outline-secondary" title={t('leave', 'Leave club')} aria-label={t('leave', 'Leave club')} disabled={busy || unavailable} onClick={() => setMemberRemoval({ profile, leave: true })}>
+                  <LeaveIcon aria-hidden="true" />
                 </Button> : canManage ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t('removeMember', 'Remove member')} aria-label={t('removeMember', 'Remove member')} disabled={busy || unavailable} onClick={() => setMemberRemoval({ profile, leave: false })}>
                   <RemoveMemberIcon aria-hidden="true" />
                 </Button> : null;
@@ -368,19 +368,18 @@ export default function ClubPage() {
             });
           }}
         />
-      </Col><Col lg={6}>
+      </Col><Col lg={8}>
         <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
-      </Col><Col lg={3} className="club-right-column">
-        <section className="club-panel club-management-panel">
-          <h2>{t('management', 'Club administration')}</h2>
+        <section className="club-panel">
           <h3 className="h6">{t('owner', 'Owner')}</h3>
           {ownerProfile ? <ProfileList profiles={[ownerProfile]} className="club-member-list mb-3" /> : <p>{t('ownerUnavailable', 'Owner profile unavailable.')}</p>}
-          <h3 className="h6">{t('admins', 'Admins')}</h3>
-          {club.adminUserIds.length === 0 && <p>{t('noAdmins', 'No additional admins.')}</p>}
-          {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
-          {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
+          {club.adminUserIds.length > 0 && <>
+            <h3 className="h6">{t('admins', 'Admins')}</h3>
+            {adminProfiles.length > 0 && <ProfileList profiles={adminProfiles} className="club-member-list" />}
+            {club.adminUserIds.length > adminProfiles.length && <ul className="club-member-list">{club.adminUserIds.filter(userId => !adminProfiles.some(profile => String(profile.userId) === String(userId))).map(userId => <li key={userId}>
             <Link to={`/profile/user/${userId}`}>{t('viewProfile', 'View profile')} #{userId}</Link>
-          </li>)}</ul>}
+            </li>)}</ul>}
+          </>}
         </section>
       </Col></Row>
     </>}
