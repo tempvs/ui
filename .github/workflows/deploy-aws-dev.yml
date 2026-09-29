@@ -1,6 +1,8 @@
-name: Deploy dark AWS UI (dev)
+name: Deploy AWS UI (dev)
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       rollback_release:
@@ -46,13 +48,13 @@ jobs:
           fi
 
       - uses: actions/setup-node@v4
-        if: ${{ inputs.rollback_release == '' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
         with:
           node-version: 24
           cache: npm
 
       - name: Build and test UI
-        if: ${{ inputs.rollback_release == '' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
         run: |
           npm ci
           CI=true npm test -- --watchAll=false
@@ -66,7 +68,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Archive release in versioned bucket
-        if: ${{ inputs.rollback_release == '' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
         run: aws s3 sync build/ "s3://$WEB_BUCKET_NAME/releases/$GITHUB_SHA/" --no-progress
 
       - name: Restore archived release
