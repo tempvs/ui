@@ -39,6 +39,7 @@ import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import ProfileList from "../../profile/components/ProfileList";
+import PostPanel from "../../post/PostPanel";
 
 type SourceField = "name" | "description";
 
@@ -685,6 +686,7 @@ export default function LibrarySourcePage() {
               errorTitle="Save failed"
             />
           </div>
+          <PostPanel targetType="SOURCE" targetId={source.id} canCreate={canContribute(userInfo)} />
           <section
             className="source-profile-links mt-4"
             aria-label="Profiles using this source"

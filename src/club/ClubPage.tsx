@@ -17,6 +17,7 @@ import ClubFollowModal from './ClubFollowModal';
 import ClubFollowersPanel from './ClubFollowersPanel';
 import ClubFieldsPanel, { ClubField } from './ClubFieldsPanel';
 import ClubPhotoPanel from './ClubPhotoPanel';
+import PostPanel from '../post/PostPanel';
 import './clubs.css';
 
 const LeaveIcon = FaSignOutAlt as React.ComponentType<{ 'aria-hidden'?: string }>;
@@ -341,6 +342,7 @@ export default function ClubPage() {
         </section>
       </Col><Col lg={6}>
         <ClubFieldsPanel club={club} editable={canManage && !unavailable} statuses={fieldStatuses} onChange={changeClubField} onBlur={saveClubField} />
+        <PostPanel targetType="CLUB" targetId={club.id} canCreate={canManage && !unavailable} />
       </Col><Col lg={3}>
         <section className="club-panel">
           <div className="club-list-heading">

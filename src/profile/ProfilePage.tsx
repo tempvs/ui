@@ -18,6 +18,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
+import PostPanel from "../post/PostPanel";
 import {
   createClubProfile,
   createUserProfile,
@@ -1159,6 +1160,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
             />
+            {this.state.profileId && <PostPanel targetType="PROFILE" targetId={this.state.profileId} canCreate={isEditable} />}
           </Col>
           <Col lg={4} md={12}>
             {isClubProfile && (
