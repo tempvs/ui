@@ -1686,58 +1686,60 @@ export default function StashOverview({
                           />
                         )}
                         <div className="stash-item-media-column">
-                          {isEditable && hasActiveGroupImage && (
-                            <div className="stash-item-marker-controls">
-                              <button
-                                type="button"
-                                className={`stash-item-arrow-trigger${markerPlacement?.itemId === item.id ? " is-active" : ""}`}
-                                title={
-                                  marker
-                                    ? t(
-                                        "profile.stash.markerEdit",
-                                        "Edit arrow",
-                                      )
-                                    : t(
-                                        "profile.stash.markerCreate",
-                                        "Add arrow",
-                                      )
-                                }
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setMarkerPlacement({
-                                    itemId: item.id,
-                                    markerId: marker?.id || null,
-                                  });
-                                  setMarkerPreviewPosition(
-                                    marker
-                                      ? { x: marker.x, y: marker.y }
-                                      : null,
-                                  );
-                                }}
-                              >
-                                <ArrowLeftIcon />
-                              </button>
-                              {marker?.id && (
+                          <div className="stash-item-marker-slot">
+                            {isEditable && hasActiveGroupImage && (
+                              <div className="stash-item-marker-controls">
                                 <button
                                   type="button"
-                                  className="stash-item-arrow-delete"
-                                  title={t(
-                                    "profile.stash.markerDelete",
-                                    "Delete arrow",
-                                  )}
+                                  className={`stash-item-arrow-trigger${markerPlacement?.itemId === item.id ? " is-active" : ""}`}
+                                  title={
+                                    marker
+                                      ? t(
+                                          "profile.stash.markerEdit",
+                                          "Edit arrow",
+                                        )
+                                      : t(
+                                          "profile.stash.markerCreate",
+                                          "Add arrow",
+                                        )
+                                  }
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    void handleDeleteMarker(
-                                      activeGroup.id,
-                                      marker.id || "",
+                                    setMarkerPlacement({
+                                      itemId: item.id,
+                                      markerId: marker?.id || null,
+                                    });
+                                    setMarkerPreviewPosition(
+                                      marker
+                                        ? { x: marker.x, y: marker.y }
+                                        : null,
                                     );
                                   }}
                                 >
-                                  <CloseIcon />
+                                  <ArrowLeftIcon />
                                 </button>
-                              )}
-                            </div>
-                          )}
+                                {marker?.id && (
+                                  <button
+                                    type="button"
+                                    className="stash-item-arrow-delete"
+                                    title={t(
+                                      "profile.stash.markerDelete",
+                                      "Delete arrow",
+                                    )}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void handleDeleteMarker(
+                                        activeGroup.id,
+                                        marker.id || "",
+                                      );
+                                    }}
+                                  >
+                                    <CloseIcon />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           <div className="stash-item-thumb-shell">
                             {itemImageSrc ? (
                               <RefreshingImage

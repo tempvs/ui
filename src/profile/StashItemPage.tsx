@@ -815,11 +815,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
             return (
               <div key={source.id} className="stash-source-card">
-                {sourceImageSrc && (
-                  <Link
-                    to={`/library/source/${source.id}`}
-                    className="stash-source-thumb-shell"
-                  >
+                <Link
+                  to={`/library/source/${source.id}`}
+                  className="stash-source-thumb-shell"
+                >
+                  {sourceImageSrc ? (
                     <RefreshingImage
                       image={
                         sourceImage || {
@@ -832,8 +832,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
                       alt={source.name || "Source"}
                       className="stash-source-thumb"
                     />
-                  </Link>
-                )}
+                  ) : (
+                    <DefaultHourglassImage
+                      alt={t("profile.stash.imagesEmptyShort", "No images")}
+                      className="stash-source-thumb"
+                    />
+                  )}
+                </Link>
                 <Link
                   to={`/library/source/${source.id}`}
                   className="stash-source-copy text-decoration-none text-reset"

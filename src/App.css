@@ -1644,10 +1644,18 @@ button.stash-item-media-empty:disabled {
 .stash-item-media-column {
   grid-column: 1;
   grid-row: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 4.35rem 6rem;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
+}
+
+.stash-item-marker-slot {
+  display: flex;
+  align-items: center;
+  width: 4.35rem;
+  min-height: 2rem;
 }
 
 .stash-item-marker-controls {
@@ -1847,6 +1855,7 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-media-column {
     width: 100%;
+    grid-template-columns: 4.35rem minmax(0, 1fr);
   }
 
   .stash-item-thumb-shell,

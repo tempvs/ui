@@ -424,7 +424,20 @@ export default function LibrarySourcePage() {
       }
 
       clearImageSaveTimer(imageId);
-      await loadSource();
+      // Clear the gallery synchronously, rather than waiting for the source
+      // reload, so its shared empty-state placeholder is visible immediately.
+      setImages((current) => current.filter((image) => image.id !== imageId));
+      setImageDrafts((current) => {
+        const next = { ...current };
+        delete next[imageId];
+        return next;
+      });
+      setImageStatuses((current) => {
+        const next = { ...current };
+        delete next[imageId];
+        return next;
+      });
+      void loadSource();
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     }
