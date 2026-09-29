@@ -1,0 +1,15 @@
+.post-panel { background: #fff; border: 1px solid #ddd8d0; border-radius: .65rem; padding: 1.5rem; margin-bottom: 1.25rem; text-align: left; }
+.post-panel h2 { font-size: 1.4rem; }
+.post-composer { resize: none; }
+.post-composer-wrap, .post-edit-wrap { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+.post-composer-actions { display: flex; justify-content: flex-end; gap: .4rem; }
+.post-entry { position: relative; border-bottom: 1px solid #eee9e2; padding: .75rem 0; overflow-wrap: anywhere; text-align: left; }
+.post-entry:last-child { border-bottom: 0; }
+.post-entry-header { min-height: 2rem; padding-right: 4.25rem; }
+.post-author { display: inline-flex; align-items: center; gap: .45rem; color: #584732; font-size: .86rem; font-weight: 600; text-decoration: none; }
+.post-author .profile-thumbnail-link-image { width: 2rem; height: 2rem; flex: 0 0 2rem; border-radius: 50%; object-fit: cover; }
+.post-author-unavailable { color: #6c757d; font-size: .86rem; }
+.post-entry-controls { position: absolute; top: .75rem; right: 0; display: flex; gap: .35rem; }
+.post-entry-content { margin-top: .65rem; white-space: pre-wrap; text-align: left; }
+.post-entry-meta { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
+.post-edited { color: #6c757d; font-size: .75rem; }
