@@ -91,3 +91,16 @@ export function updateEvent(eventId: string, draft: EventDraft, version: number)
 export function deleteEvent(eventId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
 }
+
+export function addEventAdmin(eventId: string, profileId: string) {
+  return request<TempvsEvent>(`/${encodeURIComponent(eventId)}/admins`, {
+    method: 'POST',
+    body: JSON.stringify({ profileId }),
+  });
+}
+
+export function removeEventAdmin(eventId: string, profileId: string) {
+  return request<TempvsEvent>(`/${encodeURIComponent(eventId)}/admins/${encodeURIComponent(profileId)}`, {
+    method: 'DELETE',
+  });
+}

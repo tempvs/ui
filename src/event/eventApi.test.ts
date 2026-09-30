@@ -1,4 +1,4 @@
-import { createEvent, deleteEvent, getEvent, listEvents, updateEvent } from './eventApi';
+import { addEventAdmin, createEvent, deleteEvent, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
 
 const draft = {
   ownerProfileId: 'profile-1',
@@ -64,4 +64,16 @@ test('event CRUD targets the plural edge route and sends idempotency/version dat
 test('event API exposes the service error message', async () => {
   jest.spyOn(global, 'fetch').mockResolvedValue(response({ message: 'Event owner is invalid' }, 400));
   await expect(createEvent(draft)).rejects.toThrow('Event owner is invalid');
+});
+
+test('event admin mutations use event-scoped routes', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(response({ ...item, adminProfileIds: ['profile-2'], version: 2 }))
+    .mockResolvedValueOnce(response({ ...item, adminProfileIds: [], version: 3 }));
+  await addEventAdmin(item.id, 'profile-2');
+  await removeEventAdmin(item.id, 'profile-2');
+  expect(fetchMock.mock.calls.map(([url, options]) => [url, options?.method])).toEqual([
+    ['/api/events/event-1/admins', 'POST'],
+    ['/api/events/event-1/admins/profile-2', 'DELETE'],
+  ]);
 });

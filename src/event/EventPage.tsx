@@ -6,6 +6,7 @@ import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, fetchUserPro
 import { Profile } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
 import EventForm from './EventForm';
+import EventManagers from './EventManagers';
 import { deleteEvent, EventDraft, getEvent, TempvsEvent, updateEvent } from './eventApi';
 import './events.css';
 
@@ -38,6 +39,7 @@ export default function EventPage() {
   }), []);
 
   const canManage = Boolean(item && ownedProfiles.some(profile => String(profile.id) === item.ownerProfileId || item.adminProfileIds.includes(String(profile.id))));
+  const isOwner = Boolean(item && ownedProfiles.some(profile => String(profile.id) === item.ownerProfileId));
   const save = async (draft: EventDraft) => {
     if (!item) return;
     setBusy(true); setError('');
@@ -66,6 +68,7 @@ export default function EventPage() {
       <h2>Schedule</h2><p>{new Date(item.schedule.startsAt).toLocaleString()} – {new Date(item.schedule.endsAt).toLocaleString()} ({item.schedule.timeZone})</p>
       {item.schedule.kind === 'RECURRING' && <p>Repeats every {item.schedule.recurrence?.interval} {item.schedule.recurrence?.frequency.toLocaleLowerCase()}.</p>}
       <h2>Occurrences</h2><ul className="event-occurrences">{(item.upcomingOccurrences || []).map(occurrence => <li key={occurrence.id}><time>{new Date(occurrence.startsAt).toLocaleString()}</time><span>{occurrence.status}</span></li>)}</ul>
+      <EventManagers event={item} owner={owner} canManageAdmins={isOwner} onChange={setItem} />
     </article>
     <ConfirmationModal show={confirmDelete} title="Delete event" message="Are you sure you want to delete this event?" confirmLabel="Delete" busy={busy} onConfirm={remove} onHide={() => setConfirmDelete(false)} />
   </Container>;
