@@ -1,0 +1,18 @@
+.events-page { padding-top: 1.5rem; padding-bottom: 3rem; text-align: left; }
+.event-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.event-panel { border: 1px solid rgba(87, 102, 98, .16); background: rgba(255, 253, 247, .88); padding: 1.25rem; box-shadow: 0 .25rem 1rem rgba(31, 38, 35, .06); }
+.event-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1rem; }
+.event-card h2 { margin: .75rem 0 .35rem; font-size: 1.3rem; }
+.event-card p { margin: .75rem 0 0; }
+.event-period-badges { display: flex; flex-wrap: wrap; gap: .35rem; }
+.event-form { max-width: 52rem; }
+.event-form textarea { resize: none; }
+.event-period-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .3rem .8rem; }
+.event-date-grid, .event-recurrence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.event-form-actions, .event-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
+.event-detail { max-width: 70rem; margin: 0 auto; }
+.event-detail h1 { margin-top: .6rem; }
+.event-description { white-space: pre-wrap; }
+.event-occurrences { list-style: none; padding: 0; max-width: 40rem; }
+.event-occurrences li { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid rgba(87, 102, 98, .12); }
+@media (max-width: 700px) { .event-date-grid, .event-recurrence-grid { grid-template-columns: 1fr; } .event-heading { flex-direction: column; } }
