@@ -700,46 +700,6 @@ export default function LibrarySourcePage() {
             />
           </div>
           <PostPanel targetType="SOURCE" targetId={source.id} canCreate={canContribute(userInfo)} />
-          <section
-            className="source-profile-links mt-4"
-            aria-label="Profiles using this source"
-          >
-            <div className="source-profile-links-heading">
-              <div className="stash-subheading mb-0">
-                Profiles using this source
-              </div>
-              <TextFilterInput
-                value={profileFilter}
-                onChange={setProfileFilter}
-                placeholder="Filter profiles"
-                className="source-profile-filter"
-              />
-            </div>
-            {!sourceProfilesLoaded && (
-              <p className="text-muted mt-2 mb-0">Loading profiles...</p>
-            )}
-            {sourceProfilesError && (
-              <p className="text-danger mt-2 mb-0">{sourceProfilesError}</p>
-            )}
-            {sourceProfilesLoaded &&
-              !sourceProfilesError &&
-              sourceProfiles.length === 0 && (
-                <p className="text-muted mt-2 mb-0">
-                  No profiles use this source yet.
-                </p>
-              )}
-            {sourceProfilesLoaded &&
-              !sourceProfilesError &&
-              sourceProfiles.length > 0 &&
-              filteredSourceProfiles.length === 0 && (
-                <p className="text-muted mt-2 mb-0">
-                  No profiles match this filter.
-                </p>
-              )}
-            {sourceProfilesLoaded &&
-              !sourceProfilesError &&
-              filteredSourceProfiles.length > 0 && <ProfileList profiles={filteredSourceProfiles} className="source-profile-list" />}
-          </section>
         </Col>
         <Col md={5}>
           <section>
@@ -793,6 +753,46 @@ export default function LibrarySourcePage() {
                 handleImageDescriptionBlur(String(imageId))
               }
             />
+            <section
+              className="source-profile-links mt-4"
+              aria-label="Profiles using this source"
+            >
+              <div className="source-profile-links-heading">
+                <div className="stash-subheading mb-0">
+                  Profiles using this source
+                </div>
+                <TextFilterInput
+                  value={profileFilter}
+                  onChange={setProfileFilter}
+                  placeholder="Filter profiles"
+                  className="source-profile-filter"
+                />
+              </div>
+              {!sourceProfilesLoaded && (
+                <p className="text-muted mt-2 mb-0">Loading profiles...</p>
+              )}
+              {sourceProfilesError && (
+                <p className="text-danger mt-2 mb-0">{sourceProfilesError}</p>
+              )}
+              {sourceProfilesLoaded &&
+                !sourceProfilesError &&
+                sourceProfiles.length === 0 && (
+                  <p className="text-muted mt-2 mb-0">
+                    No profiles use this source yet.
+                  </p>
+                )}
+              {sourceProfilesLoaded &&
+                !sourceProfilesError &&
+                sourceProfiles.length > 0 &&
+                filteredSourceProfiles.length === 0 && (
+                  <p className="text-muted mt-2 mb-0">
+                    No profiles match this filter.
+                  </p>
+                )}
+              {sourceProfilesLoaded &&
+                !sourceProfilesError &&
+                filteredSourceProfiles.length > 0 && <ProfileList profiles={filteredSourceProfiles} className="source-profile-list" />}
+            </section>
           </section>
         </Col>
       </Row>
