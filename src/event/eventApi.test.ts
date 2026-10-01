@@ -1,4 +1,4 @@
-import { addEventAdmin, createEvent, deleteEvent, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
+import { addEventAdmin, applyForEvent, createEvent, decideClubApplication, decideEventApplication, deleteEvent, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
 
 const draft = {
   ownerProfileId: 'profile-1',
@@ -75,5 +75,22 @@ test('event admin mutations use event-scoped routes', async () => {
   expect(fetchMock.mock.calls.map(([url, options]) => [url, options?.method])).toEqual([
     ['/api/events/event-1/admins', 'POST'],
     ['/api/events/event-1/admins/profile-2', 'DELETE'],
+  ]);
+});
+
+test('club-profile participation sends the two-stage application data', async () => {
+  const application = { id: 'app-1', eventId: item.id, occurrenceId: 'occ-1', applicantType: 'CLUB', profileId: 'profile-2', clubId: 'club-1', status: 'CLUB_PENDING', attendees: [] };
+  const fetchMock = jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(response(application, 201))
+    .mockResolvedValueOnce(response({ ...application, status: 'PENDING' }))
+    .mockResolvedValueOnce(response({ ...application, status: 'APPROVED' }));
+  await applyForEvent(item.id, 'occ-1', 'profile-2', 'TENTATIVE', 'CLUB', 'club-1');
+  await decideClubApplication(item.id, application.id, 'approve', 'reviewer-1');
+  await decideEventApplication(item.id, application.id, 'approve');
+  expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual(expect.objectContaining({ participationType: 'CLUB', clubId: 'club-1' }));
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    '/api/events/event-1/occurrences/occ-1/profile-applications',
+    '/api/events/event-1/club-applications/app-1/approve',
+    '/api/events/event-1/applications/app-1/approve',
   ]);
 });

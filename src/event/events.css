@@ -25,4 +25,11 @@
 .event-tile-link { display: flex; align-items: center; gap: .65rem; min-width: 0; }
 .event-tile-thumbnail { width: 3rem; height: 3rem; object-fit: cover; flex: 0 0 3rem; }
 .profile-events-panel h2 { font-size: 1.15rem; }
+.event-people-panels { margin-top: 1.5rem; }
+.event-people-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.event-people-grid .club-panel { margin: 0; min-width: 0; }
+.event-review-actions, .event-application-actions, .event-club-application { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; }
+.event-application-actions { flex-wrap: wrap; max-width: 28rem; }
+.event-club-application select { min-width: 11rem; }
 @media (max-width: 700px) { .event-date-grid, .event-recurrence-grid { grid-template-columns: 1fr; } .event-heading { flex-direction: column; } }
+@media (max-width: 850px) { .event-people-grid { grid-template-columns: 1fr; } }

@@ -1148,7 +1148,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 onToggleFollow={this.handleToggleFollow}
               />
               {this.state.profileId && <ProfileFollowedClubsPanel profileId={this.state.profileId} />}
-              {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="followed" editable={isEditable} />}
+              {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="followed" />}
             </div>
           </Col>
           <Col lg={5} md={8}>
@@ -1197,7 +1197,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             {this.state.type === 'CLUB' && this.state.profileId && (
               <ProfileClubPanel key={this.state.profileId} profileId={this.state.profileId} period={this.state.period} editable={isEditable} />
             )}
-            {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" editable={isEditable} />}
+            {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" />}
             <ClubProfilesSection
               isUserProfile={this.state.type === 'USER'}
               canCreate={isEditable}

@@ -29,7 +29,9 @@ export type EventApplication = {
   eventId: string;
   occurrenceId: string;
   profileId?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+  clubId?: string;
+  applicantType: 'PROFILE' | 'CLUB';
+  status: 'CLUB_PENDING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
   attendees: Array<{ profileId: string; response: 'ATTENDING' | 'TENTATIVE' | 'NOT_ATTENDING' }>;
 };
 
@@ -143,14 +145,38 @@ export async function getEventApplication(eventId: string, occurrenceId: string,
   return value.application;
 }
 
-export function applyForEvent(eventId: string, occurrenceId: string, profileId: string, response: 'ATTENDING' | 'TENTATIVE' = 'TENTATIVE') {
+export function applyForEvent(eventId: string, occurrenceId: string, profileId: string, response: 'ATTENDING' | 'TENTATIVE' = 'TENTATIVE', participationType: 'INDIVIDUAL' | 'CLUB' = 'INDIVIDUAL', clubId?: string) {
   return request<EventApplication>(`/${encodeURIComponent(eventId)}/occurrences/${encodeURIComponent(occurrenceId)}/profile-applications`, {
-    method: 'POST', body: JSON.stringify({ profileId, response }),
+    method: 'POST', body: JSON.stringify({ profileId, response, participationType, ...(clubId ? { clubId } : {}) }),
   });
 }
 
 export function cancelEventApplication(eventId: string, occurrenceId: string, profileId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}/occurrences/${encodeURIComponent(occurrenceId)}/profile-applications/${encodeURIComponent(profileId)}`, { method: 'DELETE' });
+}
+
+export function getEventFollowers(eventId: string) {
+  return request<{ content: string[] }>(`/${encodeURIComponent(eventId)}/followers`);
+}
+
+export function getEventParticipants(eventId: string) {
+  return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/participants`);
+}
+
+export function getEventApplications(eventId: string) {
+  return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/applications`);
+}
+
+export function getClubApprovalApplications(eventId: string) {
+  return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/club-approval-applications`);
+}
+
+export function decideEventApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject') {
+  return request<EventApplication>(`/${encodeURIComponent(eventId)}/applications/${encodeURIComponent(applicationId)}/${decision}`, { method: 'POST', body: '{}' });
+}
+
+export function decideClubApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject', reviewerProfileId: string) {
+  return request<EventApplication>(`/${encodeURIComponent(eventId)}/club-applications/${encodeURIComponent(applicationId)}/${decision}`, { method: 'POST', body: JSON.stringify({ reviewerProfileId }) });
 }
 
 async function imageRequest<T>(path: string, options: RequestInit = {}) {
