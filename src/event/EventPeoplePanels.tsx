@@ -44,11 +44,12 @@ export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, r
     setLoading(true); setError('');
     const load = async () => {
       try {
+        let queueError = '';
         const [followerPage, participantPage, applicationPage, clubPage] = await Promise.all([
           getEventFollowers(eventId),
           getEventParticipants(eventId),
-          canManage ? getEventApplications(eventId) : Promise.resolve({ content: [] }),
-          ownedProfiles.length ? getClubApprovalApplications(eventId) : Promise.resolve({ content: [] }),
+          canManage ? getEventApplications(eventId).catch(caught => { queueError = (caught as Error).message; return { content: [] }; }) : Promise.resolve({ content: [] }),
+          ownedProfiles.length ? getClubApprovalApplications(eventId).catch(caught => { queueError ||= (caught as Error).message; return { content: [] }; }) : Promise.resolve({ content: [] }),
         ]);
         const applications = [...participantPage.content, ...applicationPage.content, ...clubPage.content];
         const ids = Array.from(new Set([...followerPage.content, ...applications.map(value => value.profileId).filter((value): value is string => Boolean(value))]));
@@ -60,6 +61,7 @@ export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, r
         setParticipants(participantPage.content.map(value => value.profileId ? byId[value.profileId] : null).filter((profile): profile is Profile => Boolean(profile)));
         setParticipantApplications(participantPage.content);
         setPending(applicationPage.content); setClubPending(clubPage.content);
+        setError(queueError);
       } catch (caught) { if (active) setError((caught as Error).message); }
       finally { if (active) setLoading(false); }
     };
