@@ -145,6 +145,15 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
     finally { setBusy(false); }
   };
 
+  const beginEditing = (post: Post) => {
+    setEditingPostId(post.id);
+    setEditDraft(post.content);
+    // Editing starts with the author already assigned to the post. The
+    // current picker selection is only a fallback for legacy posts which did
+    // not persist an author profile.
+    setEditAuthorProfileId(post.authorProfileId ?? currentProfileId);
+  };
+
   const deletePost = async () => {
     if (!deletingPost) return;
     setDeleteBusy(true); setError("");
@@ -173,7 +182,7 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
         return <article key={post.id} className="post-entry">
           <div className="post-entry-header">{author ? <ProfileThumbnailLink profile={author} className="post-author" /> : authorKey in authors ? <span className="post-author-unavailable">Profile unavailable</span> : <span className="post-author-unavailable">Loading profile...</span>}</div>
           {canManagePost && !editing && <div className="post-entry-controls">
-            <IconActionButton title="Edit post" disabled={busy} onClick={() => { setEditingPostId(post.id); setEditDraft(post.content); setEditAuthorProfileId(post.authorProfileId ?? currentProfileId); }} size="1.75rem" fontSize="0.72rem"><EditIcon aria-hidden /></IconActionButton>
+            <IconActionButton title="Edit post" disabled={busy} onClick={() => beginEditing(post)} size="1.75rem" fontSize="0.72rem"><EditIcon aria-hidden /></IconActionButton>
             <IconActionButton title="Delete post" disabled={busy} onClick={() => setDeletingPost(post)} size="1.75rem" fontSize="0.72rem" borderColor="rgba(160, 68, 68, 0.24)" color="#9c3b3b" backgroundColor="rgba(252, 241, 241, 0.92)"><DeleteIcon aria-hidden /></IconActionButton>
           </div>}
           {editing ? <div className="post-edit-wrap">

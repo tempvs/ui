@@ -36,13 +36,12 @@ test("renders the posting profile and lets authors edit posts", async () => {
   expect(screen.queryByRole("button", { name: "Post" })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Edit post" }));
-  fireEvent.click(screen.getByRole("button", { name: "Edit post author profile" }));
-  fireEvent.click(screen.getByRole("button", { name: "Alex Archer" }));
+  expect(screen.getByRole("button", { name: "Edit post author profile" })).toHaveTextContent("Red Company");
   fireEvent.change(screen.getByDisplayValue("Original post"), { target: { value: "Updated post" } });
   fireEvent.click(screen.getByRole("button", { name: "Save post" }));
 
   await waitFor(() => expect(global.fetch).toHaveBeenLastCalledWith(
     "/api/post/posts/post-1",
-    expect.objectContaining({ method: "PUT", body: JSON.stringify({ content: "Updated post", authorProfileId: "profile-1" }) }),
+    expect.objectContaining({ method: "PUT", body: JSON.stringify({ content: "Updated post", authorProfileId: "club-profile-2" }) }),
   ));
 });
