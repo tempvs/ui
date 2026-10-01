@@ -1137,7 +1137,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
-            <div className="mt-3">
+            <div className="profile-relationship-group mt-3">
+              <h2 className="profile-relationship-group-title">
+                {this.t('profile.following.group', 'Following')}
+              </h2>
               <ProfileFollowingPanel
                 profiles={this.state.followingProfiles}
                 loaded={this.state.followingProfilesLoaded}
@@ -1194,10 +1197,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 </div>
               </div>
             )}
-            {this.state.type === 'CLUB' && this.state.profileId && (
+            {isClubProfile && this.state.profileId && <div className="profile-relationship-group">
+              <h2 className="profile-relationship-group-title">
+                {this.t('profile.membership.group', 'Membership')}
+              </h2>
               <ProfileClubPanel key={this.state.profileId} profileId={this.state.profileId} period={this.state.period} editable={isEditable} />
-            )}
-            {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" />}
+              <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" />
+            </div>}
             <ClubProfilesSection
               isUserProfile={this.state.type === 'USER'}
               canCreate={isEditable}

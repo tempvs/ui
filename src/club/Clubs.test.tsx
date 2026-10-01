@@ -242,11 +242,13 @@ test('failed join request keeps the modal available and explains the failure', a
   expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
 });
 
-test('unattached profiles render no club section or controls to visitors', async () => {
+test('unattached profiles show an empty membership section without owner controls', async () => {
   mock(api.getProfileClubs).mockResolvedValue([]);
-  const view = wrap(<ProfileClubPanel profileId={5} editable={false} />);
+  wrap(<ProfileClubPanel profileId={5} editable={false} />);
   await waitFor(() => expect(api.getProfileClubs).toHaveBeenCalledWith(5));
-  expect(view.container).toBeEmptyDOMElement();
+  expect(screen.getByRole('heading', { name: 'Clubs' })).toBeInTheDocument();
+  expect(screen.getByText('No club memberships yet.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
 });
 
 test('owners with existing memberships still have a join button', async () => {

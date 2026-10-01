@@ -28,7 +28,6 @@
 .event-tile-list li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .45rem 0; border-bottom: 1px solid rgba(87,102,98,.12); }
 .event-tile-link { display: flex; align-items: center; gap: .65rem; min-width: 0; }
 .event-tile-thumbnail { width: 3rem; height: 3rem; object-fit: cover; flex: 0 0 3rem; }
-.profile-events-panel h2 { font-size: 1.15rem; }
 .event-people-panels { margin-top: 1.5rem; }
 .event-people-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .event-people-grid .club-panel { margin: 0; min-width: 0; }

@@ -37,9 +37,13 @@
 .profile-club-list li { justify-content: flex-start; }
 .club-scroll-list { max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: .35rem; }
 .club-scroll-list .club-member-list { margin-top: 0; margin-bottom: 0; }
-.profile-clubs-panel { padding-top: .8rem; }
-.profile-clubs-heading { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
-.profile-clubs-heading h2 { font-size: .9rem; line-height: 1.2; font-weight: 600; }
+.profile-relationship-group { display: grid; gap: .75rem; }
+.profile-relationship-group-title { margin: 0; color: #3d3527; font-size: 1.2rem; font-weight: 700; }
+.profile-relationship-panel { margin: 0; padding: .8rem; }
+.profile-relationship-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem) 2rem; align-items: center; gap: .65rem; }
+.profile-relationship-heading h3 { margin: 0; font-size: .9rem; line-height: 1.2; font-weight: 600; }
+.profile-relationship-filter { width: 100%; max-width: none; }
+.profile-relationship-actions { display: flex; width: 2rem; align-items: center; justify-content: flex-end; }
 .join-club-dialog { max-width: 680px; }
 .join-club-dialog .modal-content { height: min(32rem, calc(100dvh - 3.5rem)); }
 .join-club-dialog .modal-body { display: flex; flex-direction: column; gap: .75rem; min-height: 0; overflow: hidden; }
@@ -60,6 +64,8 @@
   .club-search select { max-width: none; }
   .club-list-filter { max-width: none; }
   .club-panel { padding: 1rem; }
+  .profile-relationship-panel { padding: .8rem; }
+  .profile-relationship-heading { grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem) 2rem; }
   .club-actions { flex-wrap: wrap; }
   .join-club-tile { align-items: flex-start; flex-wrap: wrap; }
   .join-club-actions { width: 100%; margin-left: 0; }
