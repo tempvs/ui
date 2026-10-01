@@ -1,4 +1,4 @@
-import { addEventAdmin, applyForEvent, createEvent, decideClubApplication, decideEventApplication, deleteEvent, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
+import { addEventAdmin, applyForEvent, createEvent, decideClubApplication, decideEventApplication, deleteEvent, getClubEventParticipationRequests, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
 
 const draft = {
   ownerProfileId: 'profile-1',
@@ -93,4 +93,10 @@ test('club-profile participation sends the two-stage application data', async ()
     '/api/events/event-1/club-applications/app-1/approve',
     '/api/events/event-1/applications/app-1/approve',
   ]);
+});
+
+test('club event participation requests use the club-scoped admin route', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(response({ content: [] }));
+  await getClubEventParticipationRequests('club-1');
+  expect(fetchMock).toHaveBeenCalledWith('/api/events/clubs/club-1/event-participation-requests', expect.any(Object));
 });

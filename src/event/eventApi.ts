@@ -171,6 +171,10 @@ export function getClubApprovalApplications(eventId: string) {
   return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/club-approval-applications`);
 }
 
+export function getClubEventParticipationRequests(clubId: string | number) {
+  return request<{ content: EventApplication[] }>(`/clubs/${encodeURIComponent(clubId)}/event-participation-requests`);
+}
+
 export function decideEventApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject') {
   return request<EventApplication>(`/${encodeURIComponent(eventId)}/applications/${encodeURIComponent(applicationId)}/${decision}`, { method: 'POST', body: '{}' });
 }

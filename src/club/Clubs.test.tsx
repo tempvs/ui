@@ -11,6 +11,7 @@ import JoinClubModal from './JoinClubModal';
 import ClubPhotoPanel from './ClubPhotoPanel';
 import * as api from './clubApi';
 import * as profileApi from '../profile/profileApi';
+import * as eventApi from '../event/eventApi';
 
 jest.mock('./clubApi', () => ({
   ...jest.requireActual('./clubApi'),
@@ -24,9 +25,16 @@ jest.mock('./clubApi', () => ({
 jest.mock('../profile/profileApi', () => ({
   fetchCurrentUserInfo: jest.fn(),
   fetchClubProfiles: jest.fn(),
+  fetchProfileById: jest.fn(),
   fetchOwnerUserProfile: jest.fn(),
   getUserProfileByUserId: jest.fn(),
   searchProfiles: jest.fn(),
+}));
+jest.mock('../event/eventApi', () => ({
+  ...jest.requireActual('../event/eventApi'),
+  getClubEventParticipationRequests: jest.fn(),
+  getEvent: jest.fn(),
+  decideClubApplication: jest.fn(),
 }));
 
 const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
@@ -41,6 +49,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
   mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
+  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) => handlers.onMissing?.());
   mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess(null));
   mock(profileApi.getUserProfileByUserId).mockResolvedValue(null);
   mock(profileApi.searchProfiles).mockResolvedValue([]);
@@ -52,6 +61,7 @@ beforeEach(() => {
   mock(api.getClubFollowers).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getFollowedClubs).mockResolvedValue([]);
   mock(api.getClubFollowState).mockResolvedValue(false);
+  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({ content: [] });
 });
 
 test('visitors see participants linked to profiles and no management controls', async () => {
@@ -174,6 +184,32 @@ test('creator can revoke admin access and sees refreshed management', async () =
   fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
   await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith(1, 'user-20'));
+});
+
+test('club admins can review club event participation requests from the admin page', async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-10', oauthProfile: null }));
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess({ id: 'reviewer-1', userId: 'user-10', firstName: 'Alex', lastName: 'Archer', type: 'USER' }));
+  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) => handlers.onSuccess({ id: 'applicant-1', firstName: 'Robin', lastName: 'Hood', type: 'CLUB' }));
+  mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
+  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({ content: [{
+    id: 'occ-1:applicant-1', eventId: 'event-1', occurrenceId: 'occ-1', applicantType: 'CLUB', clubId: '1', profileId: 'applicant-1', status: 'CLUB_PENDING', attendees: [],
+  }] });
+  mock(eventApi.getEvent).mockResolvedValue({
+    id: 'event-1', ownerProfileId: 'owner-1', adminProfileIds: [], name: 'Autumn muster', description: null, periods: ['OTHER'],
+    schedule: { kind: 'ONE_TIME', startsAt: '2026-10-10T12:00:00.000Z', endsAt: '2026-10-10T15:00:00.000Z', timeZone: 'UTC' },
+    image: null, isActive: true, createdAt: '', updatedAt: '', version: 1,
+  });
+  mock(eventApi.decideClubApplication).mockResolvedValue({
+    id: 'occ-1:applicant-1', eventId: 'event-1', occurrenceId: 'occ-1', applicantType: 'CLUB', clubId: '1', profileId: 'applicant-1', status: 'PENDING', attendees: [],
+  });
+
+  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
+
+  expect(await screen.findByRole('link', { name: 'Autumn muster' })).toHaveAttribute('href', '/events/event-1');
+  expect(screen.getByRole('link', { name: 'Robin Hood' })).toHaveAttribute('href', '/profile/applicant-1');
+  fireEvent.click(screen.getByRole('button', { name: 'Approve event participation request' }));
+  await waitFor(() => expect(eventApi.decideClubApplication).toHaveBeenCalledWith('event-1', 'occ-1:applicant-1', 'approve', 'reviewer-1'));
+  expect(await screen.findByText('No event participation requests are waiting for club approval.')).toBeInTheDocument();
 });
 
 test('creator administration searches matching club profiles while typing', async () => {

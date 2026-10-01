@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import Spinner from '../component/Spinner';
 import ConfirmationModal from '../component/ConfirmationModal';
+import ClubEventRequestsPanel from '../event/ClubEventRequestsPanel';
 import { fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import ProfileList from '../profile/components/ProfileList';
@@ -27,10 +28,20 @@ export default function ClubAdminPage() {
   const [deleting, setDeleting] = useState(false);
   const [removingAdmin, setRemovingAdmin] = useState<string | null>(null);
   const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
+  const [reviewerProfile, setReviewerProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     let active = true;
-    fetchCurrentUserInfo(result => { if (active) setCurrentUserId(result.currentUserId); });
+    fetchCurrentUserInfo(result => {
+      if (!active) return;
+      setCurrentUserId(result.currentUserId);
+      if (result.currentUserId == null) return;
+      fetchOwnerUserProfile(result.currentUserId, {
+        onSuccess: profile => { if (active) setReviewerProfile(profile); },
+        onMissing: () => { if (active) setReviewerProfile(null); },
+        onError: () => { if (active) setReviewerProfile(null); },
+      });
+    });
     return () => { active = false; };
   }, []);
 
@@ -100,6 +111,7 @@ export default function ClubAdminPage() {
       </div>
       <p className="text-muted">{t('adminActionsHint', 'Review membership applications and manage other club administration tasks here.')}</p>
       <JoinRequestsPanel clubId={club.id} onDecision={() => {}} />
+      <ClubEventRequestsPanel clubId={club.id} reviewerProfileId={reviewerProfile ? String(reviewerProfile.id) : undefined} />
       {canManageAdmins && <section className="club-panel">
         <h2>{t('adminManagement', 'Administrators')}</h2>
         {club.adminUserIds.length === 0 && <p>{t('noAdmins', 'No additional admins.')}</p>}

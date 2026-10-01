@@ -29,6 +29,10 @@
 .club-member-list .profile-list-entry { flex: 1 1 0; overflow: hidden; }
 .club-member-list .profile-thumbnail-link { display: flex; width: 100%; overflow: hidden; }
 .club-member-list .profile-thumbnail-link > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-event-request-entry { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 1fr); flex: 1 1 0; gap: 1rem; }
+.club-event-request-entry .profile-thumbnail-link { width: auto; }
+.club-event-request-event { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-event-request-event a { font-weight: 600; }
 .club-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; padding: 0; flex: 0 0 2rem; }
 .club-page-columns > [class*="col-"] { display: flex; flex-direction: column; }
 .club-page-columns .club-panel { width: 100%; }
@@ -67,6 +71,7 @@
   .profile-relationship-panel { padding: .8rem; }
   .profile-relationship-heading { grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem) 2rem; }
   .club-actions { flex-wrap: wrap; }
+  .club-event-request-entry { grid-template-columns: 1fr; gap: .35rem; }
   .join-club-tile { align-items: flex-start; flex-wrap: wrap; }
   .join-club-actions { width: 100%; margin-left: 0; }
 }
