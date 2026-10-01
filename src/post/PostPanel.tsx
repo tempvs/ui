@@ -11,7 +11,7 @@ import { buildProfileLabel, resolveCurrentOwnedProfileId } from "../profile/curr
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
 
-type TargetType = "PROFILE" | "CLUB" | "SOURCE";
+type TargetType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
 type Post = { id: string; content: string; authorUserId: string; authorProfileId?: string; createdAt: string; updatedAt?: string };
 type PostPanelProps = { targetType: TargetType; targetId: string | number; canCreate?: boolean };
 

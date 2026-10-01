@@ -10,6 +10,7 @@ import EventPhotoPanel from './EventPhotoPanel';
 import EventApplicationActions from './EventApplicationActions';
 import EventPeoplePanels from './EventPeoplePanels';
 import ProfileList from '../profile/components/ProfileList';
+import PostPanel from '../post/PostPanel';
 import { EventApplication, EventDraft, followEvent, getEvent, getEventApplication, getEventFollowState, TempvsEvent, unfollowEvent, updateEvent } from './eventApi';
 import './events.css';
 
@@ -85,6 +86,7 @@ export default function EventPage() {
       <h2>Occurrences</h2><ul className="event-occurrences">{(item.upcomingOccurrences || []).map(occurrence => <li key={occurrence.id}><time>{new Date(occurrence.startsAt).toLocaleString()}</time><span>{occurrence.status}</span></li>)}</ul>
       <EventManagers event={item} owner={owner} canManageAdmins={false} onChange={setItem} />
       <EventPeoplePanels eventId={item.id} canManage={canManage} ownedProfiles={ownedProfiles} revision={peopleRevision} showApprovals={false} onChanged={() => setPeopleRevision(value => value + 1)} />
+      <PostPanel targetType="EVENT" targetId={item.id} canCreate={canManage} />
     </article>
     <Modal show={applyOpen} onHide={() => { if (!busy) setApplyOpen(false); }} centered size="lg"><Modal.Header closeButton><Modal.Title>Apply for event</Modal.Title></Modal.Header><Modal.Body><p className="text-muted">A club profile can participate independently or on behalf of one of its approved clubs.</p><ProfileList profiles={applicantProfiles} renderActions={profile => occurrence ? <EventApplicationActions eventId={item.id} occurrenceId={occurrence.id} profile={profile} application={applications[String(profile.id)] || null} busy={busy} onBusy={setBusy} onError={setError} onChange={application => setApplications(current => ({ ...current, [String(profile.id)]: application }))} onChanged={() => setPeopleRevision(value => value + 1)} /> : null} /></Modal.Body></Modal>
     <Modal show={followOpen} onHide={() => { if (!busy) setFollowOpen(false); }} centered><Modal.Header closeButton><Modal.Title>Follow event</Modal.Title></Modal.Header><Modal.Body><ProfileList profiles={ownedProfiles} renderActions={profile => <Button size="sm" variant={following[String(profile.id)] ? 'outline-danger' : 'dark'} disabled={busy} onClick={() => toggleFollow(profile)}>{following[String(profile.id)] ? 'Unfollow' : 'Follow'}</Button>} /></Modal.Body></Modal>
