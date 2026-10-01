@@ -13,6 +13,7 @@ import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods
 import ClubProfilesSection from "./components/ClubProfilesSection";
 import ProfileClubPanel from '../club/ProfileClubPanel';
 import ProfileFollowedClubsPanel from '../club/ProfileFollowedClubsPanel';
+import ProfileEventsPanel from '../event/ProfileEventsPanel';
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
@@ -1147,6 +1148,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 onToggleFollow={this.handleToggleFollow}
               />
               {this.state.profileId && <ProfileFollowedClubsPanel profileId={this.state.profileId} />}
+              {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="followed" editable={isEditable} />}
             </div>
           </Col>
           <Col lg={5} md={8}>
@@ -1195,6 +1197,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             {this.state.type === 'CLUB' && this.state.profileId && (
               <ProfileClubPanel key={this.state.profileId} profileId={this.state.profileId} period={this.state.period} editable={isEditable} />
             )}
+            {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" editable={isEditable} />}
             <ClubProfilesSection
               isUserProfile={this.state.type === 'USER'}
               canCreate={isEditable}

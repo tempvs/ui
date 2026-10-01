@@ -18,4 +18,11 @@
 .event-managers { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(87, 102, 98, .14); }
 .event-managers h2 { margin-top: 1rem; font-size: 1.15rem; }
 .event-admin-search { max-width: 32rem; }
+.event-detail-photo { width: 100%; max-height: 28rem; object-fit: contain; }
+.event-photo-panel { max-width: 28rem; margin-bottom: 1.25rem; }
+.event-tile-list { list-style: none; padding: 0; margin: .75rem 0 0; }
+.event-tile-list li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .45rem 0; border-bottom: 1px solid rgba(87,102,98,.12); }
+.event-tile-link { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.event-tile-thumbnail { width: 3rem; height: 3rem; object-fit: cover; flex: 0 0 3rem; }
+.profile-events-panel h2 { font-size: 1.15rem; }
 @media (max-width: 700px) { .event-date-grid, .event-recurrence-grid { grid-template-columns: 1fr; } .event-heading { flex-direction: column; } }

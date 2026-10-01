@@ -19,8 +19,11 @@ import {
 import { getProfileAvatar, searchProfiles } from '../profile/profileApi';
 import { Avatar, Profile } from '../profile/profileTypes';
 import { getErrorMessage } from '../util/errors';
+import { Club, listClubs } from '../club/clubApi';
+import { listEvents, TempvsEvent } from '../event/eventApi';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 
-type SearchTab = 'profiles' | 'sources';
+type SearchTab = 'profiles' | 'clubs' | 'events' | 'sources';
 type ProfileTypeFilter = 'USER' | 'CLUB' | '';
 
 const PAGE_SIZE = 20;
@@ -56,6 +59,8 @@ export default function SearchDialog() {
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
   const [profilePreviewImages, setProfilePreviewImages] = useState<Record<string | number, Avatar | null>>({});
   const [sourceResults, setSourceResults] = useState<LibrarySource[]>([]);
+  const [clubResults, setClubResults] = useState<Club[]>([]);
+  const [eventResults, setEventResults] = useState<TempvsEvent[]>([]);
   const [sourcePreviewImages, setSourcePreviewImages] = useState<Record<string | number, LibrarySourceImage | null>>({});
   const disablePeriodFilter = activeTab === 'profiles' && profileType === 'USER';
 
@@ -97,6 +102,21 @@ export default function SearchDialog() {
         }));
 
         setProfilePreviewImages(Object.fromEntries(previewEntries));
+        return;
+      }
+
+      if (tab === 'clubs') {
+        const result = await listClubs(query, period, undefined);
+        setClubResults(result.content || []);
+        return;
+      }
+
+      if (tab === 'events') {
+        const result = await listEvents();
+        const normalized = query.trim().toLocaleLowerCase();
+        setEventResults((result.content || []).filter(item =>
+          (!normalized || `${item.name} ${item.description || ''}`.toLocaleLowerCase().includes(normalized))
+          && (!period || item.periods.includes(period as never))));
         return;
       }
 
@@ -226,6 +246,16 @@ export default function SearchDialog() {
               <Nav.Item>
                 <Nav.Link eventKey="profiles" onClick={() => setActiveTab('profiles')}>
                   Profiles
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="clubs" onClick={() => setActiveTab('clubs')}>
+                  Clubs
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="events" onClick={() => setActiveTab('events')}>
+                  Events
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
@@ -400,6 +430,18 @@ export default function SearchDialog() {
                         />
                       ))}
                     </div>
+                  </>
+                )}
+                {!loading && searched && activeTab === 'clubs' && (
+                  <><div className="d-flex align-items-center justify-content-between mb-3"><h2 className="mb-0 fs-4">Clubs</h2><div className="text-muted small">{clubResults.length} result(s)</div></div>
+                    {clubResults.length === 0 && <div className="search-empty-state">No clubs matched the current filters.</div>}
+                    <div className="search-results-grid">{clubResults.map(club => <Card key={club.id} className="shadow-sm"><Card.Body className="search-profile-card-body"><Link to={`/clubs/${club.alias || club.id}`} onClick={closePopover}><RefreshingImage image={{ resourceType: 'club', resourceId: club.id, thumbnailUrl: club.photoThumbnailUrl }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="search-profile-image" alt="" /></Link><Card.Title><Link to={`/clubs/${club.alias || club.id}`} onClick={closePopover}>{club.name}</Link></Card.Title></Card.Body></Card>)}</div>
+                  </>
+                )}
+                {!loading && searched && activeTab === 'events' && (
+                  <><div className="d-flex align-items-center justify-content-between mb-3"><h2 className="mb-0 fs-4">Events</h2><div className="text-muted small">{eventResults.length} result(s)</div></div>
+                    {eventResults.length === 0 && <div className="search-empty-state">No events matched the current filters.</div>}
+                    <div className="search-results-grid">{eventResults.map(item => <Card key={item.id} className="shadow-sm"><Card.Body className="search-profile-card-body"><Link to={`/events/${item.id}`} onClick={closePopover}><RefreshingImage image={{ resourceType: 'event', resourceId: item.id }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="search-profile-image" alt="" /></Link><div><Card.Title><Link to={`/events/${item.id}`} onClick={closePopover}>{item.name}</Link></Card.Title><small>{new Date(item.schedule.startsAt).toLocaleDateString()}</small></div></Card.Body></Card>)}</div>
                   </>
                 )}
               </Col>
