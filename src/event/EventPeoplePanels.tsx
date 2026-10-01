@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { FaCheck, FaTimes, FaUserMinus } from 'react-icons/fa';
 import ConfirmationModal from '../component/ConfirmationModal';
+import { Club, getClub } from '../club/clubApi';
 import ProfileCollectionPanel from '../profile/components/ProfileCollectionPanel';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { fetchProfileById } from '../profile/profileApi';
@@ -16,6 +17,7 @@ import {
   getEventParticipants,
   unfollowEvent,
 } from './eventApi';
+import EventParticipationCollectionPanel from './EventParticipationCollectionPanel';
 
 type Props = {
   eventId: string;
@@ -37,11 +39,11 @@ function loadProfile(profileId: string): Promise<Profile | null> {
 
 export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, revision, onChanged, showPeople = true, showApprovals = true }: Props) {
   const [followers, setFollowers] = useState<Profile[]>([]);
-  const [participants, setParticipants] = useState<Profile[]>([]);
   const [participantApplications, setParticipantApplications] = useState<EventApplication[]>([]);
   const [pending, setPending] = useState<EventApplication[]>([]);
   const [clubPending, setClubPending] = useState<EventApplication[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, Profile>>({});
+  const [clubsById, setClubsById] = useState<Record<string, Club>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -61,12 +63,17 @@ export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, r
         ]);
         const applications = [...participantPage.content, ...applicationPage.content, ...clubPage.content];
         const ids = Array.from(new Set([...followerPage.content, ...applications.map(value => value.profileId).filter((value): value is string => Boolean(value))]));
-        const loaded = (await Promise.all(ids.map(loadProfile))).filter((profile): profile is Profile => profile !== null);
+        const clubIds = Array.from(new Set(applications.map(value => value.clubId).filter((value): value is string => Boolean(value))));
+        const [loaded, loadedClubs] = await Promise.all([
+          Promise.all(ids.map(loadProfile)),
+          Promise.all(clubIds.map(clubId => getClub(clubId).catch(() => null))),
+        ]);
+        const availableProfiles = loaded.filter((profile): profile is Profile => profile !== null);
         if (!active) return;
-        const byId = Object.fromEntries(loaded.map(profile => [String(profile.id), profile]));
+        const byId = Object.fromEntries(availableProfiles.map(profile => [String(profile.id), profile]));
         setProfilesById(byId);
+        setClubsById(Object.fromEntries(loadedClubs.filter((club): club is Club => club !== null).map(club => [String(club.id), club])));
         setFollowers(followerPage.content.map(id => byId[id]).filter(Boolean));
-        setParticipants(participantPage.content.map(value => value.profileId ? byId[value.profileId] : null).filter((profile): profile is Profile => Boolean(profile)));
         setParticipantApplications(participantPage.content);
         setPending(applicationPage.content); setClubPending(clubPage.content);
         setError(queueError);
@@ -75,10 +82,6 @@ export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, r
     };
     void load(); return () => { active = false; };
   }, [canManage, eventId, ownedProfiles.length, revision, showApprovals, showPeople]);
-
-  const pendingProfiles = pending.map(value => value.profileId ? profilesById[value.profileId] : null).filter((profile): profile is Profile => Boolean(profile));
-  const clubPendingProfiles = clubPending.map(value => value.profileId ? profilesById[value.profileId] : null).filter((profile): profile is Profile => Boolean(profile));
-  const applicationFor = (values: EventApplication[], profile: Profile) => values.find(value => value.profileId === String(profile.id));
 
   const decide = async (application: EventApplication, decision: 'approve' | 'reject', clubDecision = false) => {
     setBusy(true); setError('');
@@ -107,9 +110,9 @@ export default function EventPeoplePanels({ eventId, canManage, ownedProfiles, r
     {error && <Alert variant="danger">{error}</Alert>}
     <div className="event-people-grid">
       {showPeople && <ProfileCollectionPanel title="Followers" profiles={followers} filterPlaceholder="Filter followers" emptyText="No followers yet." loading={loading} renderActions={profile => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove follower" title="Remove follower" onClick={() => setRemoval({ kind: 'follower', profile })}><RemoveIcon aria-hidden="true" /></Button> : null} />}
-      {showPeople && <ProfileCollectionPanel title="Participants" profiles={participants} filterPlaceholder="Filter participants" emptyText="No approved participants yet." loading={loading} renderActions={profile => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove participant" title="Remove participant" onClick={() => { const application = applicationFor(participantApplications, profile); if (application) setRemoval({ kind: 'participant', profile, application }); }}><RemoveIcon aria-hidden="true" /></Button> : null} />}
-      {showApprovals && canManage && <ProfileCollectionPanel title="Participation applications" profiles={pendingProfiles} filterPlaceholder="Filter applications" emptyText="No applications are waiting for event approval." loading={loading} renderActions={profile => { const application = applicationFor(pending, profile); return application ? <div className="event-review-actions"><Button size="sm" variant="outline-success" disabled={busy} aria-label="Approve application" onClick={() => void decide(application, 'approve')}><ApproveIcon aria-hidden="true" /></Button><Button size="sm" variant="outline-danger" disabled={busy} aria-label="Reject application" onClick={() => void decide(application, 'reject')}><RejectIcon aria-hidden="true" /></Button></div> : null; }} />}
-      {clubPending.length > 0 && <ProfileCollectionPanel title="Club approval requests" profiles={clubPendingProfiles} filterPlaceholder="Filter club requests" emptyText="No club requests require your approval." loading={loading} renderActions={profile => { const application = applicationFor(clubPending, profile); return application ? <div className="event-review-actions"><Button size="sm" variant="outline-success" disabled={busy} aria-label="Approve club application" onClick={() => void decide(application, 'approve', true)}><ApproveIcon aria-hidden="true" /></Button><Button size="sm" variant="outline-danger" disabled={busy} aria-label="Reject club application" onClick={() => void decide(application, 'reject', true)}><RejectIcon aria-hidden="true" /></Button></div> : null; }} />}
+      {showPeople && <EventParticipationCollectionPanel title="Participants" applications={participantApplications} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter participants" emptyText="No approved participants yet." loading={loading} renderActions={(application, profile) => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove participant" title="Remove participant" onClick={() => setRemoval({ kind: 'participant', profile, application })}><RemoveIcon aria-hidden="true" /></Button> : null} />}
+      {showApprovals && canManage && <EventParticipationCollectionPanel title="Participation applications" applications={pending} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter applications" emptyText="No applications are waiting for event approval." loading={loading} renderActions={application => <div className="event-review-actions"><Button size="sm" variant="outline-success" disabled={busy} aria-label="Approve application" onClick={() => void decide(application, 'approve')}><ApproveIcon aria-hidden="true" /></Button><Button size="sm" variant="outline-danger" disabled={busy} aria-label="Reject application" onClick={() => void decide(application, 'reject')}><RejectIcon aria-hidden="true" /></Button></div>} />}
+      {clubPending.length > 0 && <EventParticipationCollectionPanel title="Club approval requests" applications={clubPending} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter club requests" emptyText="No club requests require your approval." loading={loading} renderActions={application => <div className="event-review-actions"><Button size="sm" variant="outline-success" disabled={busy} aria-label="Approve club application" onClick={() => void decide(application, 'approve', true)}><ApproveIcon aria-hidden="true" /></Button><Button size="sm" variant="outline-danger" disabled={busy} aria-label="Reject club application" onClick={() => void decide(application, 'reject', true)}><RejectIcon aria-hidden="true" /></Button></div>} />}
     </div>
     <ConfirmationModal show={removal != null} title={removal?.kind === 'follower' ? 'Remove follower' : 'Remove participant'} message={removal ? <>Remove <strong>{buildProfileLabel(removal.profile)}</strong> from this event?</> : ''} confirmLabel="Remove" busy={busy} onHide={() => { if (!busy) setRemoval(null); }} onConfirm={() => void confirmRemoval()} />
   </div>;

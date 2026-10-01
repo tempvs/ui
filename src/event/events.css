@@ -34,5 +34,12 @@
 .event-review-actions, .event-application-actions, .event-club-application { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; }
 .event-application-actions { flex-wrap: wrap; max-width: 28rem; }
 .event-club-application select { min-width: 11rem; }
+.event-participation-list > .club-member-list { margin-top: 0; }
+.event-club-participation + .event-club-participation { margin-top: .85rem; }
+.event-club-participation > .profile-club-list { margin: 0; }
+.event-club-participation > .profile-club-list li { background: rgba(244, 241, 236, .72); border: 1px solid rgba(87, 102, 98, .18); border-radius: .45rem; padding: .65rem; }
+.event-club-participant-profiles { margin-left: 2.1rem; padding-left: 1rem; border-left: 2px solid rgba(87, 102, 98, .18); }
+.event-club-participant-profiles .club-member-list { margin: .2rem 0 .7rem; }
+.event-club-unavailable { padding: .65rem; border: 1px solid rgba(87, 102, 98, .18); border-radius: .45rem; color: #67635e; }
 @media (max-width: 700px) { .event-date-grid, .event-recurrence-grid { grid-template-columns: 1fr; } .event-heading { flex-direction: column; } }
 @media (max-width: 850px) { .event-people-grid { grid-template-columns: 1fr; } }
