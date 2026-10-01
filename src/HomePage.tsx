@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { FaBook, FaSignInAlt } from 'react-icons/fa';
+import { Spinner } from 'react-bootstrap';
+import { fetchCurrentUserInfo } from './profile/profileApi';
+import WallPage from './wall/WallPage';
 
 type IconProps = {
   className?: string;
@@ -10,6 +13,11 @@ const BookIcon = FaBook as React.ComponentType<IconProps>;
 const SignInIcon = FaSignInAlt as React.ComponentType<IconProps>;
 
 export default function HomePage() {
+  const [userId, setUserId] = useState<string | null>();
+  useEffect(() => fetchCurrentUserInfo(info => setUserId(info.currentUserId)), []);
+
+  if (userId === undefined) return <div className="home-message-panel"><Spinner animation="border" size="sm" /></div>;
+  if (userId) return <WallPage userId={userId} />;
   return (
     <Container fluid className="home-shell px-4 px-xl-5">
       <Row className="justify-content-center">

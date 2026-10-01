@@ -1,0 +1,20 @@
+.wall-page { width: min(52rem, calc(100% - 3rem)); margin: 2rem auto 4rem; text-align: left; }
+.wall-header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 1.2rem; }
+.wall-header h1 { margin: 0; color: #273d35; font-size: 1.65rem; }
+.wall-header p { margin: .3rem 0 0; color: #68746f; }
+.wall-list { display: grid; gap: .85rem; }
+.wall-activity-card { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr); gap: .9rem; padding: .9rem; border: 1px solid rgba(107,126,113,.2); border-radius: .65rem; background: rgba(255,255,255,.9); box-shadow: 0 2px 10px rgba(51,70,61,.06); }
+.wall-activity-thumbnail-link { align-self: start; }
+.wall-activity-thumbnail { width: 4.25rem; height: 4.25rem; border-radius: .45rem; object-fit: cover; border: 1px solid rgba(107,126,113,.17); }
+.wall-activity-content { min-width: 0; }
+.wall-activity-heading { display: flex; align-items: start; justify-content: space-between; gap: .75rem; }
+.wall-activity-title { color: #29453c; font-size: 1.02rem; font-weight: 700; text-decoration: none; }
+.wall-activity-title:hover { text-decoration: underline; }
+.wall-edited { margin-left: .55rem; color: #7a827f; font-size: .72rem; }
+.wall-activity-summary { margin: .35rem 0; color: #38443f; white-space: pre-wrap; }
+.wall-activity-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; color: #747d79; font-size: .72rem; }
+.wall-changes { display: grid; grid-template-columns: max-content 1fr; gap: .15rem .65rem; margin: .45rem 0; font-size: .78rem; }
+.wall-changes dt { color: #56635e; text-transform: capitalize; }.wall-changes dd { margin: 0; color: #343d39; }
+.wall-loading,.wall-empty { padding: 2.5rem 1rem; border: 1px dashed rgba(107,126,113,.3); border-radius: .65rem; color: #66716d; text-align: center; }
+.wall-empty h2 { color: #394b44; font-size: 1.1rem; }
+@media (max-width: 575.98px) { .wall-page { width: calc(100% - 1.5rem); margin-top: 1rem; }.wall-activity-card { grid-template-columns: 3.2rem minmax(0,1fr); }.wall-activity-thumbnail { width: 3.2rem; height: 3.2rem; } }
