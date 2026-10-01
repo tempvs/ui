@@ -166,9 +166,9 @@ export async function getEventImages(eventId: string): Promise<EventImage[]> {
   return value.content || [];
 }
 
-export async function uploadEventImage(eventId: string, file: File): Promise<EventImage> {
-  const intent = await request<{ image: EventImage; upload: { method: string; url: string; headers: Record<string, string> } }>(`/${encodeURIComponent(eventId)}/image`, {
-    method: 'POST', body: JSON.stringify({ fileName: file.name, contentType: file.type, byteSize: file.size }),
+export async function uploadEventImage(eventId: string, file: File, imageId?: string): Promise<EventImage> {
+  const intent = await request<{ image: EventImage; upload: { method: string; url: string; headers: Record<string, string> } }>(`/${encodeURIComponent(eventId)}/image${imageId ? `/${encodeURIComponent(imageId)}` : ''}`, {
+    method: imageId ? 'PATCH' : 'POST', body: JSON.stringify({ fileName: file.name, contentType: file.type, byteSize: file.size }),
   });
   const uploaded = await fetch(intent.upload.url, { method: intent.upload.method, headers: intent.upload.headers, body: file });
   if (!uploaded.ok) throw new Error('The event picture could not be uploaded.');

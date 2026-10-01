@@ -14,7 +14,7 @@ export default function EventPhotoPanel({ eventId, name, editable }: { eventId: 
     if (!file) return;
     if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choose a JPEG or PNG picture up to 5 MB.'); return; }
     setBusy(true); setError('');
-    try { setImages([await uploadEventImage(eventId, file)]); }
+    try { setImages([await uploadEventImage(eventId, file, images[0]?.id)]); }
     catch (error) { setError((error as Error).message); }
     finally { setBusy(false); }
   };
@@ -25,7 +25,7 @@ export default function EventPhotoPanel({ eventId, name, editable }: { eventId: 
     finally { setBusy(false); }
   };
   return <section className="event-photo-panel">
-    <StackedImageGallery mode="single" images={images.map(image => ({ ...image, resourceType: 'event', resourceId: eventId }))} title={name} emptyText="No event picture yet." editable={editable && !busy} onUploadImage={editable ? () => input.current?.click() : undefined} onReplaceImage={editable ? () => input.current?.click() : undefined} onDeleteImage={editable ? remove : undefined} imageClassName="event-detail-photo" showInlineDescription />
+    <StackedImageGallery mode="single" images={images.map(image => ({ ...image, resourceType: 'event', resourceId: eventId }))} title={name} emptyText="No event picture yet." editable={editable && !busy} onUploadImage={editable ? () => input.current?.click() : undefined} onReplaceImage={editable ? () => input.current?.click() : undefined} onDeleteImage={editable ? remove : undefined} imageClassName="event-detail-photo" />
     {editable && <Form.Control ref={input} type="file" accept="image/jpeg,image/png" className="d-none" onChange={upload} disabled={busy} />}
     {busy && <p role="status" className="mt-2">Saving picture…</p>}
     {error && <Alert variant="danger" className="mt-2">{error}</Alert>}
