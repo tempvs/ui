@@ -67,8 +67,20 @@ export type SourceChangeProposal = {
   sourceId: string;
   proposerId: string;
   changes: Partial<Pick<LibrarySource, "name" | "description">>;
+  previous: Partial<Pick<LibrarySource, "name" | "description">>;
   baseVersion: number;
   status: "PENDING" | "APPLIED" | "REJECTED";
+  createdAt: string;
+};
+
+export type SourceChangeLogEntry = {
+  id: string;
+  sourceId: string;
+  action: "CREATED" | "PROPOSAL_APPLIED" | "PROPOSAL_REJECTED";
+  actorId: string;
+  proposerId?: string;
+  proposalId?: string;
+  changes: Record<string, { before: string | null; after: string | null }>;
   createdAt: string;
 };
 
@@ -333,6 +345,27 @@ export function applySourceProposal(
   return fetchJson<LibrarySource | ApiErrorPayload>(
     `/api/library/source/${sourceId}/proposals/${proposalId}/apply`,
     { method: "POST" },
+  );
+}
+
+export function rejectSourceProposal(
+  sourceId: string | undefined,
+  proposalId: string,
+) {
+  return fetchJson<SourceChangeProposal | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/proposals/${proposalId}/reject`,
+    { method: "POST" },
+  );
+}
+
+export function getSourceChangeLog(sourceId: string | undefined) {
+  return fetchJson<{ changes?: SourceChangeLogEntry[] | null }>(
+    `/api/library/source/${sourceId}/change-log`,
+  ).then(
+    (result) =>
+      ({ ...result, data: result.data?.changes || [] }) as ApiResponse<
+        SourceChangeLogEntry[]
+      >,
   );
 }
 

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import TextFilterInput from '../component/TextFilterInput';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
+import RefreshingImage from '../image/RefreshingImage';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
@@ -53,10 +55,11 @@ export default function EventsPage() {
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
       <TextFilterInput value={query} onChange={setQuery} placeholder="Filter events" ariaLabel="Filter events" />
       <div className="event-card-grid">{visible.map(event => <article className="event-panel event-card" key={event.id}>
-        <div className="event-period-badges">{event.periods.map(period => <PeriodBadge key={period} period={period} />)}</div>
+        <Link to={`/events/${event.id}`} className="event-card-image-link"><RefreshingImage image={{ resourceType: 'event', resourceId: event.id }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="event-card-image" alt={`${event.name} thumbnail`} /></Link>
+        <div className="event-card-content"><div className="event-period-badges">{event.periods.map(period => <PeriodBadge key={period} period={period} />)}</div>
         <h2><Link to={`/events/${event.id}`}>{event.name}</Link></h2>
         <time>{new Date(event.schedule.startsAt).toLocaleString()} · {event.schedule.timeZone}</time>
-        {event.description && <p>{event.description}</p>}
+        {event.description && <p>{event.description}</p>}</div>
       </article>)}</div>
       {loading && <p role="status">Loading events…</p>}
       {!loading && !error && visible.length === 0 && <p className="event-panel">No events found.</p>}

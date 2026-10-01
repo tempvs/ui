@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -18,12 +18,15 @@ import {
   getSourceImages,
   getSourceProfiles,
   getSourceProposals,
+  getSourceChangeLog,
   LibrarySource,
   LibrarySourceImage,
   LibrarySourceProfile,
   LibraryUserInfoPayload,
   SourceChangeProposal,
+  SourceChangeLogEntry,
   applySourceProposal,
+  rejectSourceProposal,
   patchSourceField,
   removeSource,
   replaceSourceImage,
@@ -39,6 +42,9 @@ import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import ProfileList from "../../profile/components/ProfileList";
+import { getUserProfileByUserId } from "../../profile/profileApi";
+import { Profile } from "../../profile/profileTypes";
+import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
 
 type SourceField = "name" | "description";
@@ -68,6 +74,10 @@ export default function LibrarySourcePage() {
   const [profileFilter, setProfileFilter] = useState("");
   const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
   const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
+  const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
+  const [actors, setActors] = useState<Record<string, Profile>>({});
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -110,6 +120,16 @@ export default function LibrarySourcePage() {
       if (proposalResult && !proposalResult.ok) {
         throw new Error("Unable to load source proposals.");
       }
+      const changeLogResult = await getSourceChangeLog(sourceId);
+      if (!changeLogResult.ok) throw new Error("Unable to load the source change log.");
+      const auditActors = Array.from(new Set([
+        ...(proposalResult?.data || []).map((proposal) => proposal.proposerId),
+        ...(changeLogResult.data || []).flatMap((entry) => [entry.actorId, entry.proposerId].filter((value): value is string => Boolean(value))),
+      ]));
+      const actorProfiles = await Promise.all(auditActors.map(async (userId) => {
+        try { return [userId, await getUserProfileByUserId(userId)] as const; }
+        catch { return [userId, null] as const; }
+      }));
 
       setSource(sourceResult.data);
       setDraftName(sourceResult.data?.name || "");
@@ -134,6 +154,8 @@ export default function LibrarySourcePage() {
       setImageStatuses({});
       setUserInfo(sourceResult.userInfo);
       setProposals(proposalResult?.data || []);
+      setChangeLog(changeLogResult.data || []);
+      setActors(Object.fromEntries(actorProfiles.filter((entry): entry is readonly [string, Profile] => entry[1] !== null)));
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -279,6 +301,7 @@ export default function LibrarySourcePage() {
 
   const handleApplyProposal = async (proposal: SourceChangeProposal) => {
     try {
+      setReviewBusy(proposal.id);
       setError(null);
       setNotice(null);
       const result = await applySourceProposal(sourceId, proposal.id);
@@ -288,7 +311,19 @@ export default function LibrarySourcePage() {
       await loadSource();
     } catch (applyError) {
       setError(getErrorMessage(applyError));
-    }
+    } finally { setReviewBusy(null); }
+  };
+
+  const handleRejectProposal = async (proposal: SourceChangeProposal) => {
+    try {
+      setReviewBusy(proposal.id); setError(null); setNotice(null);
+      const result = await rejectSourceProposal(sourceId, proposal.id);
+      if (!result.ok) throw new Error("Unable to reject the source proposal.");
+      setRejectTarget(null);
+      await loadSource();
+    } catch (rejectError) {
+      setError(getErrorMessage(rejectError));
+    } finally { setReviewBusy(null); }
   };
 
   const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
@@ -605,6 +640,15 @@ export default function LibrarySourcePage() {
           void handleDeleteSource();
         }}
       />
+      <ConfirmationModal
+        show={rejectTarget !== null}
+        title="Reject source proposal"
+        message="Reject this proposed source change? The source will remain unchanged."
+        confirmLabel="Reject proposal"
+        busy={reviewBusy !== null}
+        onHide={() => { if (!reviewBusy) setRejectTarget(null); }}
+        onConfirm={() => { if (rejectTarget) void handleRejectProposal(rejectTarget); }}
+      />
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {notice && (
@@ -619,7 +663,10 @@ export default function LibrarySourcePage() {
           <div className="d-flex flex-column gap-2">
             {proposals.map((proposal) => {
               const ownProposal = proposal.proposerId === userInfo?.userId;
-              const canApply = !ownProposal || canDeleteSource(userInfo);
+              const canReview = !ownProposal;
+              const proposer = actors[proposal.proposerId];
+              const proposerLabel = proposer ? buildProfileLabel(proposer) : proposal.proposerId;
+              const proposerPath = proposer ? `/profile/${proposer.alias || proposer.id}` : `/profile/user/${proposal.proposerId}`;
               const changeSummary = [
                 proposal.changes.name !== undefined
                   ? `Name: ${proposal.changes.name}`
@@ -636,22 +683,16 @@ export default function LibrarySourcePage() {
                   className="d-flex justify-content-between align-items-center gap-3 flex-wrap"
                 >
                   <div className="small">
-                    <strong>{changeSummary}</strong>
-                    <span className="text-muted ms-2">Awaiting review</span>
+                    <strong>{Object.entries(proposal.changes).map(([field, after]) => {
+                      const before = proposal.previous?.[field as SourceField];
+                      return `${field === "name" ? "Name" : "Description"}: ${before || "(empty)"} → ${after || "(empty)"}`;
+                    }).join(" · ") || changeSummary}</strong>
+                    <span className="text-muted ms-2">Proposed by <Link to={proposerPath}>{ownProposal ? "you" : proposerLabel}</Link> on {new Date(proposal.createdAt).toLocaleString()}</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline-success"
-                    disabled={!canApply}
-                    title={
-                      !canApply
-                        ? "An editor cannot apply their own proposal."
-                        : undefined
-                    }
-                    onClick={() => void handleApplyProposal(proposal)}
-                  >
-                    {canApply ? "Apply proposal" : "Awaiting another editor"}
-                  </Button>
+                  <div className="d-flex gap-2">
+                    <Button size="sm" variant="outline-success" disabled={!canReview || reviewBusy !== null} title={!canReview ? "Another editor must review your proposal." : undefined} onClick={() => void handleApplyProposal(proposal)}>{canReview ? "Approve" : "Awaiting another editor"}</Button>
+                    {canReview && <Button size="sm" variant="outline-danger" disabled={reviewBusy !== null} onClick={() => setRejectTarget(proposal)}>Reject</Button>}
+                  </div>
                 </div>
               );
             })}
@@ -796,6 +837,22 @@ export default function LibrarySourcePage() {
           </section>
         </Col>
       </Row>
+
+      <section className="stash-shell p-3 mt-4" aria-label="Source change log">
+        <div className="stash-subheading mb-2">Change log</div>
+        {changeLog.length === 0 ? <p className="text-muted mb-0">No recorded changes yet.</p> : <ol className="list-unstyled d-flex flex-column gap-3 mb-0">
+          {changeLog.map((entry) => {
+            const actor = actors[entry.actorId];
+            const actorLabel = actor ? buildProfileLabel(actor) : entry.actorId;
+            const actorPath = actor ? `/profile/${actor.alias || actor.id}` : `/profile/user/${entry.actorId}`;
+            const action = entry.action === "CREATED" ? "created this source" : entry.action === "PROPOSAL_APPLIED" ? "approved and applied a proposal" : "rejected a proposal";
+            return <li key={entry.id} className="border-bottom pb-2">
+              <div><Link to={actorPath}>{entry.actorId === userInfo?.userId ? "You" : actorLabel}</Link> {action} <time className="text-muted">{new Date(entry.createdAt).toLocaleString()}</time></div>
+              <ul className="small text-muted mt-1 mb-0">{Object.entries(entry.changes).map(([field, change]) => <li key={field}><strong>{field}</strong>: {change.before || "(empty)"} → {change.after || "(empty)"}</li>)}</ul>
+            </li>;
+          })}
+        </ol>}
+      </section>
 
       {canContribute(userInfo) && (
         <ImmediateImageUploadModal

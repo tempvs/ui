@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Container, Modal } from 'react-bootstrap';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import ConfirmationModal from '../component/ConfirmationModal';
+import { Link, useParams } from 'react-router-dom';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, fetchUserProfileByUserId } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import { PeriodBadge } from '../util/periods';
@@ -11,17 +10,15 @@ import EventPhotoPanel from './EventPhotoPanel';
 import EventApplicationActions from './EventApplicationActions';
 import EventPeoplePanels from './EventPeoplePanels';
 import ProfileList from '../profile/components/ProfileList';
-import { deleteEvent, EventApplication, EventDraft, followEvent, getEvent, getEventApplication, getEventFollowState, TempvsEvent, unfollowEvent, updateEvent } from './eventApi';
+import { EventApplication, EventDraft, followEvent, getEvent, getEventApplication, getEventFollowState, TempvsEvent, unfollowEvent, updateEvent } from './eventApi';
 import './events.css';
 
 export default function EventPage() {
   const { eventId = '' } = useParams();
-  const navigate = useNavigate();
   const [item, setItem] = useState<TempvsEvent | null>(null);
   const [owner, setOwner] = useState<Profile | null>(null);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [applyOpen, setApplyOpen] = useState(false);
@@ -48,7 +45,6 @@ export default function EventPage() {
   }), []);
 
   const canManage = Boolean(item && ownedProfiles.some(profile => String(profile.id) === item.ownerProfileId || item.adminProfileIds.includes(String(profile.id))));
-  const isOwner = Boolean(item && ownedProfiles.some(profile => String(profile.id) === item.ownerProfileId));
   const occurrence = item?.upcomingOccurrences?.[0];
   const applicantProfiles = useMemo(() => ownedProfiles.filter(profile => profile.type === 'CLUB'), [ownedProfiles]);
   useEffect(() => {
@@ -72,13 +68,6 @@ export default function EventPage() {
     catch (error) { setError((error as Error).message); }
     finally { setBusy(false); }
   };
-  const remove = async () => {
-    if (!item) return;
-    setBusy(true); setError('');
-    try { await deleteEvent(item.id); navigate('/events', { replace: true }); }
-    catch (error) { setError((error as Error).message); setBusy(false); setConfirmDelete(false); }
-  };
-
   if (error && !item) return <Container className="events-page"><Alert variant="danger">{error}</Alert><Link to="/events">All events</Link></Container>;
   if (!item) return <Container className="events-page"><p role="status">Loading event…</p></Container>;
   if (editing) return <Container className="events-page"><section className="event-panel"><h1>Edit event</h1>{error && <Alert variant="danger">{error}</Alert>}<EventForm profiles={ownedProfiles} initial={item} busy={busy} onSave={save} onCancel={() => setEditing(false)} /></section></Container>;
@@ -87,17 +76,16 @@ export default function EventPage() {
   return <Container className="events-page">
     {error && <Alert variant="danger">{error}</Alert>}
     <article className="event-panel event-detail">
-      <div className="event-heading"><div><div className="event-period-badges">{item.periods.map(period => <PeriodBadge key={period} period={period} />)}</div><h1>{item.name}</h1></div><div className="event-actions">{applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}{ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}{canManage && <><Button variant="outline-secondary" onClick={() => setEditing(true)}>Edit</Button><Button variant="outline-danger" onClick={() => setConfirmDelete(true)}>Delete</Button></>}</div></div>
+      <div className="event-heading"><div><div className="event-period-badges">{item.periods.map(period => <PeriodBadge key={period} period={period} />)}</div><h1>{item.name}</h1></div><div className="event-actions">{applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}{ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}{canManage && <><Button variant="outline-secondary" onClick={() => setEditing(true)}>Edit</Button><Link className="btn btn-outline-dark" to={`/events/${item.id}/admin`}>Admin actions</Link></>}</div></div>
       <EventPhotoPanel eventId={item.id} name={item.name} editable={canManage} />
       <p className="event-owner">Owned by <Link to={`/profile/${item.ownerProfileId}`}>{ownerName}</Link></p>
       <p className="event-description">{item.description || 'No description.'}</p>
       <h2>Schedule</h2><p>{new Date(item.schedule.startsAt).toLocaleString()} – {new Date(item.schedule.endsAt).toLocaleString()} ({item.schedule.timeZone})</p>
       {item.schedule.kind === 'RECURRING' && <p>Repeats every {item.schedule.recurrence?.interval} {item.schedule.recurrence?.frequency.toLocaleLowerCase()}.</p>}
       <h2>Occurrences</h2><ul className="event-occurrences">{(item.upcomingOccurrences || []).map(occurrence => <li key={occurrence.id}><time>{new Date(occurrence.startsAt).toLocaleString()}</time><span>{occurrence.status}</span></li>)}</ul>
-      <EventManagers event={item} owner={owner} canManageAdmins={isOwner} onChange={setItem} />
-      <EventPeoplePanels eventId={item.id} canManage={canManage} ownedProfiles={ownedProfiles} revision={peopleRevision} onChanged={() => setPeopleRevision(value => value + 1)} />
+      <EventManagers event={item} owner={owner} canManageAdmins={false} onChange={setItem} />
+      <EventPeoplePanels eventId={item.id} canManage={canManage} ownedProfiles={ownedProfiles} revision={peopleRevision} showApprovals={false} onChanged={() => setPeopleRevision(value => value + 1)} />
     </article>
-    <ConfirmationModal show={confirmDelete} title="Delete event" message="Are you sure you want to delete this event?" confirmLabel="Delete" busy={busy} onConfirm={remove} onHide={() => setConfirmDelete(false)} />
     <Modal show={applyOpen} onHide={() => { if (!busy) setApplyOpen(false); }} centered size="lg"><Modal.Header closeButton><Modal.Title>Apply for event</Modal.Title></Modal.Header><Modal.Body><p className="text-muted">A club profile can participate independently or on behalf of one of its approved clubs.</p><ProfileList profiles={applicantProfiles} renderActions={profile => occurrence ? <EventApplicationActions eventId={item.id} occurrenceId={occurrence.id} profile={profile} application={applications[String(profile.id)] || null} busy={busy} onBusy={setBusy} onError={setError} onChange={application => setApplications(current => ({ ...current, [String(profile.id)]: application }))} onChanged={() => setPeopleRevision(value => value + 1)} /> : null} /></Modal.Body></Modal>
     <Modal show={followOpen} onHide={() => { if (!busy) setFollowOpen(false); }} centered><Modal.Header closeButton><Modal.Title>Follow event</Modal.Title></Modal.Header><Modal.Body><ProfileList profiles={ownedProfiles} renderActions={profile => <Button size="sm" variant={following[String(profile.id)] ? 'outline-danger' : 'dark'} disabled={busy} onClick={() => toggleFollow(profile)}>{following[String(profile.id)] ? 'Unfollow' : 'Follow'}</Button>} /></Modal.Body></Modal>
   </Container>;
