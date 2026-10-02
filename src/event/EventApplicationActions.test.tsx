@@ -38,7 +38,7 @@ test('a rejected participant can submit a new event request', async () => {
     onChanged={jest.fn()}
   />);
 
-  expect(screen.getByText('Previous request rejected; you can apply again.')).toBeInTheDocument();
+  expect(screen.getByText('Previous participation ended; you can apply again.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Participate individually' }));
 
   await waitFor(() => expect(mockApplyForEvent).toHaveBeenCalledWith(

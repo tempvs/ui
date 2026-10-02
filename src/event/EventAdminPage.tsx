@@ -55,7 +55,7 @@ export default function EventAdminPage() {
     {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
     {loading ? <p role="status">Loading event administration…</p> : !event ? null : !canManage ? <Alert variant="danger" className="mt-3">Event administration is available only to the owner and event admins.</Alert> : <article className="event-panel event-detail mt-3">
       <div className="event-heading"><div><h1>Admin actions</h1><p className="text-muted mb-0">Review participation requests and manage {event.name}.</p></div><Link className="btn btn-outline-dark" to={`/events/${event.id}`}>View event</Link></div>
-      <EventPeoplePanels eventId={event.id} canManage ownedProfiles={ownedProfiles} revision={revision} showPeople={false} onChanged={() => setRevision(value => value + 1)} />
+      <EventPeoplePanels eventId={event.id} canManage revision={revision} showPeople={false} onChanged={() => setRevision(value => value + 1)} />
       <EventManagers event={event} owner={owner} canManageAdmins={isOwner} onChange={setEvent} />
       {isOwner && <Button variant="outline-danger" className="mt-4" disabled={busy} onClick={() => setDeleting(true)}>Delete event</Button>}
     </article>}

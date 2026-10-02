@@ -1,4 +1,4 @@
-import { addEventAdmin, applyForEvent, createEvent, decideClubApplication, decideEventApplication, deleteEvent, getClubEventParticipationRequests, getEvent, listEvents, removeEventAdmin, updateEvent } from './eventApi';
+import { addEventAdmin, applyForEvent, createEvent, decideClubApplication, decideEventApplication, deleteEvent, getClubEventParticipationRequests, getEvent, listEvents, removeEventAdmin, removeEventClubParticipation, updateEvent } from './eventApi';
 
 const draft = {
   ownerProfileId: 'profile-1',
@@ -99,4 +99,12 @@ test('club event participation requests use the club-scoped admin route', async 
   const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(response({ content: [] }));
   await getClubEventParticipationRequests('club-1');
   expect(fetchMock).toHaveBeenCalledWith('/api/events/clubs/club-1/event-participation-requests', expect.any(Object));
+});
+
+test('event admins can remove a club while keeping its profiles', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(response({ removed: 2 }));
+  await removeEventClubParticipation('event-1', 'club-1', 'KEEP_PARTICIPANTS');
+  expect(fetchMock).toHaveBeenCalledWith('/api/events/event-1/clubs/club-1/participation-removal', expect.objectContaining({
+    method: 'POST', body: JSON.stringify({ mode: 'KEEP_PARTICIPANTS' }),
+  }));
 });

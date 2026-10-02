@@ -23,6 +23,7 @@ const statusLabels: Record<EventApplication['status'], string> = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   WITHDRAWN: 'Withdrawn',
+  COMPLETED: 'Completed',
 };
 
 export default function EventApplicationActions({ eventId, occurrenceId, profile, application, busy, onBusy, onError, onChange, onChanged }: Props) {
@@ -52,14 +53,14 @@ export default function EventApplicationActions({ eventId, occurrenceId, profile
     finally { onBusy(false); }
   };
 
-  if (application && application.status !== 'REJECTED' && application.status !== 'WITHDRAWN') return <div className="event-application-actions">
+  if (application && application.status !== 'REJECTED' && application.status !== 'WITHDRAWN' && application.status !== 'COMPLETED') return <div className="event-application-actions">
     <span className="text-muted small">{statusLabels[application.status]}</span>
     <Button size="sm" variant="outline-danger" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel participation</Button>
     <ConfirmationModal show={confirmCancel} title="Cancel participation" message="Are you sure you want to cancel this event participation request?" confirmLabel="Cancel participation" busy={busy} onHide={() => { if (!busy) setConfirmCancel(false); }} onConfirm={() => void cancel()} />
   </div>;
 
   return <div className="event-application-actions">
-    {application && <span className="text-muted small">Previous request {application.status === 'REJECTED' ? 'rejected' : 'withdrawn'}; you can apply again.</span>}
+    {application && <span className="text-muted small">Previous participation ended; you can apply again.</span>}
     <Button size="sm" variant="dark" disabled={busy} onClick={() => void submit('INDIVIDUAL')}>Participate individually</Button>
     <div className="event-club-application">
       <Form.Select size="sm" aria-label="Club to participate with" value={clubId} disabled={busy || clubs.length === 0} onChange={event => setClubId(event.target.value)}>

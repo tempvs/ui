@@ -67,3 +67,19 @@ test('filters grouped participation by club or profile and preserves application
   fireEvent.change(screen.getByRole('searchbox', { name: 'Filter applications' }), { target: { value: 'missing' } });
   expect(screen.getByText('No participation records match this filter.')).toBeInTheDocument();
 });
+
+test('offers a club-level action above its participant profiles', () => {
+  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <EventParticipationCollectionPanel
+      title="Participants"
+      applications={[{ ...application, status: 'APPROVED' }]}
+      profilesById={{ 'profile-1': profile }}
+      clubsById={{ 'club-1': club }}
+      filterPlaceholder="Filter participants"
+      emptyText="No participants."
+      renderClubActions={(value, applications) => <button>Remove {value.name} ({applications.length})</button>}
+    />
+  </MemoryRouter>);
+
+  expect(screen.getByRole('button', { name: 'Remove Longbow Company (1)' })).toBeInTheDocument();
+});

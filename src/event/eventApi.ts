@@ -31,7 +31,7 @@ export type EventApplication = {
   profileId?: string;
   clubId?: string;
   applicantType: 'PROFILE' | 'CLUB';
-  status: 'CLUB_PENDING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+  status: 'CLUB_PENDING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | 'COMPLETED';
   attendees: Array<{ profileId: string; response: 'ATTENDING' | 'TENTATIVE' | 'NOT_ATTENDING' }>;
 };
 
@@ -167,16 +167,18 @@ export function getEventApplications(eventId: string) {
   return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/applications`);
 }
 
-export function getClubApprovalApplications(eventId: string) {
-  return request<{ content: EventApplication[] }>(`/${encodeURIComponent(eventId)}/club-approval-applications`);
-}
-
 export function getClubEventParticipationRequests(clubId: string | number) {
   return request<{ content: EventApplication[] }>(`/clubs/${encodeURIComponent(clubId)}/event-participation-requests`);
 }
 
-export function decideEventApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject') {
+export function decideEventApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject' | 'complete') {
   return request<EventApplication>(`/${encodeURIComponent(eventId)}/applications/${encodeURIComponent(applicationId)}/${decision}`, { method: 'POST', body: '{}' });
+}
+
+export function removeEventClubParticipation(eventId: string, clubId: string | number, mode: 'REMOVE_ALL' | 'KEEP_PARTICIPANTS') {
+  return request<{ removed: number }>(`/${encodeURIComponent(eventId)}/clubs/${encodeURIComponent(clubId)}/participation-removal`, {
+    method: 'POST', body: JSON.stringify({ mode }),
+  });
 }
 
 export function decideClubApplication(eventId: string, applicationId: string, decision: 'approve' | 'reject', reviewerProfileId: string) {

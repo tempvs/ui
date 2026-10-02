@@ -21,6 +21,7 @@ type Props = {
   error?: string;
   onRetry?: () => void;
   renderActions?: (application: EventApplication, profile: Profile) => React.ReactNode;
+  renderClubActions?: (club: Club, applications: EventApplication[]) => React.ReactNode;
 };
 
 type ClubGroup = {
@@ -42,6 +43,7 @@ export default function EventParticipationCollectionPanel({
   error = '',
   onRetry,
   renderActions,
+  renderClubActions,
 }: Props) {
   const [filter, setFilter] = useState('');
   const { individual, clubGroups } = useMemo(() => {
@@ -97,7 +99,7 @@ export default function EventParticipationCollectionPanel({
       {individual.length > 0 && renderApplicationList(individual)}
       {clubGroups.map(group => <div className="event-club-participation" key={group.clubId}>
         {group.club
-          ? <ClubThumbnailList clubs={[group.club]} />
+          ? <ClubThumbnailList clubs={[group.club]} renderActions={club => renderClubActions?.(club, group.applications)} />
           : <div className="event-club-unavailable">Club unavailable</div>}
         <div className="event-club-participant-profiles">{renderApplicationList(group.applications)}</div>
       </div>)}
