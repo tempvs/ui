@@ -9,7 +9,7 @@ import { fetchClubProfiles, getFollowingProfiles, getUserProfileByUserId } from 
 import { getGroupItems, getProfileStash } from '../profile/stashApi';
 import { Profile } from '../profile/profileTypes';
 import ActivityCard from './ActivityCard';
-import { dismissWallItem, getWall, WallActivity, WallTarget } from './wallApi';
+import { dismissWallItem, getWall, getWallThumbnails, WallActivity, WallTarget } from './wallApi';
 import './wall.css';
 
 function clubProfiles(userId: string) {
@@ -42,6 +42,7 @@ export default function WallPage({ userId }: { userId: string }) {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [targets, setTargets] = useState<WallTarget[]>([]);
   const [activities, setActivities] = useState<WallActivity[]>([]);
+  const [thumbnails, setThumbnails] = useState<Record<string, { id?: string | number | null; url?: string | null; thumbnailUrl?: string | null } | null>>({});
   const [nextToken, setNextToken] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,7 +52,21 @@ export default function WallPage({ userId }: { userId: string }) {
 
   const load = useCallback(async (activeProfileId: string, wallTargets: WallTarget[], token?: string) => {
     const page = await getWall(activeProfileId, wallTargets, token);
+    const resources = Array.from(new Map(page.content.map(activity => {
+      const resourceType = activity.targetType.toLowerCase();
+      const resourceId = activity.targetId;
+      return [`${resourceType}:${resourceId}`, { resourceType, resourceId }];
+    })).values());
+    // A missing image is a normal case. Keep the activity visible and let the
+    // shared image component render its hourglass; do not fall back to N
+    // individual image metadata calls.
+    const thumbnailPage = resources.length ? await getWallThumbnails(resources).catch(() => undefined) : undefined;
+    const nextThumbnails = Object.fromEntries((thumbnailPage?.content || []).map(entry => [
+      `${entry.resourceType}:${entry.resourceId}`,
+      entry.image,
+    ]));
     setActivities(current => token ? [...current, ...page.content] : page.content);
+    setThumbnails(current => token ? { ...current, ...nextThumbnails } : nextThumbnails);
     setNextToken(page.nextToken);
   }, []);
 
@@ -86,7 +101,7 @@ export default function WallPage({ userId }: { userId: string }) {
     <div className="wall-header"><div><h1>Your wall</h1><p>Recent updates from profiles, clubs, events, and sources that matter to your current profile.</p></div></div>
     {error && <Alert variant="danger">{error}</Alert>}
     {loading ? <div className="wall-loading"><Spinner animation="border" size="sm" /> Loading updates…</div>
-      : activities.length ? <div className="wall-list">{activities.map(item => <ActivityCard key={item.id} activity={item} onDismiss={setDismissTarget} />)}</div>
+      : activities.length ? <div className="wall-list">{activities.map(item => <ActivityCard key={item.id} activity={item} thumbnail={thumbnails[`${item.targetType.toLowerCase()}:${item.targetId}`]} onDismiss={setDismissTarget} />)}</div>
         : !error && <div className="wall-empty"><h2>No updates yet</h2><p>Follow profiles, clubs, or events and their newest activity will appear here.</p></div>}
     {nextToken && <Button variant="outline-secondary" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Loading…' : 'Load more'}</Button>}
     <ConfirmationModal show={Boolean(dismissTarget)} title="Dismiss update?" message="This update will no longer appear on the wall for this profile." onHide={() => setDismissTarget(null)} onConfirm={() => void dismiss()} confirmLabel="Dismiss" busy={dismissing} />

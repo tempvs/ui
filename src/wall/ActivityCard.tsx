@@ -6,6 +6,7 @@ import { FaTimes } from 'react-icons/fa';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import IconActionButton from '../component/IconActionButton';
 import RefreshingImage from '../image/RefreshingImage';
+import type { ImageReference } from '../image/RefreshingImage';
 import { WallActivity } from './wallApi';
 
 const CloseIcon = FaTimes as React.ComponentType<{ 'aria-hidden'?: boolean }>;
@@ -14,11 +15,10 @@ const reasonLabels: Record<string, string> = {
   CLUB_MEMBER: 'Club membership', FOLLOWED_EVENT: 'Followed event', EVENT_PARTICIPANT: 'Event participation', SOURCE_USED: 'Source in your collection',
 };
 
-export default function ActivityCard({ activity, onDismiss }: { activity: WallActivity; onDismiss: (activity: WallActivity) => void }) {
-  const resourceType = activity.targetType.toLowerCase();
+export default function ActivityCard({ activity, thumbnail, onDismiss }: { activity: WallActivity; thumbnail?: ImageReference | null; onDismiss: (activity: WallActivity) => void }) {
   return <article className="wall-activity-card">
     <Link to={activity.path} className="wall-activity-thumbnail-link" aria-label={`Open ${activity.title}`}>
-      <RefreshingImage image={{ resourceType, resourceId: activity.targetId }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="wall-activity-thumbnail" alt="" />
+      <RefreshingImage image={thumbnail || {}} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="wall-activity-thumbnail" alt="" />
     </Link>
     <div className="wall-activity-content">
       <div className="wall-activity-heading">
