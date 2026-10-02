@@ -8,6 +8,7 @@
 .notification-category { font-weight: 600; letter-spacing: .05em; }
 .notification-archive.btn { position: absolute; right: .45rem; top: .45rem; color: #6b716d; }
 .notification-empty { margin-top: 1rem; color: #6b716d; }
-.notification-nav-button { position: relative; }
+.notification-nav-button.btn { position: relative; color: #151515; }
+.notification-nav-button.btn:hover, .notification-nav-button.btn:focus { color: #151515; }
 .notification-unread-badge { position: absolute; top: -.15rem; right: -.3rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .2rem; border-radius: 1rem; background: #a83838; color: #fff; font-size: .62rem; font-weight: 700; line-height: 1.05rem; }
 @media (max-width: 700px) { .notifications-heading { align-items: flex-start; flex-direction: column; } }
