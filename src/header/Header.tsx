@@ -8,6 +8,7 @@ import LibraryButton from '../library/LibraryButton';
 import ChatButton from '../chat/ChatButton';
 import ClubButton from '../club/ClubButton';
 import EventButton from '../event/EventButton';
+import NotificationButton from '../notification/NotificationButton';
 import SearchDialog from '../search/SearchDialog';
 import LoginRegisterButton from '../auth/LoginRegisterButton';
 import LogOutButton from '../auth/LogOutButton';
@@ -193,9 +194,10 @@ class Header extends Component<Record<string, never>, HeaderState> {
                 <Link to="/clubs" className="header-inline-link"><ClubButton /></Link>
                 <Link to="/events" className="header-inline-link"><EventButton /></Link>
                 {this.state.loggedIn && (
-                  <Link to="/chat" className="header-inline-link">
-                    <ChatButton />
-                  </Link>
+                  <>
+                    <Link to="/chat" className="header-inline-link"><ChatButton /></Link>
+                    <Link to="/notifications" className="header-inline-link"><NotificationButton /></Link>
+                  </>
                 )}
                 <Link to="/library" className="header-inline-link">
                   <LibraryButton />

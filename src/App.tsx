@@ -17,6 +17,7 @@ import ClubAdminPage from './club/ClubAdminPage';
 import EventsPage from './event/EventsPage';
 import EventPage from './event/EventPage';
 import EventAdminPage from './event/EventAdminPage';
+import NotificationsPage from './notification/NotificationsPage';
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -72,6 +73,7 @@ function App() {
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
           <Route path="/events/:eventId" element={<EventPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
         </Routes>
       </BrowserRouter>
