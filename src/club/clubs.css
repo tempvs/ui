@@ -44,10 +44,9 @@
 .profile-relationship-group { display: grid; gap: .75rem; text-align: left; }
 .profile-relationship-group-title { margin: 0; color: #3d3527; font-size: 1.2rem; font-weight: 700; }
 .profile-relationship-panel { margin: 0; padding: .8rem; }
-.profile-relationship-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem) 2rem; align-items: center; gap: .65rem; }
+.profile-relationship-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem); align-items: center; gap: .65rem; }
 .profile-relationship-heading h3 { margin: 0; font-size: .9rem; line-height: 1.2; font-weight: 600; text-align: left; }
 .profile-relationship-filter { width: 100%; max-width: none; }
-.profile-relationship-actions { display: flex; width: 2rem; align-items: center; justify-content: flex-end; }
 .join-club-dialog { max-width: 680px; }
 .join-club-dialog .modal-content { height: min(32rem, calc(100dvh - 3.5rem)); }
 .join-club-dialog .modal-body { display: flex; flex-direction: column; gap: .75rem; min-height: 0; overflow: hidden; }
@@ -69,7 +68,7 @@
   .club-list-filter { max-width: none; }
   .club-panel { padding: 1rem; }
   .profile-relationship-panel { padding: .8rem; }
-  .profile-relationship-heading { grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem) 2rem; }
+  .profile-relationship-heading { grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem); }
   .club-actions { flex-wrap: wrap; }
   .club-event-request-entry { grid-template-columns: 1fr; gap: .35rem; }
   .join-club-tile { align-items: flex-start; flex-wrap: wrap; }

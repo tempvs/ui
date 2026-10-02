@@ -14,7 +14,6 @@ type Props<T> = {
   noMatchesText: string;
   error?: string;
   onRetry?: () => void;
-  actions?: React.ReactNode;
   className?: string;
 };
 
@@ -30,7 +29,6 @@ export default function ProfileRelationshipPanel<T>({
   noMatchesText,
   error = '',
   onRetry,
-  actions,
   className,
 }: Props<T>) {
   const [filter, setFilter] = useState('');
@@ -54,7 +52,6 @@ export default function ProfileRelationshipPanel<T>({
         ariaLabel={filterPlaceholder}
         className="club-list-filter profile-relationship-filter"
       />
-      <div className="profile-relationship-actions">{actions}</div>
     </div>
 
     {error && <Alert variant="danger" className="mt-3 mb-0">

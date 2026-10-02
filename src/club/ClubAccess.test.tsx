@@ -30,7 +30,7 @@ test.each(['', 'null', '<!doctype html><html>UI fallback</html>'])('invalid club
   await waitFor(() => expect(panel).toHaveClass('club-service-unavailable'));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Club profile' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Join club' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
 });
 
 test('HTML fallback greys and disables the clubs page without an error alert', async () => {
