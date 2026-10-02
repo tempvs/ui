@@ -69,14 +69,18 @@ export type SourceChangeProposal = {
   changes: Partial<Pick<LibrarySource, "name" | "description">>;
   previous: Partial<Pick<LibrarySource, "name" | "description">>;
   baseVersion: number;
-  status: "PENDING" | "APPLIED" | "REJECTED";
+  status: "PENDING" | "APPLIED" | "REJECTED" | "SUPERSEDED";
   createdAt: string;
 };
 
 export type SourceChangeLogEntry = {
   id: string;
   sourceId: string;
-  action: "CREATED" | "PROPOSAL_APPLIED" | "PROPOSAL_REJECTED";
+  action:
+    | "CREATED"
+    | "PROPOSAL_APPLIED"
+    | "PROPOSAL_REJECTED"
+    | "PROPOSAL_SUPERSEDED";
   actorId: string;
   proposerId?: string;
   proposalId?: string;

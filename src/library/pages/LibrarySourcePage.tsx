@@ -90,6 +90,7 @@ export default function LibrarySourcePage() {
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const imageSaveTimersRef = useRef<ImageRecord<number>>({});
   const fieldSaveTimersRef = useRef<Partial<Record<SourceField, number>>>({});
+  const fieldSaveInFlightRef = useRef<Partial<Record<SourceField, string>>>({});
   const replacingImageRef = useRef<LibrarySourceImage | null>(null);
 
   const loadSource = useCallback(async () => {
@@ -185,6 +186,9 @@ export default function LibrarySourcePage() {
       }));
       return;
     }
+    // A debounce can fire immediately before the control blurs. Do not submit
+    // the same field value twice in that narrow window.
+    if (fieldSaveInFlightRef.current[field] === value) return;
 
     try {
       setError(null);
@@ -194,6 +198,7 @@ export default function LibrarySourcePage() {
         [field]: "saving",
       }));
       if (!source) throw new Error("Source version is unavailable.");
+      fieldSaveInFlightRef.current[field] = value;
       const result = await patchSourceField(
         sourceId,
         field,
@@ -214,9 +219,10 @@ export default function LibrarySourcePage() {
       if (change && "source" in change && change.source) {
         setSource(change.source as LibrarySource);
       } else if (change && "proposal" in change && change.proposal) {
+        const proposal = change.proposal as SourceChangeProposal;
         setProposals((current) => [
-          ...current,
-          change.proposal as SourceChangeProposal,
+          ...current.filter((candidate) => candidate.id !== proposal.id),
+          proposal,
         ]);
         if (field === "name") setDraftName(persistedValue);
         else setDraftDescription(persistedValue);
@@ -249,6 +255,10 @@ export default function LibrarySourcePage() {
         }));
       }, 1500);
       setError(getErrorMessage(fetchError));
+    } finally {
+      if (fieldSaveInFlightRef.current[field] === value) {
+        delete fieldSaveInFlightRef.current[field];
+      }
     }
   };
 
@@ -845,7 +855,7 @@ export default function LibrarySourcePage() {
             const actor = actors[entry.actorId];
             const actorLabel = actor ? buildProfileLabel(actor) : entry.actorId;
             const actorPath = actor ? `/profile/${actor.alias || actor.id}` : `/profile/user/${entry.actorId}`;
-            const action = entry.action === "CREATED" ? "created this source" : entry.action === "PROPOSAL_APPLIED" ? "approved and applied a proposal" : "rejected a proposal";
+            const action = entry.action === "CREATED" ? "created this source" : entry.action === "PROPOSAL_APPLIED" ? "approved and applied a proposal" : entry.action === "PROPOSAL_SUPERSEDED" ? "superseded an outdated proposal" : "rejected a proposal";
             return <li key={entry.id} className="border-bottom pb-2">
               <div><Link to={actorPath}>{entry.actorId === userInfo?.userId ? "You" : actorLabel}</Link> {action} <time className="text-muted">{new Date(entry.createdAt).toLocaleString()}</time></div>
               <ul className="small text-muted mt-1 mb-0">{Object.entries(entry.changes).map(([field, change]) => <li key={field}><strong>{field}</strong>: {change.before || "(empty)"} → {change.after || "(empty)"}</li>)}</ul>
