@@ -14,6 +14,7 @@ type ProfileFollowingPanelProps = {
   followActionBusy?: boolean;
   t: MessageFormatter;
   onToggleFollow: () => void;
+  hideWhenEmpty?: boolean;
 };
 
 export default function ProfileFollowingPanel({
@@ -24,13 +25,14 @@ export default function ProfileFollowingPanel({
   followActionBusy = false,
   t,
   onToggleFollow,
+  hideWhenEmpty = false,
 }: ProfileFollowingPanelProps) {
   return (
     <>
       {canFollow && (
         <Button
           type="button"
-          className="w-100 mb-3"
+          className="w-100 mb-3 profile-follow-action"
           variant={isFollowing ? "danger" : "outline-dark"}
           onClick={onToggleFollow}
           disabled={followActionBusy}
@@ -56,6 +58,7 @@ export default function ProfileFollowingPanel({
         renderItems={visibleProfiles => <ProfileList profiles={visibleProfiles} className="club-member-list profile-club-list mb-0" />}
         emptyText={t("profile.following.empty", "No followed profiles yet.")}
         noMatchesText={t("profile.following.noMatches", "No followed profiles match this filter.")}
+        hideWhenEmpty={hideWhenEmpty && !canFollow}
       />
     </>
   );

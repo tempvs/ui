@@ -6,7 +6,7 @@ import ProfileRelationshipPanel from '../profile/components/ProfileRelationshipP
 import { Club, getFollowedClubs, isClubServiceUnavailable } from './clubApi';
 import ClubThumbnailList from './ClubThumbnailList';
 
-export default function ProfileFollowedClubsPanel({ profileId }: { profileId: Id }) {
+export default function ProfileFollowedClubsPanel({ profileId, hideWhenEmpty = false }: { profileId: Id; hideWhenEmpty?: boolean }) {
   const intl = useIntl();
   const t = (key: string, defaultMessage: string) => intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -43,5 +43,6 @@ export default function ProfileFollowedClubsPanel({ profileId }: { profileId: Id
     error={error}
     onRetry={() => setRevision(value => value + 1)}
     className={unavailable ? 'club-service-unavailable' : undefined}
+    hideWhenEmpty={hideWhenEmpty}
   />;
 }

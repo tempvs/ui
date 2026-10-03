@@ -3,7 +3,7 @@ import ProfileRelationshipPanel from '../profile/components/ProfileRelationshipP
 import EventTileList from './EventTileList';
 import { getFollowedEvents, getParticipatingEvents, TempvsEvent } from './eventApi';
 
-export default function ProfileEventsPanel({ profileId, kind }: { profileId: string; kind: 'followed' | 'participating' }) {
+export default function ProfileEventsPanel({ profileId, kind, hideWhenEmpty = false }: { profileId: string; kind: 'followed' | 'participating'; hideWhenEmpty?: boolean }) {
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -39,5 +39,6 @@ export default function ProfileEventsPanel({ profileId, kind }: { profileId: str
     noMatchesText={kind === 'followed' ? 'No followed events match this filter.' : 'No event memberships match this filter.'}
     error={error}
     onRetry={load}
+    hideWhenEmpty={hideWhenEmpty}
   />;
 }

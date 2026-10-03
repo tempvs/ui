@@ -16,6 +16,7 @@ type Props<T> = {
   onRetry?: () => void;
   className?: string;
   headerAction?: React.ReactNode;
+  hideWhenEmpty?: boolean;
 };
 
 /** Shared filtered section used for profile following and membership relationships. */
@@ -32,6 +33,7 @@ export default function ProfileRelationshipPanel<T>({
   onRetry,
   className,
   headerAction,
+  hideWhenEmpty = false,
 }: Props<T>) {
   const [filter, setFilter] = useState('');
   const visibleItems = useMemo(() => {
@@ -40,6 +42,8 @@ export default function ProfileRelationshipPanel<T>({
       ? items.filter(item => getSearchText(item).toLocaleLowerCase().includes(query))
       : items;
   }, [filter, getSearchText, items]);
+
+  if (hideWhenEmpty && (!loaded || (!error && items.length === 0))) return null;
 
   return <section
     className={['club-panel', 'profile-relationship-panel', className].filter(Boolean).join(' ')}

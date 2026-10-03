@@ -1367,14 +1367,16 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 followActionBusy={!this.state.followStateLoaded}
                 t={this.t.bind(this)}
                 onToggleFollow={this.handleToggleFollow}
+                hideWhenEmpty
               />
               {this.state.profileId && (
-                <ProfileFollowedClubsPanel profileId={this.state.profileId} />
+                <ProfileFollowedClubsPanel profileId={this.state.profileId} hideWhenEmpty />
               )}
               {this.state.profileId && (
                 <ProfileEventsPanel
                   profileId={String(this.state.profileId)}
                   kind="followed"
+                  hideWhenEmpty
                 />
               )}
             </div>
@@ -1443,10 +1445,12 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   profileId={this.state.profileId}
                   period={this.state.period}
                   editable={isEditable}
+                  hideWhenEmpty
                 />
                 <ProfileEventsPanel
                   profileId={String(this.state.profileId)}
                   kind="participating"
+                  hideWhenEmpty
                 />
               </div>
             )}
