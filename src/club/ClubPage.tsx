@@ -666,7 +666,7 @@ export default function ClubPage() {
                 <PhotoAlbumsPanel
                   targetType="club"
                   targetId={club.id}
-                  editable={club.canManage}
+                  editable={canManage}
                 />
                 <ClubMembersPanel
                   members={members}
