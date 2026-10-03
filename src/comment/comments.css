@@ -1,8 +1,8 @@
 .comment-thread { border-top: 1px solid rgba(107, 89, 61, .18); margin: 1rem 0 0 1.5rem; padding-top: .75rem; }
-.comment-entry { border-top: 1px solid rgba(107, 89, 61, .12); padding: .55rem 0; text-align: left; }
+.comment-entry { background: rgba(250, 248, 245, .78); border: 1px solid rgba(107, 89, 61, .13); border-radius: .45rem; font-size: .9rem; margin: .45rem 0 .45rem .5rem; padding: .5rem .65rem; text-align: left; }
 .comment-entry-header { align-items: center; display: flex; justify-content: space-between; min-height: 1.7rem; }
 .comment-controls, .comment-edit, .comment-composer-actions { align-items: center; display: flex; gap: .35rem; }
-.comment-content { margin: .35rem 0; white-space: pre-wrap; }
+.comment-content { margin: .3rem 0; white-space: pre-wrap; }
 .comment-edit { margin: .45rem 0; }
 .comment-composer { border-top: 1px solid rgba(107, 89, 61, .12); margin-top: .5rem; padding-top: .65rem; }
 .comment-composer-actions { justify-content: flex-end; margin-top: .4rem; }
