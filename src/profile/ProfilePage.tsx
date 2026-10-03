@@ -1,22 +1,25 @@
-import React, { Component } from 'react';
+import React, { Component } from "react";
 
-import { Container, Row, Col } from 'react-bootstrap';
-import { FaTrashAlt } from 'react-icons/fa';
-import { injectIntl } from 'react-intl';
-import { Link } from 'react-router-dom';
+import { Container, Row, Col } from "react-bootstrap";
+import { FaTrashAlt } from "react-icons/fa";
+import { injectIntl } from "react-intl";
+import { Link } from "react-router-dom";
 
 import IconActionButton from "../component/IconActionButton";
 import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
-import { PERIODS, getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
+import {
+  PERIODS,
+  getPeriodLabel as getSharedPeriodLabel,
+} from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
-import ProfileClubPanel from '../club/ProfileClubPanel';
-import ProfileFollowedClubsPanel from '../club/ProfileFollowedClubsPanel';
-import ProfileEventsPanel from '../event/ProfileEventsPanel';
+import ProfileClubPanel from "../club/ProfileClubPanel";
+import ProfileFollowedClubsPanel from "../club/ProfileFollowedClubsPanel";
+import ProfileEventsPanel from "../event/ProfileEventsPanel";
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
-import ProfileAlbumPanel from "./components/ProfileAlbumPanel";
+import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
@@ -39,7 +42,7 @@ import {
   updateProfile,
   uploadAvatar,
 } from "./profileApi";
-import { resolveCurrentOwnedProfileId } from './currentProfile';
+import { resolveCurrentOwnedProfileId } from "./currentProfile";
 import {
   Avatar,
   Id,
@@ -48,17 +51,19 @@ import {
   ProfileField,
   ProfilePageProps,
   ProfilePageState,
-} from './profileTypes';
+} from "./profileTypes";
 
 const AVATAR_MAX_DIMENSION = 1600;
 const AVATAR_TARGET_BYTES = 900 * 1024;
 const AVATAR_MIN_QUALITY = 0.55;
-const AVATAR_PANEL_WIDTH = '18rem';
+const AVATAR_PANEL_WIDTH = "18rem";
 
 const TrashIcon = FaTrashAlt as React.ComponentType;
 
 type ProfileInputChangeEvent =
-  | React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  | React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   | { target: { name: string; value: string } };
 
 class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
@@ -67,7 +72,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   private readonly clubProfilesCache = new Map<string, Profile[]>();
   private readonly pendingClubProfiles = new Map<string, Promise<Profile[]>>();
   private readonly userProfilesCache = new Map<string, Profile | null>();
-  private readonly pendingUserProfiles = new Map<string, Promise<Profile | null>>();
+  private readonly pendingUserProfiles = new Map<
+    string,
+    Promise<Profile | null>
+  >();
 
   constructor(props: ProfilePageProps) {
     super(props);
@@ -80,7 +88,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   componentDidUpdate(prevProps: ProfilePageProps) {
-    if (prevProps.id !== this.props.id || prevProps.userId !== this.props.userId) {
+    if (
+      prevProps.id !== this.props.id ||
+      prevProps.userId !== this.props.userId
+    ) {
       this.clearAutoSaveTimers();
       this.setState(this.buildInitialState(), () => {
         this.loadCurrentUserInfo();
@@ -106,13 +117,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       profileId: null,
       userId: null,
       type: null,
-      firstName: '',
-      lastName: '',
-      nickName: '',
-      profileEmail: '',
-      location: '',
-      alias: '',
-      period: '',
+      firstName: "",
+      lastName: "",
+      nickName: "",
+      profileEmail: "",
+      location: "",
+      alias: "",
+      period: "",
       message: null,
       messageVariant: null,
       clubProfiles: [],
@@ -132,9 +143,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       clubProfileDeleteError: false,
       avatarUploadStatus: null,
       avatarUploadMessage: null,
-      avatarDescriptionDraft: '',
+      avatarDescriptionDraft: "",
       avatarDescriptionStatus: null,
-      avatarDescriptionPersisted: '',
+      avatarDescriptionPersisted: "",
       persistedProfile: null,
       fieldStatuses: {},
     };
@@ -150,44 +161,47 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   loadCurrentUserInfo() {
-    fetchCurrentUserInfo(result => this.setState(result, () => {
-      if (result.currentUserId) {
-        this.fetchCurrentOwnedProfiles(result.currentUserId);
+    fetchCurrentUserInfo((result) =>
+      this.setState(result, () => {
+        if (result.currentUserId) {
+          this.fetchCurrentOwnedProfiles(result.currentUserId);
 
-        // `/profile` is the signed-in user's own profile.  Do not request it
-        // until the session has been resolved, otherwise an anonymous visitor
-        // makes an authenticated request while opening a public page.
-        if (!this.props.id && !this.props.userId) {
-          this.fetchProfile(null);
-        }
-      } else {
-        this.setState({
-          currentOwnedProfiles: [],
-          currentProfileId: null,
-          followStateLoaded: true,
-          isFollowingCurrentProfile: false,
-        });
+          // `/profile` is the signed-in user's own profile.  Do not request it
+          // until the session has been resolved, otherwise an anonymous visitor
+          // makes an authenticated request while opening a public page.
+          if (!this.props.id && !this.props.userId) {
+            this.fetchProfile(null);
+          }
+        } else {
+          this.setState({
+            currentOwnedProfiles: [],
+            currentProfileId: null,
+            followStateLoaded: true,
+            isFollowingCurrentProfile: false,
+          });
 
-        // There is no public profile represented by the bare `/profile`
-        // route.  Explicit `/profile/:id` and `/profile/user/:userId` routes
-        // are fetched below and remain available to visitors.
-        if (!this.props.id && !this.props.userId) {
-          this.setState({ loaded: true, notFound: true, createMode: false });
+          // There is no public profile represented by the bare `/profile`
+          // route.  Explicit `/profile/:id` and `/profile/user/:userId` routes
+          // are fetched below and remain available to visitors.
+          if (!this.props.id && !this.props.userId) {
+            this.setState({ loaded: true, notFound: true, createMode: false });
+          }
         }
-      }
-    }));
+      }),
+    );
   }
 
   fetchAvatar(profileId: Id) {
     fetchAvatar(profileId, {
-      onSuccess: avatar => this.renderAvatar(avatar),
-      onEmpty: () => this.setState({ avatarVisible: false, avatarLoaded: true }),
+      onSuccess: (avatar) => this.renderAvatar(avatar),
+      onEmpty: () =>
+        this.setState({ avatarVisible: false, avatarLoaded: true }),
     });
   }
 
   fetchProfile(id: string | null | undefined) {
     fetchProfileById(id, {
-      onSuccess: profile => this.renderProfile(profile),
+      onSuccess: (profile) => this.renderProfile(profile),
       onMissing: () => this.handleMissingProfile(id),
       onError: () => this.handleMissingProfile(id),
     });
@@ -196,7 +210,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   loadRequestedProfile() {
     if (this.props.userId) {
       this.loadUserProfile(this.props.userId)
-        .then(profile => profile ? this.renderProfile(profile) : this.handleMissingProfile(this.props.userId))
+        .then((profile) =>
+          profile
+            ? this.renderProfile(profile)
+            : this.handleMissingProfile(this.props.userId),
+        )
         .catch(() => this.handleMissingProfile(this.props.userId));
       return;
     }
@@ -210,22 +228,33 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   fetchClubProfiles(userId: Id | null | undefined) {
     if (!userId) {
-      this.setState({ clubProfiles: [], clubProfilesLoaded: true, clubProfilesMessage: null });
+      this.setState({
+        clubProfiles: [],
+        clubProfilesLoaded: true,
+        clubProfilesMessage: null,
+      });
       return;
     }
 
     this.setState({ clubProfilesLoaded: false, clubProfilesMessage: null });
     this.loadClubProfiles(userId)
-      .then(profiles => this.setState({
-        clubProfiles: Array.isArray(profiles) ? profiles : [],
-        clubProfilesLoaded: true,
-        clubProfilesMessage: null,
-      }))
-      .catch(() => this.setState({
-        clubProfiles: [],
-        clubProfilesLoaded: true,
-        clubProfilesMessage: this.t('profile.clubProfiles.loadFailed', 'Unable to load club profiles.'),
-      }));
+      .then((profiles) =>
+        this.setState({
+          clubProfiles: Array.isArray(profiles) ? profiles : [],
+          clubProfilesLoaded: true,
+          clubProfilesMessage: null,
+        }),
+      )
+      .catch(() =>
+        this.setState({
+          clubProfiles: [],
+          clubProfilesLoaded: true,
+          clubProfilesMessage: this.t(
+            "profile.clubProfiles.loadFailed",
+            "Unable to load club profiles.",
+          ),
+        }),
+      );
   }
 
   fetchOwnerUserProfile(userId: Id | null | undefined) {
@@ -236,8 +265,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     this.setState({ ownerUserProfileLoaded: false });
     this.loadUserProfile(userId)
-      .then(profile => this.setState({ ownerUserProfile: profile || null, ownerUserProfileLoaded: true }))
-      .catch(() => this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }));
+      .then((profile) =>
+        this.setState({
+          ownerUserProfile: profile || null,
+          ownerUserProfileLoaded: true,
+        }),
+      )
+      .catch(() =>
+        this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true }),
+      );
   }
 
   fetchCurrentOwnedProfiles(userId: Id | null | undefined) {
@@ -250,10 +286,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       this.loadUserProfile(userId).catch(() => null),
       this.loadClubProfiles(userId).catch(() => []),
     ]).then(([userProfile, clubProfiles]) => {
-      const currentOwnedProfiles = [userProfile, ...clubProfiles]
-        .filter((profile): profile is Profile => Boolean(profile && profile.id != null));
-      const currentProfileId = resolveCurrentOwnedProfileId(currentOwnedProfiles);
-      this.setState({ currentOwnedProfiles, currentProfileId }, () => this.refreshFollowState());
+      const currentOwnedProfiles = [userProfile, ...clubProfiles].filter(
+        (profile): profile is Profile => Boolean(profile && profile.id != null),
+      );
+      const currentProfileId =
+        resolveCurrentOwnedProfileId(currentOwnedProfiles);
+      this.setState({ currentOwnedProfiles, currentProfileId }, () =>
+        this.refreshFollowState(),
+      );
     });
   }
 
@@ -274,11 +314,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     const request = new Promise<Profile | null>((resolve, reject) => {
       fetchUserProfileByUserId(userId, {
-        onSuccess: profile => resolve(profile || null),
+        onSuccess: (profile) => resolve(profile || null),
         onMissing: () => resolve(null),
         onError: reject,
       });
-    }).then(profile => {
+    }).then((profile) => {
       this.userProfilesCache.set(key, profile);
       return profile;
     });
@@ -305,10 +345,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     const request = new Promise<Profile[]>((resolve, reject) => {
       fetchClubProfiles(userId, {
-        onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
+        onSuccess: (profiles) =>
+          resolve(Array.isArray(profiles) ? profiles : []),
         onError: reject,
       });
-    }).then(profiles => {
+    }).then((profiles) => {
       this.clubProfilesCache.set(key, profiles);
       return profiles;
     });
@@ -335,7 +376,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     this.setState({ followingProfilesLoaded: false });
     getFollowingProfiles(profileId)
-      .then(followingProfiles => this.setState({ followingProfiles, followingProfilesLoaded: true }))
+      .then((followingProfiles) =>
+        this.setState({ followingProfiles, followingProfilesLoaded: true }),
+      )
       .catch(() => {
         this.setState({ followingProfiles: [], followingProfilesLoaded: true });
       });
@@ -344,17 +387,36 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   refreshFollowState() {
     const targetProfileId = this.state.profileId;
     const currentProfileId = this.state.currentProfileId;
-    const currentProfile = this.state.currentOwnedProfiles.find(profile => String(profile.id) === String(currentProfileId)) || null;
+    const currentProfile =
+      this.state.currentOwnedProfiles.find(
+        (profile) => String(profile.id) === String(currentProfileId),
+      ) || null;
 
-    if (!targetProfileId || !currentProfileId || !currentProfile || currentProfileId === targetProfileId || currentProfile.userId === this.state.userId) {
-      this.setState({ followStateLoaded: true, isFollowingCurrentProfile: false });
+    if (
+      !targetProfileId ||
+      !currentProfileId ||
+      !currentProfile ||
+      currentProfileId === targetProfileId ||
+      currentProfile.userId === this.state.userId
+    ) {
+      this.setState({
+        followStateLoaded: true,
+        isFollowingCurrentProfile: false,
+      });
       return;
     }
 
     this.setState({ followStateLoaded: false });
     getFollowState(targetProfileId, currentProfileId)
-      .then(isFollowingCurrentProfile => this.setState({ isFollowingCurrentProfile, followStateLoaded: true }))
-      .catch(() => this.setState({ isFollowingCurrentProfile: false, followStateLoaded: true }));
+      .then((isFollowingCurrentProfile) =>
+        this.setState({ isFollowingCurrentProfile, followStateLoaded: true }),
+      )
+      .catch(() =>
+        this.setState({
+          isFollowingCurrentProfile: false,
+          followStateLoaded: true,
+        }),
+      );
   }
 
   handleMissingProfile(id: string | null | undefined) {
@@ -363,7 +425,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
-    this.setState({ loaded: true, notFound: true, createMode: true }, this.prefillProfileFromOAuth);
+    this.setState(
+      { loaded: true, notFound: true, createMode: true },
+      this.prefillProfileFromOAuth,
+    );
   }
 
   prefillProfileFromOAuth = () => {
@@ -372,29 +437,32 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
-    const { firstName, lastName } = this.splitName(profile?.name, profile?.email);
-    this.setState(prevState => ({
+    const { firstName, lastName } = this.splitName(
+      profile?.name,
+      profile?.email,
+    );
+    this.setState((prevState) => ({
       firstName: prevState.firstName || firstName,
       lastName: prevState.lastName || lastName,
-      profileEmail: prevState.profileEmail || profile?.email || '',
+      profileEmail: prevState.profileEmail || profile?.email || "",
     }));
   };
 
   splitName(name?: string | null, email?: string | null) {
-    const trimmedName = (name || '').trim();
+    const trimmedName = (name || "").trim();
     if (trimmedName) {
       const parts = trimmedName.split(/\s+/).filter(Boolean);
       return {
-        firstName: parts[0] || '',
-        lastName: parts.slice(1).join(' '),
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" "),
       };
     }
 
-    const localPart = (email || '').split('@')[0] || '';
+    const localPart = (email || "").split("@")[0] || "";
     const tokens = localPart.split(/[._-]+/).filter(Boolean);
     return {
-      firstName: tokens[0] || '',
-      lastName: tokens.slice(1).join(' '),
+      firstName: tokens[0] || "",
+      lastName: tokens.slice(1).join(" "),
     };
   }
 
@@ -403,17 +471,23 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return false;
     }
 
-    return this.state.currentUserId != null && this.state.currentUserId === this.state.userId;
+    return (
+      this.state.currentUserId != null &&
+      this.state.currentUserId === this.state.userId
+    );
   }
 
   handleInputChange = (event: ProfileInputChangeEvent) => {
     const { name, value } = event.target;
     const fieldName = name as ProfileField;
-    this.setState({ [fieldName]: value } as Pick<ProfilePageState, ProfileField>, () => {
-      if (this.isEditableProfile()) {
-        this.scheduleAutoSave(fieldName);
-      }
-    });
+    this.setState(
+      { [fieldName]: value } as Pick<ProfilePageState, ProfileField>,
+      () => {
+        if (this.isEditableProfile()) {
+          this.scheduleAutoSave(fieldName);
+        }
+      },
+    );
   };
 
   handleFieldBlur = (fieldName: ProfileField) => {
@@ -432,10 +506,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   scheduleAutoSave(fieldName: ProfileField) {
     this.clearFieldTimer(fieldName);
     this.clearStatusResetTimer(fieldName);
-    this.setState(prevState => ({
+    this.setState((prevState) => ({
       fieldStatuses: {
         ...prevState.fieldStatuses,
-        [fieldName]: 'pending',
+        [fieldName]: "pending",
       },
     }));
 
@@ -452,7 +526,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       profileEmail: this.state.profileEmail || null,
       location: this.state.location || null,
       alias: this.state.alias || null,
-      period: this.state.type === 'CLUB' ? (this.state.period || null) : null,
+      period: this.state.type === "CLUB" ? this.state.period || null : null,
     };
   }
 
@@ -461,25 +535,31 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       profileId: profile.id,
       userId: profile.userId ?? null,
       type: profile.type ?? null,
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      nickName: profile.nickName || '',
-      profileEmail: profile.profileEmail || '',
-      location: profile.location || '',
-      alias: profile.alias || '',
-      period: profile.period || '',
+      firstName: profile.firstName || "",
+      lastName: profile.lastName || "",
+      nickName: profile.nickName || "",
+      profileEmail: profile.profileEmail || "",
+      location: profile.location || "",
+      alias: profile.alias || "",
+      period: profile.period || "",
     };
   }
 
-  getCanonicalProfilePath(profile: { id?: Id | null; alias?: string | null } | null | undefined) {
+  getCanonicalProfilePath(
+    profile: { id?: Id | null; alias?: string | null } | null | undefined,
+  ) {
     if (!profile) {
-      return '/profile';
+      return "/profile";
     }
 
     return `/profile/${profile.alias || profile.id}`;
   }
 
-  t(id: string, defaultMessage: string, values?: Record<string, string | number | boolean | Date>) {
+  t(
+    id: string,
+    defaultMessage: string,
+    values?: Record<string, string | number | boolean | Date>,
+  ) {
     return this.props.intl.formatMessage({ id, defaultMessage }, values);
   }
 
@@ -487,13 +567,16 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     return getSharedPeriodLabel(this.props.intl, period);
   }
 
-  resetFieldStatus(fieldName: ProfileField | 'avatarDescription', delay = 1000) {
+  resetFieldStatus(
+    fieldName: ProfileField | "avatarDescription",
+    delay = 1000,
+  ) {
     this.clearStatusResetTimer(fieldName);
     this.statusResetTimers[fieldName] = setTimeout(() => {
-      if (fieldName === 'avatarDescription') {
+      if (fieldName === "avatarDescription") {
         this.setState({ avatarDescriptionStatus: null });
       } else {
-        this.setState(prevState => ({
+        this.setState((prevState) => ({
           fieldStatuses: {
             ...prevState.fieldStatuses,
             [fieldName]: null,
@@ -509,9 +592,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
-    const persistedValue = this.state.persistedProfile?.[fieldName] || '';
-    if ((this.state[fieldName] || '') === persistedValue) {
-      this.setState(prevState => ({
+    const persistedValue = this.state.persistedProfile?.[fieldName] || "";
+    if ((this.state[fieldName] || "") === persistedValue) {
+      this.setState((prevState) => ({
         fieldStatuses: {
           ...prevState.fieldStatuses,
           [fieldName]: null,
@@ -522,10 +605,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     this.clearFieldTimer(fieldName);
     this.clearStatusResetTimer(fieldName);
-    this.setState(prevState => ({
+    this.setState((prevState) => ({
       fieldStatuses: {
         ...prevState.fieldStatuses,
-        [fieldName]: 'saving',
+        [fieldName]: "saving",
       },
     }));
 
@@ -535,10 +618,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         return;
       }
 
-      const response = await updateProfile(profileId, this.buildProfilePayload());
+      const response = await updateProfile(
+        profileId,
+        this.buildProfilePayload(),
+      );
 
       if (response.status === 200) {
-        const profile = await response.json() as Profile;
+        const profile = (await response.json()) as Profile;
         this.applyProfile(profile, false, fieldName);
         this.resetFieldStatus(fieldName);
         return;
@@ -551,53 +637,80 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   handleFailedFieldSave(fieldName: ProfileField) {
-    this.setState(prevState => ({
+    this.setState((prevState) => ({
       fieldStatuses: {
         ...prevState.fieldStatuses,
-        [fieldName]: 'error',
+        [fieldName]: "error",
       },
     }));
 
     this.clearStatusResetTimer(fieldName);
     this.statusResetTimers[fieldName] = setTimeout(() => {
-      this.setState(prevState => ({
-        [fieldName]: prevState.persistedProfile?.[fieldName] || '',
-        fieldStatuses: {
-          ...prevState.fieldStatuses,
-          [fieldName]: null,
-        },
-      } as Pick<ProfilePageState, ProfileField | 'fieldStatuses'>));
+      this.setState(
+        (prevState) =>
+          ({
+            [fieldName]: prevState.persistedProfile?.[fieldName] || "",
+            fieldStatuses: {
+              ...prevState.fieldStatuses,
+              [fieldName]: null,
+            },
+          }) as Pick<ProfilePageState, ProfileField | "fieldStatuses">,
+      );
       delete this.statusResetTimers[fieldName];
     }, 1500);
   }
 
-  handleCreateProfile: React.FormEventHandler<HTMLFormElement> = event => {
+  handleCreateProfile: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     this.setState({ message: null, messageVariant: null });
 
     createUserProfile(event, {
-      200: profile => this.renderProfile(profile as Profile),
-      201: profile => this.renderProfile(profile as Profile),
-      400: error => this.setState({
-        message: this.extractCreateErrorMessage(error, this.t('profile.create.invalid', 'Unable to create profile. Check the required fields.')),
-        messageVariant: 'error',
-      }),
-      401: () => this.setState({
-        message: this.t('profile.create.signInRequired', 'You need to sign in before creating a profile.'),
-        messageVariant: 'error',
-      }),
-      409: () => this.setState({
-        message: this.t('profile.create.alreadyExists', 'User profile already exists.'),
-        messageVariant: 'error',
-      }),
-      default: error => this.setState({
-        message: this.extractCreateErrorMessage(error, this.t('profile.create.failed', 'Unable to create profile right now.')),
-        messageVariant: 'error',
-      }),
+      200: (profile) => this.renderProfile(profile as Profile),
+      201: (profile) => this.renderProfile(profile as Profile),
+      400: (error) =>
+        this.setState({
+          message: this.extractCreateErrorMessage(
+            error,
+            this.t(
+              "profile.create.invalid",
+              "Unable to create profile. Check the required fields.",
+            ),
+          ),
+          messageVariant: "error",
+        }),
+      401: () =>
+        this.setState({
+          message: this.t(
+            "profile.create.signInRequired",
+            "You need to sign in before creating a profile.",
+          ),
+          messageVariant: "error",
+        }),
+      409: () =>
+        this.setState({
+          message: this.t(
+            "profile.create.alreadyExists",
+            "User profile already exists.",
+          ),
+          messageVariant: "error",
+        }),
+      default: (error) =>
+        this.setState({
+          message: this.extractCreateErrorMessage(
+            error,
+            this.t(
+              "profile.create.failed",
+              "Unable to create profile right now.",
+            ),
+          ),
+          messageVariant: "error",
+        }),
     });
   };
 
-  handleCreateClubProfile: React.FormEventHandler<HTMLFormElement> = event => {
+  handleCreateClubProfile: React.FormEventHandler<HTMLFormElement> = (
+    event,
+  ) => {
     event.preventDefault();
     this.setState({ clubProfileCreateError: false });
 
@@ -620,7 +733,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   handleOpenClubProfile = (clubProfile: Profile) => {
     const canonicalPath = this.getCanonicalProfilePath(clubProfile);
     if (window.location.pathname !== canonicalPath) {
-      window.history.pushState(null, '', canonicalPath);
+      window.history.pushState(null, "", canonicalPath);
     }
 
     this.clearAutoSaveTimers();
@@ -646,8 +759,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       const deletingCurrentProfile = this.state.profileId === clubProfile.id;
       const ownerProfile = this.state.ownerUserProfile;
 
-      this.setState(prevState => ({
-        clubProfiles: prevState.clubProfiles.filter(profile => profile.id !== clubProfile.id),
+      this.setState((prevState) => ({
+        clubProfiles: prevState.clubProfiles.filter(
+          (profile) => profile.id !== clubProfile.id,
+        ),
         clubProfileDeleteTarget: null,
         clubProfileDeleteError: false,
       }));
@@ -683,51 +798,59 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return fallback;
     }
 
-    if (typeof error === 'string') {
+    if (typeof error === "string") {
       return error;
     }
 
     return fallback;
   }
 
-  applyProfile(profile: Profile, refreshAvatar = true, savedField: ProfileField | null = null) {
-    if (profile.type === 'USER' && profile.userId) {
+  applyProfile(
+    profile: Profile,
+    refreshAvatar = true,
+    savedField: ProfileField | null = null,
+  ) {
+    if (profile.type === "USER" && profile.userId) {
       this.userProfilesCache.set(this.profileCacheKey(profile.userId), profile);
     }
 
-    this.setState(prevState => ({
-      loaded: true,
-      notFound: false,
-      createMode: false,
-      profileId: profile.id,
-      userId: profile.userId ?? null,
-      type: profile.type ?? null,
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      nickName: profile.nickName || '',
-      profileEmail: profile.profileEmail || '',
-      location: profile.location || '',
-      alias: profile.alias || '',
-      period: profile.period || '',
-      message: null,
-      messageVariant: null,
-      persistedProfile: this.buildPersistedProfile(profile),
-      fieldStatuses: savedField
-        ? {
-            ...prevState.fieldStatuses,
-            [savedField]: 'saved',
-          }
-        : {},
-      clubProfileCreateVisible: profile.type === 'USER' ? prevState.clubProfileCreateVisible : false,
-      clubProfileCreateError: false,
-    }), () => {
-      this.fetchFollowingProfiles(profile.id);
-      this.refreshFollowState();
-    });
+    this.setState(
+      (prevState) => ({
+        loaded: true,
+        notFound: false,
+        createMode: false,
+        profileId: profile.id,
+        userId: profile.userId ?? null,
+        type: profile.type ?? null,
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        nickName: profile.nickName || "",
+        profileEmail: profile.profileEmail || "",
+        location: profile.location || "",
+        alias: profile.alias || "",
+        period: profile.period || "",
+        message: null,
+        messageVariant: null,
+        persistedProfile: this.buildPersistedProfile(profile),
+        fieldStatuses: savedField
+          ? {
+              ...prevState.fieldStatuses,
+              [savedField]: "saved",
+            }
+          : {},
+        clubProfileCreateVisible:
+          profile.type === "USER" ? prevState.clubProfileCreateVisible : false,
+        clubProfileCreateError: false,
+      }),
+      () => {
+        this.fetchFollowingProfiles(profile.id);
+        this.refreshFollowState();
+      },
+    );
 
     const canonicalPath = this.getCanonicalProfilePath(profile);
     if (window.location.pathname !== canonicalPath) {
-      window.history.replaceState(null, '', canonicalPath);
+      window.history.replaceState(null, "", canonicalPath);
     }
 
     if (refreshAvatar) {
@@ -736,7 +859,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     this.fetchClubProfiles(profile.userId);
-    if (profile.type === 'CLUB') {
+    if (profile.type === "CLUB") {
       this.fetchOwnerUserProfile(profile.userId);
     } else {
       this.setState({ ownerUserProfile: null, ownerUserProfileLoaded: true });
@@ -753,17 +876,27 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     const wasFollowing = this.state.isFollowingCurrentProfile;
-    this.setState({ followStateLoaded: false, message: null, messageVariant: null });
+    this.setState({
+      followStateLoaded: false,
+      message: null,
+      messageVariant: null,
+    });
     try {
       const response = wasFollowing
-        ? await unfollowProfile(this.state.profileId, this.state.currentProfileId)
-        : await followProfile(this.state.profileId, this.state.currentProfileId);
+        ? await unfollowProfile(
+            this.state.profileId,
+            this.state.currentProfileId,
+          )
+        : await followProfile(
+            this.state.profileId,
+            this.state.currentProfileId,
+          );
 
       // Profile follow mutations correctly return 204 No Content.  Treat any
       // successful 2xx response as success rather than waiting for a later
       // follow-state read to change the visible action.
       if (!response.ok) {
-        throw new Error('Follow request failed');
+        throw new Error("Follow request failed");
       }
 
       this.setState({
@@ -773,8 +906,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     } catch (error) {
       this.setState({
         followStateLoaded: true,
-        message: this.t('profile.follow.failed', 'Unable to update follow state right now.'),
-        messageVariant: 'error',
+        message: this.t(
+          "profile.follow.failed",
+          "Unable to update follow state right now.",
+        ),
+        messageVariant: "error",
       });
     }
   };
@@ -786,20 +922,22 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       avatarImage: null,
       avatarUrl: avatar.url,
       avatarInfo: avatar.description,
-      avatarDescriptionDraft: avatar.description || '',
-      avatarDescriptionPersisted: avatar.description || '',
+      avatarDescriptionDraft: avatar.description || "",
+      avatarDescriptionPersisted: avatar.description || "",
       avatarDescriptionStatus: null,
     });
   }
 
-  handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = async event => {
+  handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = async (
+    event,
+  ) => {
     const file = event.target.files?.[0];
     if (!file || !this.state.profileId) {
       return;
     }
 
     this.setState({
-      avatarUploadStatus: 'uploading',
+      avatarUploadStatus: "uploading",
       avatarUploadMessage: null,
     });
 
@@ -812,11 +950,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       );
 
       if (response.status !== 200) {
-        throw new Error('Upload failed');
+        throw new Error("Upload failed");
       }
 
       this.setState({
-        avatarUploadStatus: 'success',
+        avatarUploadStatus: "success",
         avatarUploadMessage: null,
         avatarVisible: false,
         avatarLoaded: false,
@@ -825,16 +963,22 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       this.fetchAvatar(this.state.profileId);
     } catch (error) {
       this.setState({
-        avatarUploadStatus: 'error',
-        avatarUploadMessage: error instanceof Error ? error.message : this.t('profile.avatar.uploadFailed', 'Unable to upload profile picture.'),
+        avatarUploadStatus: "error",
+        avatarUploadMessage:
+          error instanceof Error
+            ? error.message
+            : this.t(
+                "profile.avatar.uploadFailed",
+                "Unable to upload profile picture.",
+              ),
       });
     } finally {
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   async prepareAvatarFile(file: File): Promise<File> {
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       return file;
     }
 
@@ -843,13 +987,17 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     const image = await this.loadImage(file);
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
     if (!context) {
       return file;
     }
 
-    let { width, height } = this.getScaledDimensions(image.width, image.height, AVATAR_MAX_DIMENSION);
+    let { width, height } = this.getScaledDimensions(
+      image.width,
+      image.height,
+      AVATAR_MAX_DIMENSION,
+    );
     let quality = 0.9;
     let resizedFile = null;
 
@@ -893,7 +1041,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       };
       image.onerror = () => {
         URL.revokeObjectURL(imageUrl);
-        reject(new Error(this.t('profile.avatar.processFailed', 'Unable to process the selected image.')));
+        reject(
+          new Error(
+            this.t(
+              "profile.avatar.processFailed",
+              "Unable to process the selected image.",
+            ),
+          ),
+        );
       };
       image.src = imageUrl;
     });
@@ -917,23 +1072,38 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     };
   }
 
-  canvasToFile(canvas: HTMLCanvasElement, originalName: string, quality: number) {
+  canvasToFile(
+    canvas: HTMLCanvasElement,
+    originalName: string,
+    quality: number,
+  ) {
     return new Promise<File>((resolve, reject) => {
-      canvas.toBlob(blob => {
-        if (!blob) {
-          reject(new Error(this.t('profile.avatar.resizeFailed', 'Unable to resize the selected image.')));
-          return;
-        }
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(
+              new Error(
+                this.t(
+                  "profile.avatar.resizeFailed",
+                  "Unable to resize the selected image.",
+                ),
+              ),
+            );
+            return;
+          }
 
-        const fileName = this.replaceFileExtension(originalName, 'jpg');
-        resolve(new File([blob], fileName, { type: 'image/jpeg' }));
-      }, 'image/jpeg', quality);
+          const fileName = this.replaceFileExtension(originalName, "jpg");
+          resolve(new File([blob], fileName, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        quality,
+      );
     });
   }
 
   replaceFileExtension(fileName: string, extension: string) {
-    const normalizedName = fileName || 'avatar';
-    const lastDotIndex = normalizedName.lastIndexOf('.');
+    const normalizedName = fileName || "avatar";
+    const lastDotIndex = normalizedName.lastIndexOf(".");
     if (lastDotIndex === -1) {
       return `${normalizedName}.${extension}`;
     }
@@ -944,57 +1114,67 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   handleAvatarDescriptionChangeValue = (value: string) => {
     this.setState({
       avatarDescriptionDraft: value,
-      avatarDescriptionStatus: value === this.state.avatarDescriptionPersisted ? null : 'pending',
+      avatarDescriptionStatus:
+        value === this.state.avatarDescriptionPersisted ? null : "pending",
     });
-    this.clearFieldTimer('avatarDescription');
-    this.clearStatusResetTimer('avatarDescription');
+    this.clearFieldTimer("avatarDescription");
+    this.clearStatusResetTimer("avatarDescription");
     this.autoSaveTimers.avatarDescription = setTimeout(() => {
       this.handleAvatarDescriptionSave();
     }, 1800);
   };
 
-  handleAvatarDescriptionChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement> = event => {
+  handleAvatarDescriptionChange: React.ChangeEventHandler<
+    HTMLInputElement | HTMLTextAreaElement
+  > = (event) => {
     this.handleAvatarDescriptionChangeValue(event.target.value);
   };
 
   handleAvatarDescriptionBlur = () => {
-    this.clearFieldTimer('avatarDescription');
+    this.clearFieldTimer("avatarDescription");
     this.handleAvatarDescriptionSave();
   };
 
   handleAvatarDescriptionSave = async () => {
-    if (!this.isEditableProfile() || !this.state.avatarVisible || !this.state.profileId) {
+    if (
+      !this.isEditableProfile() ||
+      !this.state.avatarVisible ||
+      !this.state.profileId
+    ) {
       return;
     }
 
-    const draft = this.state.avatarDescriptionDraft || '';
-    const persisted = this.state.avatarDescriptionPersisted || '';
+    const draft = this.state.avatarDescriptionDraft || "";
+    const persisted = this.state.avatarDescriptionPersisted || "";
     if (draft === persisted) {
       this.setState({ avatarDescriptionStatus: null });
       return;
     }
 
-    this.setState({ avatarDescriptionStatus: 'saving' });
+    this.setState({ avatarDescriptionStatus: "saving" });
 
     try {
-      const response = await updateAvatarDescription(this.state.profileId, this.state.avatarDescriptionDraft || null);
+      const response = await updateAvatarDescription(
+        this.state.profileId,
+        this.state.avatarDescriptionDraft || null,
+      );
 
       if (response.status !== 200) {
-        throw new Error('Update failed');
+        throw new Error("Update failed");
       }
 
       this.setState({
         avatarInfo: draft,
         avatarDescriptionPersisted: draft,
-        avatarDescriptionStatus: 'saved',
+        avatarDescriptionStatus: "saved",
       });
-      this.resetFieldStatus('avatarDescription');
+      this.resetFieldStatus("avatarDescription");
     } catch (error) {
       this.setState({
-        avatarDescriptionDraft: this.state.avatarDescriptionPersisted || '',
-        avatarDescriptionStatus: 'error',
+        avatarDescriptionDraft: this.state.avatarDescriptionPersisted || "",
+        avatarDescriptionStatus: "error",
       });
-      this.resetFieldStatus('avatarDescription', 1500);
+      this.resetFieldStatus("avatarDescription", 1500);
     }
   };
 
@@ -1007,36 +1187,42 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       const response = await deleteAvatar(this.state.profileId);
 
       if (response.status !== 200) {
-        throw new Error('Delete failed');
+        throw new Error("Delete failed");
       }
 
-      this.clearFieldTimer('avatarDescription');
+      this.clearFieldTimer("avatarDescription");
       this.setState({
         avatarVisible: false,
         avatarLoaded: true,
         avatarUrl: null,
         avatarImage: null,
-        avatarInfo: '',
-        avatarDescriptionDraft: '',
-        avatarDescriptionPersisted: '',
+        avatarInfo: "",
+        avatarDescriptionDraft: "",
+        avatarDescriptionPersisted: "",
         avatarDescriptionStatus: null,
         avatarUploadMessage: null,
-        avatarUploadStatus: 'success',
+        avatarUploadStatus: "success",
       });
     } catch (error) {
       this.setState({
-        avatarUploadMessage: this.t('profile.avatar.deleteFailed', 'Unable to delete profile picture.'),
-        avatarUploadStatus: 'error',
+        avatarUploadMessage: this.t(
+          "profile.avatar.deleteFailed",
+          "Unable to delete profile picture.",
+        ),
+        avatarUploadStatus: "error",
       });
     }
   };
 
   openAvatarFilePicker = () => {
-    if (!this.isEditableProfile() || this.state.avatarUploadStatus === 'uploading') {
+    if (
+      !this.isEditableProfile() ||
+      this.state.avatarUploadStatus === "uploading"
+    ) {
       return;
     }
 
-    const input = document.getElementById('avatarUploadInput');
+    const input = document.getElementById("avatarUploadInput");
     if (input) {
       input.click();
     }
@@ -1051,7 +1237,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         profileEmail={this.state.profileEmail}
         location={this.state.location}
         alias={this.state.alias}
-        isErrorMessage={this.state.messageVariant === 'error'}
+        isErrorMessage={this.state.messageVariant === "error"}
         t={this.t.bind(this)}
         onChange={this.handleInputChange}
         onSubmit={this.handleCreateProfile}
@@ -1061,31 +1247,50 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   renderProfileView() {
     const isEditable = this.isEditableProfile();
-    const isClubProfile = this.state.type === 'CLUB';
-    const headerSubtitleDisplay = isClubProfile ? 'Club profile' : 'User profile';
-    const ownerLink = isClubProfile && this.state.ownerUserProfile
-      ? this.getCanonicalProfilePath(this.state.ownerUserProfile)
-      : null;
-    const ownerLabel = isClubProfile && this.state.ownerUserProfile
-      ? `${this.state.ownerUserProfile.firstName} ${this.state.ownerUserProfile.lastName}`.trim()
-      : null;
-    const siblingClubProfiles = this.state.clubProfiles.filter(clubProfile => clubProfile.id !== this.state.profileId);
-    const visibleClubProfiles = this.state.clubProfiles.filter(clubProfile => {
-      if (clubProfile.id === this.state.profileId && this.state.type === 'CLUB') {
-        return false;
-      }
+    const isClubProfile = this.state.type === "CLUB";
+    const headerSubtitleDisplay = isClubProfile
+      ? "Club profile"
+      : "User profile";
+    const ownerLink =
+      isClubProfile && this.state.ownerUserProfile
+        ? this.getCanonicalProfilePath(this.state.ownerUserProfile)
+        : null;
+    const ownerLabel =
+      isClubProfile && this.state.ownerUserProfile
+        ? `${this.state.ownerUserProfile.firstName} ${this.state.ownerUserProfile.lastName}`.trim()
+        : null;
+    const siblingClubProfiles = this.state.clubProfiles.filter(
+      (clubProfile) => clubProfile.id !== this.state.profileId,
+    );
+    const visibleClubProfiles = this.state.clubProfiles.filter(
+      (clubProfile) => {
+        if (
+          clubProfile.id === this.state.profileId &&
+          this.state.type === "CLUB"
+        ) {
+          return false;
+        }
 
-      return true;
-    });
-    const showEmptyClubProfiles = this.state.type === 'USER' && !visibleClubProfiles.length && !this.state.clubProfilesMessage;
-    const profileInitials = `${(this.state.firstName || '').trim()[0] || ''}${(this.state.lastName || '').trim()[0] || ''}`.toUpperCase() || 'P';
-    const currentProfile = this.state.currentOwnedProfiles.find(profile => String(profile.id) === String(this.state.currentProfileId)) || null;
+        return true;
+      },
+    );
+    const showEmptyClubProfiles =
+      this.state.type === "USER" &&
+      !visibleClubProfiles.length &&
+      !this.state.clubProfilesMessage;
+    const profileInitials =
+      `${(this.state.firstName || "").trim()[0] || ""}${(this.state.lastName || "").trim()[0] || ""}`.toUpperCase() ||
+      "P";
+    const currentProfile =
+      this.state.currentOwnedProfiles.find(
+        (profile) => String(profile.id) === String(this.state.currentProfileId),
+      ) || null;
     const canFollow = Boolean(
       this.state.currentProfileId &&
       this.state.profileId &&
       this.state.currentProfileId !== this.state.profileId &&
       currentProfile &&
-      currentProfile.userId !== this.state.userId
+      currentProfile.userId !== this.state.userId,
     );
 
     return (
@@ -1094,7 +1299,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           <Col sm={12} className="mb-3">
             <SectionHeaderBar
               title={headerSubtitleDisplay}
-              rightContent={(
+              rightContent={
                 <ProfileHeaderBreadcrumb
                   ownerLink={ownerLink}
                   ownerLabel={ownerLabel}
@@ -1106,13 +1311,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                     period: this.state.period,
                   }}
                   siblingClubProfiles={siblingClubProfiles}
-                  getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
+                  getCanonicalProfilePath={this.getCanonicalProfilePath.bind(
+                    this,
+                  )}
                   getPeriodLabel={this.getPeriodLabel.bind(this)}
-                  emptyLabel={this.t('profile.clubProfiles.noneOther', 'No other club profiles')}
+                  emptyLabel={this.t(
+                    "profile.clubProfiles.noneOther",
+                    "No other club profiles",
+                  )}
                 />
-              )}
-              backgroundColor={isClubProfile ? '#f8f4ea' : '#eef5ff'}
-              borderColor={isClubProfile ? '#d8c7a1' : '#bfd3f2'}
+              }
+              backgroundColor={isClubProfile ? "#f8f4ea" : "#eef5ff"}
+              borderColor={isClubProfile ? "#d8c7a1" : "#bfd3f2"}
             />
           </Col>
         </Row>
@@ -1138,10 +1348,16 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
-            {this.state.profileId && <ProfileAlbumPanel profileId={this.state.profileId} title={headerSubtitleDisplay} editable={isEditable} />}
+            {this.state.profileId && (
+              <PhotoAlbumsPanel
+                targetType="profile"
+                targetId={this.state.profileId}
+                editable={isEditable}
+              />
+            )}
             <div className="profile-relationship-group mt-3">
               <h2 className="profile-relationship-group-title">
-                {this.t('profile.following.group', 'Following')}
+                {this.t("profile.following.group", "Following")}
               </h2>
               <ProfileFollowingPanel
                 profiles={this.state.followingProfiles}
@@ -1152,8 +1368,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 t={this.t.bind(this)}
                 onToggleFollow={this.handleToggleFollow}
               />
-              {this.state.profileId && <ProfileFollowedClubsPanel profileId={this.state.profileId} />}
-              {this.state.profileId && <ProfileEventsPanel profileId={String(this.state.profileId)} kind="followed" />}
+              {this.state.profileId && (
+                <ProfileFollowedClubsPanel profileId={this.state.profileId} />
+              )}
+              {this.state.profileId && (
+                <ProfileEventsPanel
+                  profileId={String(this.state.profileId)}
+                  kind="followed"
+                />
+              )}
             </div>
           </Col>
           <Col lg={5} md={8}>
@@ -1167,7 +1390,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
             />
-            {this.state.profileId && <PostPanel targetType="PROFILE" targetId={this.state.profileId} canCreate={isEditable} />}
+            {this.state.profileId && (
+              <PostPanel
+                targetType="PROFILE"
+                targetId={this.state.profileId}
+                canCreate={isEditable}
+              />
+            )}
           </Col>
           <Col lg={4} md={12}>
             {isClubProfile && (
@@ -1177,13 +1406,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                     <IconActionButton
                       size="1.9rem"
                       fontSize="0.9rem"
-                      onClick={() => this.openDeleteClubProfileModal({
-                        id: this.state.profileId || '',
-                        firstName: this.state.firstName,
-                        lastName: this.state.lastName,
-                        userId: this.state.userId,
-                      })}
-                      title={this.t('profile.clubProfile.delete.title', 'Delete club profile')}
+                      onClick={() =>
+                        this.openDeleteClubProfileModal({
+                          id: this.state.profileId || "",
+                          firstName: this.state.firstName,
+                          lastName: this.state.lastName,
+                          userId: this.state.userId,
+                        })
+                      }
+                      title={this.t(
+                        "profile.clubProfile.delete.title",
+                        "Delete club profile",
+                      )}
                     >
                       <TrashIcon />
                     </IconActionButton>
@@ -1194,25 +1428,43 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                     to={`/stash/${this.state.alias || this.state.profileId}`}
                     className="btn btn-outline-secondary profile-stash-button"
                   >
-                    {this.t('profile.stash.button', 'Stash')}
+                    {this.t("profile.stash.button", "Stash")}
                   </Link>
                 </div>
               </div>
             )}
-            {isClubProfile && this.state.profileId && <div className="profile-relationship-group">
-              <h2 className="profile-relationship-group-title">
-                {this.t('profile.membership.group', 'Membership')}
-              </h2>
-              <ProfileClubPanel key={this.state.profileId} profileId={this.state.profileId} period={this.state.period} editable={isEditable} />
-              <ProfileEventsPanel profileId={String(this.state.profileId)} kind="participating" />
-            </div>}
+            {isClubProfile && this.state.profileId && (
+              <div className="profile-relationship-group">
+                <h2 className="profile-relationship-group-title">
+                  {this.t("profile.membership.group", "Membership")}
+                </h2>
+                <ProfileClubPanel
+                  key={this.state.profileId}
+                  profileId={this.state.profileId}
+                  period={this.state.period}
+                  editable={isEditable}
+                />
+                <ProfileEventsPanel
+                  profileId={String(this.state.profileId)}
+                  kind="participating"
+                />
+              </div>
+            )}
             <ClubProfilesSection
-              isUserProfile={this.state.type === 'USER'}
+              isUserProfile={this.state.type === "USER"}
               canCreate={isEditable}
-              visibleClubProfiles={this.state.type === 'USER' ? visibleClubProfiles : []}
-              showEmptyMessage={this.state.type === 'USER' ? showEmptyClubProfiles : false}
+              visibleClubProfiles={
+                this.state.type === "USER" ? visibleClubProfiles : []
+              }
+              showEmptyMessage={
+                this.state.type === "USER" ? showEmptyClubProfiles : false
+              }
               clubProfilesLoaded={this.state.clubProfilesLoaded}
-              clubProfilesMessage={this.state.type === 'USER' ? this.state.clubProfilesMessage : null}
+              clubProfilesMessage={
+                this.state.type === "USER"
+                  ? this.state.clubProfilesMessage
+                  : null
+              }
               clubProfileCreateVisible={this.state.clubProfileCreateVisible}
               clubProfileCreateError={this.state.clubProfileCreateError}
               clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
@@ -1220,8 +1472,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               periods={[...PERIODS]}
               getPeriodLabel={this.getPeriodLabel.bind(this)}
               t={this.t.bind(this)}
-              onShowCreate={() => this.setState({ clubProfileCreateVisible: true, clubProfileCreateError: false })}
-              onHideCreate={() => this.setState({ clubProfileCreateVisible: false, clubProfileCreateError: false })}
+              onShowCreate={() =>
+                this.setState({
+                  clubProfileCreateVisible: true,
+                  clubProfileCreateError: false,
+                })
+              }
+              onHideCreate={() =>
+                this.setState({
+                  clubProfileCreateVisible: false,
+                  clubProfileCreateError: false,
+                })
+              }
               onCreate={this.handleCreateClubProfile}
               onOpenProfile={this.handleOpenClubProfile}
               onOpenDelete={this.openDeleteClubProfileModal}
@@ -1235,15 +1497,19 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   renderNotFound() {
-    const isAnonymousOwnProfileRoute = !this.props.id && !this.props.userId && !this.state.currentUserId;
+    const isAnonymousOwnProfileRoute =
+      !this.props.id && !this.props.userId && !this.state.currentUserId;
 
     return (
       <Container>
         <Row>
           <Col sm={12}>
             {isAnonymousOwnProfileRoute
-              ? this.t('profile.signInRequired', 'Sign in to view your profile.')
-              : this.t('profile.notFound', 'Profile not found.')}
+              ? this.t(
+                  "profile.signInRequired",
+                  "Sign in to view your profile.",
+                )
+              : this.t("profile.notFound", "Profile not found.")}
           </Col>
         </Row>
       </Container>
@@ -1268,4 +1534,3 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 }
 
 export default injectIntl(ProfilePage);
-
