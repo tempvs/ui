@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Form } from "react-bootstrap";
 
 import StackedImageGallery, { type GalleryImage } from "../../component/StackedImageGallery";
@@ -24,8 +24,8 @@ export default function ProfileAlbumPanel({ profileId, title, editable }: { prof
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const reload = () => images(profileId).then(found => { setValue(found); setDrafts(Object.fromEntries(found.map(item => [item.id, item.description || ""]))); });
-  useEffect(() => { void reload().catch(() => undefined); }, [profileId]);
+  const reload = useCallback(() => images(profileId).then(found => { setValue(found); setDrafts(Object.fromEntries(found.map(item => [item.id, item.description || ""]))); }), [profileId]);
+  useEffect(() => { void reload().catch(() => undefined); }, [reload]);
   const openPicker = (imageId?: string) => { setReplacement(imageId); input.current?.click(); };
   const upload = async (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (!["image/jpeg", "image/png", "image/gif"].includes(file.type) || file.size > 20 * 1024 * 1024) { setError("Choose a JPEG, PNG, or GIF image up to 20 MB."); return; } setBusy(true); setError(""); try { const intent = await request<{ image: Image; upload: { method: string; url: string; headers: Record<string, string> } }>(`/profile/${encodeURIComponent(String(profileId))}/images${replacement ? `/${encodeURIComponent(replacement)}` : ""}`, { method: replacement ? "PATCH" : "POST", body: JSON.stringify({ fileName: file.name, contentType: file.type, byteSize: file.size }) }); const uploaded = await fetch(intent.upload.url, { method: intent.upload.method, headers: intent.upload.headers, body: file }); if (!uploaded.ok) throw new Error("The image could not be uploaded."); await new Promise(resolve => window.setTimeout(resolve, 400)); await reload(); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); setReplacement(undefined); } };
   const remove = async (imageId: string | number) => { setBusy(true); setError(""); try { await request<void>(`/profile/${encodeURIComponent(String(profileId))}/images/${encodeURIComponent(String(imageId))}`, { method: "DELETE" }); setValue(current => current.filter(image => image.id !== String(imageId))); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); } };
