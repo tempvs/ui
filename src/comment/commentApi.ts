@@ -12,7 +12,12 @@ export type Comment = {
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api/comment${path}`, {
+  // The edge route represents the comments collection itself; keeping the
+  // browser path singular prevents `/comments/comments` upstream paths.
+  const route = path === "/comments"
+    ? ""
+    : path.replace(/^\/comments/, "");
+  const response = await fetch(`/api/comment${route}`, {
     ...options,
     headers: { "content-type": "application/json", ...(options.headers || {}) },
   });
