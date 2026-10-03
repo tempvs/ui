@@ -286,7 +286,10 @@ export default function PhotoAlbumsPanel({
   );
 
   return (
-    <section className="photo-albums-panel mt-4" aria-label="Photo albums">
+    <section
+      className="club-panel photo-albums-panel mt-4"
+      aria-label="Photo albums"
+    >
       <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
         <h2 className="h5 mb-0">Photo albums</h2>
         <div className="d-flex align-items-center gap-2">
