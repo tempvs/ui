@@ -10,7 +10,7 @@
 .post-edit-controls { display: flex; gap: .4rem; }
 .post-entry { background: #fff; border: 1px solid rgba(107, 89, 61, .22); border-radius: .65rem; padding: 1rem; position: relative; overflow-wrap: anywhere; text-align: left; }
 .post-entry-header { min-height: 2rem; padding-right: 4.25rem; }
-.post-author { display: inline-flex; align-items: center; gap: .45rem; color: #584732; font-size: .86rem; font-weight: 600; text-decoration: none; }
+.post-author { display: inline-flex; align-items: center; gap: .45rem; color: #584732; font-size: 1.05rem; font-weight: 600; text-decoration: none; }
 .post-author .profile-thumbnail-link-image { width: 2rem; height: 2rem; flex: 0 0 2rem; border-radius: 50%; object-fit: cover; }
 .post-author-unavailable { color: #6c757d; font-size: .86rem; }
 .post-entry-controls { position: absolute; top: 1rem; right: .75rem; display: flex; gap: .35rem; }
