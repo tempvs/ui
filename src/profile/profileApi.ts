@@ -57,7 +57,10 @@ function cachedRead<T>(
   }
 
   const request = load();
-  const entry: CachedRead<T> = { request, expiresAt: now + PROFILE_READ_CACHE_MS };
+  const entry: CachedRead<T> = {
+    request,
+    expiresAt: now + PROFILE_READ_CACHE_MS,
+  };
   cache.set(key, entry);
   request.then(
     () => undefined,
@@ -117,7 +120,7 @@ export function fetchUserProfileByUserId(
   handlers: ProfileHandlers<Profile | null>,
 ): void {
   readUserProfile(userId)
-    .then(result => {
+    .then((result) => {
       if (result.missing) handlers.onMissing?.();
       else handlers.onSuccess(result.profile);
     })
@@ -129,6 +132,27 @@ export async function getUserProfileByUserId(
 ): Promise<Profile | null> {
   const result = await readUserProfile(userId);
   return result.profile;
+}
+
+/** Resolve personal profiles for a page of activity in one HTTP request. */
+export async function getUserProfilesByUserIds(
+  userIds: readonly Id[],
+): Promise<Profile[]> {
+  const ids = Array.from(new Set(userIds.map(String).filter(Boolean)));
+  if (!ids.length) return [];
+  const profiles: Profile[] = [];
+  for (let offset = 0; offset < ids.length; offset += 40) {
+    const response = await requestJson(
+      `/api/profile/user-profiles?userIds=${encodeURIComponent(ids.slice(offset, offset + 40).join(","))}`,
+    );
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    const text = await response.text();
+    const page: unknown = text ? JSON.parse(text) : [];
+    if (Array.isArray(page)) profiles.push(...(page as Profile[]));
+  }
+  return profiles;
 }
 
 function readUserProfile(userId: Id): Promise<UserProfileRead> {

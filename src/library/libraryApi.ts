@@ -35,6 +35,7 @@ export type LibrarySourceProfile = {
   name?: string | null;
   alias?: string | null;
   period?: string | null;
+  avatarUrl?: string | null;
 };
 
 export type LibrarySourceImage = {

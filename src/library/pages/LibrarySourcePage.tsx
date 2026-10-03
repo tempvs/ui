@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
@@ -42,7 +48,8 @@ import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import ProfileList from "../../profile/components/ProfileList";
-import { getUserProfileByUserId } from "../../profile/profileApi";
+import { getUserProfilesByUserIds } from "../../profile/profileApi";
+import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
@@ -77,7 +84,9 @@ export default function LibrarySourcePage() {
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [reviewBusy, setReviewBusy] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -122,22 +131,48 @@ export default function LibrarySourcePage() {
         throw new Error("Unable to load source proposals.");
       }
       const changeLogResult = await getSourceChangeLog(sourceId);
-      if (!changeLogResult.ok) throw new Error("Unable to load the source change log.");
-      const auditActors = Array.from(new Set([
-        ...(proposalResult?.data || []).map((proposal) => proposal.proposerId),
-        ...(changeLogResult.data || []).flatMap((entry) => [entry.actorId, entry.proposerId].filter((value): value is string => Boolean(value))),
-      ]));
-      const actorProfiles = await Promise.all(auditActors.map(async (userId) => {
-        try { return [userId, await getUserProfileByUserId(userId)] as const; }
-        catch { return [userId, null] as const; }
-      }));
+      if (!changeLogResult.ok)
+        throw new Error("Unable to load the source change log.");
+      const auditActors = Array.from(
+        new Set([
+          ...(proposalResult?.data || []).map(
+            (proposal) => proposal.proposerId,
+          ),
+          ...(changeLogResult.data || []).flatMap((entry) =>
+            [entry.actorId, entry.proposerId].filter((value): value is string =>
+              Boolean(value),
+            ),
+          ),
+        ]),
+      );
+      const profilesUsingSource = sourceProfilesResult?.data || [];
+      const [actorProfiles, profileThumbnails] = await Promise.all([
+        getUserProfilesByUserIds(auditActors).catch(() => []),
+        getImageThumbnails(
+          profilesUsingSource.map((profile) => ({
+            resourceType: "profile",
+            resourceId: profile.id,
+          })),
+        ).catch(() => []),
+      ]);
+      const thumbnailsByProfileId = new Map(
+        profileThumbnails.map((entry) => [entry.resourceId, entry.image]),
+      );
 
       setSource(sourceResult.data);
       setDraftName(sourceResult.data?.name || "");
       setDraftDescription(sourceResult.data?.description || "");
       setFieldStatuses({});
       setImages(Array.isArray(imageResult.data) ? imageResult.data : []);
-      setSourceProfiles(sourceProfilesResult?.data || []);
+      setSourceProfiles(
+        profilesUsingSource.map((profile) => ({
+          ...profile,
+          avatarUrl:
+            thumbnailsByProfileId.get(String(profile.id))?.thumbnailUrl ||
+            thumbnailsByProfileId.get(String(profile.id))?.url ||
+            null,
+        })),
+      );
       setProfileFilter("");
       setSourceProfilesError(
         sourceProfilesResult?.ok
@@ -156,7 +191,13 @@ export default function LibrarySourcePage() {
       setUserInfo(sourceResult.userInfo);
       setProposals(proposalResult?.data || []);
       setChangeLog(changeLogResult.data || []);
-      setActors(Object.fromEntries(actorProfiles.filter((entry): entry is readonly [string, Profile] => entry[1] !== null)));
+      setActors(
+        Object.fromEntries(
+          actorProfiles
+            .filter((profile) => Boolean(profile.userId))
+            .map((profile) => [String(profile.userId), profile]),
+        ),
+      );
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -321,19 +362,25 @@ export default function LibrarySourcePage() {
       await loadSource();
     } catch (applyError) {
       setError(getErrorMessage(applyError));
-    } finally { setReviewBusy(null); }
+    } finally {
+      setReviewBusy(null);
+    }
   };
 
   const handleRejectProposal = async (proposal: SourceChangeProposal) => {
     try {
-      setReviewBusy(proposal.id); setError(null); setNotice(null);
+      setReviewBusy(proposal.id);
+      setError(null);
+      setNotice(null);
       const result = await rejectSourceProposal(sourceId, proposal.id);
       if (!result.ok) throw new Error("Unable to reject the source proposal.");
       setRejectTarget(null);
       await loadSource();
     } catch (rejectError) {
       setError(getErrorMessage(rejectError));
-    } finally { setReviewBusy(null); }
+    } finally {
+      setReviewBusy(null);
+    }
   };
 
   const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
@@ -348,11 +395,7 @@ export default function LibrarySourcePage() {
 
     try {
       const preparedFile = await prepareImageFile(file);
-      const result = await uploadSourceImage(
-        sourceId,
-        preparedFile,
-        null,
-      );
+      const result = await uploadSourceImage(sourceId, preparedFile, null);
 
       if (!result.ok) {
         throw new Error("Unable to upload the image.");
@@ -656,8 +699,12 @@ export default function LibrarySourcePage() {
         message="Reject this proposed source change? The source will remain unchanged."
         confirmLabel="Reject proposal"
         busy={reviewBusy !== null}
-        onHide={() => { if (!reviewBusy) setRejectTarget(null); }}
-        onConfirm={() => { if (rejectTarget) void handleRejectProposal(rejectTarget); }}
+        onHide={() => {
+          if (!reviewBusy) setRejectTarget(null);
+        }}
+        onConfirm={() => {
+          if (rejectTarget) void handleRejectProposal(rejectTarget);
+        }}
       />
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
@@ -675,8 +722,12 @@ export default function LibrarySourcePage() {
               const ownProposal = proposal.proposerId === userInfo?.userId;
               const canReview = !ownProposal;
               const proposer = actors[proposal.proposerId];
-              const proposerLabel = proposer ? buildProfileLabel(proposer) : proposal.proposerId;
-              const proposerPath = proposer ? `/profile/${proposer.alias || proposer.id}` : `/profile/user/${proposal.proposerId}`;
+              const proposerLabel = proposer
+                ? buildProfileLabel(proposer)
+                : proposal.proposerId;
+              const proposerPath = proposer
+                ? `/profile/${proposer.alias || proposer.id}`
+                : `/profile/user/${proposal.proposerId}`;
               const changeSummary = [
                 proposal.changes.name !== undefined
                   ? `Name: ${proposal.changes.name}`
@@ -693,15 +744,47 @@ export default function LibrarySourcePage() {
                   className="d-flex justify-content-between align-items-center gap-3 flex-wrap"
                 >
                   <div className="small">
-                    <strong>{Object.entries(proposal.changes).map(([field, after]) => {
-                      const before = proposal.previous?.[field as SourceField];
-                      return `${field === "name" ? "Name" : "Description"}: ${before || "(empty)"} → ${after || "(empty)"}`;
-                    }).join(" · ") || changeSummary}</strong>
-                    <span className="text-muted ms-2">Proposed by <Link to={proposerPath}>{ownProposal ? "you" : proposerLabel}</Link> on {new Date(proposal.createdAt).toLocaleString()}</span>
+                    <strong>
+                      {Object.entries(proposal.changes)
+                        .map(([field, after]) => {
+                          const before =
+                            proposal.previous?.[field as SourceField];
+                          return `${field === "name" ? "Name" : "Description"}: ${before || "(empty)"} → ${after || "(empty)"}`;
+                        })
+                        .join(" · ") || changeSummary}
+                    </strong>
+                    <span className="text-muted ms-2">
+                      Proposed by{" "}
+                      <Link to={proposerPath}>
+                        {ownProposal ? "you" : proposerLabel}
+                      </Link>{" "}
+                      on {new Date(proposal.createdAt).toLocaleString()}
+                    </span>
                   </div>
                   <div className="d-flex gap-2">
-                    <Button size="sm" variant="outline-success" disabled={!canReview || reviewBusy !== null} title={!canReview ? "Another editor must review your proposal." : undefined} onClick={() => void handleApplyProposal(proposal)}>{canReview ? "Approve" : "Awaiting another editor"}</Button>
-                    {canReview && <Button size="sm" variant="outline-danger" disabled={reviewBusy !== null} onClick={() => setRejectTarget(proposal)}>Reject</Button>}
+                    <Button
+                      size="sm"
+                      variant="outline-success"
+                      disabled={!canReview || reviewBusy !== null}
+                      title={
+                        !canReview
+                          ? "Another editor must review your proposal."
+                          : undefined
+                      }
+                      onClick={() => void handleApplyProposal(proposal)}
+                    >
+                      {canReview ? "Approve" : "Awaiting another editor"}
+                    </Button>
+                    {canReview && (
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        disabled={reviewBusy !== null}
+                        onClick={() => setRejectTarget(proposal)}
+                      >
+                        Reject
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -750,7 +833,11 @@ export default function LibrarySourcePage() {
               errorTitle="Save failed"
             />
           </div>
-          <PostPanel targetType="SOURCE" targetId={source.id} canCreate={canContribute(userInfo)} />
+          <PostPanel
+            targetType="SOURCE"
+            targetId={source.id}
+            canCreate={canContribute(userInfo)}
+          />
         </Col>
         <Col md={5}>
           <section>
@@ -842,7 +929,12 @@ export default function LibrarySourcePage() {
                 )}
               {sourceProfilesLoaded &&
                 !sourceProfilesError &&
-                filteredSourceProfiles.length > 0 && <ProfileList profiles={filteredSourceProfiles} className="source-profile-list" />}
+                filteredSourceProfiles.length > 0 && (
+                  <ProfileList
+                    profiles={filteredSourceProfiles}
+                    className="source-profile-list"
+                  />
+                )}
             </section>
           </section>
         </Col>
@@ -850,18 +942,50 @@ export default function LibrarySourcePage() {
 
       <section className="stash-shell p-3 mt-4" aria-label="Source change log">
         <div className="stash-subheading mb-2">Change log</div>
-        {changeLog.length === 0 ? <p className="text-muted mb-0">No recorded changes yet.</p> : <ol className="list-unstyled d-flex flex-column gap-3 mb-0">
-          {changeLog.map((entry) => {
-            const actor = actors[entry.actorId];
-            const actorLabel = actor ? buildProfileLabel(actor) : entry.actorId;
-            const actorPath = actor ? `/profile/${actor.alias || actor.id}` : `/profile/user/${entry.actorId}`;
-            const action = entry.action === "CREATED" ? "created this source" : entry.action === "PROPOSAL_APPLIED" ? "approved and applied a proposal" : entry.action === "PROPOSAL_SUPERSEDED" ? "superseded an outdated proposal" : "rejected a proposal";
-            return <li key={entry.id} className="border-bottom pb-2">
-              <div><Link to={actorPath}>{entry.actorId === userInfo?.userId ? "You" : actorLabel}</Link> {action} <time className="text-muted">{new Date(entry.createdAt).toLocaleString()}</time></div>
-              <ul className="small text-muted mt-1 mb-0">{Object.entries(entry.changes).map(([field, change]) => <li key={field}><strong>{field}</strong>: {change.before || "(empty)"} → {change.after || "(empty)"}</li>)}</ul>
-            </li>;
-          })}
-        </ol>}
+        {changeLog.length === 0 ? (
+          <p className="text-muted mb-0">No recorded changes yet.</p>
+        ) : (
+          <ol className="list-unstyled d-flex flex-column gap-3 mb-0">
+            {changeLog.map((entry) => {
+              const actor = actors[entry.actorId];
+              const actorLabel = actor
+                ? buildProfileLabel(actor)
+                : entry.actorId;
+              const actorPath = actor
+                ? `/profile/${actor.alias || actor.id}`
+                : `/profile/user/${entry.actorId}`;
+              const action =
+                entry.action === "CREATED"
+                  ? "created this source"
+                  : entry.action === "PROPOSAL_APPLIED"
+                    ? "approved and applied a proposal"
+                    : entry.action === "PROPOSAL_SUPERSEDED"
+                      ? "superseded an outdated proposal"
+                      : "rejected a proposal";
+              return (
+                <li key={entry.id} className="border-bottom pb-2">
+                  <div>
+                    <Link to={actorPath}>
+                      {entry.actorId === userInfo?.userId ? "You" : actorLabel}
+                    </Link>{" "}
+                    {action}{" "}
+                    <time className="text-muted">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </time>
+                  </div>
+                  <ul className="small text-muted mt-1 mb-0">
+                    {Object.entries(entry.changes).map(([field, change]) => (
+                      <li key={field}>
+                        <strong>{field}</strong>: {change.before || "(empty)"} →{" "}
+                        {change.after || "(empty)"}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </section>
 
       {canContribute(userInfo) && (
