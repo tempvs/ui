@@ -46,6 +46,7 @@
 .profile-relationship-panel { margin: 0; padding: .8rem; }
 .profile-relationship-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem); align-items: center; gap: .65rem; }
 .profile-relationship-heading h3 { margin: 0; font-size: .9rem; line-height: 1.2; font-weight: 600; text-align: left; }
+.profile-relationship-heading-controls { display: flex; align-items: center; gap: .45rem; min-width: 0; }
 .profile-relationship-filter { width: 100%; max-width: none; }
 .join-club-dialog { max-width: 680px; }
 .join-club-dialog .modal-content { height: min(32rem, calc(100dvh - 3.5rem)); }

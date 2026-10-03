@@ -39,9 +39,6 @@
   min-width: 0;
   flex: 1 1 auto;
 }
-.photo-albums-filter {
-  width: min(11rem, 38vw);
-}
 .photo-album-tile span {
   color: #6c6258;
   font-size: 0.82rem;

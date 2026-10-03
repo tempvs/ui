@@ -15,6 +15,7 @@ type Props<T> = {
   error?: string;
   onRetry?: () => void;
   className?: string;
+  headerAction?: React.ReactNode;
 };
 
 /** Shared filtered section used for profile following and membership relationships. */
@@ -30,6 +31,7 @@ export default function ProfileRelationshipPanel<T>({
   error = '',
   onRetry,
   className,
+  headerAction,
 }: Props<T>) {
   const [filter, setFilter] = useState('');
   const visibleItems = useMemo(() => {
@@ -45,13 +47,16 @@ export default function ProfileRelationshipPanel<T>({
   >
     <div className="profile-relationship-heading">
       <h3>{title}</h3>
-      <TextFilterInput
-        value={filter}
-        onChange={setFilter}
-        placeholder={filterPlaceholder}
-        ariaLabel={filterPlaceholder}
-        className="club-list-filter profile-relationship-filter"
-      />
+      <div className="profile-relationship-heading-controls">
+        <TextFilterInput
+          value={filter}
+          onChange={setFilter}
+          placeholder={filterPlaceholder}
+          ariaLabel={filterPlaceholder}
+          className="club-list-filter profile-relationship-filter"
+        />
+        {headerAction}
+      </div>
     </div>
 
     {error && <Alert variant="danger" className="mt-3 mb-0">

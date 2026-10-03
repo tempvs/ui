@@ -6,9 +6,9 @@ import ConfirmationModal from "./ConfirmationModal";
 import DefaultHourglassImage from "./DefaultHourglassImage";
 import IconActionButton from "./IconActionButton";
 import StackedImageGallery, { type GalleryImage } from "./StackedImageGallery";
-import TextFilterInput from "./TextFilterInput";
 import { getImageThumbnails } from "../image/imageApi";
 import RefreshingImage from "../image/RefreshingImage";
+import ProfileRelationshipPanel from "../profile/components/ProfileRelationshipPanel";
 import "./PhotoAlbumsPanel.css";
 
 type TargetType = "profile" | "club" | "event";
@@ -51,7 +51,6 @@ export default function PhotoAlbumsPanel({
   const [covers, setCovers] = useState<Record<string, GalleryImage | null>>({});
   const [selected, setSelected] = useState<Album | null>(null);
   const [images, setImages] = useState<GalleryImage[]>([]);
-  const [filter, setFilter] = useState("");
   const [draft, setDraft] = useState({ name: "", description: "" });
   const [imageDrafts, setImageDrafts] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
@@ -281,26 +280,19 @@ export default function PhotoAlbumsPanel({
     }
   };
 
-  const visibleAlbums = albums.filter((album) =>
-    album.name.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase()),
-  );
-
   return (
-    <section
-      className="club-panel photo-albums-panel mt-4"
-      aria-label="Photo albums"
-    >
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-        <h2 className="h5 mb-0">Photo albums</h2>
-        <div className="d-flex align-items-center gap-2">
-          <TextFilterInput
-            value={filter}
-            onChange={setFilter}
-            placeholder="Filter albums"
-            ariaLabel="Filter photo albums by name"
-            className="photo-albums-filter"
-          />
-          {editable && (
+    <>
+      <ProfileRelationshipPanel
+        title="Albums"
+        items={albums}
+        loaded
+        filterPlaceholder="Filter albums"
+        getSearchText={(album) => album.name}
+        emptyText="No albums yet."
+        noMatchesText="No albums match this filter."
+        className="photo-albums-panel mt-4"
+        headerAction={
+          editable ? (
             <IconActionButton
               title="Create photo album"
               size="1.8rem"
@@ -313,42 +305,37 @@ export default function PhotoAlbumsPanel({
             >
               <PlusIcon />
             </IconActionButton>
-          )}
-        </div>
-      </div>
-      {albums.length ? (
-        <div className="photo-album-tiles">
-          {visibleAlbums.map((album) => (
-            <button
-              type="button"
-              className="photo-album-tile"
-              key={album.id}
-              onClick={() => void openAlbum(album)}
-            >
-              <div className="photo-album-tile-cover">
-                {covers[album.id]?.id !== undefined ? (
-                  <RefreshingImage
-                    image={{ ...covers[album.id], resourceType: "album", resourceId: album.id } as GalleryImage}
-                    variant="thumbnail"
-                    alt={album.name}
-                  />
-                ) : (
-                  <DefaultHourglassImage alt="No album image yet." />
-                )}
-              </div>
-              <div className="photo-album-tile-copy">
-                <strong>{album.name}</strong>
-                {album.description && <span>{album.description}</span>}
-              </div>
-            </button>
-          ))}
-          {visibleAlbums.length === 0 && (
-            <p className="text-muted mb-0">No photo albums match this filter.</p>
-          )}
-        </div>
-      ) : (
-        <p className="text-muted mb-0">No photo albums yet.</p>
-      )}
+          ) : undefined
+        }
+        renderItems={(visibleAlbums) => (
+          <div className="photo-album-tiles mt-3">
+            {visibleAlbums.map((album) => (
+              <button
+                type="button"
+                className="photo-album-tile"
+                key={album.id}
+                onClick={() => void openAlbum(album)}
+              >
+                <div className="photo-album-tile-cover">
+                  {covers[album.id]?.id !== undefined ? (
+                    <RefreshingImage
+                      image={{ ...covers[album.id], resourceType: "album", resourceId: album.id } as GalleryImage}
+                      variant="thumbnail"
+                      alt={album.name}
+                    />
+                  ) : (
+                    <DefaultHourglassImage alt="No album image yet." />
+                  )}
+                </div>
+                <div className="photo-album-tile-copy">
+                  <strong>{album.name}</strong>
+                  {album.description && <span>{album.description}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      />
 
       <Modal
         show={creating || selected !== null}
@@ -482,6 +469,6 @@ export default function PhotoAlbumsPanel({
         onHide={() => !busy && setRemoving(null)}
         onConfirm={() => void removeAlbum()}
       />
-    </section>
+    </>
   );
 }
