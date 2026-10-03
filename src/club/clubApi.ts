@@ -122,6 +122,7 @@ export type ClubImage = {
   status: 'PENDING' | 'READY' | 'REJECTED';
   url?: string;
   thumbnailUrl?: string;
+  description?: string | null;
   processing?: { status: string; errorCode?: string };
 };
 
@@ -135,6 +136,8 @@ type UploadIntentResponse = {
     expiresAt: string;
   };
 };
+
+type AlbumUploadIntent = Omit<UploadIntentResponse, 'club'>;
 
 function newIdempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.()
@@ -170,6 +173,19 @@ export async function uploadClubPhoto(id: Id, file: File): Promise<Club> {
 export const removeClubPhoto = async (id: Id) => clubValue(
   await request<unknown>(`/clubs/${id}/photo`, 'DELETE'),
 );
+export async function getClubImages(id: Id): Promise<ClubImage[]> {
+  const response = await fetch(`/api/images/club/${encodeURIComponent(String(id))}?limit=100`);
+  if (!response.ok) throw new ClubApiError(response.status, 'Unable to load club images.');
+  const page = await response.json() as { content?: ClubImage[] };
+  return page.content || [];
+}
+export async function uploadClubAlbumImage(id: Id, file: File, imageId?: string): Promise<ClubImage> {
+  const intent = await request<AlbumUploadIntent>(`/clubs/${id}/images${imageId ? `/${encodeURIComponent(imageId)}` : ''}`, imageId ? 'PATCH' : 'POST', { fileName: file.name, contentType: file.type, byteSize: file.size });
+  const upload = await fetch(intent.upload.url, { method: intent.upload.method, headers: intent.upload.headers, body: file });
+  if (!upload.ok) throw new ClubApiError(upload.status, 'The image could not be uploaded to storage.');
+  return waitForClubPhoto(id, intent.image.id);
+}
+export const deleteClubAlbumImage = (clubId: Id, imageId: string) => request<void>(`/clubs/${clubId}/images/${encodeURIComponent(imageId)}`, 'DELETE');
 export const getClub = async (id: Id) => clubValue(await request<unknown>(`/clubs/${id}`));
 export const createClub = async (draft: ClubDraft) => clubValue(await request<unknown>(
   '/clubs', 'POST', draft, undefined, { 'Idempotency-Key': newIdempotencyKey() },

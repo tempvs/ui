@@ -9,6 +9,7 @@ import ImageOverlayActionButton from "./ImageOverlayActionButton";
 import ImageDescriptionBlock from "./ImageDescriptionBlock";
 import { SaveStatus } from "./EditableFieldRow";
 import RefreshingImage from "../image/RefreshingImage";
+import CommentThread from "../comment/CommentThread";
 
 export type GalleryImage = {
   id: string | number;
@@ -228,6 +229,7 @@ export default function StackedImageGallery({
         }}
       />
       {descriptionContent(image, "border-top mt-3 px-5 py-3")}
+      <CommentThread targetType="IMAGE" targetId={image.id} />
     </div>
   );
 

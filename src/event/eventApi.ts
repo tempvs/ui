@@ -194,7 +194,7 @@ async function imageRequest<T>(path: string, options: RequestInit = {}) {
 }
 
 export async function getEventImages(eventId: string): Promise<EventImage[]> {
-  const value = await imageRequest<{ content?: EventImage[] }>(`${encodeURIComponent(eventId)}?limit=1`);
+  const value = await imageRequest<{ content?: EventImage[] }>(`${encodeURIComponent(eventId)}?limit=100`);
   return value.content || [];
 }
 
@@ -215,4 +215,8 @@ export async function uploadEventImage(eventId: string, file: File, imageId?: st
 
 export function deleteEventImage(eventId: string, imageId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}/image`, { method: 'DELETE', body: JSON.stringify({ imageId }) });
+}
+
+export function updateEventImageDescription(eventId: string, imageId: string, description: string) {
+  return request<EventImage>(`/${encodeURIComponent(eventId)}/image/description`, { method: 'PUT', body: JSON.stringify({ imageId, description }) });
 }

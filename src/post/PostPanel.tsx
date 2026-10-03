@@ -7,6 +7,7 @@ import IconActionButton from "../component/IconActionButton";
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, getUserProfileByUserId } from "../profile/profileApi";
 import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
 import ProfilePicker from "../profile/components/ProfilePicker";
+import CommentThread from "../comment/CommentThread";
 import { buildProfileLabel, resolveCurrentOwnedProfileId } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
@@ -190,6 +191,7 @@ export default function PostPanel({ targetType, targetId, canCreate = false }: P
             <div className="post-composer-actions"><div className="post-author-select"><span>Send as</span><ProfilePicker ariaLabel="Edit post author profile" value={editAuthorProfileId} options={ownedProfileOptions} disabled={busy || !ownedProfiles.length} onChange={value => setEditAuthorProfileId(value)} /></div><div className="post-edit-controls"><IconActionButton title="Save post" disabled={busy || !editDraft.trim() || !editAuthorProfileId} onClick={() => void saveEdit()} size="1.75rem" fontSize="0.72rem" borderColor="#343a40" color="#fff" backgroundColor="#343a40"><SaveIcon aria-hidden /></IconActionButton><IconActionButton title="Cancel editing" disabled={busy} onClick={() => { setEditingPostId(null); setEditDraft(""); setEditAuthorProfileId(null); }} size="1.75rem" fontSize="0.72rem"><CancelIcon aria-hidden /></IconActionButton></div></div>
           </div> : <div className="post-entry-content">{post.content}</div>}
           <div className="post-entry-meta"><time className="text-muted small" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString()}</time>{hasBeenEdited(post) && <span className="post-edited">Edited</span>}</div>
+          <CommentThread targetType="POST" targetId={post.id} />
         </article>;
       })}
     </div>}

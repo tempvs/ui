@@ -16,6 +16,7 @@ import ProfileFollowedClubsPanel from '../club/ProfileFollowedClubsPanel';
 import ProfileEventsPanel from '../event/ProfileEventsPanel';
 import CreateProfileForm from "./components/CreateProfileForm";
 import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
+import ProfileAlbumPanel from "./components/ProfileAlbumPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
@@ -1137,6 +1138,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
+            {this.state.profileId && <ProfileAlbumPanel profileId={this.state.profileId} title={headerSubtitleDisplay} editable={isEditable} />}
             <div className="profile-relationship-group mt-3">
               <h2 className="profile-relationship-group-title">
                 {this.t('profile.following.group', 'Following')}
