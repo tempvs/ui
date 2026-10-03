@@ -214,8 +214,8 @@ export default function StackedImageGallery({
       </ImageOverlayActionButton>
     ) : null;
 
-  const modalImagePanel = (image: GalleryImage, index = 0) => (
-    <div className="position-relative p-3 p-lg-4">
+  const modalImageFrame = (image: GalleryImage, index = 0) => (
+    <div className="stacked-image-gallery-modal-image-frame position-relative p-3 p-lg-4">
       {imageActions(image)}
       <RefreshingImage
         image={image}
@@ -223,14 +223,26 @@ export default function StackedImageGallery({
         className="img-fluid"
         style={{
           width: "100%",
-          maxHeight: "65vh",
+          maxHeight: "calc(65vh - 3rem)",
           objectFit: "contain",
           backgroundColor: "#f7f4ee",
         }}
       />
+    </div>
+  );
+
+  const modalImageDetails = (image: GalleryImage) => (
+    <>
       {descriptionContent(image, "border-top mt-3 px-5 py-3")}
       <CommentThread targetType="IMAGE" targetId={image.id} />
-    </div>
+    </>
+  );
+
+  const modalImagePanel = (image: GalleryImage, index = 0) => (
+    <>
+      {modalImageFrame(image, index)}
+      {modalImageDetails(image)}
+    </>
   );
 
   if (!displayImages.length) {
@@ -362,6 +374,7 @@ export default function StackedImageGallery({
           {isSingle && activeImage ? (
             modalImagePanel(activeImage)
           ) : (
+            <>
             <Carousel
               className="stacked-image-gallery-carousel"
               activeIndex={activeIndex}
@@ -370,10 +383,12 @@ export default function StackedImageGallery({
             >
               {displayImages.map((image, index) => (
                 <Carousel.Item key={image.id || index}>
-                  {modalImagePanel(image, index)}
+                  {modalImageFrame(image, index)}
                 </Carousel.Item>
               ))}
             </Carousel>
+            {activeImage && modalImageDetails(activeImage)}
+            </>
           )}
         </Modal.Body>
       </Modal>

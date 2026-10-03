@@ -122,6 +122,11 @@ export default function InlineEditableText({
     onValueChange?.(event.currentTarget.value || '');
   };
 
+  const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = event => {
+    onChange?.(event);
+    onValueChange?.(event.currentTarget.value || '');
+  };
+
   if (!editable) {
     const content = (
       <div
@@ -237,7 +242,7 @@ export default function InlineEditableText({
             readOnly
             className={controlClassName}
             value={controlValue ?? ''}
-            onChange={onChange}
+            onChange={handleInputChange}
             onBlur={handleInputBlur}
             placeholder={placeholder}
           />
@@ -254,7 +259,7 @@ export default function InlineEditableText({
           readOnly={!editing}
           className={controlClassName}
           value={controlValue ?? ''}
-          onChange={onChange}
+          onChange={handleInputChange}
           onBlur={handleInputBlur}
           placeholder={placeholder}
         />

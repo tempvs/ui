@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Form, Modal } from "react-bootstrap";
-import { FaPlus } from "react-icons/fa";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { FaPlus, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "./ConfirmationModal";
 import DefaultHourglassImage from "./DefaultHourglassImage";
 import IconActionButton from "./IconActionButton";
+import InlineEditableText from "./InlineEditableText";
 import StackedImageGallery, { type GalleryImage } from "./StackedImageGallery";
 import { getImageThumbnails } from "../image/imageApi";
 import RefreshingImage from "../image/RefreshingImage";
@@ -14,6 +15,7 @@ import "./PhotoAlbumsPanel.css";
 type TargetType = "profile" | "club" | "event";
 type Album = { id: string; name: string; description: string | null };
 const PlusIcon = FaPlus as React.ComponentType;
+const TrashIcon = FaTrash as React.ComponentType;
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api/images/albums${path}`, {
@@ -109,35 +111,55 @@ export default function PhotoAlbumsPanel({
     setError("");
   };
 
-  const saveAlbum = async () => {
+  const createAlbum = async () => {
     if (!draft.name.trim()) return;
     setBusy(true);
     setError("");
     try {
-      if (selected) {
-        const saved = await api<Album>(`/${encodeURIComponent(selected.id)}`, {
-          method: "PUT",
-          body: JSON.stringify(draft),
-        });
-        setAlbums((current) =>
-          current.map((album) => (album.id === saved.id ? saved : album)),
-        );
-        setSelected(saved);
-      } else {
-        const saved = await api<Album>("", {
-          method: "POST",
-          body: JSON.stringify({
-            targetType,
-            targetId: String(targetId),
-            ...draft,
-          }),
-        });
-        setAlbums((current) => [saved, ...current]);
-        setSelected(saved);
-        setImages([]);
-        setImageDrafts({});
-      }
+      const saved = await api<Album>("", {
+        method: "POST",
+        body: JSON.stringify({
+          targetType,
+          targetId: String(targetId),
+          ...draft,
+        }),
+      });
+      setAlbums((current) => [saved, ...current]);
+      setSelected(saved);
+      setImages([]);
+      setImageDrafts({});
       setCreating(false);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveSelectedAlbum = async () => {
+    if (!selected) return;
+    const name = draft.name.trim();
+    if (!name) {
+      setError("Album name is required.");
+      return;
+    }
+    if (
+      name === selected.name &&
+      (draft.description.trim() || null) === selected.description
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      const saved = await api<Album>(`/${encodeURIComponent(selected.id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ name, description: draft.description }),
+      });
+      setAlbums((current) =>
+        current.map((album) => (album.id === saved.id ? saved : album)),
+      );
+      setSelected(saved);
+      setDraft({ name: saved.name, description: saved.description || "" });
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -182,6 +204,7 @@ export default function PhotoAlbumsPanel({
         ),
       });
       const intent = (await intentResponse.json()) as {
+        image?: GalleryImage;
         upload?: {
           method: string;
           url: string;
@@ -191,21 +214,33 @@ export default function PhotoAlbumsPanel({
       };
       if (!intentResponse.ok || !intent.upload)
         throw new Error(intent.message || "Unable to prepare image upload.");
+      if (!intent.image)
+        throw new Error("The image upload did not return image metadata.");
+      const pendingImage: GalleryImage = {
+        ...intent.image,
+        resourceType: "album",
+        resourceId: selected.id,
+      };
+      setImages((current) =>
+        replacement
+          ? current.some((image) => String(image.id) === replacement)
+            ? current.map((image) =>
+                String(image.id) === replacement ? pendingImage : image,
+              )
+            : [pendingImage, ...current]
+          : [pendingImage, ...current],
+      );
+      setImageDrafts((current) => ({
+        ...current,
+        [String(pendingImage.id)]: pendingImage.description || "",
+      }));
+      setCovers((current) => ({ ...current, [selected.id]: pendingImage }));
       const stored = await fetch(intent.upload.url, {
         method: intent.upload.method,
         headers: intent.upload.headers,
         body: picked,
       });
       if (!stored.ok) throw new Error("The image could not be uploaded.");
-      await new Promise((resolve) => window.setTimeout(resolve, 400));
-      const found = await albumImages(selected.id);
-      setImages(found);
-      setImageDrafts(
-        Object.fromEntries(
-          found.map((image) => [String(image.id), image.description || ""]),
-        ),
-      );
-      await reload();
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -343,20 +378,30 @@ export default function PhotoAlbumsPanel({
         size="lg"
         centered
       >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {selected ? selected.name : "Create photo album"}
-          </Modal.Title>
+        <Modal.Header>
+          <Modal.Title>{selected ? "Photo album" : "Create photo album"}</Modal.Title>
+          {selected && editable && (
+            <IconActionButton
+              title="Delete album"
+              size="2rem"
+              fontSize=".8rem"
+              disabled={busy}
+              onClick={() => setRemoving(selected)}
+            >
+              <TrashIcon />
+            </IconActionButton>
+          )}
         </Modal.Header>
         <Modal.Body>
           {error && <Alert variant="danger">{error}</Alert>}
-          {editable ? (
+          {creating ? (
             <>
               <Form.Group className="mb-2">
-                <Form.Label>Album name</Form.Label>
                 <Form.Control
                   value={draft.name}
                   maxLength={120}
+                  placeholder="Album name"
+                  aria-label="Album name"
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
@@ -366,11 +411,12 @@ export default function PhotoAlbumsPanel({
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Description</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={2}
                   maxLength={2000}
+                  placeholder="Description"
+                  aria-label="Album description"
                   value={draft.description}
                   onChange={(event) =>
                     setDraft((current) => ({
@@ -380,33 +426,45 @@ export default function PhotoAlbumsPanel({
                   }
                 />
               </Form.Group>
-              <div className="d-flex justify-content-between mb-3">
-                <IconActionButton
-                  title={selected ? "Save album" : "Create album"}
-                  size="2rem"
-                  fontSize=".75rem"
+              <div className="d-flex justify-content-end mb-3">
+                <Button
+                  size="sm"
                   disabled={busy || !draft.name.trim()}
-                  onClick={() => void saveAlbum()}
+                  onClick={() => void createAlbum()}
                 >
-                  <PlusIcon />
-                </IconActionButton>
-                {selected && (
-                  <IconActionButton
-                    title="Delete album"
-                    size="2rem"
-                    fontSize=".75rem"
-                    onClick={() => setRemoving(selected)}
-                  >
-                    ×
-                  </IconActionButton>
-                )}
+                  Create album
+                </Button>
               </div>
             </>
-          ) : (
-            selected?.description && (
-              <p className="text-muted">{selected.description}</p>
-            )
-          )}
+          ) : selected ? (
+            <div className="photo-album-modal-copy mb-3">
+              <InlineEditableText
+                editable={editable && !busy}
+                value={draft.name}
+                readOnlyValue={<strong>{selected.name}</strong>}
+                onValueChange={(name) =>
+                  setDraft((current) => ({ ...current, name }))
+                }
+                onBlur={() => void saveSelectedAlbum()}
+                placeholder="Album name"
+                textClassName="photo-album-modal-name fw-bold"
+              />
+              <InlineEditableText
+                editable={editable && !busy}
+                value={draft.description}
+                readOnlyValue={selected.description || "No description"}
+                onValueChange={(description) =>
+                  setDraft((current) => ({ ...current, description }))
+                }
+                onBlur={() => void saveSelectedAlbum()}
+                placeholder="No description"
+                placeholderDisplay
+                multiline
+                multilineRows={2}
+                textClassName="photo-album-modal-description"
+              />
+            </div>
+          ) : null}
           {selected && (
             <>
               <StackedImageGallery

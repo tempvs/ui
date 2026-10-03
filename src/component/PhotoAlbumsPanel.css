@@ -44,3 +44,16 @@
   font-size: 0.82rem;
   margin-top: 0.2rem;
 }
+.photo-album-modal-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+.photo-album-modal-name .inline-editable-input,
+.photo-album-modal-name .inline-editable-custom-field {
+  font-weight: 700;
+}
+.photo-album-modal-description .inline-editable-input,
+.photo-album-modal-description .inline-editable-custom-field {
+  color: #5f574c;
+  font-size: 0.95rem;
+}

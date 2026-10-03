@@ -38,7 +38,9 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(document.querySelector('.carousel')).toBeInTheDocument();
   expect(document.querySelector('.carousel-control-next')).toBeInTheDocument();
   expect(screen.getByText('Front view of the source')).toBeInTheDocument();
-  expect(document.querySelector('.carousel .border-top')).toBeInTheDocument();
+  expect(document.querySelector('.carousel .border-top')).not.toBeInTheDocument();
+  expect(document.querySelector('.stacked-image-gallery-modal-image-frame')).toBeInTheDocument();
+  expect(document.querySelector('.modal .border-top')).toBeInTheDocument();
 });
 
 test('renders the shared hourglass placeholder when no images exist', () => {

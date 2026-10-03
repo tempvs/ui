@@ -1227,6 +1227,16 @@ button.stash-item-media-empty:disabled {
 .stacked-image-gallery-carousel .carousel-control-prev,
 .stacked-image-gallery-carousel .carousel-control-next {
   opacity: 1;
+  top: 0;
+  bottom: auto;
+  height: min(65vh, 42rem);
+}
+
+.stacked-image-gallery-modal-image-frame {
+  display: flex;
+  min-height: min(65vh, 42rem);
+  align-items: center;
+  justify-content: center;
 }
 
 .stacked-image-gallery-carousel .carousel-control-prev-icon,
