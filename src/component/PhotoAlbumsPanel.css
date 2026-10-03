@@ -1,9 +1,13 @@
 .photo-album-tiles {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
 }
 .photo-album-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
   background: #fff;
   border: 1px solid rgba(107, 89, 61, 0.2);
   border-radius: 0.55rem;
@@ -12,9 +16,9 @@
 }
 .photo-album-tile-cover {
   display: grid;
+  flex: 0 0 4.25rem;
   place-items: center;
-  height: 8rem;
-  margin-bottom: 0.5rem;
+  height: 4.25rem;
   overflow: hidden;
   border-radius: 0.35rem;
   background: #f7f4ee;
@@ -30,6 +34,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.photo-album-tile-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.photo-albums-filter {
+  width: min(11rem, 38vw);
 }
 .photo-album-tile span {
   color: #6c6258;

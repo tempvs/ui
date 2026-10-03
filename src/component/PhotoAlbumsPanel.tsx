@@ -6,6 +6,7 @@ import ConfirmationModal from "./ConfirmationModal";
 import DefaultHourglassImage from "./DefaultHourglassImage";
 import IconActionButton from "./IconActionButton";
 import StackedImageGallery, { type GalleryImage } from "./StackedImageGallery";
+import TextFilterInput from "./TextFilterInput";
 import { getImageThumbnails } from "../image/imageApi";
 import RefreshingImage from "../image/RefreshingImage";
 import "./PhotoAlbumsPanel.css";
@@ -50,6 +51,7 @@ export default function PhotoAlbumsPanel({
   const [covers, setCovers] = useState<Record<string, GalleryImage | null>>({});
   const [selected, setSelected] = useState<Album | null>(null);
   const [images, setImages] = useState<GalleryImage[]>([]);
+  const [filter, setFilter] = useState("");
   const [draft, setDraft] = useState({ name: "", description: "" });
   const [imageDrafts, setImageDrafts] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
@@ -279,28 +281,41 @@ export default function PhotoAlbumsPanel({
     }
   };
 
+  const visibleAlbums = albums.filter((album) =>
+    album.name.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase()),
+  );
+
   return (
     <section className="photo-albums-panel mt-4" aria-label="Photo albums">
-      <div className="d-flex align-items-center justify-content-between mb-2">
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
         <h2 className="h5 mb-0">Photo albums</h2>
-        {editable && (
-          <IconActionButton
-            title="Create photo album"
-            size="1.8rem"
-            fontSize=".75rem"
-            onClick={() => {
-              setDraft({ name: "", description: "" });
-              setCreating(true);
-              setError("");
-            }}
-          >
-            <PlusIcon />
-          </IconActionButton>
-        )}
+        <div className="d-flex align-items-center gap-2">
+          <TextFilterInput
+            value={filter}
+            onChange={setFilter}
+            placeholder="Filter albums"
+            ariaLabel="Filter photo albums by name"
+            className="photo-albums-filter"
+          />
+          {editable && (
+            <IconActionButton
+              title="Create photo album"
+              size="1.8rem"
+              fontSize=".75rem"
+              onClick={() => {
+                setDraft({ name: "", description: "" });
+                setCreating(true);
+                setError("");
+              }}
+            >
+              <PlusIcon />
+            </IconActionButton>
+          )}
+        </div>
       </div>
       {albums.length ? (
         <div className="photo-album-tiles">
-          {albums.map((album) => (
+          {visibleAlbums.map((album) => (
             <button
               type="button"
               className="photo-album-tile"
@@ -318,10 +333,15 @@ export default function PhotoAlbumsPanel({
                   <DefaultHourglassImage alt="No album image yet." />
                 )}
               </div>
-              <strong>{album.name}</strong>
-              {album.description && <span>{album.description}</span>}
+              <div className="photo-album-tile-copy">
+                <strong>{album.name}</strong>
+                {album.description && <span>{album.description}</span>}
+              </div>
             </button>
           ))}
+          {visibleAlbums.length === 0 && (
+            <p className="text-muted mb-0">No photo albums match this filter.</p>
+          )}
         </div>
       ) : (
         <p className="text-muted mb-0">No photo albums yet.</p>
