@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Col, Container, Modal, Row } from "react-bootstrap";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -9,12 +9,10 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import { PeriodBadge } from "../util/periods";
-import EventForm from "./EventForm";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
-import EditableDescriptionField from "../component/EditableDescriptionField";
-import EditableTextFieldRow from "../component/EditableTextFieldRow";
+import EventFieldsPanel, { EventField } from "./EventFieldsPanel";
 import EventApplicationActions from "./EventApplicationActions";
 import EventPeoplePanels from "./EventPeoplePanels";
 import ProfileList from "../profile/components/ProfileList";
@@ -37,7 +35,6 @@ export default function EventPage() {
   const [item, setItem] = useState<TempvsEvent | null>(null);
   const [owner, setOwner] = useState<Profile | null>(null);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [applyOpen, setApplyOpen] = useState(false);
@@ -47,12 +44,17 @@ export default function EventPage() {
     Record<string, EventApplication | null>
   >({});
   const [peopleRevision, setPeopleRevision] = useState(0);
+  const [fieldStatuses, setFieldStatuses] = useState<
+    Partial<Record<EventField, "saving" | "saved" | "error">>
+  >({});
+  const eventRef = useRef<TempvsEvent | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     getEvent(eventId, controller.signal)
       .then((value) => {
         setItem(value);
+        eventRef.current = value;
         fetchProfileById(value.ownerProfileId, {
           onSuccess: setOwner,
           onError: () => undefined,
@@ -160,15 +162,90 @@ export default function EventPage() {
       setBusy(false);
     }
   };
-  const save = async (draft: EventDraft) => {
-    if (!item) return;
+  const replaceItem = (value: TempvsEvent) => {
+    eventRef.current = value;
+    setItem(value);
+  };
+  const updateField = (field: EventField, value: string | string[]) => {
+    const current = eventRef.current;
+    if (!current) return;
+    const recurringSchedule = () => ({
+      ...current.schedule,
+      kind: "RECURRING" as const,
+      recurrence: current.schedule.recurrence || {
+        frequency: "WEEKLY" as const,
+        interval: 1,
+        count: 4,
+      },
+    });
+    let next = current;
+    if (field === "name") next = { ...current, name: String(value) };
+    if (field === "description") next = { ...current, description: String(value) || null };
+    if (field === "periods") next = { ...current, periods: value as EventDraft["periods"] };
+    if (field === "kind") {
+      next = String(value) === "RECURRING"
+        ? { ...current, schedule: recurringSchedule() }
+        : {
+          ...current,
+          schedule: {
+            kind: "ONE_TIME",
+            startsAt: current.schedule.startsAt,
+            endsAt: current.schedule.endsAt,
+            timeZone: current.schedule.timeZone,
+          },
+        };
+    }
+    if (field === "startsAt" || field === "endsAt") {
+      const date = new Date(String(value));
+      if (Number.isNaN(date.getTime())) return;
+      next = {
+        ...current,
+        schedule: { ...current.schedule, [field]: date.toISOString() },
+      };
+    }
+    if (field === "timeZone") {
+      next = { ...current, schedule: { ...current.schedule, timeZone: String(value) } };
+    }
+    if (field === "frequency" || field === "interval" || field === "count") {
+      const schedule = recurringSchedule();
+      next = {
+        ...current,
+        schedule: {
+          ...schedule,
+          recurrence: {
+            ...schedule.recurrence,
+            [field]: field === "frequency"
+              ? value as "DAILY" | "WEEKLY" | "MONTHLY"
+              : Math.max(1, Number(value) || 1),
+          },
+        },
+      };
+    }
+    replaceItem(next);
+  };
+  const saveField = async (field: EventField) => {
+    const current = eventRef.current;
+    if (!current) return;
+    setFieldStatuses((statuses) => ({ ...statuses, [field]: "saving" }));
     setBusy(true);
     setError("");
     try {
-      setItem(await updateEvent(item.id, draft, item.version));
-      setEditing(false);
+      const saved = await updateEvent(
+        current.id,
+        {
+          ownerProfileId: current.ownerProfileId,
+          name: current.name,
+          description: current.description,
+          periods: current.periods,
+          schedule: current.schedule,
+        },
+        current.version,
+      );
+      replaceItem(saved);
+      setFieldStatuses((statuses) => ({ ...statuses, [field]: "saved" }));
     } catch (error) {
       setError((error as Error).message);
+      setFieldStatuses((statuses) => ({ ...statuses, [field]: "error" }));
     } finally {
       setBusy(false);
     }
@@ -219,12 +296,6 @@ export default function EventPage() {
             )}
             {canManage && (
               <>
-                <Button
-                  variant="outline-secondary"
-                  onClick={() => setEditing(true)}
-                >
-                  Edit
-                </Button>
                 <Link
                   className="btn btn-outline-dark"
                   to={`/events/${item.id}/admin`}
@@ -256,38 +327,13 @@ export default function EventPage() {
           />
           </Col>
           <Col lg={6}>
-            {editing ? (
-              <section className="club-panel event-info-panel">
-                <EventForm
-                  profiles={ownedProfiles}
-                  initial={item}
-                  busy={busy}
-                  onSave={save}
-                  onCancel={() => setEditing(false)}
-                />
-              </section>
-            ) : (
-              <section className="club-panel event-info-panel">
-                <EditableTextFieldRow label="Event name" editable={false} readOnlyValue={item.name} />
-                <EditableDescriptionField editable={false} value={item.description || ""} readOnlyValue={item.description || "No description."} className="mb-2" textClassName="event-description" />
-                <EditableTextFieldRow label="Periods" editable={false} readOnlyValue={<div className="event-period-badges">{item.periods.map((period) => <PeriodBadge key={period} period={period} />)}</div>} />
-                <EditableTextFieldRow label="Status" editable={false} readOnlyValue={item.isActive ? "Active" : "Inactive"} />
-                <EditableTextFieldRow label="Schedule" editable={false} readOnlyValue={item.schedule.kind === "RECURRING" ? "Recurring" : "One-time"} />
-                <EditableTextFieldRow label="Starts" editable={false} readOnlyValue={new Date(item.schedule.startsAt).toLocaleString()} />
-                <EditableTextFieldRow label="Ends" editable={false} readOnlyValue={new Date(item.schedule.endsAt).toLocaleString()} />
-                <EditableTextFieldRow label="Time zone" editable={false} readOnlyValue={item.schedule.timeZone} />
-                {item.schedule.kind === "RECURRING" && <EditableTextFieldRow label="Repeats" editable={false} readOnlyValue={`Every ${item.schedule.recurrence?.interval} ${item.schedule.recurrence?.frequency.toLocaleLowerCase()}.`} />}
-                <h2 className="event-occurrences-heading">Occurrences</h2>
-                <ul className="event-occurrences">
-                  {(item.upcomingOccurrences || []).map((occurrence) => (
-                    <li key={occurrence.id}>
-                      <time>{new Date(occurrence.startsAt).toLocaleString()}</time>
-                      <span>{occurrence.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <EventFieldsPanel
+              event={item}
+              editable={canManage && !busy}
+              statuses={fieldStatuses}
+              onChange={updateField}
+              onBlur={saveField}
+            />
             <PostPanel
               targetType="EVENT"
               targetId={item.id}
@@ -299,7 +345,7 @@ export default function EventPage() {
               event={item}
               owner={owner}
               canManageAdmins={false}
-              onChange={setItem}
+              onChange={replaceItem}
             />
           </Col>
         </Row>

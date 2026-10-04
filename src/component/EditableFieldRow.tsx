@@ -48,13 +48,17 @@ export default function EditableFieldRow({
       className?: string;
       onBlur?: (event: React.FocusEvent<HTMLElement>) => void;
       value?: string | number | string[];
+      multiple?: boolean;
     }
     : {};
+  const isSelectControl = Boolean(controlProps.multiple) || Boolean(
+    React.isValidElement(control) && control.type && String(control.type).includes('Select'),
+  );
   const editableControl = React.isValidElement(control)
     ? React.cloneElement(control as React.ReactElement<Record<string, unknown>>, {
       autoFocus: editing,
       readOnly: !editing,
-      disabled: !editing && control.type && String(control.type).includes('Select'),
+      disabled: !editing && isSelectControl,
       value: editing ? controlProps.value : (readOnlyInputValue ?? controlProps.value),
       className: `${controlProps.className || ''} inline-editable-input ${editing ? 'inline-editable-active-input' : 'inline-editable-readonly-input'} ${!editing && placeholderDisplay ? 'description-placeholder' : ''}`.trim(),
       onBlur: (event: React.FocusEvent<HTMLElement>) => {
