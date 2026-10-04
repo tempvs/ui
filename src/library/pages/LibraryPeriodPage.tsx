@@ -64,6 +64,15 @@ export default function LibraryPeriodPage() {
     classification: "",
     type: "",
   });
+  const [draftRangeEnabled, setDraftRangeEnabled] = useState(false);
+  const [draftFrom, setDraftFrom] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [draftTo, setDraftTo] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
 
   const periodCode = (period || "").toUpperCase();
 
@@ -206,6 +215,12 @@ export default function LibraryPeriodPage() {
       const result = await createSource({
         ...draftSource,
         period: periodCode,
+        ...(draftRangeEnabled && draftFrom.year
+          ? { from: { year: Number(draftFrom.year), era: draftFrom.era } }
+          : {}),
+        ...(draftRangeEnabled && draftTo.year
+          ? { to: { year: Number(draftTo.year), era: draftTo.era } }
+          : {}),
       });
 
       if (!result.ok) {
@@ -340,9 +355,12 @@ export default function LibraryPeriodPage() {
                         setDraftSource({
                           name: "",
                           description: "",
-                          classification: "",
-                          type: "",
-                        });
+                        classification: "",
+                        type: "",
+                      });
+                        setDraftRangeEnabled(false);
+                        setDraftFrom({ year: "", era: "AD" });
+                        setDraftTo({ year: "", era: "AD" });
                         setShowCreateModal(true);
                       }}
                     />
@@ -409,6 +427,15 @@ export default function LibraryPeriodPage() {
                   }
                 />
               </Form.Group>
+              <HistoricalRangeFilter
+                enabled={draftRangeEnabled}
+                from={draftFrom}
+                to={draftTo}
+                onEnabledChange={setDraftRangeEnabled}
+                onFromChange={setDraftFrom}
+                onToChange={setDraftTo}
+                label="Set year range"
+              />
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control

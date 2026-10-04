@@ -70,8 +70,8 @@ export type SourceChangeProposal = {
   id: string;
   sourceId: string;
   proposerId: string;
-  changes: Partial<Pick<LibrarySource, "name" | "description">>;
-  previous: Partial<Pick<LibrarySource, "name" | "description">>;
+  changes: Partial<Pick<LibrarySource, "name" | "description" | "from" | "to">>;
+  previous: Partial<Pick<LibrarySource, "name" | "description" | "from" | "to">>;
   baseVersion: number;
   status: "PENDING" | "APPLIED" | "REJECTED" | "SUPERSEDED";
   createdAt: string;
@@ -327,6 +327,25 @@ export async function patchSourceField(
     body: JSON.stringify({ [field]: value }),
   });
 
+  return parseResponse<
+    | { source?: LibrarySource; proposal?: SourceChangeProposal }
+    | ApiErrorPayload
+  >(response);
+}
+
+export async function patchSourceRange(
+  sourceId: string | undefined,
+  range: { from: HistoricalYear | null; to: HistoricalYear | null },
+  version: number,
+) {
+  const response = await fetch(`/api/library/source/${sourceId}/range`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "If-Match": `"${version}"`,
+    },
+    body: JSON.stringify(range),
+  });
   return parseResponse<
     | { source?: LibrarySource; proposal?: SourceChangeProposal }
     | ApiErrorPayload

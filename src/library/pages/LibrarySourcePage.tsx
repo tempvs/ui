@@ -18,6 +18,9 @@ import ImmediateImageUploadModal from "../../component/ImmediateImageUploadModal
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
+import HistoricalRangeFilter, {
+  type HistoricalYearInput,
+} from "../../component/HistoricalRangeFilter";
 import {
   deleteSourceImage,
   getSource,
@@ -35,6 +38,7 @@ import {
   applySourceProposal,
   rejectSourceProposal,
   patchSourceField,
+  patchSourceRange,
   removeSource,
   replaceSourceImage,
   updateSourceImageDescription,
@@ -55,7 +59,7 @@ import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
 
-type SourceField = "name" | "description";
+type SourceField = "name" | "description" | "from" | "to";
 
 type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
 
@@ -92,6 +96,16 @@ export default function LibrarySourcePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [rangeTo, setRangeTo] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [savingRange, setSavingRange] = useState(false);
   const [fieldStatuses, setFieldStatuses] = useState<SourceFieldStatuses>({});
   const [imageDrafts, setImageDrafts] = useState<ImageRecord<string>>({});
   const [imageStatuses, setImageStatuses] = useState<ImageRecord<SaveStatus>>(
@@ -124,6 +138,15 @@ export default function LibrarySourcePage() {
       setSource(sourceResult.data);
       setDraftName(sourceResult.data?.name || "");
       setDraftDescription(sourceResult.data?.description || "");
+      setRangeEnabled(Boolean(sourceResult.data?.from || sourceResult.data?.to));
+      setRangeFrom({
+        year: sourceResult.data?.from?.year ? String(sourceResult.data.from.year) : "",
+        era: sourceResult.data?.from?.era || "AD",
+      });
+      setRangeTo({
+        year: sourceResult.data?.to?.year ? String(sourceResult.data.to.year) : "",
+        era: sourceResult.data?.to?.era || "AD",
+      });
       setFieldStatuses({});
 
       const imageResult = await getSourceImages(sourceId).catch(() => null);
@@ -324,6 +347,50 @@ export default function LibrarySourcePage() {
   const handleFieldBlur = (field: SourceField) => {
     clearTimer(fieldSaveTimersRef.current, field);
     patchSource(field, field === "name" ? draftName : draftDescription);
+  };
+
+  const saveSourceRange = async () => {
+    if (!source || savingRange) return;
+    setSavingRange(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await patchSourceRange(
+        sourceId,
+        {
+          from:
+            rangeEnabled && rangeFrom.year
+              ? { year: Number(rangeFrom.year), era: rangeFrom.era }
+              : null,
+          to:
+            rangeEnabled && rangeTo.year
+              ? { year: Number(rangeTo.year), era: rangeTo.era }
+              : null,
+        },
+        source.version,
+      );
+      if (!result.ok) {
+        throw new Error("Unable to update the source year range.");
+      }
+      const change =
+        result.data && typeof result.data === "object" ? result.data : null;
+      if (change && "source" in change && change.source) {
+        setSource(change.source as LibrarySource);
+      } else if (change && "proposal" in change && change.proposal) {
+        const proposal = change.proposal as SourceChangeProposal;
+        setProposals((current) => [
+          ...current.filter((candidate) => candidate.id !== proposal.id),
+          proposal,
+        ]);
+        setNotice(
+          "Year range change proposed for another editor to review and apply.",
+        );
+      }
+    } catch (fetchError) {
+      setError(getErrorMessage(fetchError));
+    } finally {
+      setSavingRange(false);
+    }
   };
 
   const handleDeleteSource = async () => {
@@ -647,6 +714,12 @@ export default function LibrarySourcePage() {
   const sourceDescription = draftDescription || source.description || "";
   const sourceDescriptionMissing = !sourceDescription;
   const sourceDescriptionDisplay = sourceDescription || "No description";
+  const sourceYearRange = [
+    source.from ? `From: ${source.from.year} ${source.from.era}` : null,
+    source.to ? `To: ${source.to.year} ${source.to.era}` : null,
+  ]
+    .filter(Boolean)
+    .join(" – ");
 
   return (
     <div className="px-4 px-xl-5 pb-4">
@@ -796,7 +869,7 @@ export default function LibrarySourcePage() {
 
       <Row className="g-4 align-items-start">
         <Col md={7}>
-          <div className="stash-source-copy stash-item-display-copy">
+          <div className="stash-source-copy stash-item-display-copy text-start">
             <InlineEditableText
               editable={canEditSource(userInfo)}
               value={draftName}
@@ -833,6 +906,36 @@ export default function LibrarySourcePage() {
               savingTitle="Saving"
               errorTitle="Save failed"
             />
+            <div className="mt-3 text-start">
+              {canEditSource(userInfo) ? (
+                <>
+                  <HistoricalRangeFilter
+                    enabled={rangeEnabled}
+                    from={rangeFrom}
+                    to={rangeTo}
+                    onEnabledChange={setRangeEnabled}
+                    onFromChange={setRangeFrom}
+                    onToChange={setRangeTo}
+                    label="Set year range"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline-dark"
+                    disabled={savingRange}
+                    onClick={() => void saveSourceRange()}
+                  >
+                    {savingRange ? "Saving..." : "Save year range"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="stash-subheading mb-1">Year range</div>
+                  <div className="stash-item-description mt-0 text-start">
+                    {sourceYearRange || "No year range"}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <PostPanel
             targetType="SOURCE"

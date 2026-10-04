@@ -1157,6 +1157,7 @@ button.stash-item-media-empty:disabled {
 
 .stash-source-copy {
   max-width: 26rem;
+  text-align: left;
 }
 
 .profile-thumbnail-link {

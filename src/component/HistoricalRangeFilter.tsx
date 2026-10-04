@@ -9,6 +9,7 @@ type Props = {
   onEnabledChange: (enabled: boolean) => void;
   onFromChange: (value: HistoricalYearInput) => void;
   onToChange: (value: HistoricalYearInput) => void;
+  label?: string;
 };
 
 /** Shared inclusive historical-range search filter. */
@@ -19,12 +20,13 @@ export default function HistoricalRangeFilter({
   onEnabledChange,
   onFromChange,
   onToChange,
+  label = "Filter by years",
 }: Props) {
   return (
     <Form.Group className="mb-3">
       <Form.Check
         id="historical-range-enabled"
-        label="Filter by years"
+        label={label}
         checked={enabled}
         onChange={(event) => onEnabledChange(event.target.checked)}
       />
