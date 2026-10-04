@@ -4,8 +4,10 @@ export type Viewer = {
 };
 
 /** The only browser-facing source of authenticated viewer state. */
-export async function getViewer(): Promise<Viewer | null> {
-  const response = await fetch("/api/user/me");
+export async function getViewer(options?: { refreshRoles?: boolean }): Promise<Viewer | null> {
+  const response = await fetch(
+    options?.refreshRoles ? "/api/user/me?refresh=roles" : "/api/user/me",
+  );
   if (!response.ok) return null;
   const data: unknown = await response.json();
   if (!data || typeof data !== "object") return null;

@@ -133,11 +133,8 @@ export default function LibrarySourcePage() {
       );
 
       const proposalResult = canEditSource(viewer)
-        ? await getSourceProposals(sourceId)
+        ? await getSourceProposals(sourceId).catch(() => null)
         : null;
-      if (proposalResult && !proposalResult.ok) {
-        throw new Error("Unable to load source proposals.");
-      }
       const changeLogResult = await getSourceChangeLog(sourceId).catch(
         () => null,
       );

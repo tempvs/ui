@@ -162,7 +162,9 @@ async function fetchJson<TData = unknown>(
 }
 
 export function getLibraryViewer(): Promise<LibraryViewer> {
-  return getViewer();
+  // Library roles determine whether source proposals and administration are
+  // visible. Refresh them at this controlled entry point after a role change.
+  return getViewer({ refreshRoles: true });
 }
 
 export function buildSearchQuery(

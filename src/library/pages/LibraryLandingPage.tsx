@@ -10,7 +10,7 @@ import PeriodTile from '../PeriodTile';
 import { getLibraryViewer, getWelcome, LibraryViewer, LibraryWelcome, updateRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { PERIODS } from '../libraryShared';
-import { getPrimaryRoleMeta } from '../libraryRoles';
+import { canAccessLibraryAdministration, getPrimaryRoleMeta } from '../libraryRoles';
 
 export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,10 @@ export default function LibraryLandingPage() {
     setError(null);
 
     try {
-      const [result, viewer] = await Promise.all([getWelcome(), getLibraryViewer()]);
+      // Refreshing role claims must finish before the welcome request is sent,
+      // otherwise a just-granted administrator sees the stale public panel.
+      const viewer = await getLibraryViewer();
+      const result = await getWelcome();
       if (!result.ok) {
         throw new Error('Unable to load the library welcome panel.');
       }
@@ -81,7 +84,7 @@ export default function LibraryLandingPage() {
           </span>
         </OverlayTrigger>
       )}
-      {welcome?.adminPanelAvailable && (
+      {(welcome?.adminPanelAvailable || canAccessLibraryAdministration(userInfo)) && (
         <Link to="/library/admin" className="btn btn-dark btn-sm">
           Open Library administration
         </Link>

@@ -76,6 +76,12 @@ export function canManageAllLibraryRoles(userInfo: LibraryUserInfo): boolean {
   return hasAnyRole(userInfo, ["ROLE_ADMIN"]);
 }
 
+export function canAccessLibraryAdministration(
+  userInfo: LibraryUserInfo,
+): boolean {
+  return hasAnyRole(userInfo, ["ROLE_ARCHIVARIUS", "ROLE_ADMIN"]);
+}
+
 export function getPrimaryRole(userInfo: LibraryUserInfo): LibraryRole | null {
   const roles = getRoles(userInfo);
   return ROLE_ORDER.find((role) => roles.has(role)) || null;
