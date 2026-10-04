@@ -5,6 +5,9 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import PlusActionButton from "../../component/PlusActionButton";
 import Spinner from "../../component/Spinner";
+import HistoricalRangeFilter, {
+  type HistoricalYearInput,
+} from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
 import {
   createSource,
@@ -49,6 +52,12 @@ export default function LibraryPeriodPage() {
     string[]
   >([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [from, setFrom] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [to, setTo] = useState<HistoricalYearInput>({ year: "", era: "AD" });
   const [draftSource, setDraftSource] = useState({
     name: "",
     description: "",
@@ -69,6 +78,12 @@ export default function LibraryPeriodPage() {
           period: periodCode,
           classifications: selectedClassifications,
           types: selectedTypes,
+          ...(rangeEnabled && from.year
+            ? { from: { year: Number(from.year), era: from.era } }
+            : {}),
+          ...(rangeEnabled && to.year
+            ? { to: { year: Number(to.year), era: to.era } }
+            : {}),
           page: 0,
           size: PAGE_SIZE,
         }),
@@ -104,7 +119,15 @@ export default function LibraryPeriodPage() {
     } finally {
       setLoading(false);
     }
-  }, [periodCode, query, selectedClassifications, selectedTypes]);
+  }, [
+    periodCode,
+    query,
+    selectedClassifications,
+    selectedTypes,
+    rangeEnabled,
+    from,
+    to,
+  ]);
 
   const loadMoreSources = async () => {
     if (!nextToken || loadingMore) return;
@@ -115,6 +138,12 @@ export default function LibraryPeriodPage() {
         period: periodCode,
         classifications: selectedClassifications,
         types: selectedTypes,
+        ...(rangeEnabled && from.year
+          ? { from: { year: Number(from.year), era: from.era } }
+          : {}),
+        ...(rangeEnabled && to.year
+          ? { to: { year: Number(to.year), era: to.era } }
+          : {}),
         size: PAGE_SIZE,
         nextToken,
       });
@@ -237,6 +266,14 @@ export default function LibraryPeriodPage() {
                     placeholder="Name or description"
                   />
                 </Form.Group>
+                <HistoricalRangeFilter
+                  enabled={rangeEnabled}
+                  from={from}
+                  to={to}
+                  onEnabledChange={setRangeEnabled}
+                  onFromChange={setFrom}
+                  onToChange={setTo}
+                />
                 <Form.Group className="mb-3">
                   <Form.Label className="library-source-filter-heading">
                     Classification

@@ -192,10 +192,9 @@ export function getWelcome() {
 }
 
 export function updateRoleRequest(role: string, method: string) {
-  return fetchJson<LibraryWelcome>(
-    `/api/library/library/role/${role}`,
-    { method },
-  );
+  return fetchJson<LibraryWelcome>(`/api/library/library/role/${role}`, {
+    method,
+  });
 }
 
 export async function findSources({
@@ -211,7 +210,14 @@ export async function findSources({
 }: SourceSearchParams) {
   if (page !== 0)
     throw new Error("Offset Library pages are no longer supported");
-  const encodedQuery = buildSearchQuery(query, period, classifications, types, from, to);
+  const encodedQuery = buildSearchQuery(
+    query,
+    period,
+    classifications,
+    types,
+    from,
+    to,
+  );
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
   if (nextToken) params.set("nextToken", nextToken);
   const result = await fetchJson<LibrarySourcePage>(
@@ -262,9 +268,7 @@ export function updateAdminRoleRequest(
 }
 
 export function getAdminMembers() {
-  return fetchJson<LibraryAdminMembers>(
-    "/api/library/library/admin/users",
-  );
+  return fetchJson<LibraryAdminMembers>("/api/library/library/admin/users");
 }
 
 export function setAdminMemberRole(userId: string, role: string) {
@@ -279,9 +283,7 @@ export function setAdminMemberRole(userId: string, role: string) {
 }
 
 export function getSource(sourceId: string | undefined) {
-  return fetchJson<LibrarySource>(
-    `/api/library/source/${sourceId}`,
-  );
+  return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`);
 }
 
 export function getSourceImages(sourceId: string | undefined) {
