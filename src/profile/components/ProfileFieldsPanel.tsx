@@ -25,6 +25,7 @@ type ProfileFieldsPanelProps = {
   editable: boolean;
   onInputChange: (event: { target: { name: string; value: string } }) => void;
   onFieldBlur: (field: ProfileField) => void;
+  rangeControl?: React.ReactNode;
 };
 
 export default function ProfileFieldsPanel({
@@ -36,6 +37,7 @@ export default function ProfileFieldsPanel({
   editable,
   onInputChange,
   onFieldBlur,
+  rangeControl,
 }: ProfileFieldsPanelProps) {
   return (
     <>
@@ -113,7 +115,9 @@ export default function ProfileFieldsPanel({
         errorTitle={t('profile.status.saveFailed', 'Save failed')}
       />
       {type === 'CLUB' && (
-        <EditableSelectFieldRow
+        <div className="d-flex align-items-end gap-3 flex-wrap mb-2">
+          <div className="flex-grow-1">
+          <EditableSelectFieldRow
           label={t('profile.field.periodRequired', 'Period *')}
           editable={editable}
           value={state.period || ''}
@@ -125,10 +129,13 @@ export default function ProfileFieldsPanel({
             { value: '', label: t('profile.period.choose', 'Choose a period') },
             ...periods.map(period => ({ value: period, label: getPeriodLabel(period) })),
           ]}
-          className="mb-2"
+          className="mb-0"
           savingTitle={t('profile.status.saving', 'Saving')}
           errorTitle={t('profile.status.saveFailed', 'Save failed')}
-        />
+          />
+          </div>
+          {rangeControl}
+        </div>
       )}
     </>
   );

@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
+import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
@@ -17,6 +18,9 @@ export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [query, setQuery] = useState('');
   const [period, setPeriod] = useState('');
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [from, setFrom] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
+  const [to, setTo] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -27,6 +31,18 @@ export default function ClubsPage() {
   const [signedIn, setSignedIn] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
+  const matchesRange = useCallback((club: Club) => {
+    if (!rangeEnabled || (!from.year && !to.year)) return true;
+    if (!club.from && !club.to) return true;
+    const ordinal = (value?: { year: number; era: 'BC' | 'AD' } | null) =>
+      !value ? null : value.era === 'BC' ? 1 - value.year : value.year;
+    const lower = from.year ? ordinal({ year: Number(from.year), era: from.era }) : null;
+    const upper = to.year ? ordinal({ year: Number(to.year), era: to.era }) : null;
+    const clubFrom = ordinal(club.from);
+    const clubTo = ordinal(club.to);
+    return (clubTo === null || lower === null || clubTo >= lower)
+      && (upper === null || clubFrom === null || clubFrom <= upper);
+  }, [rangeEnabled, from, to]);
 
   useEffect(() => fetchCurrentUserInfo(result => setSignedIn(Boolean(result.currentUserId))), []);
 
@@ -40,11 +56,15 @@ export default function ClubsPage() {
       if (!active || !ready || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setLoading(true); setSearchError('');
       try {
-        const data = await listClubs(query.trim(), period, nextToken, controller.signal);
+        const data = await listClubs(
+          query.trim(), period, nextToken, controller.signal,
+          rangeEnabled && from.year ? { year: Number(from.year), era: from.era } : null,
+          rangeEnabled && to.year ? { year: Number(to.year), era: to.era } : null,
+        );
         if (!active) return;
         setClubs(current => {
           const ids = new Set(current.map(club => club.id));
-          return [...current, ...data.content.filter(club => !ids.has(club.id))];
+          return [...current, ...data.content.filter(club => !ids.has(club.id) && matchesRange(club))];
         });
         nextToken = data.nextToken; more = data.hasMore; setHasMore(more);
       } catch (e) {
@@ -70,7 +90,7 @@ export default function ClubsPage() {
       active = false; controller.abort(); window.clearTimeout(timer);
       window.removeEventListener('scroll', checkScroll); window.removeEventListener('resize', checkScroll);
     };
-  }, [query, period, creating]);
+  }, [query, period, creating, rangeEnabled, from, to, matchesRange]);
 
   useEffect(() => {
     const element = sentinel.current;
@@ -101,6 +121,17 @@ export default function ClubsPage() {
           <option value="">{t('allPeriods', 'All periods')}</option>
           {PERIODS.map(value => <option key={value} value={value}>{getPeriodLabel(intl, value)}</option>)}
         </Form.Select>
+        <HistoricalRangeFilter
+          enabled={rangeEnabled}
+          from={from}
+          to={to}
+          onEnabledChange={setRangeEnabled}
+          onFromChange={setFrom}
+          onToChange={setTo}
+          onValueEntered={() => setRangeEnabled(true)}
+          label="Years"
+          alwaysShowFields
+        />
       </div>
       <div className="club-card-grid">{clubs.map(club => <article key={club.id} className="club-panel">
         <PeriodBadge period={club.period} />

@@ -9,11 +9,14 @@ type Props = {
   onEnabledChange: (enabled: boolean) => void;
   onFromChange: (value: HistoricalYearInput) => void;
   onToChange: (value: HistoricalYearInput) => void;
-  label?: string;
+  label?: string | null;
   showToggle?: boolean;
   alwaysShowFields?: boolean;
   onValueEntered?: () => void;
   onBlur?: () => void;
+  compact?: boolean;
+  className?: string;
+  editable?: boolean;
 };
 
 /** Shared inclusive historical-range controls for filtering and editing. */
@@ -24,42 +27,53 @@ export default function HistoricalRangeFilter({
   onEnabledChange,
   onFromChange,
   onToChange,
-  label = "Filter by years",
+  label = "Years",
   showToggle = true,
   alwaysShowFields = false,
   onValueEntered,
   onBlur,
+  compact = false,
+  className = "",
+  editable = true,
 }: Props) {
   const showFields = !showToggle || alwaysShowFields || enabled;
+  const validRange = isValidHistoricalYear(from) && isValidHistoricalYear(to);
   return (
-    <Form.Group className="mb-3">
+    <Form.Group className={`${compact ? "mb-0" : "mb-3"} ${className}`.trim()}>
       {showToggle ? (
         <Form.Check
           id="historical-range-enabled"
-          label={label}
+          label={label || "Years"}
           checked={enabled}
           onChange={(event) => onEnabledChange(event.target.checked)}
         />
-      ) : (
+      ) : label ? (
         <Form.Label className="library-source-filter-heading">
           {label}
         </Form.Label>
+      ) : null}
+      {showFields && !editable && (
+        <div className={compact ? "pb-2" : "mt-1"}>{formatHistoricalRange(
+          from.year ? { year: Number(from.year), era: from.era } : null,
+          to.year ? { year: Number(to.year), era: to.era } : null,
+        )}</div>
       )}
-      {showFields && (
-        <div className="d-flex gap-2 mt-2">
+      {showFields && editable && (
+        <div className={`d-flex align-items-end gap-2 ${compact ? "" : "mt-2"}`}>
           <YearControl
-            label="From"
+            label={compact ? null : "From"}
             value={from}
             onChange={onFromChange}
             onValueEntered={onValueEntered}
-            onBlur={onBlur}
+            onBlur={validRange ? onBlur : undefined}
           />
+          <span className="pb-2 text-muted" aria-hidden="true">–</span>
           <YearControl
-            label="To"
+            label={compact ? null : "To"}
             value={to}
             onChange={onToChange}
             onValueEntered={onValueEntered}
-            onBlur={onBlur}
+            onBlur={validRange ? onBlur : undefined}
           />
         </div>
       )}
@@ -74,43 +88,60 @@ function YearControl({
   onValueEntered,
   onBlur,
 }: {
-  label: string;
+  label: string | null;
   value: HistoricalYearInput;
   onChange: (value: HistoricalYearInput) => void;
   onValueEntered?: () => void;
   onBlur?: () => void;
 }) {
   return (
-    <div className="d-flex flex-column gap-1 flex-grow-1">
-      <Form.Label className="small mb-0">{label}</Form.Label>
-      <div className="d-flex gap-1">
+    <div className="d-flex flex-column gap-1">
+      {label && <Form.Label className="small mb-0">{label}</Form.Label>}
+      <div className="d-flex align-items-center gap-1">
         <Form.Control
-          type="number"
-          min="1"
-          step="1"
+          type="text"
+          inputMode="numeric"
           value={value.year}
           placeholder="Year"
+          isInvalid={value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year)}
+          aria-label={label ? `${label} year` : "Year"}
           onChange={(event) => {
             onChange({
               ...value,
-              year: event.target.value.replace(/[^0-9]/g, ""),
+              year: event.target.value,
             });
             onValueEntered?.();
           }}
           onBlur={onBlur}
+          style={{ minWidth: "5.25rem", width: "5.25rem" }}
         />
-        <Form.Select
-          value={value.era}
+        <Form.Check
+          type="checkbox"
+          label="BC"
+          checked={value.era === "BC"}
+          aria-label={`${label || "Year"} is BC`}
           onChange={(event) => {
-            onChange({ ...value, era: event.target.value as "BC" | "AD" });
+            onChange({ ...value, era: event.target.checked ? "BC" : "AD" });
             onValueEntered?.();
           }}
           onBlur={onBlur}
-        >
-          <option value="BC">BC</option>
-          <option value="AD">AD</option>
-        </Form.Select>
+          className="small text-nowrap"
+        />
       </div>
     </div>
   );
+}
+
+export function isValidHistoricalYear(value: HistoricalYearInput): boolean {
+  return value.year === "" || /^[1-9][0-9]*$/.test(value.year);
+}
+
+export function formatHistoricalRange(
+  from?: { year: number; era: "BC" | "AD" } | null,
+  to?: { year: number; era: "BC" | "AD" } | null,
+): string {
+  const format = (value?: { year: number; era: "BC" | "AD" } | null) =>
+    value ? `${value.year}${value.era === "BC" ? " BC" : ""}` : "…";
+  if (!from && !to) return "—";
+  return `${format(from)} – ${format(to)}`;
 }

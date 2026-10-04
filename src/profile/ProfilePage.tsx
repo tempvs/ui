@@ -1418,9 +1418,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               editable={isEditable}
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
-            />
-            {isClubProfile && (
-              <HistoricalRangeFilter
+              rangeControl={isClubProfile ? (
+                <HistoricalRangeFilter
                 enabled
                 from={{ year: this.state.fromYear, era: this.state.fromEra }}
                 to={{ year: this.state.toYear, era: this.state.toEra }}
@@ -1432,10 +1431,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   this.setState({ toYear: value.year, toEra: value.era })
                 }
                 onBlur={() => this.handleFieldBlur("fromYear")}
-                label="Year range"
+                label={null}
                 showToggle={false}
+                compact
+                editable={isEditable}
               />
-            )}
+              ) : undefined}
+            />
             {this.state.profileId && (
               <PostPanel
                 targetType="PROFILE"

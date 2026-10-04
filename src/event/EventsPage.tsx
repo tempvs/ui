@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import TextFilterInput from '../component/TextFilterInput';
+import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
@@ -16,6 +17,9 @@ export default function EventsPage() {
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState('');
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [from, setFrom] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
+  const [to, setTo] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,13 +51,27 @@ export default function EventsPage() {
   };
 
   const normalized = query.trim().toLocaleLowerCase();
-  const visible = events.filter(event => !normalized || `${event.name} ${event.description || ''}`.toLocaleLowerCase().includes(normalized));
+  const ordinal = (value?: { year: number; era: 'BC' | 'AD' } | null) => !value ? null : value.era === 'BC' ? 1 - value.year : value.year;
+  const visible = events.filter(event => {
+    if (!normalized && !rangeEnabled) return true;
+    const textMatch = !normalized || `${event.name} ${event.description || ''}`.toLocaleLowerCase().includes(normalized);
+    if (!textMatch || !rangeEnabled) return textMatch;
+    if (!event.from && !event.to) return true;
+    const lower = from.year ? ordinal({ year: Number(from.year), era: from.era }) : null;
+    const upper = to.year ? ordinal({ year: Number(to.year), era: to.era }) : null;
+    const eventFrom = ordinal(event.from);
+    const eventTo = ordinal(event.to);
+    return (eventTo === null || lower === null || eventTo >= lower) && (upper === null || eventFrom === null || eventFrom <= upper);
+  });
 
   return <Container className="events-page">
     <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div>{profiles.length > 0 && !creating && <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button>}</div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
-      <TextFilterInput value={query} onChange={setQuery} placeholder="Filter events" ariaLabel="Filter events" />
+      <div className="d-flex align-items-start gap-3 flex-wrap mb-3">
+        <div style={{ minWidth: '16rem', flex: '1 1 16rem' }}><TextFilterInput value={query} onChange={setQuery} placeholder="Filter events" ariaLabel="Filter events" /></div>
+        <HistoricalRangeFilter enabled={rangeEnabled} from={from} to={to} onEnabledChange={setRangeEnabled} onFromChange={setFrom} onToChange={setTo} onValueEntered={() => setRangeEnabled(true)} label="Years" alwaysShowFields />
+      </div>
       <div className="event-card-grid">{visible.map(event => <article className="event-panel event-card" key={event.id}>
         <Link to={`/events/${event.id}`} className="event-card-image-link"><RefreshingImage image={{ resourceType: 'event', resourceId: event.id }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="event-card-image" alt={`${event.name} thumbnail`} /></Link>
         <div className="event-card-content"><div className="event-period-badges">{event.periods.map(period => <PeriodBadge key={period} period={period} />)}</div>

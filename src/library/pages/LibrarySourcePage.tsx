@@ -19,6 +19,7 @@ import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import HistoricalRangeFilter, {
+  formatHistoricalRange,
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
 import {
@@ -729,6 +730,9 @@ export default function LibrarySourcePage() {
     .filter(Boolean)
     .join(" – ");
 
+  const sourceYearRangeDisplay = formatHistoricalRange(source.from, source.to);
+  const sourceYearRangeText = sourceYearRange || sourceYearRangeDisplay;
+
   return (
     <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
@@ -932,7 +936,7 @@ export default function LibrarySourcePage() {
                     onEnabledChange={() => undefined}
                     onFromChange={setRangeFrom}
                     onToChange={setRangeTo}
-                    label="Year range"
+                    label="Years"
                     showToggle={false}
                     onBlur={scheduleSourceRangeSave}
                   />
@@ -943,7 +947,7 @@ export default function LibrarySourcePage() {
                   <div className="stash-subheading mb-1">Year range</div>
                   <div
                     className="stash-item-description mt-0 text-start"
-                    aria-label={sourceYearRange || "No year range"}
+                    aria-label={sourceYearRangeText || "No year range"}
                   >
                     <div>From: {source.from ? `${source.from.year} ${source.from.era}` : "—"}</div>
                     <div>To: {source.to ? `${source.to.year} ${source.to.era}` : "—"}</div>

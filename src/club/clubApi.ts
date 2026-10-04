@@ -146,7 +146,21 @@ function newIdempotencyKey(): string {
     ?? `club-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export const listClubs = async (query = '', period = '', nextToken?: string, signal?: AbortSignal): Promise<ClubPage> => pageValue(await request<unknown>(`/clubs?${new URLSearchParams({ query, limit: '20', ...(period ? { period } : {}), ...(nextToken ? { nextToken } : {}) })}`, 'GET', undefined, signal), clubValue);
+export const listClubs = async (
+  query = '',
+  period = '',
+  nextToken?: string,
+  signal?: AbortSignal,
+  from?: { year: number; era: 'BC' | 'AD' } | null,
+  to?: { year: number; era: 'BC' | 'AD' } | null,
+): Promise<ClubPage> => pageValue(await request<unknown>(`/clubs?${new URLSearchParams({
+  query,
+  limit: '20',
+  ...(period ? { period } : {}),
+  ...(from ? { fromYear: String(from.year), fromEra: from.era } : {}),
+  ...(to ? { toYear: String(to.year), toEra: to.era } : {}),
+  ...(nextToken ? { nextToken } : {}),
+})}`, 'GET', undefined, signal), clubValue);
 export async function uploadClubPhoto(id: Id, file: File): Promise<Club> {
   const intent = await request<UploadIntentResponse>(`/clubs/${id}/photo`, 'POST', {
     fileName: file.name,

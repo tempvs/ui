@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Card, Col, Form, Nav, Row } from 'react-bootstrap';
 import { FaSearch } from 'react-icons/fa';
 import { useIntl } from 'react-intl';
 import { Link, useLocation } from 'react-router-dom';
 
 import Spinner from '../component/Spinner';
+import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
 import RefreshingImage from '../image/RefreshingImage';
 import { findSources, getSourceImages, LibrarySource, LibrarySourceImage } from '../library/libraryApi';
 import SourceCard from '../library/components/SourceCard';
@@ -41,6 +42,25 @@ function getProfileTypeLabel(profileType: string | null | undefined) {
   return profileType || '';
 }
 
+function historicalOrdinal(value?: { year: number; era: 'BC' | 'AD' } | null) {
+  if (!value) return null;
+  return value.era === 'BC' ? 1 - value.year : value.year;
+}
+
+function overlapsRange(
+  item: { from?: { year: number; era: 'BC' | 'AD' } | null; to?: { year: number; era: 'BC' | 'AD' } | null },
+  from: { year: number; era: 'BC' | 'AD' } | null,
+  to: { year: number; era: 'BC' | 'AD' } | null,
+) {
+  if (!item.from && !item.to) return true;
+  const itemFrom = historicalOrdinal(item.from);
+  const itemTo = historicalOrdinal(item.to);
+  const filterFrom = historicalOrdinal(from);
+  const filterTo = historicalOrdinal(to);
+  return (itemTo === null || filterFrom === null || itemTo >= filterFrom)
+    && (filterTo === null || itemFrom === null || itemFrom <= filterTo);
+}
+
 export default function SearchDialog() {
   const intl = useIntl();
   const location = useLocation();
@@ -53,6 +73,9 @@ export default function SearchDialog() {
   const [profileType, setProfileType] = useState<ProfileTypeFilter>('');
   const [selectedClassifications, setSelectedClassifications] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [from, setFrom] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
+  const [to, setTo] = useState<HistoricalYearInput>({ year: '', era: 'AD' });
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +86,10 @@ export default function SearchDialog() {
   const [eventResults, setEventResults] = useState<TempvsEvent[]>([]);
   const [sourcePreviewImages, setSourcePreviewImages] = useState<Record<string | number, LibrarySourceImage | null>>({});
   const disablePeriodFilter = activeTab === 'profiles' && profileType === 'USER';
+  const range = useMemo(() => ({
+    from: from.year ? { year: Number(from.year), era: from.era } : null,
+    to: to.year ? { year: Number(to.year), era: to.era } : null,
+  }), [from, to]);
 
   const handleToggle = (
     value: string,
@@ -90,7 +117,7 @@ export default function SearchDialog() {
           size: PAGE_SIZE,
         });
 
-        setProfileResults(Array.isArray(results) ? results : []);
+        setProfileResults((Array.isArray(results) ? results : []).filter(item => !rangeEnabled || overlapsRange(item, range.from, range.to)));
 
         const previewEntries = await Promise.all((Array.isArray(results) ? results : []).map(async profile => {
           try {
@@ -106,8 +133,8 @@ export default function SearchDialog() {
       }
 
       if (tab === 'clubs') {
-        const result = await listClubs(query, period, undefined);
-        setClubResults(result.content || []);
+        const result = await listClubs(query, period, undefined, undefined, rangeEnabled ? range.from : null, rangeEnabled ? range.to : null);
+        setClubResults((result.content || []).filter(item => !rangeEnabled || overlapsRange(item, range.from, range.to)));
         return;
       }
 
@@ -116,7 +143,8 @@ export default function SearchDialog() {
         const normalized = query.trim().toLocaleLowerCase();
         setEventResults((result.content || []).filter(item =>
           (!normalized || `${item.name} ${item.description || ''}`.toLocaleLowerCase().includes(normalized))
-          && (!period || item.periods.includes(period as never))));
+          && (!period || item.periods.includes(period as never))
+          && (!rangeEnabled || overlapsRange(item, range.from, range.to))));
         return;
       }
 
@@ -125,6 +153,7 @@ export default function SearchDialog() {
         period: period || null,
         classifications: selectedClassifications,
         types: selectedTypes,
+        ...(rangeEnabled ? range : {}),
         page: 0,
         size: PAGE_SIZE,
       });
@@ -155,7 +184,7 @@ export default function SearchDialog() {
     } finally {
       setLoading(false);
     }
-  }, [period, profileType, query, selectedClassifications, selectedTypes]);
+  }, [period, profileType, query, selectedClassifications, selectedTypes, rangeEnabled, range]);
 
   useEffect(() => {
     if (!showPopover) {
@@ -180,6 +209,9 @@ export default function SearchDialog() {
     searched,
     selectedClassifications,
     selectedTypes,
+    rangeEnabled,
+    from,
+    to,
     showPopover,
   ]);
 
@@ -282,6 +314,17 @@ export default function SearchDialog() {
                       </option>
                     ))}
                   </Form.Select>
+                  <HistoricalRangeFilter
+                    enabled={rangeEnabled}
+                    from={from}
+                    to={to}
+                    onEnabledChange={setRangeEnabled}
+                    onFromChange={setFrom}
+                    onToChange={setTo}
+                    onValueEntered={() => setRangeEnabled(true)}
+                    label="Years"
+                    alwaysShowFields
+                  />
 
                   {activeTab === 'profiles' && (
                     <>

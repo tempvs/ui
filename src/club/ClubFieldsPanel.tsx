@@ -38,11 +38,14 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
     <EditableTextFieldRow label="Contact email" editable={editable} value={club.contactEmail || ''} readOnlyValue={club.contactEmail || '-'} type="email"
       onChange={event => onChange('contactEmail', event.target.value)} onBlur={() => onBlur('contactEmail')}
       status={statuses.contactEmail} savingTitle="Saving" errorTitle="Save failed" />
-    <EditableSelectFieldRow label="Period" editable={editable} value={club.period} readOnlyValue={getPeriodLabel(intl, club.period)}
-      options={PERIODS.map(period => ({ value: period, label: getPeriodLabel(intl, period) }))}
-      onChange={event => onChange('period', event.target.value)} onBlur={() => onBlur('period')}
-      status={statuses.period} savingTitle="Saving" errorTitle="Save failed" />
-    <HistoricalRangeFilter
+    <div className="d-flex align-items-end gap-3 flex-wrap mb-2">
+      <div className="flex-grow-1">
+        <EditableSelectFieldRow label="Period" editable={editable} value={club.period} readOnlyValue={getPeriodLabel(intl, club.period)}
+          options={PERIODS.map(period => ({ value: period, label: getPeriodLabel(intl, period) }))}
+          onChange={event => onChange('period', event.target.value)} onBlur={() => onBlur('period')}
+          status={statuses.period} className="mb-0" savingTitle="Saving" errorTitle="Save failed" />
+      </div>
+      <HistoricalRangeFilter
       enabled
       from={{ year: club.from ? String(club.from.year) : '', era: club.from?.era || 'AD' }}
       to={{ year: club.to ? String(club.to.year) : '', era: club.to?.era || 'AD' }}
@@ -50,8 +53,11 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       onFromChange={(from: HistoricalYearInput) => onChange('from', from.year ? { year: Number(from.year), era: from.era } : null)}
       onToChange={(to: HistoricalYearInput) => onChange('to', to.year ? { year: Number(to.year), era: to.era } : null)}
       onBlur={() => onBlur('from')}
-      label="Year range"
+      label={null}
       showToggle={false}
-    />
+      compact
+      editable={editable}
+      />
+    </div>
   </section>;
 }
