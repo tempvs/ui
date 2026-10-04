@@ -11,6 +11,11 @@ const GoogleIcon = FaGoogle as React.ComponentType;
 type Mode = 'login' | 'register' | 'confirm';
 type AuthResponse = { error?: string };
 
+function currentReturnTo(): string {
+  const value = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/';
+}
+
 async function postAuth(path: string, body: Record<string, string>): Promise<AuthResponse> {
   const response = await fetch(path, {
     method: 'POST',
@@ -30,6 +35,7 @@ export default function LoginRegisterButton() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const returnTo = currentReturnTo();
 
   const close = () => {
     if (busy) return;
@@ -55,11 +61,11 @@ export default function LoginRegisterButton() {
       }
       if (mode === 'confirm') {
         await postAuth('/auth/confirm-registration', { email, password, code });
-        window.location.assign('/profile');
+        window.location.assign(returnTo);
         return;
       }
       await postAuth('/auth/password-login', { email, password });
-      window.location.reload();
+      window.location.assign(returnTo);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Authentication could not be completed.');
     } finally {
@@ -121,7 +127,7 @@ export default function LoginRegisterButton() {
             </Button>
           </Form>
           {!confirming && <><div className="auth-divider"><span>or</span></div><div className="d-grid auth-oauth-grid">
-            <Button as="a" href={registration ? '/auth/login?provider=Google&returnTo=/profile' : '/auth/login?provider=Google'} variant="light" className="auth-oauth-button" disabled={busy}>
+            <Button as="a" href={`/auth/login?provider=Google&returnTo=${encodeURIComponent(returnTo)}`} variant="light" className="auth-oauth-button" disabled={busy}>
               <GoogleIcon /> Continue with Google
             </Button>
           </div></>}

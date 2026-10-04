@@ -162,9 +162,10 @@ async function fetchJson<TData = unknown>(
 }
 
 export function getLibraryViewer(): Promise<LibraryViewer> {
-  // Library roles determine whether source proposals and administration are
-  // visible. Refresh them at this controlled entry point after a role change.
-  return getViewer({ refreshRoles: true });
+  // A source view must never force a Cognito refresh. A forced refresh can
+  // fail independently of an otherwise valid opaque session and used to make
+  // simply opening a public source appear to log the visitor out.
+  return getViewer();
 }
 
 export function buildSearchQuery(
