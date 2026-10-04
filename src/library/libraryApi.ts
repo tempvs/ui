@@ -26,7 +26,12 @@ export type LibrarySource = {
   period?: string | null;
   classification?: string | null;
   type?: string | null;
+  from?: HistoricalYear | null;
+  to?: HistoricalYear | null;
 };
+
+export type HistoricalEra = "BC" | "AD";
+export type HistoricalYear = { year: number; era: HistoricalEra };
 
 export type LibrarySourceProfile = {
   id: string;
@@ -118,6 +123,8 @@ type SourceSearchParams = {
   period?: string | null;
   classifications?: string[];
   types?: string[];
+  from?: HistoricalYear | null;
+  to?: HistoricalYear | null;
   page?: number;
   size?: number;
   nextToken?: string;
@@ -163,6 +170,8 @@ export function buildSearchQuery(
   period?: string | null,
   classifications?: string[],
   types?: string[],
+  from?: HistoricalYear | null,
+  to?: HistoricalYear | null,
 ): string {
   return window.btoa(
     encodeURIComponent(
@@ -171,6 +180,8 @@ export function buildSearchQuery(
         period,
         classifications,
         types,
+        from,
+        to,
       }),
     ),
   );
@@ -192,13 +203,15 @@ export async function findSources({
   period,
   classifications,
   types,
+  from,
+  to,
   page = 0,
   size = 40,
   nextToken,
 }: SourceSearchParams) {
   if (page !== 0)
     throw new Error("Offset Library pages are no longer supported");
-  const encodedQuery = buildSearchQuery(query, period, classifications, types);
+  const encodedQuery = buildSearchQuery(query, period, classifications, types, from, to);
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
   if (nextToken) params.set("nextToken", nextToken);
   const result = await fetchJson<LibrarySourcePage>(
