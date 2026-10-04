@@ -48,6 +48,18 @@
   display: grid;
   gap: 0.35rem;
 }
+.photo-album-modal-header {
+  align-items: center;
+}
+.photo-album-modal-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  margin-right: 1rem;
+}
+.photo-album-modal-header > .btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
 .photo-album-modal-name .inline-editable-input,
 .photo-album-modal-name .inline-editable-custom-field {
   font-weight: 700;

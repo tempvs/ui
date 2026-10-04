@@ -209,7 +209,7 @@ export default function EventPage() {
   return (
     <Container className="events-page">
       {error && <Alert variant="danger">{error}</Alert>}
-      <article className="event-panel event-detail">
+      <article className="event-detail event-page-columns">
         <div className="event-heading">
           <div>
             <div className="event-period-badges">

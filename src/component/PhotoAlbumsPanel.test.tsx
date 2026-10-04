@@ -41,8 +41,8 @@ test("shows a pending album image immediately and saves album metadata on blur",
 
   await screen.findByRole("button", { name: "Add image" });
 
-  expect(screen.getByText("Photo album")).toBeInTheDocument();
-  expect(screen.getByText("Summer")).toBeInTheDocument();
+  expect(screen.queryByText("Photo album")).not.toBeInTheDocument();
+  expect(screen.getByDisplayValue("Summer")).toBeInTheDocument();
   expect(screen.getAllByText("Campaign photos")).toHaveLength(2);
   expect(screen.getByRole("button", { name: "Delete album" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Save album" })).not.toBeInTheDocument();

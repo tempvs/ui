@@ -17,6 +17,9 @@ type Props<T> = {
   className?: string;
   headerAction?: React.ReactNode;
   hideWhenEmpty?: boolean;
+  filter?: string;
+  onFilterChange?: (value: string) => void;
+  contentRegionLabel?: string;
 };
 
 /** Shared filtered section used for profile following and membership relationships. */
@@ -34,26 +37,31 @@ export default function ProfileRelationshipPanel<T>({
   className,
   headerAction,
   hideWhenEmpty = false,
+  filter,
+  onFilterChange,
+  contentRegionLabel,
 }: Props<T>) {
-  const [filter, setFilter] = useState('');
+  const [localFilter, setLocalFilter] = useState('');
+  const activeFilter = filter ?? localFilter;
+  const setFilter = onFilterChange ?? setLocalFilter;
   const visibleItems = useMemo(() => {
-    const query = filter.trim().toLocaleLowerCase();
+    const query = activeFilter.trim().toLocaleLowerCase();
     return query
       ? items.filter(item => getSearchText(item).toLocaleLowerCase().includes(query))
       : items;
-  }, [filter, getSearchText, items]);
+  }, [activeFilter, getSearchText, items]);
 
   if (hideWhenEmpty && (!loaded || (!error && items.length === 0))) return null;
 
   return <section
     className={['club-panel', 'profile-relationship-panel', className].filter(Boolean).join(' ')}
-    aria-label={title}
+    aria-label={contentRegionLabel ? undefined : title}
   >
     <div className="profile-relationship-heading">
       <h3>{title}</h3>
       <div className="profile-relationship-heading-controls">
         <TextFilterInput
-          value={filter}
+          value={activeFilter}
           onChange={setFilter}
           placeholder={filterPlaceholder}
           ariaLabel={filterPlaceholder}

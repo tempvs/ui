@@ -378,8 +378,24 @@ export default function PhotoAlbumsPanel({
         size="lg"
         centered
       >
-        <Modal.Header>
-          <Modal.Title>{selected ? "Photo album" : "Create photo album"}</Modal.Title>
+        <Modal.Header className="photo-album-modal-header">
+          {selected ? (
+            <Modal.Title as="div" className="photo-album-modal-title">
+              <InlineEditableText
+                editable={editable && !busy}
+                value={draft.name}
+                readOnlyValue={<strong>{selected.name}</strong>}
+                onValueChange={(name) =>
+                  setDraft((current) => ({ ...current, name }))
+                }
+                onBlur={() => void saveSelectedAlbum()}
+                placeholder="Album name"
+                textClassName="photo-album-modal-name fw-bold"
+              />
+            </Modal.Title>
+          ) : (
+            <Modal.Title>Create photo album</Modal.Title>
+          )}
           {selected && editable && (
             <IconActionButton
               title="Delete album"
@@ -438,17 +454,6 @@ export default function PhotoAlbumsPanel({
             </>
           ) : selected ? (
             <div className="photo-album-modal-copy mb-3">
-              <InlineEditableText
-                editable={editable && !busy}
-                value={draft.name}
-                readOnlyValue={<strong>{selected.name}</strong>}
-                onValueChange={(name) =>
-                  setDraft((current) => ({ ...current, name }))
-                }
-                onBlur={() => void saveSelectedAlbum()}
-                placeholder="Album name"
-                textClassName="photo-album-modal-name fw-bold"
-              />
               <InlineEditableText
                 editable={editable && !busy}
                 value={draft.description}

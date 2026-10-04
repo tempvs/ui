@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Button } from 'react-bootstrap';
-import TextFilterInput from '../../component/TextFilterInput';
+import React from 'react';
+
 import { buildProfileLabel } from '../currentProfile';
 import { Profile } from '../profileTypes';
 import ProfileList from './ProfileList';
+import ProfileRelationshipPanel from './ProfileRelationshipPanel';
 
 type Props = {
   title: string;
@@ -17,9 +17,11 @@ type Props = {
   onReachEnd?: () => void;
   className?: string;
   renderActions?: (profile: Profile) => React.ReactNode;
+  filter?: string;
+  onFilterChange?: (value: string) => void;
 };
 
-/** Shared filtered profile section used by club and event people lists. */
+/** Shared filtered profile section used by profile, club, and event people lists. */
 export default function ProfileCollectionPanel({
   title,
   profiles,
@@ -32,29 +34,29 @@ export default function ProfileCollectionPanel({
   onReachEnd,
   className,
   renderActions,
+  filter,
+  onFilterChange,
 }: Props) {
-  const [filter, setFilter] = useState('');
-  const visibleProfiles = useMemo(() => {
-    const query = filter.trim().toLocaleLowerCase();
-    return query
-      ? profiles.filter(profile => buildProfileLabel(profile).toLocaleLowerCase().includes(query))
-      : profiles;
-  }, [filter, profiles]);
-
-  return <section className={['club-panel', className].filter(Boolean).join(' ')}>
-    <div className="club-list-heading">
-      <h2>{title}</h2>
-      <TextFilterInput value={filter} onChange={setFilter} placeholder={filterPlaceholder} ariaLabel={filterPlaceholder} className="club-list-filter" />
-    </div>
-    {error && <Alert variant="danger">{error} {onRetry && <Button variant="link" onClick={onRetry}>Retry</Button>}</Alert>}
-    {!loading && !error && profiles.length === 0 && <p>{emptyText}</p>}
-    {!loading && !error && profiles.length > 0 && visibleProfiles.length === 0 && <p>{noMatchesText}</p>}
-    <div className="club-scroll-list" role="region" aria-label={title} onScroll={event => {
+  return <ProfileRelationshipPanel
+    title={title}
+    items={profiles}
+    loaded={!loading || profiles.length > 0}
+    filterPlaceholder={filterPlaceholder}
+    getSearchText={profile => buildProfileLabel(profile)}
+    emptyText={emptyText}
+    noMatchesText={noMatchesText}
+    error={error}
+    onRetry={onRetry}
+    className={className}
+    filter={filter}
+    onFilterChange={onFilterChange}
+    contentRegionLabel={title}
+    renderItems={visibleProfiles => <div className="club-scroll-list" role="region" aria-label={title} onScroll={event => {
       const element = event.currentTarget;
       if (onReachEnd && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) onReachEnd();
     }}>
       <ProfileList profiles={visibleProfiles} className="club-member-list" renderActions={renderActions} />
       {loading && <p role="status" className="text-muted mb-2">Loading…</p>}
-    </div>
-  </section>;
+    </div>}
+  />;
 }

@@ -14,6 +14,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import ProfileList from "../profile/components/ProfileList";
+import ProfileCollectionPanel from "../profile/components/ProfileCollectionPanel";
 import { buildProfileLabel } from "../profile/currentProfile";
 import {
   Club,
@@ -81,6 +82,7 @@ type ClubMembersPanelProps = {
   participantsLoading: boolean;
   onRetry: () => void;
   onScroll: React.UIEventHandler<HTMLDivElement>;
+  onReachEnd?: () => void;
   currentUserId: string | number | null;
   canManage: boolean;
   busy: boolean;
@@ -90,7 +92,7 @@ type ClubMembersPanelProps = {
   t: (key: string, defaultMessage: string) => string;
 };
 
-function ClubMembersPanel({
+function LegacyClubMembersPanel({
   members,
   visibleMembers,
   memberFilter,
@@ -98,6 +100,7 @@ function ClubMembersPanel({
   participantsError,
   participantsLoading,
   onRetry,
+  onReachEnd,
   onScroll,
   currentUserId,
   canManage,
@@ -191,6 +194,43 @@ function ClubMembersPanel({
       </div>
     </section>
   );
+}
+
+function ClubMembersPanel({
+  members,
+  memberFilter,
+  onMemberFilterChange,
+  participantsError,
+  participantsLoading,
+  onRetry,
+  onReachEnd,
+  currentUserId,
+  canManage,
+  busy,
+  unavailable,
+  onRemove,
+  onLeave,
+  t,
+}: ClubMembersPanelProps) {
+  return <ProfileCollectionPanel
+    title={t("members", "Members")}
+    profiles={members}
+    filter={memberFilter}
+    onFilterChange={onMemberFilterChange}
+    filterPlaceholder={t("filterMembers", "Filter members")}
+    emptyText={t("noMembers", "No members yet.")}
+    noMatchesText={t("noMatchingMembers", "No members match this filter.")}
+    loading={participantsLoading}
+    error={participantsError}
+    onRetry={onRetry}
+    onReachEnd={onReachEnd}
+    renderActions={profile => {
+      const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
+      return owned ? <Button className="club-icon-action" size="sm" variant="outline-secondary" title={t("leave", "Leave club")} aria-label={t("leave", "Leave club")} disabled={busy || unavailable} onClick={() => onLeave(profile)}><LeaveIcon aria-hidden="true" /></Button>
+        : canManage ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t("removeMember", "Remove member")} aria-label={t("removeMember", "Remove member")} disabled={busy || unavailable} onClick={() => onRemove(profile)}><RemoveMemberIcon aria-hidden="true" /></Button>
+          : null;
+    }}
+  />;
 }
 
 export default function ClubPage() {
@@ -677,6 +717,10 @@ export default function ClubPage() {
                   participantsLoading={participantsLoading}
                   onRetry={() => setRevision((value) => value + 1)}
                   onScroll={handleParticipantScroll}
+                  onReachEnd={() => {
+                    if (hasMore && !participantsLoading)
+                      loadMoreParticipants.current();
+                  }}
                   currentUserId={currentUserId}
                   canManage={canManage}
                   busy={busy}
