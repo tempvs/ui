@@ -43,6 +43,23 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(document.querySelector('.modal .border-top')).toBeInTheDocument();
 });
 
+test('reserves room for no more than three stacked preview images', () => {
+  render(
+    <StackedImageGallery
+      images={[
+        ...images,
+        { id: 'image-3', url: 'https://example.test/three.jpg', fileName: 'Three' },
+        { id: 'image-4', url: 'https://example.test/four.jpg', fileName: 'Four' },
+      ]}
+      mode="multiple"
+      title="Album images"
+    />,
+  );
+
+  expect(document.querySelectorAll('.stacked-image-gallery-preview-image')).toHaveLength(3);
+  expect(screen.getByRole('button', { name: /4 image/ })).toBeInTheDocument();
+});
+
 test('renders the shared hourglass placeholder when no images exist', () => {
   render(<StackedImageGallery images={[]} emptyText="No source images" />);
 

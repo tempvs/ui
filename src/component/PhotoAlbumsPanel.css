@@ -70,3 +70,9 @@
   font-size: 0.95rem;
   min-height: 2.5rem;
 }
+.photo-album-modal-content {
+  max-height: calc(100dvh - 3.5rem);
+}
+.photo-album-modal-content .modal-body {
+  overflow-y: auto;
+}

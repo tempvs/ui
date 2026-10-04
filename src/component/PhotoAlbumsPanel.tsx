@@ -377,6 +377,7 @@ export default function PhotoAlbumsPanel({
         onHide={close}
         size="lg"
         centered
+        contentClassName="photo-album-modal-content"
       >
         <Modal.Header className="photo-album-modal-header">
           {selected ? (

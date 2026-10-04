@@ -112,6 +112,10 @@ export default function StackedImageGallery({
   );
   const isCompact = previewSize === "compact";
   const isInventory = previewSize === "inventory";
+  const previewBaseHeight = isInventory ? "11rem" : isCompact ? "7.25rem" : "18rem";
+  const previewStackOffset = Math.max(0, previewImages.length - 1) * (
+    isCompact ? 7 : isInventory ? 5 : 14
+  );
   const activeImage = displayImages[activeIndex] || displayImages[0];
   const galleryWrapperClassName = [
     "position-relative",
@@ -306,11 +310,7 @@ export default function StackedImageGallery({
                     : "min(100%, 22rem)",
                 height: fitPreviewHeightToImage
                   ? "auto"
-                  : isInventory
-                    ? "11rem"
-                    : isCompact
-                      ? "7.25rem"
-                      : "18rem",
+                  : `calc(${previewBaseHeight} + ${previewStackOffset}px)`,
                 ...previewStyle,
               }}
             >
@@ -324,10 +324,10 @@ export default function StackedImageGallery({
                   return (
                     <div
                       key={image.id || index}
-                      className={`${establishesPreviewHeight ? "position-relative" : "position-absolute top-0 start-0"} rounded shadow-sm overflow-hidden border bg-white`}
+                      className={`${establishesPreviewHeight ? "position-relative" : "position-absolute top-0 start-0"} stacked-image-gallery-preview-image rounded shadow-sm overflow-hidden border bg-white`}
                       style={{
                         width: "100%",
-                        height: establishesPreviewHeight ? "auto" : "100%",
+                        height: establishesPreviewHeight ? "auto" : previewBaseHeight,
                         transform: `translate(${depth * (isCompact ? 8 : isInventory ? 6 : 16)}px, ${depth * (isCompact ? 7 : isInventory ? 5 : 14)}px)`,
                         zIndex: index + 1,
                         borderColor: "#d8cbb4",
@@ -339,7 +339,7 @@ export default function StackedImageGallery({
                         alt={image.fileName || title}
                         style={{
                           width: "100%",
-                          height: establishesPreviewHeight ? "auto" : "100%",
+                          height: establishesPreviewHeight ? "auto" : previewBaseHeight,
                           objectFit: "contain",
                           backgroundColor: "#f8faf8",
                           display: "block",
