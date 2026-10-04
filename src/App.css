@@ -1155,6 +1155,22 @@ button.stash-item-media-empty:disabled {
   transform: translateY(-50%);
 }
 
+/* A two-endpoint version of the shared input row. It deliberately does not
+   wrap while switching to edit mode, keeping both field slots stationary. */
+.historical-range-inline-control {
+  min-height: 2.4rem;
+  white-space: nowrap;
+}
+
+.historical-range-inline-control > .d-flex {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.historical-range-inline-control .form-check {
+  margin-bottom: 0;
+}
+
 .stash-source-copy {
   max-width: 26rem;
   text-align: left;

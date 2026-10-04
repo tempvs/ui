@@ -128,6 +128,9 @@ export function HistoricalYearControl({
   onChange,
   onValueEntered,
   onBlur,
+  readOnly = false,
+  inputClassName = "",
+  showEra = true,
 }: {
   label: string | null;
   placeholder?: string;
@@ -135,6 +138,9 @@ export function HistoricalYearControl({
   onChange: (value: HistoricalYearInput) => void;
   onValueEntered?: () => void;
   onBlur?: () => void;
+  readOnly?: boolean;
+  inputClassName?: string;
+  showEra?: boolean;
 }) {
   return (
     <div className="d-flex flex-column gap-1">
@@ -145,6 +151,9 @@ export function HistoricalYearControl({
           inputMode="numeric"
           value={value.year}
           placeholder={placeholder}
+          readOnly={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          className={`${inputClassName} ${readOnly && !value.year ? "description-placeholder" : ""}`.trim()}
           isInvalid={value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year)}
           aria-label={label ? `${label} year` : "Year"}
           onChange={(event) => {
@@ -168,6 +177,8 @@ export function HistoricalYearControl({
           }}
           onBlur={onBlur}
           className="small text-nowrap"
+          disabled={!showEra}
+          style={!showEra ? { visibility: "hidden" } : undefined}
         />
       </div>
     </div>

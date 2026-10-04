@@ -9,7 +9,12 @@ export type SaveStatus = 'pending' | 'saving' | 'saved' | 'error' | string | nul
 type EditableFieldRowProps = {
   label?: React.ReactNode;
   editable: boolean;
-  control: React.ReactNode;
+  control?: React.ReactNode;
+  /**
+   * Use for a composite input while keeping this row's shared inline-edit
+   * lifecycle, label geometry, typography, status, and edit glyph.
+   */
+  renderControl?: (args: { editing: boolean; onBlur: (onOutsideBlur?: () => void) => void }) => React.ReactNode;
   readOnlyValue?: React.ReactNode;
   readOnlyInputValue?: string | number | string[];
   placeholderDisplay?: boolean;
@@ -29,6 +34,7 @@ export default function EditableFieldRow({
   label,
   editable,
   control,
+  renderControl,
   readOnlyValue,
   readOnlyInputValue,
   placeholderDisplay = false,
@@ -43,6 +49,14 @@ export default function EditableFieldRow({
 }: EditableFieldRowProps) {
   const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing(editable);
 
+  const finishCompositeEditing = (onOutsideBlur?: () => void) => {
+    window.setTimeout(() => {
+      if (editRootRef.current?.contains(document.activeElement)) return;
+      onOutsideBlur?.();
+      endEditing();
+    }, 0);
+  };
+
   const controlProps = React.isValidElement(control)
     ? control.props as {
       className?: string;
@@ -54,7 +68,9 @@ export default function EditableFieldRow({
   const isSelectControl = Boolean(controlProps.multiple) || Boolean(
     React.isValidElement(control) && control.type && String(control.type).includes('Select'),
   );
-  const editableControl = React.isValidElement(control)
+  const editableControl = renderControl
+    ? renderControl({ editing, onBlur: finishCompositeEditing })
+    : React.isValidElement(control)
     ? React.cloneElement(control as React.ReactElement<Record<string, unknown>>, {
       autoFocus: editing,
       readOnly: !editing,
