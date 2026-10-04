@@ -3,7 +3,6 @@ import { FaPen } from "react-icons/fa";
 
 import { type SaveStatus } from "./EditableFieldRow";
 import {
-  formatHistoricalRange,
   HistoricalYearControl,
   isValidHistoricalYear,
   type HistoricalYearInput,
@@ -25,7 +24,10 @@ type Props = {
 
 const PenIcon = FaPen as React.ComponentType;
 
-/** A two-endpoint field that deliberately follows the shared inline field interaction. */
+/**
+ * A paired year range that uses the standard click-to-edit interaction while
+ * preserving the positions of the endpoint labels and values.
+ */
 export default function EditableHistoricalRangeField({
   label,
   editable,
@@ -39,7 +41,6 @@ export default function EditableHistoricalRangeField({
 }: Props) {
   const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing<HTMLDivElement>(editable);
   const valid = isValidHistoricalYear(from) && isValidHistoricalYear(to);
-  const empty = !from.year && !to.year;
 
   useEffect(() => {
     if (!editing) return;
@@ -54,42 +55,59 @@ export default function EditableHistoricalRangeField({
     }, 0);
   };
 
+  const endpoints = (
+    <div className="d-flex align-items-center gap-2 flex-wrap">
+      <YearEndpoint label="From" value={from} editing={editing} onChange={onFromChange} onBlur={finish} />
+      <span className="text-muted" aria-hidden="true">–</span>
+      <YearEndpoint label="To" value={to} editing={editing} onChange={onToChange} onBlur={finish} />
+    </div>
+  );
+
   return (
     <div className={`d-flex align-items-center gap-3 ${className}`.trim()}>
       <div className="text-start small fw-semibold" style={{ width: "7rem" }}>{label}</div>
-      <div style={{ width: "100%", maxWidth: "16rem" }}>
+      <div style={{ width: "100%", maxWidth: "28rem" }}>
         {editable ? (
           <div
             ref={editRootRef}
             className={`inline-editable-control ${editing ? "inline-editable-active" : "inline-editable-readonly"}`}
             onClick={() => !editing && beginEditing()}
           >
-            {editing ? (
-              <div className="d-flex align-items-end gap-2">
-                <HistoricalYearControl label={null} value={from} onChange={onFromChange} onBlur={finish} />
-                <span className="pb-2 text-muted" aria-hidden="true">–</span>
-                <HistoricalYearControl label={null} value={to} onChange={onToChange} onBlur={finish} />
-              </div>
-            ) : (
-              <span className={empty ? "description-placeholder" : undefined}>
-                {empty ? "From – To" : formatHistoricalRange(
-                  from.year ? { year: Number(from.year), era: from.era } : null,
-                  to.year ? { year: Number(to.year), era: to.era } : null,
-                )}
-              </span>
-            )}
+            {endpoints}
             {!editing && <span className="inline-editable-glyph" aria-hidden="true"><PenIcon /></span>}
             {status && <span className="inline-editable-status"><InlineSaveStatus status={status} /></span>}
           </div>
         ) : (
-          <div className={`small text-start px-1 py-1 ${empty ? "description-placeholder" : ""}`.trim()}>
-            {empty ? "From – To" : formatHistoricalRange(
-              from.year ? { year: Number(from.year), era: from.era } : null,
-              to.year ? { year: Number(to.year), era: to.era } : null,
-            )}
-          </div>
+          <div className="small text-start px-1 py-1">{endpoints}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function YearEndpoint({
+  label,
+  value,
+  editing,
+  onChange,
+  onBlur,
+}: {
+  label: "From" | "To";
+  value: HistoricalYearInput;
+  editing: boolean;
+  onChange: (value: HistoricalYearInput) => void;
+  onBlur: () => void;
+}) {
+  const displayValue = value.year ? `${value.year}${value.era === "BC" ? " BC" : ""}` : label;
+  return (
+    <div className="d-flex align-items-center" style={{ minWidth: "8.25rem" }}>
+      {editing ? (
+        <HistoricalYearControl label={null} placeholder={label} value={value} onChange={onChange} onBlur={onBlur} />
+      ) : (
+        <span className={value.year ? undefined : "description-placeholder"} style={{ minWidth: "5.25rem" }}>
+          {displayValue}
+        </span>
+      )}
     </div>
   );
 }

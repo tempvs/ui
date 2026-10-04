@@ -68,9 +68,9 @@ export default function EventsPage() {
     <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div>{profiles.length > 0 && !creating && <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button>}</div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
-      <div className="d-flex align-items-start gap-3 flex-wrap mb-3">
+      <div className="event-search-row">
         <div style={{ minWidth: '16rem', flex: '1 1 16rem' }}><TextFilterInput value={query} onChange={setQuery} placeholder="Filter events" ariaLabel="Filter events" /></div>
-        <HistoricalRangeFilter enabled={rangeEnabled} from={from} to={to} onEnabledChange={setRangeEnabled} onFromChange={setFrom} onToChange={setTo} onValueEntered={() => setRangeEnabled(true)} label="Years" alwaysShowFields />
+        <HistoricalRangeFilter enabled={rangeEnabled} from={from} to={to} onEnabledChange={setRangeEnabled} onFromChange={setFrom} onToChange={setTo} onValueEntered={() => setRangeEnabled(true)} label="Years" alwaysShowFields compact inlineToggle />
       </div>
       <div className="event-card-grid">{visible.map(event => <article className="event-panel event-card" key={event.id}>
         <Link to={`/events/${event.id}`} className="event-card-image-link"><RefreshingImage image={{ resourceType: 'event', resourceId: event.id }} variant="thumbnail" fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC} className="event-card-image" alt={`${event.name} thumbnail`} /></Link>

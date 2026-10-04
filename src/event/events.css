@@ -37,6 +37,7 @@
 .event-period-selector-option svg { color: #2f7a3f; flex: 0 0 auto; }
 .event-managers h2 { margin-top: 1rem; font-size: 1.15rem; }
 .event-admin-search { max-width: 32rem; }
+.event-search-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .event-detail-photo { width: 100%; max-height: 28rem; object-fit: contain; }
 .event-photo-panel { max-width: 28rem; margin-bottom: 1.25rem; }
 .event-tile-list { list-style: none; padding: 0; margin: .75rem 0 0; }

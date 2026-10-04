@@ -119,10 +119,6 @@ export default function ClubsPage() {
     {creating ? <section className="club-panel"><h2>{t('create', 'Create club')}</h2><ClubForm busy={busy || unavailable} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
       <div className="club-search">
         <Form.Control aria-label={t('searchClubs', 'Search clubs')} placeholder={t('searchClubs', 'Search clubs')} maxLength={120} value={query} disabled={unavailable} onChange={e => setQuery(e.target.value)} />
-        <Form.Select aria-label={t('period', 'Period')} value={period} disabled={unavailable} onChange={e => setPeriod(e.target.value)}>
-          <option value="">{t('allPeriods', 'All periods')}</option>
-          {PERIODS.map(value => <option key={value} value={value}>{getPeriodLabel(intl, value)}</option>)}
-        </Form.Select>
         <HistoricalRangeFilter
           enabled={rangeEnabled}
           from={from}
@@ -133,7 +129,13 @@ export default function ClubsPage() {
           onValueEntered={() => setRangeEnabled(true)}
           label="Years"
           alwaysShowFields
+          compact
+          inlineToggle
         />
+        <Form.Select aria-label={t('period', 'Period')} value={period} disabled={unavailable} onChange={e => setPeriod(e.target.value)}>
+          <option value="">{t('allPeriods', 'All periods')}</option>
+          {PERIODS.map(value => <option key={value} value={value}>{getPeriodLabel(intl, value)}</option>)}
+        </Form.Select>
       </div>
       <div className="club-card-grid">{clubs.map(club => <article key={club.id} className="club-panel">
         <PeriodBadge period={club.period} />
