@@ -21,7 +21,8 @@ import {
   getAdminRoleRequests,
   LibraryMember,
   LibraryRoleRequest,
-  LibraryUserInfoPayload,
+  LibraryViewer,
+  getLibraryViewer,
   setAdminMemberRole,
   updateAdminRoleRequest,
 } from "../libraryApi";
@@ -77,7 +78,7 @@ export default function LibraryAdminPage() {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<LibraryMember[]>([]);
   const [memberUserIds, setMemberUserIds] = useState<string[]>([]);
-  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [roleRequests, setRoleRequests] = useState<LibraryRoleRequest[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -149,7 +150,10 @@ export default function LibraryAdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAdminMembers();
+      const [result, viewer] = await Promise.all([
+        getAdminMembers(),
+        getLibraryViewer(),
+      ]);
       if (!result.ok)
         throw new Error(
           result.status === 403
@@ -161,7 +165,7 @@ export default function LibraryAdminPage() {
       setMemberUserIds(
         result.data?.memberUserIds || nextMembers.map((member) => member.userId),
       );
-      setUserInfo(result.userInfo);
+      setUserInfo(viewer);
       void hydrateMemberProfiles(nextMembers);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));

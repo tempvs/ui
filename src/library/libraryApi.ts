@@ -1,14 +1,12 @@
-export type ApiResponse<TData = unknown, TUserInfo = unknown> = {
+import { getViewer, type Viewer } from "../auth/viewerApi";
+
+export type ApiResponse<TData = unknown> = {
   ok: boolean;
   status: number;
   data: TData | null;
-  userInfo: TUserInfo | null;
 };
 
-export type LibraryUserInfoPayload = {
-  roles?: string[] | null;
-  userId?: string | null;
-} | null;
+export type LibraryViewer = Viewer | null;
 
 export type LibraryWelcome = {
   adminPanelAvailable?: boolean | null;
@@ -127,24 +125,9 @@ type SourceSearchParams = {
 
 type SourcePayload = Record<string, unknown>;
 
-function parseUserInfo(headerValue: string | null): unknown | null {
-  if (!headerValue) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(headerValue);
-  } catch (error) {
-    return null;
-  }
-}
-
-async function parseResponse<TData = unknown, TUserInfo = unknown>(
+async function parseResponse<TData = unknown>(
   response: Response,
-): Promise<ApiResponse<TData, TUserInfo>> {
-  const userInfo = parseUserInfo(
-    response.headers.get("User-Info"),
-  ) as TUserInfo | null;
+): Promise<ApiResponse<TData>> {
   const text = await response.text();
   let data: TData | null = null;
 
@@ -160,16 +143,19 @@ async function parseResponse<TData = unknown, TUserInfo = unknown>(
     ok: response.ok,
     status: response.status,
     data,
-    userInfo,
   };
 }
 
-async function fetchJson<TData = unknown, TUserInfo = unknown>(
+async function fetchJson<TData = unknown>(
   url: string,
   options: FetchJsonOptions = {},
-): Promise<ApiResponse<TData, TUserInfo>> {
+): Promise<ApiResponse<TData>> {
   const response = await fetch(url, options);
-  return parseResponse<TData, TUserInfo>(response);
+  return parseResponse<TData>(response);
+}
+
+export function getLibraryViewer(): Promise<LibraryViewer> {
+  return getViewer();
 }
 
 export function buildSearchQuery(
@@ -191,13 +177,11 @@ export function buildSearchQuery(
 }
 
 export function getWelcome() {
-  return fetchJson<LibraryWelcome, LibraryUserInfoPayload>(
-    "/api/library/library",
-  );
+  return fetchJson<LibraryWelcome>("/api/library/library");
 }
 
 export function updateRoleRequest(role: string, method: string) {
-  return fetchJson<LibraryWelcome, LibraryUserInfoPayload>(
+  return fetchJson<LibraryWelcome>(
     `/api/library/library/role/${role}`,
     { method },
   );
@@ -217,7 +201,7 @@ export async function findSources({
   const encodedQuery = buildSearchQuery(query, period, classifications, types);
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
   if (nextToken) params.set("nextToken", nextToken);
-  const result = await fetchJson<LibrarySourcePage, LibraryUserInfoPayload>(
+  const result = await fetchJson<LibrarySourcePage>(
     `/api/library/source/find?${params}`,
   );
   return {
@@ -265,13 +249,13 @@ export function updateAdminRoleRequest(
 }
 
 export function getAdminMembers() {
-  return fetchJson<LibraryAdminMembers, LibraryUserInfoPayload>(
+  return fetchJson<LibraryAdminMembers>(
     "/api/library/library/admin/users",
   );
 }
 
 export function setAdminMemberRole(userId: string, role: string) {
-  return fetchJson<LibraryAdminMembers, LibraryUserInfoPayload>(
+  return fetchJson<LibraryAdminMembers>(
     `/api/library/library/admin/users/${userId}/role`,
     {
       method: "PUT",
@@ -282,7 +266,7 @@ export function setAdminMemberRole(userId: string, role: string) {
 }
 
 export function getSource(sourceId: string | undefined) {
-  return fetchJson<LibrarySource, LibraryUserInfoPayload>(
+  return fetchJson<LibrarySource>(
     `/api/library/source/${sourceId}`,
   );
 }

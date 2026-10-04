@@ -10,7 +10,7 @@ import {
   createSource,
   findSources,
   getSourceImages,
-  getWelcome,
+  getLibraryViewer,
   LibrarySource,
   LibrarySourceImage,
 } from "../libraryApi";
@@ -26,7 +26,7 @@ import {
   TYPES,
 } from "../libraryShared";
 import { canContribute } from "../libraryRoles";
-import { LibraryUserInfoPayload } from "../libraryApi";
+import { LibraryViewer } from "../libraryApi";
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -36,7 +36,7 @@ export default function LibraryPeriodPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [sources, setSources] = useState<LibrarySource[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -63,7 +63,7 @@ export default function LibraryPeriodPage() {
     setError(null);
 
     try {
-      const [result, welcomeResult] = await Promise.all([
+      const [result, viewer] = await Promise.all([
         findSources({
           query,
           period: periodCode,
@@ -72,7 +72,7 @@ export default function LibraryPeriodPage() {
           page: 0,
           size: PAGE_SIZE,
         }),
-        getWelcome(),
+        getLibraryViewer(),
       ]);
 
       if (!result.ok) {
@@ -83,9 +83,7 @@ export default function LibraryPeriodPage() {
       setSources(nextSources);
       setNextToken(result.nextToken);
       setSourcePreviewImages({});
-      // The welcome endpoint is the authoritative current permission response.
-      // This prevents a cacheable source search from hiding creation controls.
-      setUserInfo(welcomeResult.ok ? welcomeResult.userInfo : result.userInfo);
+      setUserInfo(viewer);
 
       const previewEntries = await Promise.all(
         nextSources.map(async (source) => {

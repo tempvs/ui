@@ -7,7 +7,7 @@ import HoverPopover from '../../component/HoverPopover';
 import Spinner from '../../component/Spinner';
 import { getErrorMessage } from '../../util/errors';
 import PeriodTile from '../PeriodTile';
-import { getWelcome, LibraryUserInfoPayload, LibraryWelcome, updateRoleRequest } from '../libraryApi';
+import { getLibraryViewer, getWelcome, LibraryViewer, LibraryWelcome, updateRoleRequest } from '../libraryApi';
 import LibrarySectionHeader from '../components/LibrarySectionHeader';
 import { PERIODS } from '../libraryShared';
 import { getPrimaryRoleMeta } from '../libraryRoles';
@@ -15,7 +15,7 @@ import { getPrimaryRoleMeta } from '../libraryRoles';
 export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
   const [welcome, setWelcome] = useState<LibraryWelcome | null>(null);
-  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadWelcome = async () => {
@@ -23,13 +23,13 @@ export default function LibraryLandingPage() {
     setError(null);
 
     try {
-      const result = await getWelcome();
+      const [result, viewer] = await Promise.all([getWelcome(), getLibraryViewer()]);
       if (!result.ok) {
         throw new Error('Unable to load the library welcome panel.');
       }
 
       setWelcome(result.data);
-      setUserInfo(result.userInfo);
+      setUserInfo(viewer);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -46,13 +46,13 @@ export default function LibraryLandingPage() {
     const method = pending ? 'DELETE' : 'POST';
 
     try {
-      const result = await updateRoleRequest(role, method);
+      const [result, viewer] = await Promise.all([updateRoleRequest(role, method), getLibraryViewer()]);
       if (!result.ok) {
         throw new Error('Unable to update the role request.');
       }
 
       setWelcome(result.data);
-      setUserInfo(result.userInfo);
+      setUserInfo(viewer);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     }

@@ -28,7 +28,8 @@ import {
   LibrarySource,
   LibrarySourceImage,
   LibrarySourceProfile,
-  LibraryUserInfoPayload,
+  LibraryViewer,
+  getLibraryViewer,
   SourceChangeProposal,
   SourceChangeLogEntry,
   applySourceProposal,
@@ -79,7 +80,7 @@ export default function LibrarySourcePage() {
     null,
   );
   const [profileFilter, setProfileFilter] = useState("");
-  const [userInfo, setUserInfo] = useState<LibraryUserInfoPayload>(null);
+  const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
   const [actors, setActors] = useState<Record<string, Profile>>({});
@@ -110,7 +111,10 @@ export default function LibrarySourcePage() {
     setSourceProfilesError(null);
 
     try {
-      const sourceResult = await getSource(sourceId);
+      const [sourceResult, viewer] = await Promise.all([
+        getSource(sourceId),
+        getLibraryViewer(),
+      ]);
       if (!sourceResult.ok) {
         throw new Error("Unable to load the source.");
       }
@@ -124,7 +128,7 @@ export default function LibrarySourcePage() {
         () => null,
       );
 
-      const proposalResult = canEditSource(sourceResult.userInfo)
+      const proposalResult = canEditSource(viewer)
         ? await getSourceProposals(sourceId)
         : null;
       if (proposalResult && !proposalResult.ok) {
@@ -188,7 +192,7 @@ export default function LibrarySourcePage() {
         ),
       );
       setImageStatuses({});
-      setUserInfo(sourceResult.userInfo);
+      setUserInfo(viewer);
       setProposals(proposalResult?.data || []);
       setChangeLog(changeLogResult.data || []);
       setActors(
