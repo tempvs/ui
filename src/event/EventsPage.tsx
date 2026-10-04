@@ -50,7 +50,7 @@ export default function EventsPage() {
   const visible = events.filter(event => !normalized || `${event.name} ${event.description || ''}`.toLocaleLowerCase().includes(normalized));
 
   return <Container className="events-page">
-    <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div>{profiles.length > 0 && !creating && <Button onClick={() => setCreating(true)}>Create event</Button>}</div>
+    <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div>{profiles.length > 0 && !creating && <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button>}</div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
       <TextFilterInput value={query} onChange={setQuery} placeholder="Filter events" ariaLabel="Filter events" />
