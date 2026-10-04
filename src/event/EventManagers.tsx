@@ -57,7 +57,7 @@ export default function EventManagers({ event, owner, canManageAdmins, onChange 
     finally { setBusy(false); }
   };
 
-  return <section className="event-managers">
+  return <section className="club-panel event-managers">
     <h2>Owner</h2>
     {owner && <ProfileList profiles={[owner]} />}
     {admins.length > 0 && <><h2>Admins</h2><ProfileList profiles={admins} renderActions={profile => canManageAdmins ? <Button size="sm" variant="outline-danger" aria-label="Remove event admin" title="Remove admin" onClick={() => setRemoveTarget(profile)}><RemoveIcon /></Button> : null} /></>}

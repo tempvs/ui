@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Container, Modal } from "react-bootstrap";
+import { Alert, Button, Col, Container, Modal, Row } from "react-bootstrap";
 import { Link, useParams } from "react-router-dom";
 import {
   fetchClubProfiles,
@@ -13,6 +13,8 @@ import EventForm from "./EventForm";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
+import EditableDescriptionField from "../component/EditableDescriptionField";
+import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import EventApplicationActions from "./EventApplicationActions";
 import EventPeoplePanels from "./EventPeoplePanels";
 import ProfileList from "../profile/components/ProfileList";
@@ -184,32 +186,10 @@ export default function EventPage() {
         <p role="status">Loading event…</p>
       </Container>
     );
-  if (editing)
-    return (
-      <Container className="events-page">
-        <section className="event-panel">
-          <h1>Edit event</h1>
-          {error && <Alert variant="danger">{error}</Alert>}
-          <EventForm
-            profiles={ownedProfiles}
-            initial={item}
-            busy={busy}
-            onSave={save}
-            onCancel={() => setEditing(false)}
-          />
-        </section>
-      </Container>
-    );
-
-  const ownerName = owner
-    ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim() ||
-      owner.nickName ||
-      owner.alias
-    : item.ownerProfileId;
   return (
     <Container className="events-page">
       {error && <Alert variant="danger">{error}</Alert>}
-      <article className="event-detail event-page-columns">
+      <article className="event-detail">
         <div className="event-heading">
           <div>
             <div className="event-period-badges">
@@ -255,6 +235,8 @@ export default function EventPage() {
             )}
           </div>
         </div>
+        <Row className="club-page-columns event-page-layout">
+          <Col lg={3}>
         <EventPhotoPanel
           eventId={item.id}
           name={item.name}
@@ -265,15 +247,64 @@ export default function EventPage() {
           targetId={item.id}
           editable={canManage}
         />
-        <p className="event-owner">
-          Owned by{" "}
-          <Link to={`/profile/${item.ownerProfileId}`}>{ownerName}</Link>
-        </p>
-        <p className="event-description">
-          {item.description || "No description."}
-        </p>
-        <h2>Schedule</h2>
-        <p>
+          <EventPeoplePanels
+            eventId={item.id}
+            canManage={canManage}
+            revision={peopleRevision}
+            showApprovals={false}
+            onChanged={() => setPeopleRevision((value) => value + 1)}
+          />
+          </Col>
+          <Col lg={6}>
+            {editing ? (
+              <section className="club-panel event-info-panel">
+                <EventForm
+                  profiles={ownedProfiles}
+                  initial={item}
+                  busy={busy}
+                  onSave={save}
+                  onCancel={() => setEditing(false)}
+                />
+              </section>
+            ) : (
+              <section className="club-panel event-info-panel">
+                <EditableTextFieldRow label="Event name" editable={false} readOnlyValue={item.name} />
+                <EditableDescriptionField editable={false} value={item.description || ""} readOnlyValue={item.description || "No description."} className="mb-2" textClassName="event-description" />
+                <EditableTextFieldRow label="Periods" editable={false} readOnlyValue={<div className="event-period-badges">{item.periods.map((period) => <PeriodBadge key={period} period={period} />)}</div>} />
+                <EditableTextFieldRow label="Status" editable={false} readOnlyValue={item.isActive ? "Active" : "Inactive"} />
+                <EditableTextFieldRow label="Schedule" editable={false} readOnlyValue={item.schedule.kind === "RECURRING" ? "Recurring" : "One-time"} />
+                <EditableTextFieldRow label="Starts" editable={false} readOnlyValue={new Date(item.schedule.startsAt).toLocaleString()} />
+                <EditableTextFieldRow label="Ends" editable={false} readOnlyValue={new Date(item.schedule.endsAt).toLocaleString()} />
+                <EditableTextFieldRow label="Time zone" editable={false} readOnlyValue={item.schedule.timeZone} />
+                {item.schedule.kind === "RECURRING" && <EditableTextFieldRow label="Repeats" editable={false} readOnlyValue={`Every ${item.schedule.recurrence?.interval} ${item.schedule.recurrence?.frequency.toLocaleLowerCase()}.`} />}
+                <h2 className="event-occurrences-heading">Occurrences</h2>
+                <ul className="event-occurrences">
+                  {(item.upcomingOccurrences || []).map((occurrence) => (
+                    <li key={occurrence.id}>
+                      <time>{new Date(occurrence.startsAt).toLocaleString()}</time>
+                      <span>{occurrence.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            <PostPanel
+              targetType="EVENT"
+              targetId={item.id}
+              canCreate={canManage}
+            />
+          </Col>
+          <Col lg={3}>
+            <EventManagers
+              event={item}
+              owner={owner}
+              canManageAdmins={false}
+              onChange={setItem}
+            />
+          </Col>
+        </Row>
+        {/*
+                <ul className="event-occurrences">
           {new Date(item.schedule.startsAt).toLocaleString()} –{" "}
           {new Date(item.schedule.endsAt).toLocaleString()} (
           {item.schedule.timeZone})
@@ -311,6 +342,7 @@ export default function EventPage() {
           targetId={item.id}
           canCreate={canManage}
         />
+        */}
       </article>
       <Modal
         show={applyOpen}

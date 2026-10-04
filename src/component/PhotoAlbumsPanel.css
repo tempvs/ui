@@ -68,4 +68,5 @@
 .photo-album-modal-description .inline-editable-custom-field {
   color: #5f574c;
   font-size: 0.95rem;
+  min-height: 2.5rem;
 }

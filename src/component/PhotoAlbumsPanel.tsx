@@ -464,8 +464,6 @@ export default function PhotoAlbumsPanel({
                 onBlur={() => void saveSelectedAlbum()}
                 placeholder="No description"
                 placeholderDisplay
-                multiline
-                multilineRows={2}
                 textClassName="photo-album-modal-description"
               />
             </div>
