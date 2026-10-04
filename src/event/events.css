@@ -27,6 +27,14 @@
 .event-occurrences li { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid rgba(87, 102, 98, .12); }
 .event-managers { margin-top: 0; }
 .event-info-panel .event-occurrences-heading { margin-top: 1.25rem; font-size: 1.1rem; }
+.event-period-selector-field { width: 100%; max-width: 100%; }
+.event-period-selector { min-height: 2.4rem; padding: .35rem .6rem; }
+.event-period-selector-summary { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.5rem; align-items: center; padding-right: 1.5rem; }
+.event-period-selector-summary span:not(.description-placeholder) { border: 1px solid rgba(87, 102, 98, .24); border-radius: 999px; background: #f7f4ee; padding: .12rem .5rem; font-size: .82rem; }
+.event-period-selector-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .4rem; padding: .1rem 1.55rem .1rem 0; }
+.event-period-selector-option { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; border: 1px solid rgba(87, 102, 98, .22); border-radius: .35rem; background: #fff; color: #3d3527; padding: .4rem .55rem; text-align: left; }
+.event-period-selector-option:hover, .event-period-selector-option.is-selected { border-color: #4f7a53; background: #f3f8f2; }
+.event-period-selector-option svg { color: #2f7a3f; flex: 0 0 auto; }
 .event-managers h2 { margin-top: 1rem; font-size: 1.15rem; }
 .event-admin-search { max-width: 32rem; }
 .event-detail-photo { width: 100%; max-height: 28rem; object-fit: contain; }

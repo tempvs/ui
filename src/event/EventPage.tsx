@@ -8,7 +8,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PeriodBadge } from "../util/periods";
+import { PeriodBadge, type Period } from "../util/periods";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
@@ -19,7 +19,6 @@ import ProfileList from "../profile/components/ProfileList";
 import PostPanel from "../post/PostPanel";
 import {
   EventApplication,
-  EventDraft,
   followEvent,
   getEvent,
   getEventApplication,
@@ -181,7 +180,7 @@ export default function EventPage() {
     let next = current;
     if (field === "name") next = { ...current, name: String(value) };
     if (field === "description") next = { ...current, description: String(value) || null };
-    if (field === "periods") next = { ...current, periods: value as EventDraft["periods"] };
+    if (field === "periods") next = { ...current, periods: value as Period[] };
     if (field === "kind") {
       next = String(value) === "RECURRING"
         ? { ...current, schedule: recurringSchedule() }

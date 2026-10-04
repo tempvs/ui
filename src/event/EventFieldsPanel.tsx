@@ -1,11 +1,10 @@
 import React from "react";
-import { Form } from "react-bootstrap";
 
 import EditableDescriptionField from "../component/EditableDescriptionField";
-import EditableFieldRow, { SaveStatus } from "../component/EditableFieldRow";
+import EditablePeriodSelectorField from "../component/EditablePeriodSelectorField";
+import { SaveStatus } from "../component/EditableFieldRow";
 import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
-import { PERIODS, PeriodBadge } from "../util/periods";
 import { TempvsEvent } from "./eventApi";
 
 export type EventField =
@@ -67,30 +66,15 @@ export default function EventFieldsPanel({
         status={statuses.description}
         className="mb-2"
         textClassName="event-description"
+        multilineUseContentEditable
       />
-      <EditableFieldRow
+      <EditablePeriodSelectorField
         label="Periods"
         editable={editable}
-        readOnlyValue={(
-          <div className="event-period-badges">
-            {event.periods.map((period) => <PeriodBadge key={period} period={period} />)}
-          </div>
-        )}
+        value={event.periods}
+        onChange={(periods) => onChange("periods", periods)}
+        onBlur={() => onBlur("periods")}
         status={statuses.periods}
-        fieldMaxWidth="100%"
-        control={(
-          <Form.Select
-            multiple
-            value={event.periods}
-            onChange={(input) => onChange(
-              "periods",
-              Array.from(input.target.selectedOptions, (option) => option.value),
-            )}
-            onBlur={() => onBlur("periods")}
-          >
-            {PERIODS.map((period) => <option key={period} value={period}>{period}</option>)}
-          </Form.Select>
-        )}
       />
       <EditableTextFieldRow
         label="Status"
