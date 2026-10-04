@@ -56,11 +56,13 @@ export default function ClubsPage() {
       if (!active || !ready || fetching || !more || (failed && !retry)) return;
       fetching = true; failed = false; setLoading(true); setSearchError('');
       try {
-        const data = await listClubs(
-          query.trim(), period, nextToken, controller.signal,
-          rangeEnabled && from.year ? { year: Number(from.year), era: from.era } : null,
-          rangeEnabled && to.year ? { year: Number(to.year), era: to.era } : null,
-        );
+        const data = rangeEnabled
+          ? await listClubs(
+              query.trim(), period, nextToken, controller.signal,
+              from.year ? { year: Number(from.year), era: from.era } : null,
+              to.year ? { year: Number(to.year), era: to.era } : null,
+            )
+          : await listClubs(query.trim(), period, nextToken, controller.signal);
         if (!active) return;
         setClubs(current => {
           const ids = new Set(current.map(club => club.id));
