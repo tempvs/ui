@@ -96,7 +96,6 @@ export default function LibrarySourcePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
-  const [rangeEnabled, setRangeEnabled] = useState(false);
   const [rangeFrom, setRangeFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -138,7 +137,6 @@ export default function LibrarySourcePage() {
       setSource(sourceResult.data);
       setDraftName(sourceResult.data?.name || "");
       setDraftDescription(sourceResult.data?.description || "");
-      setRangeEnabled(Boolean(sourceResult.data?.from || sourceResult.data?.to));
       setRangeFrom({
         year: sourceResult.data?.from?.year ? String(sourceResult.data.from.year) : "",
         era: sourceResult.data?.from?.era || "AD",
@@ -358,14 +356,12 @@ export default function LibrarySourcePage() {
       const result = await patchSourceRange(
         sourceId,
         {
-          from:
-            rangeEnabled && rangeFrom.year
-              ? { year: Number(rangeFrom.year), era: rangeFrom.era }
-              : null,
-          to:
-            rangeEnabled && rangeTo.year
-              ? { year: Number(rangeTo.year), era: rangeTo.era }
-              : null,
+          from: rangeFrom.year
+            ? { year: Number(rangeFrom.year), era: rangeFrom.era }
+            : null,
+          to: rangeTo.year
+            ? { year: Number(rangeTo.year), era: rangeTo.era }
+            : null,
         },
         source.version,
       );
@@ -910,13 +906,14 @@ export default function LibrarySourcePage() {
               {canEditSource(userInfo) ? (
                 <>
                   <HistoricalRangeFilter
-                    enabled={rangeEnabled}
+                    enabled
                     from={rangeFrom}
                     to={rangeTo}
-                    onEnabledChange={setRangeEnabled}
+                    onEnabledChange={() => undefined}
                     onFromChange={setRangeFrom}
                     onToChange={setRangeTo}
-                    label="Set year range"
+                    label="Year range"
+                    showToggle={false}
                   />
                   <Button
                     size="sm"
@@ -930,8 +927,12 @@ export default function LibrarySourcePage() {
               ) : (
                 <>
                   <div className="stash-subheading mb-1">Year range</div>
-                  <div className="stash-item-description mt-0 text-start">
-                    {sourceYearRange || "No year range"}
+                  <div
+                    className="stash-item-description mt-0 text-start"
+                    aria-label={sourceYearRange || "No year range"}
+                  >
+                    <div>From: {source.from ? `${source.from.year} ${source.from.era}` : "—"}</div>
+                    <div>To: {source.to ? `${source.to.year} ${source.to.era}` : "—"}</div>
                   </div>
                 </>
               )}

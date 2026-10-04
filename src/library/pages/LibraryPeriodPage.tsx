@@ -30,6 +30,8 @@ import {
 } from "../libraryShared";
 import { canContribute } from "../libraryRoles";
 import { LibraryViewer } from "../libraryApi";
+import { fetchClubProfiles } from "../../profile/profileApi";
+import { getStoredCurrentProfileValue } from "../../profile/currentProfile";
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -75,6 +77,35 @@ export default function LibraryPeriodPage() {
   });
 
   const periodCode = (period || "").toUpperCase();
+
+  useEffect(() => {
+    let active = true;
+    void getLibraryViewer().then((viewer) => {
+      if (!active || !viewer?.userId) return;
+      fetchClubProfiles(viewer.userId, {
+        onSuccess: (profiles) => {
+          if (!active) return;
+          const selected = profiles.find(
+            (profile) => `profile:${String(profile.id)}` === getStoredCurrentProfileValue(),
+          );
+          const selectedFrom = selected?.from || null;
+          const selectedTo = selected?.to || null;
+          setRangeEnabled(Boolean(selectedFrom || selectedTo));
+          setFrom({
+            year: selectedFrom ? String(selectedFrom.year) : "",
+            era: selectedFrom?.era || "AD",
+          });
+          setTo({
+            year: selectedTo ? String(selectedTo.year) : "",
+            era: selectedTo?.era || "AD",
+          });
+        },
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const searchSources = useCallback(async () => {
     setLoading(true);
@@ -288,6 +319,8 @@ export default function LibraryPeriodPage() {
                   onEnabledChange={setRangeEnabled}
                   onFromChange={setFrom}
                   onToChange={setTo}
+                  alwaysShowFields
+                  onValueEntered={() => setRangeEnabled(true)}
                 />
                 <Form.Group className="mb-3">
                   <Form.Label className="library-source-filter-heading">

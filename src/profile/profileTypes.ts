@@ -24,6 +24,8 @@ export type Profile = {
   location?: string | null;
   alias?: string | null;
   period?: string | null;
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
   avatarUrl?: string | null;
 };
 
