@@ -89,9 +89,7 @@ export default function LibrarySourcePage() {
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [reviewBusy, setReviewBusy] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(
-    null,
-  );
+  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -113,6 +111,7 @@ export default function LibrarySourcePage() {
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const imageSaveTimersRef = useRef<ImageRecord<number>>({});
   const fieldSaveTimersRef = useRef<Partial<Record<SourceField, number>>>({});
+  const rangeSaveTimerRef = useRef<number | null>(null);
   const fieldSaveInFlightRef = useRef<Partial<Record<SourceField, string>>>({});
   const replacingImageRef = useRef<LibrarySourceImage | null>(null);
 
@@ -160,16 +159,13 @@ export default function LibrarySourcePage() {
         () => null,
       );
       const auditActors = Array.from(
-        new Set([
-          ...(proposalResult?.data || []).map(
-            (proposal) => proposal.proposerId,
-          ),
-          ...(changeLogResult?.data || []).flatMap((entry) =>
+        new Set(
+          (changeLogResult?.data || []).flatMap((entry) =>
             [entry.actorId, entry.proposerId].filter((value): value is string =>
               Boolean(value),
             ),
           ),
-        ]),
+        ),
       );
       const profilesUsingSource = sourceProfilesResult?.data || [];
       const [actorProfiles, profileThumbnails] = await Promise.all([
@@ -235,6 +231,9 @@ export default function LibrarySourcePage() {
     () => () => {
       clearAllTimers(imageSaveTimersRef.current);
       clearAllTimers(fieldSaveTimersRef.current);
+      if (rangeSaveTimerRef.current !== null) {
+        window.clearTimeout(rangeSaveTimerRef.current);
+      }
     },
     [],
   );
@@ -349,6 +348,18 @@ export default function LibrarySourcePage() {
 
   const saveSourceRange = async () => {
     if (!source || savingRange) return;
+    const from = rangeFrom.year
+      ? { year: Number(rangeFrom.year), era: rangeFrom.era }
+      : null;
+    const to = rangeTo.year
+      ? { year: Number(rangeTo.year), era: rangeTo.era }
+      : null;
+    if (
+      JSON.stringify(source.from || null) === JSON.stringify(from) &&
+      JSON.stringify(source.to || null) === JSON.stringify(to)
+    ) {
+      return;
+    }
     setSavingRange(true);
     setError(null);
     setNotice(null);
@@ -356,12 +367,8 @@ export default function LibrarySourcePage() {
       const result = await patchSourceRange(
         sourceId,
         {
-          from: rangeFrom.year
-            ? { year: Number(rangeFrom.year), era: rangeFrom.era }
-            : null,
-          to: rangeTo.year
-            ? { year: Number(rangeTo.year), era: rangeTo.era }
-            : null,
+          from,
+          to,
         },
         source.version,
       );
@@ -386,6 +393,43 @@ export default function LibrarySourcePage() {
       setError(getErrorMessage(fetchError));
     } finally {
       setSavingRange(false);
+    }
+  };
+
+  const scheduleSourceRangeSave = () => {
+    if (rangeSaveTimerRef.current !== null) {
+      window.clearTimeout(rangeSaveTimerRef.current);
+    }
+    rangeSaveTimerRef.current = window.setTimeout(() => {
+      rangeSaveTimerRef.current = null;
+      void saveSourceRange();
+    }, 250);
+  };
+
+  const handleApplyProposal = async (proposal: SourceChangeProposal) => {
+    try {
+      setReviewBusy(proposal.id);
+      const result = await applySourceProposal(sourceId, proposal.id);
+      if (!result.ok) throw new Error("Unable to apply the source proposal.");
+      await loadSource();
+    } catch (applyError) {
+      setError(getErrorMessage(applyError));
+    } finally {
+      setReviewBusy(null);
+    }
+  };
+
+  const handleRejectProposal = async (proposal: SourceChangeProposal) => {
+    try {
+      setReviewBusy(proposal.id);
+      const result = await rejectSourceProposal(sourceId, proposal.id);
+      if (!result.ok) throw new Error("Unable to reject the source proposal.");
+      setRejectTarget(null);
+      await loadSource();
+    } catch (rejectError) {
+      setError(getErrorMessage(rejectError));
+    } finally {
+      setReviewBusy(null);
     }
   };
 
@@ -414,38 +458,6 @@ export default function LibrarySourcePage() {
     }
   };
 
-  const handleApplyProposal = async (proposal: SourceChangeProposal) => {
-    try {
-      setReviewBusy(proposal.id);
-      setError(null);
-      setNotice(null);
-      const result = await applySourceProposal(sourceId, proposal.id);
-      if (!result.ok || !result.data || !("version" in result.data)) {
-        throw new Error("Unable to apply the source proposal.");
-      }
-      await loadSource();
-    } catch (applyError) {
-      setError(getErrorMessage(applyError));
-    } finally {
-      setReviewBusy(null);
-    }
-  };
-
-  const handleRejectProposal = async (proposal: SourceChangeProposal) => {
-    try {
-      setReviewBusy(proposal.id);
-      setError(null);
-      setNotice(null);
-      const result = await rejectSourceProposal(sourceId, proposal.id);
-      if (!result.ok) throw new Error("Unable to reject the source proposal.");
-      setRejectTarget(null);
-      await loadSource();
-    } catch (rejectError) {
-      setError(getErrorMessage(rejectError));
-    } finally {
-      setReviewBusy(null);
-    }
-  };
 
   const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
@@ -784,7 +796,15 @@ export default function LibrarySourcePage() {
         </div>
       )}
 
-      {canEditSource(userInfo) && proposals.length > 0 && (
+      {canEditSource(userInfo) && (
+        <div className="d-flex justify-content-end mb-3">
+          <Link to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">
+            Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}
+          </Link>
+        </div>
+      )}
+
+      {false && canEditSource(userInfo) && proposals.length > 0 && (
         <div className="stash-shell p-3 mb-3">
           <div className="stash-subheading mb-2">Pending source proposals</div>
           <div className="d-flex flex-column gap-2">
@@ -914,15 +934,9 @@ export default function LibrarySourcePage() {
                     onToChange={setRangeTo}
                     label="Year range"
                     showToggle={false}
+                    onBlur={scheduleSourceRangeSave}
                   />
-                  <Button
-                    size="sm"
-                    variant="outline-dark"
-                    disabled={savingRange}
-                    onClick={() => void saveSourceRange()}
-                  >
-                    {savingRange ? "Saving..." : "Save year range"}
-                  </Button>
+                  {savingRange && <span className="small text-muted">Saving…</span>}
                 </>
               ) : (
                 <>

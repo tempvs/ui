@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, Card, Col, Form, Modal, Row } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import PlusActionButton from "../../component/PlusActionButton";
 import Spinner from "../../component/Spinner";
@@ -28,7 +28,7 @@ import {
   PAGE_SIZE,
   TYPES,
 } from "../libraryShared";
-import { canContribute } from "../libraryRoles";
+import { canContribute, canEditSource } from "../libraryRoles";
 import { LibraryViewer } from "../libraryApi";
 import { fetchClubProfiles } from "../../profile/profileApi";
 import { getStoredCurrentProfileValue } from "../../profile/currentProfile";
@@ -284,6 +284,11 @@ export default function LibraryPeriodPage() {
           <LibraryPeriodBreadcrumb period={periodCode} variant="period" />
         }
       />
+      {canEditSource(userInfo) && (
+        <div className="d-flex justify-content-end mb-3">
+          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals</Link>
+        </div>
+      )}
       <div className="mb-4 mt-2">
         <h1 className="mb-2">{getPeriodLabel(intl, periodCode)}</h1>
         <p className="text-muted mb-0">

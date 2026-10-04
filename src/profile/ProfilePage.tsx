@@ -22,6 +22,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
+import HistoricalRangeFilter from "../component/HistoricalRangeFilter";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
 import PostPanel from "../post/PostPanel";
 import {
@@ -124,6 +125,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       location: "",
       alias: "",
       period: "",
+      fromYear: "",
+      fromEra: "AD",
+      toYear: "",
+      toEra: "AD",
       message: null,
       messageVariant: null,
       clubProfiles: [],
@@ -518,7 +523,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }, 2000);
   }
 
-  buildProfilePayload(): Record<string, string | null> {
+  buildProfilePayload(): Record<string, string | null | { year: number; era: "BC" | "AD" }> {
     return {
       firstName: this.state.firstName,
       lastName: this.state.lastName,
@@ -527,6 +532,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       location: this.state.location || null,
       alias: this.state.alias || null,
       period: this.state.type === "CLUB" ? this.state.period || null : null,
+      from:
+        this.state.type === "CLUB" && this.state.fromYear
+          ? { year: Number(this.state.fromYear), era: this.state.fromEra }
+          : null,
+      to:
+        this.state.type === "CLUB" && this.state.toYear
+          ? { year: Number(this.state.toYear), era: this.state.toEra }
+          : null,
     };
   }
 
@@ -542,6 +555,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       location: profile.location || "",
       alias: profile.alias || "",
       period: profile.period || "",
+      fromYear: profile.from ? String(profile.from.year) : "",
+      fromEra: profile.from?.era || "AD",
+      toYear: profile.to ? String(profile.to.year) : "",
+      toEra: profile.to?.era || "AD",
     };
   }
 
@@ -592,8 +609,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
+    const isRangeField = ["fromYear", "fromEra", "toYear", "toEra"].includes(fieldName);
     const persistedValue = this.state.persistedProfile?.[fieldName] || "";
-    if ((this.state[fieldName] || "") === persistedValue) {
+    const rangeUnchanged = isRangeField &&
+      this.state.fromYear === (this.state.persistedProfile?.fromYear || "") &&
+      this.state.fromEra === (this.state.persistedProfile?.fromEra || "AD") &&
+      this.state.toYear === (this.state.persistedProfile?.toYear || "") &&
+      this.state.toEra === (this.state.persistedProfile?.toEra || "AD");
+    if (rangeUnchanged || (!isRangeField && (this.state[fieldName] || "") === persistedValue)) {
       this.setState((prevState) => ({
         fieldStatuses: {
           ...prevState.fieldStatuses,
@@ -829,6 +852,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         location: profile.location || "",
         alias: profile.alias || "",
         period: profile.period || "",
+        fromYear: profile.from ? String(profile.from.year) : "",
+        fromEra: profile.from?.era || "AD",
+        toYear: profile.to ? String(profile.to.year) : "",
+        toEra: profile.to?.era || "AD",
         message: null,
         messageVariant: null,
         persistedProfile: this.buildPersistedProfile(profile),
@@ -1392,6 +1419,23 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
             />
+            {isClubProfile && (
+              <HistoricalRangeFilter
+                enabled
+                from={{ year: this.state.fromYear, era: this.state.fromEra }}
+                to={{ year: this.state.toYear, era: this.state.toEra }}
+                onEnabledChange={() => undefined}
+                onFromChange={(value) =>
+                  this.setState({ fromYear: value.year, fromEra: value.era })
+                }
+                onToChange={(value) =>
+                  this.setState({ toYear: value.year, toEra: value.era })
+                }
+                onBlur={() => this.handleFieldBlur("fromYear")}
+                label="Year range"
+                showToggle={false}
+              />
+            )}
             {this.state.profileId && (
               <PostPanel
                 targetType="PROFILE"

@@ -5,6 +5,7 @@ import EditablePeriodSelectorField from "../component/EditablePeriodSelectorFiel
 import { SaveStatus } from "../component/EditableFieldRow";
 import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
+import HistoricalRangeFilter, { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import { TempvsEvent } from "./eventApi";
 
 export type EventField =
@@ -25,6 +26,8 @@ type Props = {
   statuses: Partial<Record<EventField, SaveStatus>>;
   onChange: (field: EventField, value: string | string[]) => void;
   onBlur: (field: EventField) => void;
+  onRangeChange?: (from: HistoricalYearInput, to: HistoricalYearInput) => void;
+  onRangeBlur?: () => void;
 };
 
 function localDateTimeInput(iso: string) {
@@ -44,6 +47,8 @@ export default function EventFieldsPanel({
   statuses,
   onChange,
   onBlur,
+  onRangeChange,
+  onRangeBlur,
 }: Props) {
   const recurrence = event.schedule.recurrence;
   return (
@@ -75,6 +80,17 @@ export default function EventFieldsPanel({
         onChange={(periods) => onChange("periods", periods)}
         onBlur={() => onBlur("periods")}
         status={statuses.periods}
+      />
+      <HistoricalRangeFilter
+        enabled
+        from={{ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }}
+        to={{ year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" }}
+        onEnabledChange={() => undefined}
+        onFromChange={(from) => onRangeChange?.(from, { year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" })}
+        onToChange={(to) => onRangeChange?.({ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }, to)}
+        onBlur={onRangeBlur}
+        label="Year range"
+        showToggle={false}
       />
       <EditableTextFieldRow
         label="Status"

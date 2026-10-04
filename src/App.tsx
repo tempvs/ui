@@ -40,6 +40,8 @@ function LibrarySourcePage() {
 function LibraryAdminPage() {
   return <LibraryPage view="admin" />;
 }
+function LibrarySourceProposalsPage() { return <LibraryPage view="proposals" />; }
+function LibraryPendingProposalsPage() { return <LibraryPage view="pending-proposals" />; }
 
 function ChatConversationPage() {
   return <ChatPage />;
@@ -64,6 +66,8 @@ function App() {
           <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/library/admin" element={<LibraryAdminPage />} />
+          <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
+          <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
           <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
           <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
           <Route path="/chat" element={<ChatPage />} />

@@ -69,6 +69,8 @@ function clubDraft(club: Club): ClubDraft {
     location: club.location,
     contactEmail: club.contactEmail,
     period: club.period,
+    from: club.from || null,
+    to: club.to || null,
   };
 }
 
@@ -508,7 +510,7 @@ export default function ClubPage() {
       setBusy(false);
     }
   };
-  const changeClubField = (field: ClubField, value: string) => {
+  const changeClubField = (field: ClubField, value: ClubDraft[ClubField]) => {
     const current = draftRef.current || (club ? clubDraft(club) : null);
     if (!current) return;
     const next = { ...current, [field]: value } as ClubDraft;

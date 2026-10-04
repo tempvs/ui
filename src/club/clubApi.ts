@@ -9,6 +9,8 @@ export type Club = {
   location: string | null;
   contactEmail: string | null;
   period: Period;
+  from?: { year: number; era: 'BC' | 'AD' } | null;
+  to?: { year: number; era: 'BC' | 'AD' } | null;
   creatorUserId: string;
   adminUserIds: string[];
   canManage: boolean;
@@ -18,7 +20,7 @@ export type Club = {
   photoUrl?: string | null;
   photoThumbnailUrl?: string | null;
 };
-export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period'> & {
+export type ClubDraft = Pick<Club, 'name' | 'description' | 'location' | 'contactEmail' | 'period' | 'from' | 'to'> & {
   alias?: string | null;
 };
 

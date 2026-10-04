@@ -5,6 +5,7 @@ import EditableDescriptionField from '../component/EditableDescriptionField';
 import EditableSelectFieldRow from '../component/EditableSelectFieldRow';
 import { SaveStatus } from '../component/EditableFieldRow';
 import EditableTextFieldRow from '../component/EditableTextFieldRow';
+import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
 import { PERIODS, getPeriodLabel } from '../util/periods';
 import { Club, ClubDraft } from './clubApi';
 
@@ -14,7 +15,7 @@ type ClubFieldsPanelProps = {
   club: Club;
   editable: boolean;
   statuses: Partial<Record<ClubField, SaveStatus>>;
-  onChange: (field: ClubField, value: string) => void;
+  onChange: (field: ClubField, value: ClubDraft[ClubField]) => void;
   onBlur: (field: ClubField) => void;
 };
 
@@ -41,5 +42,16 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       options={PERIODS.map(period => ({ value: period, label: getPeriodLabel(intl, period) }))}
       onChange={event => onChange('period', event.target.value)} onBlur={() => onBlur('period')}
       status={statuses.period} savingTitle="Saving" errorTitle="Save failed" />
+    <HistoricalRangeFilter
+      enabled
+      from={{ year: club.from ? String(club.from.year) : '', era: club.from?.era || 'AD' }}
+      to={{ year: club.to ? String(club.to.year) : '', era: club.to?.era || 'AD' }}
+      onEnabledChange={() => undefined}
+      onFromChange={(from: HistoricalYearInput) => onChange('from', from.year ? { year: Number(from.year), era: from.era } : null)}
+      onToChange={(to: HistoricalYearInput) => onChange('to', to.year ? { year: Number(to.year), era: to.era } : null)}
+      onBlur={() => onBlur('from')}
+      label="Year range"
+      showToggle={false}
+    />
   </section>;
 }

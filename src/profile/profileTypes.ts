@@ -40,6 +40,10 @@ export type PersistedProfile = {
   location: string;
   alias: string;
   period: string;
+  fromYear: string;
+  fromEra: "BC" | "AD";
+  toYear: string;
+  toEra: "BC" | "AD";
 };
 
 export type OauthProfile = {
@@ -59,7 +63,7 @@ export type Avatar = {
   description?: string | null;
 };
 
-export type ProfileField = 'firstName' | 'lastName' | 'nickName' | 'profileEmail' | 'location' | 'alias' | 'period';
+export type ProfileField = 'firstName' | 'lastName' | 'nickName' | 'profileEmail' | 'location' | 'alias' | 'period' | 'fromYear' | 'fromEra' | 'toYear' | 'toEra';
 
 export type ProfilePageProps = {
   id?: string | null;

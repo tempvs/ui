@@ -59,6 +59,8 @@ export type TempvsEvent = {
   name: string;
   description: string | null;
   periods: Period[];
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
   schedule: EventSchedule;
   image: null | {
     id: string;
@@ -76,7 +78,7 @@ export type TempvsEvent = {
 
 export type EventDraft = Pick<
   TempvsEvent,
-  "ownerProfileId" | "name" | "description" | "periods" | "schedule"
+  "ownerProfileId" | "name" | "description" | "periods" | "from" | "to" | "schedule"
 >;
 
 type EventList = { content: TempvsEvent[]; nextToken?: string };

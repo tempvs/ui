@@ -28,8 +28,9 @@ import {
 } from "../libraryApi";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import { PAGE_SIZE } from "../libraryShared";
+import LibraryPendingProposalsPage from "./LibraryPendingProposalsPage";
 
-type AdminTab = "members" | "requests";
+type AdminTab = "members" | "requests" | "proposals";
 const ROLE_OPTIONS = [
   { value: "ROLE_ARCHIVARIUS", label: "Archivarius" },
   { value: "ROLE_SCRIBE", label: "Scribe" },
@@ -199,7 +200,7 @@ export default function LibraryAdminPage() {
     setTab(next);
     setNotice(null);
     if (next === "members") void loadMembers();
-    else void loadRoleRequests();
+    else if (next === "requests") void loadRoleRequests();
   };
   const updateMember = async (member: LibraryMember, role: string) => {
     setError(null);
@@ -399,6 +400,12 @@ export default function LibraryAdminPage() {
         >
           Role requests
         </Button>
+        <Button
+          variant={tab === "proposals" ? "dark" : "outline-dark"}
+          onClick={() => switchTab("proposals")}
+        >
+          Pending proposals
+        </Button>
       </div>
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {notice && (
@@ -527,6 +534,7 @@ export default function LibraryAdminPage() {
           })}
         </div>
       )}
+      {tab === "proposals" && <LibraryPendingProposalsPage admin />}
       <Modal
         show={showAddMember}
         onHide={() => {

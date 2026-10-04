@@ -13,6 +13,7 @@ type Props = {
   showToggle?: boolean;
   alwaysShowFields?: boolean;
   onValueEntered?: () => void;
+  onBlur?: () => void;
 };
 
 /** Shared inclusive historical-range controls for filtering and editing. */
@@ -27,6 +28,7 @@ export default function HistoricalRangeFilter({
   showToggle = true,
   alwaysShowFields = false,
   onValueEntered,
+  onBlur,
 }: Props) {
   const showFields = !showToggle || alwaysShowFields || enabled;
   return (
@@ -50,12 +52,14 @@ export default function HistoricalRangeFilter({
             value={from}
             onChange={onFromChange}
             onValueEntered={onValueEntered}
+            onBlur={onBlur}
           />
           <YearControl
             label="To"
             value={to}
             onChange={onToChange}
             onValueEntered={onValueEntered}
+            onBlur={onBlur}
           />
         </div>
       )}
@@ -68,11 +72,13 @@ function YearControl({
   value,
   onChange,
   onValueEntered,
+  onBlur,
 }: {
   label: string;
   value: HistoricalYearInput;
   onChange: (value: HistoricalYearInput) => void;
   onValueEntered?: () => void;
+  onBlur?: () => void;
 }) {
   return (
     <div className="d-flex flex-column gap-1 flex-grow-1">
@@ -91,6 +97,7 @@ function YearControl({
             });
             onValueEntered?.();
           }}
+          onBlur={onBlur}
         />
         <Form.Select
           value={value.era}
@@ -98,6 +105,7 @@ function YearControl({
             onChange({ ...value, era: event.target.value as "BC" | "AD" });
             onValueEntered?.();
           }}
+          onBlur={onBlur}
         >
           <option value="BC">BC</option>
           <option value="AD">AD</option>

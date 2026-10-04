@@ -9,6 +9,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import { PeriodBadge, type Period } from "../util/periods";
+import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
@@ -236,6 +237,8 @@ export default function EventPage() {
           name: current.name,
           description: current.description,
           periods: current.periods,
+          from: current.from || null,
+          to: current.to || null,
           schedule: current.schedule,
         },
         current.version,
@@ -248,6 +251,15 @@ export default function EventPage() {
     } finally {
       setBusy(false);
     }
+  };
+  const updateRange = (from: HistoricalYearInput, to: HistoricalYearInput) => {
+    const current = eventRef.current;
+    if (!current) return;
+    replaceItem({
+      ...current,
+      from: from.year ? { year: Number(from.year), era: from.era } : null,
+      to: to.year ? { year: Number(to.year), era: to.era } : null,
+    });
   };
   if (error && !item)
     return (
@@ -332,6 +344,8 @@ export default function EventPage() {
               statuses={fieldStatuses}
               onChange={updateField}
               onBlur={saveField}
+              onRangeChange={updateRange}
+              onRangeBlur={() => void saveField("periods")}
             />
             <PostPanel
               targetType="EVENT"
