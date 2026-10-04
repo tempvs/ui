@@ -119,10 +119,14 @@ export default function LibrarySourcePage() {
         throw new Error("Unable to load the source.");
       }
 
-      const imageResult = await getSourceImages(sourceId);
-      if (!imageResult.ok) {
-        throw new Error("Unable to load source images.");
-      }
+      // The source itself is public. Do not let an optional image, usage, or
+      // audit request turn a successfully loaded source into “not found”.
+      setSource(sourceResult.data);
+      setDraftName(sourceResult.data?.name || "");
+      setDraftDescription(sourceResult.data?.description || "");
+      setFieldStatuses({});
+
+      const imageResult = await getSourceImages(sourceId).catch(() => null);
 
       const sourceProfilesResult = await getSourceProfiles(sourceId).catch(
         () => null,
@@ -134,15 +138,15 @@ export default function LibrarySourcePage() {
       if (proposalResult && !proposalResult.ok) {
         throw new Error("Unable to load source proposals.");
       }
-      const changeLogResult = await getSourceChangeLog(sourceId);
-      if (!changeLogResult.ok)
-        throw new Error("Unable to load the source change log.");
+      const changeLogResult = await getSourceChangeLog(sourceId).catch(
+        () => null,
+      );
       const auditActors = Array.from(
         new Set([
           ...(proposalResult?.data || []).map(
             (proposal) => proposal.proposerId,
           ),
-          ...(changeLogResult.data || []).flatMap((entry) =>
+          ...(changeLogResult?.data || []).flatMap((entry) =>
             [entry.actorId, entry.proposerId].filter((value): value is string =>
               Boolean(value),
             ),
@@ -162,12 +166,10 @@ export default function LibrarySourcePage() {
       const thumbnailsByProfileId = new Map(
         profileThumbnails.map((entry) => [entry.resourceId, entry.image]),
       );
+      const imageData = imageResult?.data;
+      const loadedImages = Array.isArray(imageData) ? imageData : [];
 
-      setSource(sourceResult.data);
-      setDraftName(sourceResult.data?.name || "");
-      setDraftDescription(sourceResult.data?.description || "");
-      setFieldStatuses({});
-      setImages(Array.isArray(imageResult.data) ? imageResult.data : []);
+      setImages(loadedImages);
       setSourceProfiles(
         profilesUsingSource.map((profile) => ({
           ...profile,
@@ -186,15 +188,13 @@ export default function LibrarySourcePage() {
       setSourceProfilesLoaded(true);
       setImageDrafts(
         Object.fromEntries(
-          (Array.isArray(imageResult.data) ? imageResult.data : []).map(
-            (image) => [image.id, image.description || ""],
-          ),
+          loadedImages.map((image) => [image.id, image.description || ""]),
         ),
       );
       setImageStatuses({});
       setUserInfo(viewer);
       setProposals(proposalResult?.data || []);
-      setChangeLog(changeLogResult.data || []);
+      setChangeLog(changeLogResult?.data || []);
       setActors(
         Object.fromEntries(
           actorProfiles
@@ -634,7 +634,7 @@ export default function LibrarySourcePage() {
     return (
       <div className="px-4 px-xl-5 pb-4">
         <div className="tempvs-plain-message text-danger">
-          Source not found.
+          {error || "Source not found."}
         </div>
       </div>
     );
