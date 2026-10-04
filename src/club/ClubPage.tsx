@@ -5,7 +5,6 @@ import { FaSignOutAlt, FaUserMinus } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
-import TextFilterInput from "../component/TextFilterInput";
 import Spinner from "../component/Spinner";
 import {
   fetchClubProfiles,
@@ -92,7 +91,7 @@ type ClubMembersPanelProps = {
   t: (key: string, defaultMessage: string) => string;
 };
 
-function LegacyClubMembersPanel({
+/*
   members,
   visibleMembers,
   memberFilter,
@@ -195,6 +194,7 @@ function LegacyClubMembersPanel({
     </section>
   );
 }
+*/
 
 function ClubMembersPanel({
   members,
