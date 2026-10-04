@@ -5,7 +5,8 @@ import EditablePeriodSelectorField from "../component/EditablePeriodSelectorFiel
 import { SaveStatus } from "../component/EditableFieldRow";
 import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
-import HistoricalRangeFilter, { HistoricalYearInput } from "../component/HistoricalRangeFilter";
+import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
+import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import { TempvsEvent } from "./eventApi";
 
 export type EventField =
@@ -81,17 +82,14 @@ export default function EventFieldsPanel({
         onBlur={() => onBlur("periods")}
         status={statuses.periods}
       />
-      <HistoricalRangeFilter
-        enabled
+      <EditableHistoricalRangeField
+        label="Years"
+        editable={editable}
         from={{ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }}
         to={{ year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" }}
-        onEnabledChange={() => undefined}
         onFromChange={(from) => onRangeChange?.(from, { year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" })}
         onToChange={(to) => onRangeChange?.({ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }, to)}
-        onBlur={onRangeBlur}
-        label="Years"
-        showToggle={false}
-        editable={editable}
+        onBlur={() => onRangeBlur?.()}
       />
       <EditableTextFieldRow
         label="Status"

@@ -17,6 +17,7 @@ type Props = {
   compact?: boolean;
   className?: string;
   editable?: boolean;
+  stacked?: boolean;
 };
 
 /** Shared inclusive historical-range controls for filtering and editing. */
@@ -35,6 +36,7 @@ export default function HistoricalRangeFilter({
   compact = false,
   className = "",
   editable = true,
+  stacked = false,
 }: Props) {
   const showFields = !showToggle || alwaysShowFields || enabled;
   const validRange = isValidHistoricalYear(from) && isValidHistoricalYear(to);
@@ -59,16 +61,16 @@ export default function HistoricalRangeFilter({
         )}</div>
       )}
       {showFields && editable && (
-        <div className={`d-flex align-items-end gap-2 ${compact ? "" : "mt-2"}`}>
-          <YearControl
+        <div className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}>
+          <HistoricalYearControl
             label={compact ? null : "From"}
             value={from}
             onChange={onFromChange}
             onValueEntered={onValueEntered}
             onBlur={validRange ? onBlur : undefined}
           />
-          <span className="pb-2 text-muted" aria-hidden="true">–</span>
-          <YearControl
+          {!stacked && <span className="pb-2 text-muted" aria-hidden="true">–</span>}
+          <HistoricalYearControl
             label={compact ? null : "To"}
             value={to}
             onChange={onToChange}
@@ -81,7 +83,7 @@ export default function HistoricalRangeFilter({
   );
 }
 
-function YearControl({
+export function HistoricalYearControl({
   label,
   value,
   onChange,

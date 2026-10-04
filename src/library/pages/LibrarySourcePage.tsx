@@ -18,10 +18,8 @@ import ImmediateImageUploadModal from "../../component/ImmediateImageUploadModal
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
-import HistoricalRangeFilter, {
-  formatHistoricalRange,
-  type HistoricalYearInput,
-} from "../../component/HistoricalRangeFilter";
+import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
+import EditableHistoricalRangeField from "../../component/EditableHistoricalRangeField";
 import {
   deleteSourceImage,
   getSource,
@@ -723,16 +721,6 @@ export default function LibrarySourcePage() {
   const sourceDescription = draftDescription || source.description || "";
   const sourceDescriptionMissing = !sourceDescription;
   const sourceDescriptionDisplay = sourceDescription || "No description";
-  const sourceYearRange = [
-    source.from ? `From: ${source.from.year} ${source.from.era}` : null,
-    source.to ? `To: ${source.to.year} ${source.to.era}` : null,
-  ]
-    .filter(Boolean)
-    .join(" – ");
-
-  const sourceYearRangeDisplay = formatHistoricalRange(source.from, source.to);
-  const sourceYearRangeText = sourceYearRange || sourceYearRangeDisplay;
-
   return (
     <div className="px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
@@ -927,31 +915,16 @@ export default function LibrarySourcePage() {
               errorTitle="Save failed"
             />
             <div className="mt-3 text-start">
-              {canEditSource(userInfo) ? (
-                <>
-                  <HistoricalRangeFilter
-                    enabled
-                    from={rangeFrom}
-                    to={rangeTo}
-                    onEnabledChange={() => undefined}
-                    onFromChange={setRangeFrom}
-                    onToChange={setRangeTo}
-                    label="Years"
-                    showToggle={false}
-                    onBlur={scheduleSourceRangeSave}
-                  />
-                  {savingRange && <span className="small text-muted">Saving…</span>}
-                </>
-              ) : (
-                <>
-                  <div
-                    className="stash-item-description mt-0 text-start"
-                    aria-label={sourceYearRangeText || "No year range"}
-                  >
-                    {sourceYearRangeDisplay}
-                  </div>
-                </>
-              )}
+              <EditableHistoricalRangeField
+                label="Years"
+                editable={canEditSource(userInfo)}
+                from={rangeFrom}
+                to={rangeTo}
+                onFromChange={setRangeFrom}
+                onToChange={setRangeTo}
+                onBlur={scheduleSourceRangeSave}
+                status={savingRange ? "saving" : null}
+              />
             </div>
           </div>
           <PostPanel

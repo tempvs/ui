@@ -22,7 +22,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
-import HistoricalRangeFilter from "../component/HistoricalRangeFilter";
+import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
 import PostPanel from "../post/PostPanel";
 import {
@@ -1419,11 +1419,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
               rangeControl={isClubProfile ? (
-                <HistoricalRangeFilter
-                enabled
+                <EditableHistoricalRangeField
+                label="Years"
+                editable={isEditable}
                 from={{ year: this.state.fromYear, era: this.state.fromEra }}
                 to={{ year: this.state.toYear, era: this.state.toEra }}
-                onEnabledChange={() => undefined}
                 onFromChange={(value) =>
                   this.setState({ fromYear: value.year, fromEra: value.era })
                 }
@@ -1431,10 +1431,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   this.setState({ toYear: value.year, toEra: value.era })
                 }
                 onBlur={() => this.handleFieldBlur("fromYear")}
-                label={null}
-                showToggle={false}
-                compact
-                editable={isEditable}
+                status={this.state.fieldStatuses.fromYear}
               />
               ) : undefined}
             />

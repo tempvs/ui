@@ -324,6 +324,7 @@ export default function SearchDialog() {
                     onValueEntered={() => setRangeEnabled(true)}
                     label="Years"
                     alwaysShowFields
+                    stacked
                   />
 
                   {activeTab === 'profiles' && (
