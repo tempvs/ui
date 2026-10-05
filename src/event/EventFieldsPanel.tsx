@@ -75,7 +75,6 @@ export default function EventFieldsPanel({
         status={statuses.description}
         className="mb-2"
         textClassName="event-description"
-        multilineUseContentEditable
       />
       <EditablePeriodSelectorField
         label="Periods"

@@ -919,7 +919,6 @@ export default function LibrarySourcePage() {
               placeholderDisplay={sourceDescriptionMissing}
               placeholder="No description"
               rows={5}
-              multilineUseContentEditable
               savingTitle="Saving"
               errorTitle="Save failed"
             />

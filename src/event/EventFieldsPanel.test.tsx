@@ -50,3 +50,23 @@ test("uses shared inline inputs for editable event metadata", () => {
   expect(onChange).toHaveBeenCalledWith("name", "Moonlit Festival");
   expect(onBlur).toHaveBeenCalledWith("name");
 });
+
+test("keeps the event description visible when entering edit mode", () => {
+  render(
+    <IntlProvider locale="en" messages={{}}>
+      <EventFieldsPanel
+        event={event}
+        editable
+        statuses={{}}
+        onChange={jest.fn()}
+        onBlur={jest.fn()}
+      />
+    </IntlProvider>,
+  );
+
+  const description = screen.getByDisplayValue("An evening gathering.");
+  expect(description).toHaveAttribute("readonly");
+  fireEvent.click(description);
+  expect(description).not.toHaveAttribute("readonly");
+  expect(description).toHaveValue("An evening gathering.");
+});

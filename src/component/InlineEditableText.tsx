@@ -183,7 +183,7 @@ export default function InlineEditableText({
                 data-placeholder={placeholder}
                 onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
                 onBlur={handleContentEditableBlur}
-              >{!editing ? String(controlValue ?? '') : null}</div>
+              >{String(controlValue ?? '')}</div>
               <span className="inline-editable-description-popover" role="tooltip">
                 {popoverValue}
               </span>
@@ -200,7 +200,7 @@ export default function InlineEditableText({
               data-placeholder={placeholder}
               onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
               onBlur={handleContentEditableBlur}
-            >{!editing ? String(controlValue ?? '') : null}</div>
+            >{String(controlValue ?? '')}</div>
           )
         ) : (
         shouldShowLocalPopover ? (
