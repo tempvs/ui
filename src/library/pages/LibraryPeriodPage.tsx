@@ -13,6 +13,7 @@ import {
   createSource,
   findSources,
   getSourceImages,
+  getSourceProposals,
   getLibraryViewer,
   LibrarySource,
   LibrarySourceImage,
@@ -75,6 +76,9 @@ export default function LibraryPeriodPage() {
     year: "",
     era: "AD",
   });
+  const [pendingProposalCount, setPendingProposalCount] = useState<number | null>(
+    null,
+  );
 
   const periodCode = (period || "").toUpperCase();
 
@@ -223,6 +227,45 @@ export default function LibraryPeriodPage() {
     return () => window.clearTimeout(timerId);
   }, [searchSources]);
 
+  const canReviewProposals = canEditSource(userInfo);
+  useEffect(() => {
+    if (!canReviewProposals) {
+      setPendingProposalCount(null);
+      return undefined;
+    }
+
+    let active = true;
+    void (async () => {
+      let nextPageToken: string | null | undefined;
+      let count = 0;
+      try {
+        do {
+          const result = await findSources({
+            period: periodCode,
+            size: PAGE_SIZE,
+            nextToken: nextPageToken || undefined,
+          });
+          if (!result.ok) throw new Error("Unable to load pending proposals.");
+          const proposalCounts = await Promise.all(
+            (result.data || []).map(async (source) => {
+              const proposals = await getSourceProposals(source.id);
+              return proposals.ok ? (proposals.data || []).length : 0;
+            }),
+          );
+          count += proposalCounts.reduce((total, value) => total + value, 0);
+          nextPageToken = result.nextToken;
+        } while (nextPageToken);
+        if (active) setPendingProposalCount(count);
+      } catch {
+        if (active) setPendingProposalCount(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [canReviewProposals, periodCode]);
+
   const handleToggle = (
     value: string,
     selectedValues: string[],
@@ -280,8 +323,8 @@ export default function LibraryPeriodPage() {
         subtitle={null}
         period={null}
         variant="period"
-        middleContent={canEditSource(userInfo) ? (
-          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals</Link>
+        middleContent={canReviewProposals ? (
+          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals{pendingProposalCount === null ? "" : ` (${pendingProposalCount})`}</Link>
         ) : null}
         rightContent={
           <LibraryPeriodBreadcrumb period={periodCode} variant="period" />

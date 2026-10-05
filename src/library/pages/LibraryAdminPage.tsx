@@ -534,7 +534,7 @@ export default function LibraryAdminPage() {
           })}
         </div>
       )}
-      {tab === "proposals" && <LibraryPendingProposalsPage admin />}
+      {tab === "proposals" && <LibraryPendingProposalsPage admin embedded />}
       <Modal
         show={showAddMember}
         onHide={() => {

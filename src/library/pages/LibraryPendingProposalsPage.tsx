@@ -12,7 +12,15 @@ import LibrarySectionHeader from "../components/LibrarySectionHeader";
 type Row = { source: LibrarySource; count: number };
 
 /** Paginated source-level queue, scoped to a period when rendered from a period. */
-export default function LibraryPendingProposalsPage({ admin = false }: { admin?: boolean }) {
+type LibraryPendingProposalsPageProps = {
+  admin?: boolean;
+  embedded?: boolean;
+};
+
+export default function LibraryPendingProposalsPage({
+  admin = false,
+  embedded = false,
+}: LibraryPendingProposalsPageProps) {
   const { period } = useParams();
   const [rows, setRows] = useState<Row[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
@@ -58,13 +66,15 @@ export default function LibraryPendingProposalsPage({ admin = false }: { admin?:
   };
 
   const heading = period ? "Pending period proposals" : "All pending source proposals";
-  return <div className="page-layout-content px-4 px-xl-5 pb-4">
-    <LibrarySectionHeader
-      title="LIBRARY"
-      subtitle={null}
-      period={period}
-      rightContent={<Link className="btn btn-outline-dark btn-sm" to={admin ? "/library/admin" : `/library/period/${period}`}>Back</Link>}
-    />
+  return <div className={embedded ? "" : "page-layout-content px-4 px-xl-5 pb-4"}>
+    {!embedded && (
+      <LibrarySectionHeader
+        title="LIBRARY"
+        subtitle={null}
+        period={period}
+        rightContent={<Link className="btn btn-outline-dark btn-sm" to={admin ? "/library/admin" : `/library/period/${period}`}>Back</Link>}
+      />
+    )}
     <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
       <h1 className="h3 mb-0">{heading}</h1>
     </div>
