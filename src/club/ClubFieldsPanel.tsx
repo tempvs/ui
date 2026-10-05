@@ -46,7 +46,7 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
           status={statuses.period} className="mb-0" fieldMaxWidth="12rem" savingTitle="Saving" errorTitle="Save failed" />
       </div>
       <EditableHistoricalRangeField
-      label={undefined}
+      label="Years"
       editable={editable}
       from={{ year: club.from ? String(club.from.year) : '', era: club.from?.era || 'AD' }}
       to={{ year: club.to ? String(club.to.year) : '', era: club.to?.era || 'AD' }}
@@ -56,6 +56,7 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       status={statuses.from}
       className="mb-0"
       fieldMaxWidth="13rem"
+      labelWidth="auto"
       />
     </div>
   </section>;

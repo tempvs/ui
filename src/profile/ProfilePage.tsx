@@ -1420,7 +1420,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onFieldBlur={this.handleFieldBlur}
               rangeControl={isClubProfile ? (
                 <EditableHistoricalRangeField
-                label={undefined}
+                label={this.t('profile.field.years', 'Years')}
                 editable={isEditable}
                 from={{ year: this.state.fromYear, era: this.state.fromEra }}
                 to={{ year: this.state.toYear, era: this.state.toEra }}
@@ -1434,6 +1434,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 status={this.state.fieldStatuses.fromYear}
                 className="mb-0"
                 fieldMaxWidth="13rem"
+                labelWidth="auto"
               />
               ) : undefined}
             />

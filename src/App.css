@@ -1170,6 +1170,15 @@ button.stash-item-media-empty:disabled {
   white-space: nowrap;
 }
 
+/* A range is prose in view mode, not two disabled form inputs. This keeps
+   the years, era suffixes, and dash at normal word spacing. */
+.historical-range-readonly-value {
+  display: block;
+  padding: 0.08rem 0;
+  line-height: inherit;
+  white-space: nowrap;
+}
+
 .historical-range-inline-control > .d-flex {
   flex: 0 0 auto;
   min-width: 0;

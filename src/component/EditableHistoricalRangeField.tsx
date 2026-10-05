@@ -3,6 +3,7 @@ import React from "react";
 import EditableFieldRow, { type SaveStatus } from "./EditableFieldRow";
 import {
   HistoricalYearControl,
+  formatHistoricalRange,
   isChronologicalHistoricalRange,
   isValidHistoricalRange,
   type HistoricalYearInput,
@@ -20,12 +21,13 @@ type Props = {
   status?: SaveStatus;
   className?: string;
   fieldMaxWidth?: string;
+  labelWidth?: string;
 };
 
 /**
- * A paired field implemented through EditableFieldRow. The two endpoint
- * controls remain mounted in both modes, so editing cannot move surrounding
- * markup or change the field's typography and vertical rhythm.
+ * A paired field implemented through EditableFieldRow. Read-only mode uses
+ * one compact chronological string; edit mode exposes the two endpoints and
+ * their era toggles.
  */
 export default function EditableHistoricalRangeField({
   label,
@@ -38,9 +40,14 @@ export default function EditableHistoricalRangeField({
   status = null,
   className = "mb-2",
   fieldMaxWidth = "13rem",
+  labelWidth,
 }: Props) {
   const rangeOrderInvalid = !isChronologicalHistoricalRange(from, to);
   const canSaveRange = isValidHistoricalRange(from, to);
+  const displayValue = formatHistoricalRange(
+    from.year ? { year: Number(from.year), era: from.era } : null,
+    to.year ? { year: Number(to.year), era: to.era } : null,
+  );
   return (
     <EditableFieldRow
       label={label}
@@ -48,8 +55,12 @@ export default function EditableHistoricalRangeField({
       status={status}
       className={className}
       fieldMaxWidth={fieldMaxWidth}
+      labelWidth={labelWidth}
+      readOnlyValue={displayValue}
       renderControl={({ editing, onBlur: finishEditing }) => (
-        <div className="historical-range-inline-control d-flex align-items-center gap-1">
+        !editing ? (
+          <span className="historical-range-readonly-value">{displayValue}</span>
+        ) : <div className="historical-range-inline-control d-flex align-items-center gap-1">
           <HistoricalYearControl
             label={null}
             placeholder="From"
