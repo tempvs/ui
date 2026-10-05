@@ -35,6 +35,10 @@ type SectionBreadcrumbProps = {
   className?: string;
 };
 
+function isInternalPath(value?: string): value is string {
+  return Boolean(value?.startsWith('/') && !value.startsWith('//'));
+}
+
 function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
   if (!switcher) {
     return null;
@@ -56,6 +60,17 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
               as={Link}
               key={entry.key || String(entry.label)}
               to={entry.to}
+              active={entry.active}
+              disabled={entry.disabled}
+              onClick={entry.onClick}
+            >
+              {entry.label}
+            </Dropdown.Item>
+          ) : isInternalPath(entry.href) ? (
+            <Dropdown.Item
+              as={Link}
+              key={entry.key || String(entry.label)}
+              to={entry.href}
               active={entry.active}
               disabled={entry.disabled}
               onClick={entry.onClick}
@@ -107,6 +122,10 @@ export default function SectionBreadcrumb({ items = [], switcher = null, classNa
           <div className="d-inline-flex align-items-center gap-1">
             {item.to ? (
               <Link to={item.to} className="text-decoration-underline">
+                {item.label}
+              </Link>
+            ) : isInternalPath(item.href) ? (
+              <Link to={item.href} className="text-decoration-underline">
                 {item.label}
               </Link>
             ) : item.href ? (

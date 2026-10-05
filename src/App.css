@@ -15,8 +15,12 @@ html {
   text-align: left;
 }
 
-.page-layout-container {
+.app-shell-route {
   padding-top: 1.25rem;
+}
+
+.page-layout-container {
+  padding-top: 0;
 }
 
 .page-layout-content {

@@ -634,7 +634,7 @@ export default function ChatPage() {
   const canCreateConversation = !loadingProfiles && Boolean(initialMessage.trim());
 
   return (
-    <Container fluid className="chat-shell px-3 px-xl-4 py-3 py-xl-4">
+    <Container fluid className="chat-shell px-3 px-xl-4 pb-3 pb-xl-4">
       <div className="chat-page-grid">
         <aside className="chat-sidebar-panel">
           <SectionHeaderBar

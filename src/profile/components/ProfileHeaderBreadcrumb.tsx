@@ -42,8 +42,8 @@ export default function ProfileHeaderBreadcrumb({
   return (
     <SectionBreadcrumb
       items={[
-        { label: ownerLabel, href: ownerLink },
-        { label: currentLabel, href: buildProfilePath(getCanonicalProfilePath, currentProfile) },
+        { label: ownerLabel, to: ownerLink },
+        { label: currentLabel, to: buildProfilePath(getCanonicalProfilePath, currentProfile) },
       ]}
       switcher={{
         id: 'club-profile-switcher',
@@ -51,7 +51,7 @@ export default function ProfileHeaderBreadcrumb({
         items: siblingClubProfiles.map(clubProfile => ({
           key: clubProfile.id,
           label: buildClubProfileLabel(clubProfile, getPeriodLabel),
-          href: buildProfilePath(getCanonicalProfilePath, clubProfile),
+          to: buildProfilePath(getCanonicalProfilePath, clubProfile),
         })),
       }}
     />

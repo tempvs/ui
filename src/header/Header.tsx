@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, NavigateFunction, useNavigate } from 'react-router-dom';
 
 import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
@@ -41,8 +41,12 @@ type HeaderState = {
   profileOptions: CurrentProfileOption[];
 };
 
-class Header extends Component<Record<string, never>, HeaderState> {
-  constructor(props: Record<string, never>) {
+type HeaderProps = {
+  navigate: NavigateFunction;
+};
+
+class HeaderContent extends Component<HeaderProps, HeaderState> {
+  constructor(props: HeaderProps) {
     super(props);
     this.state = {
       loggedIn: undefined,
@@ -135,7 +139,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
       currentProfileValue: nextValue,
       currentProfilePath: selectedOption?.path || '/profile',
     }, () => {
-      window.location.reload();
+      this.props.navigate(selectedOption?.path || '/profile');
     });
   }
 
@@ -175,7 +179,7 @@ class Header extends Component<Record<string, never>, HeaderState> {
                   <Link to="/">
                     <HomeButton />
                   </Link>
-                  <Link to={this.state.currentProfilePath} reloadDocument>
+                  <Link to={this.state.currentProfilePath}>
                     <ProfileButton />
                   </Link>
                   <ProfilePicker
@@ -216,4 +220,6 @@ class Header extends Component<Record<string, never>, HeaderState> {
   }
 }
 
-export default Header;
+export default function Header() {
+  return <HeaderContent navigate={useNavigate()} />;
+}

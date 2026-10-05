@@ -56,7 +56,9 @@ function ClubPageWithParam() {
 function AppShell() {
   return <>
     <Header />
-    <Outlet />
+    <div className="app-shell-route">
+      <Outlet />
+    </div>
   </>;
 }
 
