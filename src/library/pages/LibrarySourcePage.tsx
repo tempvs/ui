@@ -231,6 +231,14 @@ export default function LibrarySourcePage() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  // Save failures are transient feedback. Keeping them in an overlay prevents
+  // a short error message from moving the source layout while it is visible.
+  useEffect(() => {
+    if (!error || !source) return undefined;
+    const timer = window.setTimeout(() => setError(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [error, source]);
+
   useEffect(
     () => () => {
       clearAllTimers(imageSaveTimersRef.current);
@@ -736,9 +744,11 @@ export default function LibrarySourcePage() {
           void handleDeleteSource();
         }}
       />
-      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
         {(overlayProps) => <Popover {...overlayProps} id="source-proposal-notice"><Popover.Body role="status">{notice}</Popover.Body></Popover>}
+      </Overlay>
+      <Overlay target={pendingProposalsRef.current} show={Boolean(error)} placement="bottom">
+        {(overlayProps) => <Popover {...overlayProps} id="source-save-error"><Popover.Body className="text-danger" role="alert">{error}</Popover.Body></Popover>}
       </Overlay>
 
       <PageColumns variant="two" className="library-source-columns">
