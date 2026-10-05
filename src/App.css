@@ -941,7 +941,10 @@ button.stash-item-media-empty:disabled {
 .inline-editable-readonly
   .inline-editable-multiline.inline-editable-custom-field,
 .inline-editable-readonly-multiline {
-  max-height: 6.15rem;
+  /* The same multiline field stays mounted while editing.  Do not constrain
+     its display state to a different height: that moves every field below it
+     as soon as the editor receives focus. */
+  max-height: none;
   overflow: hidden;
 }
 
@@ -955,7 +958,7 @@ button.stash-item-media-empty:disabled {
 .inline-editable-active .inline-editable-multiline.form-control,
 .inline-editable-active
   .inline-editable-multiline.inline-editable-custom-field {
-  max-height: 12rem;
+  max-height: none;
   overflow: auto;
 }
 
