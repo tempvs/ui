@@ -86,9 +86,11 @@ export default function EditableFieldRow({
 
   return (
     <div className={`d-flex align-items-center gap-3 ${className}`.trim()}>
-      <div className="text-start small fw-semibold" style={{ width: labelWidth }}>
-        {label}
-      </div>
+      {label !== undefined && label !== null && (
+        <div className="text-start small fw-semibold" style={{ width: labelWidth }}>
+          {label}
+        </div>
+      )}
       <div style={{ width: '100%', maxWidth: fieldMaxWidth }}>
         {editable ? (
           <div

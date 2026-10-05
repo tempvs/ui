@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Col, Form, Row, Toast, ToastContainer } from "react-bootstrap";
+import { Button, Col, Form, Overlay, Popover, Row } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -92,6 +92,7 @@ export default function LibrarySourcePage() {
   const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const pendingProposalsRef = useRef<HTMLAnchorElement>(null);
   const [draftName, setDraftName] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
   const [rangeFrom, setRangeFrom] = useState<HistoricalYearInput>({
@@ -789,17 +790,18 @@ export default function LibrarySourcePage() {
       />
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
-      <ToastContainer position="top-end" className="p-3" style={{ zIndex: 1080 }}>
-        <Toast show={Boolean(notice)} onClose={() => setNotice(null)} delay={3000} autohide bg="light">
-          <Toast.Body role="status">{notice}</Toast.Body>
-        </Toast>
-      </ToastContainer>
-
       {canEditSource(userInfo) && (
         <div className="d-flex justify-content-end mb-3">
-          <Link to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">
+          <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">
             Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}
           </Link>
+          <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
+            {(overlayProps) => (
+              <Popover {...overlayProps} id="source-proposal-notice">
+                <Popover.Body role="status">{notice}</Popover.Body>
+              </Popover>
+            )}
+          </Overlay>
         </div>
       )}
 

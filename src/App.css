@@ -1159,11 +1159,12 @@ button.stash-item-media-empty:disabled {
    wrap while switching to edit mode, keeping both field slots stationary. */
 .historical-range-inline-control {
   min-height: 2.4rem;
+  width: max-content;
   white-space: nowrap;
 }
 
 .historical-range-inline-control > .d-flex {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
@@ -1172,14 +1173,17 @@ button.stash-item-media-empty:disabled {
 }
 
 .historical-range-inline-control .inline-editable-input.form-control {
-  min-width: 4.25rem;
-  padding-right: .35rem;
+  width: 3.75rem;
+  min-width: 3.75rem;
+  padding-left: .3rem;
+  padding-right: .3rem;
 }
 
 .historical-year-era {
   display: inline-block;
-  min-width: 2.25rem;
-  font-size: .875rem;
+  min-width: 1.9rem;
+  font-size: inherit;
+  line-height: inherit;
   color: #5f574c;
 }
 

@@ -39,14 +39,14 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       onChange={event => onChange('contactEmail', event.target.value)} onBlur={() => onBlur('contactEmail')}
       status={statuses.contactEmail} savingTitle="Saving" errorTitle="Save failed" />
     <div className="d-flex align-items-end gap-3 flex-wrap mb-2">
-      <div className="flex-grow-1">
+      <div>
         <EditableSelectFieldRow label="Period" editable={editable} value={club.period} readOnlyValue={getPeriodLabel(intl, club.period)}
           options={PERIODS.map(period => ({ value: period, label: getPeriodLabel(intl, period) }))}
           onChange={event => onChange('period', event.target.value)} onBlur={() => onBlur('period')}
-          status={statuses.period} className="mb-0" savingTitle="Saving" errorTitle="Save failed" />
+          status={statuses.period} className="mb-0" fieldMaxWidth="12rem" savingTitle="Saving" errorTitle="Save failed" />
       </div>
       <EditableHistoricalRangeField
-      label="Years"
+      label={undefined}
       editable={editable}
       from={{ year: club.from ? String(club.from.year) : '', era: club.from?.era || 'AD' }}
       to={{ year: club.to ? String(club.to.year) : '', era: club.to?.era || 'AD' }}
@@ -54,6 +54,8 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       onToChange={to => onChange('to', to.year ? { year: Number(to.year), era: to.era } : null)}
       onBlur={() => onBlur('from')}
       status={statuses.from}
+      className="mb-0"
+      fieldMaxWidth="14rem"
       />
     </div>
   </section>;

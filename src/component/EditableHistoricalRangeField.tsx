@@ -4,7 +4,8 @@ import EditableFieldRow, { type SaveStatus } from "./EditableFieldRow";
 import { HistoricalYearControl, type HistoricalYearInput } from "./HistoricalRangeFilter";
 
 type Props = {
-  label: string;
+  /** Omit the label when the range is paired with another field on one row. */
+  label?: React.ReactNode;
   editable: boolean;
   from: HistoricalYearInput;
   to: HistoricalYearInput;
@@ -31,7 +32,7 @@ export default function EditableHistoricalRangeField({
   onBlur,
   status = null,
   className = "mb-2",
-  fieldMaxWidth = "100%",
+  fieldMaxWidth = "16rem",
 }: Props) {
   return (
     <EditableFieldRow
@@ -41,7 +42,7 @@ export default function EditableHistoricalRangeField({
       className={className}
       fieldMaxWidth={fieldMaxWidth}
       renderControl={({ editing, onBlur: finishEditing }) => (
-        <div className="historical-range-inline-control d-flex align-items-center gap-2">
+        <div className="historical-range-inline-control d-flex align-items-center gap-1">
           <HistoricalYearControl
             label={null}
             placeholder="From"
