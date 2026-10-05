@@ -6,11 +6,9 @@ import React, {
   useState,
 } from "react";
 import { Form, Overlay, Popover } from "react-bootstrap";
-import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import IconActionButton from "../../component/IconActionButton";
 import PageLayout from "../../component/PageLayout";
 import { PageColumn, PageColumns } from "../../component/PageColumns";
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -36,7 +34,7 @@ import {
   SourceChangeLogEntry,
   patchSourceField,
   patchSourceRange,
-  removeSource,
+  proposeSourceDeletion,
   replaceSourceImage,
   updateSourceImageDescription,
   uploadSourceImage,
@@ -62,7 +60,6 @@ type SourceFieldStatuses = Partial<Record<SourceField, SaveStatus>>;
 
 type ImageRecord<T> = Record<string | number, T>;
 
-const TrashIcon = FaTrashAlt as React.ComponentType;
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
   const navigate = useNavigate();
@@ -399,7 +396,7 @@ export default function LibrarySourcePage() {
     }
 
     try {
-      const result = await removeSource(sourceId, source.version);
+      const result = await proposeSourceDeletion(sourceId, source.version);
       if (!result.ok) {
         throw new Error(
           (typeof result.data === "string" && result.data) ||
@@ -408,11 +405,13 @@ export default function LibrarySourcePage() {
             "message" in result.data
               ? result.data.message
               : null) ||
-            "Unable to delete the source.",
+            "Unable to propose source deletion.",
         );
       }
 
-      navigate(`/library/period/${(source.period || "").toLowerCase()}`);
+      if (!result.data || typeof result.data !== "object" || !("id" in result.data))
+        throw new Error("Library returned an invalid deletion changeset.");
+      navigate(`/library/source/${source.id}/changesets/${String(result.data.id)}`);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     }
@@ -691,28 +690,16 @@ export default function LibrarySourcePage() {
         middleContent: canEditSource(userInfo) ? <div className="d-flex gap-2"><Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Changesets</Link><Link to={`/library/source/${source.id}/edit`} className="btn btn-dark btn-sm">Edit source</Link></div> : null,
         rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
           <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
-          {canDeleteSource(userInfo) && (
-          <IconActionButton
-            title="Delete source"
-            onClick={() => setShowDeleteConfirmation(true)}
-            borderColor="#c77d7d"
-            color="#8e2323"
-            backgroundColor="#fff"
-            size="1.9rem"
-            fontSize="0.9rem"
-          >
-            <TrashIcon />
-          </IconActionButton>
-          )}
+          {canDeleteSource(userInfo) && <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => setShowDeleteConfirmation(true)}>Propose deletion</button>}
         </div>,
       }}
     >
 
       <ConfirmationModal
         show={showDeleteConfirmation}
-        title="Delete source"
-        message="Delete this source?"
-        confirmLabel="Delete"
+        title="Propose source deletion"
+        message="Create a deletion changeset for review? The source remains visible until another Library editor approves it."
+        confirmLabel="Propose deletion"
         onHide={() => setShowDeleteConfirmation(false)}
         onConfirm={() => {
           setShowDeleteConfirmation(false);

@@ -99,6 +99,7 @@ export type SourceChangeset = {
   sourceId: string;
   proposerId: string;
   baseVersion: number;
+  kind?: "UPDATE" | "DELETE";
   status: SourceChangesetStatus;
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
@@ -632,7 +633,7 @@ export function getSourceChangeLog(sourceId: string | undefined) {
   );
 }
 
-export async function removeSource(
+export async function proposeSourceDeletion(
   sourceId: string | undefined,
   version: number,
 ) {
@@ -642,6 +643,9 @@ export async function removeSource(
   });
   return parseResponse<ApiErrorPayload | string>(response);
 }
+
+/** @deprecated Use proposeSourceDeletion to make review semantics explicit. */
+export const removeSource = proposeSourceDeletion;
 
 export async function uploadSourceImage(
   sourceId: string | undefined,

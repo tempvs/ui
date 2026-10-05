@@ -10,6 +10,7 @@ type Props = {
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
   compact?: boolean;
+  kind?: "UPDATE" | "DELETE";
   imageOperations?: SourceImageOperation[];
 };
 
@@ -45,8 +46,12 @@ export default function SourceChangesetDiff({
   base,
   proposed,
   compact = false,
+  kind = "UPDATE",
   imageOperations = [],
 }: Props) {
+  if (kind === "DELETE") {
+    return <div className="source-changeset-diff-row"><div className="fw-semibold small text-uppercase text-muted">Source</div><div className="source-changeset-diff-before">This proposal deletes the source and its images after review approval.</div></div>;
+  }
   const values = {
     name: [base.name, proposed.name],
     description: [base.description, proposed.description],
