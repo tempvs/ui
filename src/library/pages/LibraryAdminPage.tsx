@@ -28,7 +28,7 @@ import {
 } from "../libraryApi";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import { PAGE_SIZE } from "../libraryShared";
-import LibraryPendingProposalsPage from "./LibraryPendingProposalsPage";
+import { LibraryPendingProposalsContent } from "./LibraryPendingProposalsPage";
 
 type AdminTab = "members" | "requests" | "proposals";
 const ROLE_OPTIONS = [
@@ -534,7 +534,7 @@ export default function LibraryAdminPage() {
           })}
         </div>
       )}
-      {tab === "proposals" && <LibraryPendingProposalsPage admin embedded />}
+      {tab === "proposals" && <LibraryPendingProposalsContent />}
       <Modal
         show={showAddMember}
         onHide={() => {
