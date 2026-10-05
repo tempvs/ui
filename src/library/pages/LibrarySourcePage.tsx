@@ -676,16 +676,16 @@ export default function LibrarySourcePage() {
   }, [profileFilter, sourceProfiles]);
 
   if (loading) {
-    return <Spinner />;
+    return <PageLayout header={{ title: "SOURCE" }}><Spinner /></PageLayout>;
   }
 
   if (!source) {
     return (
-      <div className="px-4 px-xl-5 pb-4">
+      <PageLayout header={{ title: "SOURCE" }}>
         <div className="tempvs-plain-message text-danger">
           {error || "Source not found."}
         </div>
-      </div>
+      </PageLayout>
     );
   }
 

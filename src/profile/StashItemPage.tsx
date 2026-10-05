@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Container, Form, Modal } from "react-bootstrap";
+import { Button, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
@@ -594,14 +594,14 @@ function StashItemPage({ intl }: StashItemPageProps) {
   }, [handleSearchSources, item, sourceSearch.query, sourceLinkModalVisible]);
 
   if (!loaded) {
-    return <Spinner />;
+    return <PageLayout header={{ title: "ITEM" }}><Spinner /></PageLayout>;
   }
 
   if (!profile || !item) {
     return (
-      <Container fluid className="px-4 px-xl-5 pb-4">
+      <PageLayout header={{ title: "ITEM" }}>
         {t("profile.stash.notFound", "Club stash not found.")}
-      </Container>
+      </PageLayout>
     );
   }
 

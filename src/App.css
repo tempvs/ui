@@ -15,8 +15,12 @@ html {
   text-align: left;
 }
 
-.app-shell-route {
+.app-shell-header-slot {
   padding-top: 1.25rem;
+}
+
+.app-shell-header-slot:empty {
+  display: none;
 }
 
 .page-layout-container {

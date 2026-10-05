@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Container } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -117,14 +116,14 @@ function StashPage({ intl }: StashPageProps) {
   }, [activeGroup, navigate, profile, searchParams]);
 
   if (!loaded) {
-    return <Spinner />;
+    return <PageLayout header={{ title: "STASH" }}><Spinner /></PageLayout>;
   }
 
   if (!profile || profile.type !== 'CLUB') {
     return (
-      <Container fluid className="px-4 px-xl-5 pb-4">
+      <PageLayout header={{ title: "STASH" }}>
         {t('profile.stash.notFound', 'Club stash not found.')}
-      </Container>
+      </PageLayout>
     );
   }
 

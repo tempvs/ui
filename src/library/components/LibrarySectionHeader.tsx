@@ -1,6 +1,6 @@
 import React from 'react';
 
-import SectionHeaderBar from '../../component/SectionHeaderBar';
+import PageHeader from '../../component/PageHeader';
 import LibraryPeriodBreadcrumb from './LibraryPeriodBreadcrumb';
 
 type LibrarySectionHeaderProps = {
@@ -23,7 +23,7 @@ export default function LibrarySectionHeader({
   const resolvedRightContent = rightContent || <LibraryPeriodBreadcrumb period={period} variant={variant} />;
 
   return (
-    <SectionHeaderBar
+    <PageHeader
       title={title}
       subtitle={subtitle}
       middleContent={middleContent}

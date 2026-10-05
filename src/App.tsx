@@ -54,11 +54,11 @@ function ClubPageWithParam() {
 
 /** Keeps the horizontal navigation mounted while React Router swaps page content. */
 function AppShell() {
+  const [headerMount, setHeaderMount] = React.useState<HTMLDivElement | null>(null);
   return <>
     <Header />
-    <div className="app-shell-route">
-      <Outlet />
-    </div>
+    <div ref={setHeaderMount} className="app-shell-header-slot px-4 px-xl-5" />
+    {headerMount && <Outlet context={{ headerMount }} />}
   </>;
 }
 

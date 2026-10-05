@@ -58,7 +58,7 @@ export default function LibraryPendingProposalsPage({ admin = false }: { admin?:
   };
 
   const heading = period ? "Pending period proposals" : "All pending source proposals";
-  return <div className="px-4 px-xl-5 pb-4">
+  return <div className="page-layout-content px-4 px-xl-5 pb-4">
     <LibrarySectionHeader
       title="LIBRARY"
       subtitle={null}

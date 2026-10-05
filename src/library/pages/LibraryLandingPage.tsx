@@ -105,7 +105,7 @@ export default function LibraryLandingPage() {
   );
 
   return (
-    <div className="px-4 px-xl-5 pb-4">
+    <div className="page-layout-content px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
         title="LIBRARY"
         subtitle={null}

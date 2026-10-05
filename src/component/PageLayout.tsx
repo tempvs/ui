@@ -1,16 +1,9 @@
 import React from "react";
 import { Container } from "react-bootstrap";
 
-import SectionHeaderBar from "./SectionHeaderBar";
+import PageHeader, { PageHeaderProps } from "./PageHeader";
 
-export type PageLayoutHeader = {
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  middleContent?: React.ReactNode;
-  rightContent?: React.ReactNode;
-  backgroundColor?: string;
-  borderColor?: string;
-};
+export type PageLayoutHeader = PageHeaderProps;
 
 type PageLayoutProps = {
   header: PageLayoutHeader;
@@ -19,14 +12,14 @@ type PageLayoutProps = {
 };
 
 /**
- * Common routed-page frame. The persistent navigation belongs to AppShell;
- * this component owns the shared jumbo header and consistent page gutters.
+ * Common routed-page frame. AppShell keeps the header tile mounted; this
+ * component supplies its content and owns the shared body gutters.
  */
 export default function PageLayout({ header, children, className = "" }: PageLayoutProps) {
   return (
     <main className={`page-layout ${className}`.trim()}>
+      <PageHeader {...header} />
       <Container fluid className="page-layout-container px-4 px-xl-5 pb-4">
-        <SectionHeaderBar {...header} />
         <div className="page-layout-content">{children}</div>
       </Container>
     </main>

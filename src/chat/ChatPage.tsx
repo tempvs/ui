@@ -1,10 +1,10 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
-import { Alert, Badge, Button, Container, Form, Modal, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Form, Modal, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { FaPlus } from 'react-icons/fa';
 
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import { clearStoredCurrentProfileValue, resolveCurrentOwnedProfileId } from '../profile/currentProfile';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId, searchProfiles } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
@@ -615,11 +615,13 @@ export default function ChatPage() {
 
   if (signedOut) {
     return (
-      <Container fluid className="chat-shell px-3 px-xl-4">
+      <PageLayout className="chat-shell" header={{
+        title: intl.formatMessage({ id: 'chat.title', defaultMessage: 'Chat' }),
+      }}>
         <Alert variant="warning" className="mt-4">
           <FormattedMessage id="chat.signInRequired" defaultMessage="Sign in to use chat." />
         </Alert>
-      </Container>
+      </PageLayout>
     );
   }
 
@@ -634,18 +636,19 @@ export default function ChatPage() {
   const canCreateConversation = !loadingProfiles && Boolean(initialMessage.trim());
 
   return (
-    <Container fluid className="chat-shell px-3 px-xl-4 pb-3 pb-xl-4">
+    <PageLayout
+      className="chat-shell"
+      header={{
+        title: intl.formatMessage({ id: 'chat.title', defaultMessage: 'Chat' }),
+        rightContent: (
+          <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal} disabled={noCurrentProfile}>
+            <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
+          </Button>
+        ),
+      }}
+    >
       <div className="chat-page-grid">
         <aside className="chat-sidebar-panel">
-          <SectionHeaderBar
-            title={intl.formatMessage({ id: 'chat.title', defaultMessage: 'Chat' })}
-            subtitle={null}
-            rightContent={(
-              <Button type="button" className="chat-create-trigger" onClick={openCreateConversationModal} disabled={noCurrentProfile}>
-                <PlusIcon /> <FormattedMessage id="chat.createButton" defaultMessage="New conversation" />
-              </Button>
-            )}
-          />
           {feedback && <Alert variant="warning" className="chat-feedback">{feedback}</Alert>}
           <div className="chat-list-panel mt-3">
             <div className="chat-panel-heading">
@@ -924,6 +927,6 @@ export default function ChatPage() {
           </Form>
         </Modal.Body>
       </Modal>
-    </Container>
+    </PageLayout>
   );
 }

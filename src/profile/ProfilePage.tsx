@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import { Container, Row, Col } from "react-bootstrap";
+import { Row, Col } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { injectIntl } from "react-intl";
 import { Link } from "react-router-dom";
@@ -1258,18 +1258,20 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   renderCreateProfile() {
     return (
-      <CreateProfileForm
-        firstName={this.state.firstName}
-        lastName={this.state.lastName}
-        nickName={this.state.nickName}
-        profileEmail={this.state.profileEmail}
-        location={this.state.location}
-        alias={this.state.alias}
-        isErrorMessage={this.state.messageVariant === "error"}
-        t={this.t.bind(this)}
-        onChange={this.handleInputChange}
-        onSubmit={this.handleCreateProfile}
-      />
+      <PageLayout header={{ title: "Profile" }}>
+        <CreateProfileForm
+          firstName={this.state.firstName}
+          lastName={this.state.lastName}
+          nickName={this.state.nickName}
+          profileEmail={this.state.profileEmail}
+          location={this.state.location}
+          alias={this.state.alias}
+          isErrorMessage={this.state.messageVariant === "error"}
+          t={this.t.bind(this)}
+          onChange={this.handleInputChange}
+          onSubmit={this.handleCreateProfile}
+        />
+      </PageLayout>
     );
   }
 
@@ -1536,7 +1538,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       !this.props.id && !this.props.userId && !this.state.currentUserId;
 
     return (
-      <Container>
+      <PageLayout header={{ title: "Profile" }}>
         <Row>
           <Col sm={12}>
             {isAnonymousOwnProfileRoute
@@ -1547,13 +1549,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               : this.t("profile.notFound", "Profile not found.")}
           </Col>
         </Row>
-      </Container>
+      </PageLayout>
     );
   }
 
   render() {
     if (!this.state.loaded) {
-      return <Spinner />;
+      return <PageLayout header={{ title: "Profile" }}><Spinner /></PageLayout>;
     }
 
     if (this.state.createMode) {
