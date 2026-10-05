@@ -349,7 +349,11 @@ export default function EventPage() {
           <Col lg={6}>
             <EventFieldsPanel
               event={item}
-              editable={canManage && !busy}
+              // Keep every field in its inline-editable DOM while a save is
+              // in flight. Toggling this flag made the complete panel switch
+              // to a separate read-only rendering path, which changed title
+              // and description line boxes and visibly shifted the layout.
+              editable={canManage}
               statuses={fieldStatuses}
               onChange={updateField}
               onBlur={saveField}
