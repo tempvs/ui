@@ -55,7 +55,7 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
       onBlur={() => onBlur('from')}
       status={statuses.from}
       className="mb-0"
-      fieldMaxWidth="14rem"
+      fieldMaxWidth="13rem"
       />
     </div>
   </section>;

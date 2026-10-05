@@ -1433,7 +1433,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 onBlur={() => this.handleFieldBlur("fromYear")}
                 status={this.state.fieldStatuses.fromYear}
                 className="mb-0"
-                fieldMaxWidth="14rem"
+                fieldMaxWidth="13rem"
               />
               ) : undefined}
             />

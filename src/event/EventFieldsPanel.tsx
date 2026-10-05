@@ -90,7 +90,7 @@ export default function EventFieldsPanel({
         onFromChange={(from) => onRangeChange?.(from, { year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" })}
         onToChange={(to) => onRangeChange?.({ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }, to)}
         onBlur={() => onRangeBlur?.()}
-        fieldMaxWidth="16rem"
+        fieldMaxWidth="13rem"
       />
       <EditableTextFieldRow
         label="Status"

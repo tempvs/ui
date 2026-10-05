@@ -91,7 +91,7 @@ export default function EditableFieldRow({
           {label}
         </div>
       )}
-      <div style={{ width: '100%', maxWidth: fieldMaxWidth }}>
+      <div className="small" style={{ width: '100%', maxWidth: fieldMaxWidth }}>
         {editable ? (
           <div
             ref={editRootRef}

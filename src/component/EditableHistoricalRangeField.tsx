@@ -32,7 +32,7 @@ export default function EditableHistoricalRangeField({
   onBlur,
   status = null,
   className = "mb-2",
-  fieldMaxWidth = "16rem",
+  fieldMaxWidth = "13rem",
 }: Props) {
   return (
     <EditableFieldRow

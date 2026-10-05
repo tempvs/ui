@@ -170,7 +170,7 @@ export function HistoricalYearControl({
           onBlur={onBlur}
           // Four visible numeric characters is intentional: values are
           // validated and persisted as positive four-digit-or-shorter years.
-          style={{ minWidth: "3.75rem", width: "3.75rem" }}
+          style={{ minWidth: "3.25rem", width: "3.25rem" }}
         />
         {showEra ? (
           <Form.Check

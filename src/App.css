@@ -1173,10 +1173,16 @@ button.stash-item-media-empty:disabled {
 }
 
 .historical-range-inline-control .inline-editable-input.form-control {
-  width: 3.75rem;
-  min-width: 3.75rem;
-  padding-left: .3rem;
-  padding-right: .3rem;
+  width: 3.25rem;
+  min-width: 3.25rem;
+  padding-left: .2rem;
+  padding-right: .2rem;
+}
+
+/* Editing uses the fixed BC slots next to each endpoint. Keep the separator
+   slot reserved, but hide its dash until the read-only display returns. */
+.historical-range-inline-control:has(.form-check) > .text-muted {
+  visibility: hidden;
 }
 
 .historical-year-era {

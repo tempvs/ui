@@ -27,7 +27,7 @@
 .event-occurrences li { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid rgba(87, 102, 98, .12); }
 .event-managers { margin-top: 0; }
 .event-info-panel .event-occurrences-heading { margin-top: 1.25rem; font-size: 1.1rem; }
-.event-period-selector-field { width: 100%; max-width: 100%; }
+.event-period-selector-field { width: 100%; max-width: 100%; font-size: .875rem; line-height: 1.5; }
 .event-period-selector { min-height: 2.4rem; padding: .35rem .6rem; }
 .event-period-selector-summary { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.5rem; align-items: center; padding-right: 1.5rem; }
 .event-period-selector-summary span:not(.description-placeholder) { border: 1px solid rgba(87, 102, 98, .24); border-radius: 999px; background: #f7f4ee; padding: .12rem .5rem; font-size: .82rem; }
