@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -40,9 +40,24 @@ type Draft = {
 type PendingImage = {
   id: string;
   file: File;
+  previewUrl: string;
   description: string;
   replacementFor?: string;
 };
+
+function responseError(
+  response: { status: number; data: unknown },
+  fallback: string,
+): Error {
+  const message =
+    response.data &&
+    typeof response.data === "object" &&
+    "message" in response.data &&
+    typeof response.data.message === "string"
+      ? response.data.message
+      : fallback;
+  return new Error(message);
+}
 
 function asDraft(source: LibrarySource): Draft {
   return {
@@ -91,6 +106,12 @@ export default function LibrarySourceEditPage() {
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [imageOperations, setImageOperations] = useState<SourceImageOperation[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const previewUrls = useRef(new Set<string>());
+
+  useEffect(
+    () => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,6 +125,8 @@ export default function LibrarySourceEditPage() {
       ]);
       if (!sourceResult.ok || !sourceResult.data) throw new Error("Unable to load the source.");
       if (!canEditSource(viewer)) throw new Error("Library editor access is required to edit a source.");
+      if (changesetsResult && !changesetsResult.ok)
+        throw responseError(changesetsResult, "Unable to load source changesets.");
       setSource(sourceResult.data);
       setDraft(asDraft(sourceResult.data));
       setImages(imageResult?.data || []);
@@ -149,10 +172,23 @@ export default function LibrarySourceEditPage() {
     try {
       const file = await prepareImageFile(original);
       const id = crypto.randomUUID();
-      setPendingImages((current) => [
-        ...current,
-        { id, file, description: "", ...(replacementFor ? { replacementFor } : {}) },
-      ]);
+      const previewUrl = URL.createObjectURL(file);
+      previewUrls.current.add(previewUrl);
+      setPendingImages((current) => {
+        const superseded = replacementFor
+          ? current.filter((image) => image.replacementFor === replacementFor)
+          : [];
+        superseded.forEach((image) => {
+          URL.revokeObjectURL(image.previewUrl);
+          previewUrls.current.delete(image.previewUrl);
+        });
+        return [
+          ...(replacementFor
+            ? current.filter((image) => image.replacementFor !== replacementFor)
+            : current),
+          { id, file, previewUrl, description: "", ...(replacementFor ? { replacementFor } : {}) },
+        ];
+      });
       setImageOperations((current) => [
         ...current.filter((operation) =>
           operation.kind === "REPLACE" ? operation.imageId !== replacementFor : true,
@@ -167,7 +203,13 @@ export default function LibrarySourceEditPage() {
   };
 
   const removePublishedImage = (imageId: string) => {
-    setPendingImages((current) => current.filter((image) => image.replacementFor !== imageId));
+    setPendingImages((current) => {
+      current.filter((image) => image.replacementFor === imageId).forEach((image) => {
+        URL.revokeObjectURL(image.previewUrl);
+        previewUrls.current.delete(image.previewUrl);
+      });
+      return current.filter((image) => image.replacementFor !== imageId);
+    });
     setImageOperations((current) => [
       ...current.filter((operation) =>
         !(operation.kind === "REMOVE" || operation.kind === "REPLACE" || operation.kind === "UPDATE_DESCRIPTION") || operation.imageId !== imageId,
@@ -186,7 +228,14 @@ export default function LibrarySourceEditPage() {
   };
 
   const removePendingImage = (id: string) => {
-    setPendingImages((current) => current.filter((image) => image.id !== id));
+    setPendingImages((current) => {
+      const removed = current.find((image) => image.id === id);
+      if (removed) {
+        URL.revokeObjectURL(removed.previewUrl);
+        previewUrls.current.delete(removed.previewUrl);
+      }
+      return current.filter((image) => image.id !== id);
+    });
     setImageOperations((current) =>
       current.filter(
         (operation) =>
@@ -262,7 +311,30 @@ export default function LibrarySourceEditPage() {
               <Form.Group className="col-md-4"><Form.Label>Type</Form.Label><Form.Select required value={draft.type} onChange={(event) => update("type", event.target.value)}><option value="">Choose type</option>{TYPES.map((value) => <option key={value} value={value}>{value}</option>)}</Form.Select></Form.Group>
             </div>
             <fieldset className="border rounded p-3 mb-4"><legend className="float-none w-auto px-2 fs-6 mb-0">Years</legend><div className="row g-3"><Form.Group className="col-sm-6"><Form.Label>From</Form.Label><div className="d-flex gap-2"><Form.Control inputMode="numeric" maxLength={4} value={draft.from.year} onChange={(event) => update("from", { ...draft.from, year: event.target.value.replace(/\D/g, "") })} /><Form.Select value={draft.from.era} onChange={(event) => update("from", { ...draft.from, era: event.target.value as "AD" | "BC" })}><option value="AD">AD</option><option value="BC">BC</option></Form.Select></div></Form.Group><Form.Group className="col-sm-6"><Form.Label>To</Form.Label><div className="d-flex gap-2"><Form.Control inputMode="numeric" maxLength={4} value={draft.to.year} onChange={(event) => update("to", { ...draft.to, year: event.target.value.replace(/\D/g, "") })} /><Form.Select value={draft.to.era} onChange={(event) => update("to", { ...draft.to, era: event.target.value as "AD" | "BC" })}><option value="AD">AD</option><option value="BC">BC</option></Form.Select></div></Form.Group></div>{!isRangeValid(draft) && <div className="text-danger small mt-2">From cannot be later than To.</div>}</fieldset>
-            <fieldset className="border rounded p-3 mb-4"><legend className="float-none w-auto px-2 fs-6 mb-0">Images</legend><p className="small text-muted">Image changes are private until this changeset is approved.</p><div className="row g-3 mb-3">{images.filter((image) => !imageOperations.some((operation) => operation.kind === "REMOVE" && operation.imageId === image.id)).map((image) => <div className="col-md-6" key={image.id}><div className="border rounded p-2 h-100"><div className="fw-semibold text-truncate">{image.fileName || "Image"}</div><Form.Control className="my-2" value={(imageOperations.find((operation) => operation.kind === "UPDATE_DESCRIPTION" && operation.imageId === image.id) as Extract<SourceImageOperation, { kind: "UPDATE_DESCRIPTION" }> | undefined)?.description ?? image.description ?? ""} placeholder="Image description" onChange={(event) => updatePublishedDescription(image.id, event.target.value)} /><div className="d-flex gap-2"><Form.Label className="btn btn-outline-dark btn-sm mb-0">Replace<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event, image.id)} /></Form.Label><Button size="sm" variant="outline-danger" type="button" onClick={() => removePublishedImage(image.id)}>Delete</Button></div></div></div>)}{pendingImages.map((image) => <div className="col-md-6" key={image.id}><div className="border border-success rounded p-2 h-100"><div className="small text-success fw-semibold">{image.replacementFor ? "Replacement image" : "New image"}</div><div className="text-truncate">{image.file.name}</div><Form.Control className="mt-2" value={image.description} placeholder="Image description" onChange={(event) => updatePendingDescription(image.id, event.target.value)} /><Button className="mt-2" size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(image.id)}>Remove</Button></div></div>)}</div><Form.Label className="btn btn-outline-dark btn-sm mb-0">Add image<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event)} /></Form.Label></fieldset>
+            <fieldset className="border rounded p-3 mb-4">
+              <legend className="float-none w-auto px-2 fs-6 mb-0">Images</legend>
+              <p className="small text-muted">Images are shown here for review. Changes stay private until the changeset is approved.</p>
+              <div className="row g-3 mb-3">
+                {images.map((image) => {
+                  const removed = imageOperations.some((operation) => operation.kind === "REMOVE" && operation.imageId === image.id);
+                  const replacement = pendingImages.find((pending) => pending.replacementFor === image.id);
+                  const descriptionChange = imageOperations.find((operation) => operation.kind === "UPDATE_DESCRIPTION" && operation.imageId === image.id) as Extract<SourceImageOperation, { kind: "UPDATE_DESCRIPTION" }> | undefined;
+                  return <div className="col-md-6" key={image.id}>
+                    <div className={`border rounded p-2 h-100 ${removed ? "border-danger bg-danger-subtle" : ""}`}>
+                      {image.thumbnailUrl || image.url ? <img className="w-100 rounded object-fit-contain mb-2" style={{ height: "9rem" }} src={image.thumbnailUrl || image.url || undefined} alt={image.description || image.fileName || "Source image"} /> : <div className="border rounded bg-light d-flex align-items-center justify-content-center mb-2" style={{ height: "9rem" }}>No preview</div>}
+                      <div className="fw-semibold text-truncate">{image.fileName || "Image"}</div>
+                      {removed ? <div className="small text-danger mt-1">Marked for deletion</div> : <>
+                        <Form.Control className="my-2" value={descriptionChange?.description ?? image.description ?? ""} placeholder="Image description" onChange={(event) => updatePublishedDescription(image.id, event.target.value)} />
+                        <div className="d-flex gap-2"><Form.Label className="btn btn-outline-dark btn-sm mb-0">Replace<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event, image.id)} /></Form.Label><Button size="sm" variant="outline-danger" type="button" onClick={() => removePublishedImage(image.id)}>Delete</Button></div>
+                      </>}
+                      {replacement && <div className="mt-3 border border-success rounded p-2 bg-success-subtle"><div className="small text-success fw-semibold mb-1">Replacement preview</div><img className="w-100 rounded object-fit-contain mb-2" style={{ height: "7rem" }} src={replacement.previewUrl} alt={`Replacement for ${image.fileName || "source image"}`} /><Button size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(replacement.id)}>Cancel replacement</Button></div>}
+                    </div>
+                  </div>;
+                })}
+                {pendingImages.filter((image) => !image.replacementFor).map((image) => <div className="col-md-6" key={image.id}><div className="border border-success rounded p-2 h-100 bg-success-subtle"><div className="small text-success fw-semibold mb-1">New image</div><img className="w-100 rounded object-fit-contain mb-2" style={{ height: "9rem" }} src={image.previewUrl} alt={image.file.name} /><div className="text-truncate">{image.file.name}</div><Form.Control className="mt-2" value={image.description} placeholder="Image description" onChange={(event) => updatePendingDescription(image.id, event.target.value)} /><Button className="mt-2" size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(image.id)}>Remove</Button></div></div>)}
+              </div>
+              <Form.Label className="btn btn-outline-dark btn-sm mb-0">Add image<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event)} /></Form.Label>
+            </fieldset>
             <div className="d-flex justify-content-end gap-2"><Link to={`/library/source/${source.id}`} className="btn btn-outline-secondary">Cancel</Link><Button type="submit" variant="dark" disabled={!canReview}>Review changes</Button></div>
           </Form>
         </div>

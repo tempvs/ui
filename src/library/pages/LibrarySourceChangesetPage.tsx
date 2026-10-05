@@ -23,6 +23,20 @@ import {
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
 
+function responseError(
+  response: { status: number; data: unknown },
+  fallback: string,
+): Error {
+  const message =
+    response.data &&
+    typeof response.data === "object" &&
+    "message" in response.data &&
+    typeof response.data.message === "string"
+      ? response.data.message
+      : fallback;
+  return new Error(message);
+}
+
 function statusLabel(status: SourceChangeset["status"]) {
   return status.slice(0, 1) + status.slice(1).toLowerCase();
 }
@@ -52,9 +66,9 @@ export default function LibrarySourceChangesetPage() {
         getSourceChangeset(sourceId, changesetId),
       ]);
       if (!sourceResult.ok || !sourceResult.data) throw new Error("Unable to load the source.");
-      if (!canEditSource(viewer) || !changesetResult.ok || !changesetResult.data) {
-        throw new Error("Library editor access is required to view this changeset.");
-      }
+      if (!canEditSource(viewer)) throw new Error("Library editor access is required to view this changeset.");
+      if (!changesetResult.ok || !changesetResult.data)
+        throw responseError(changesetResult, "Unable to load this changeset.");
       setSource(sourceResult.data);
       setChangeset(changesetResult.data);
       setViewerId(viewer?.userId || null);
