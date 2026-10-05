@@ -27,7 +27,7 @@ export default function SectionHeaderBar({
         }}
       >
         <div
-          className="align-items-start gap-3"
+          className="tempvs-section-header-row align-items-center gap-3"
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
@@ -41,7 +41,7 @@ export default function SectionHeaderBar({
           <div className="d-flex justify-content-center" style={{ minWidth: 0 }}>
             {middleContent}
           </div>
-          <div className="d-flex justify-content-end" style={{ minWidth: 0 }}>
+          <div className="tempvs-section-header-actions d-flex justify-content-end" style={{ minWidth: 0 }}>
             {rightContent}
           </div>
         </div>

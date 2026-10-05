@@ -123,6 +123,22 @@ h3 {
 .tempvs-section-header {
   border-radius: 0.65rem !important;
   box-shadow: 0 0.2rem 0.8rem rgba(31, 38, 35, 0.05);
+  /* Reserve the height of the standard action row before page permissions
+     and data arrive, so a page's content never jumps when buttons appear. */
+  min-height: 4.4rem;
+}
+
+.tempvs-section-header-row {
+  min-height: 2.1rem;
+}
+
+.tempvs-section-header-actions > * {
+  min-height: 2.1rem;
+}
+
+.header-icon-button {
+  color: inherit;
+  text-decoration: none;
 }
 
 .tempvs-disclosure-card-collapsed:hover {

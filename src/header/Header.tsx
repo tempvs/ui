@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
-import { Link, NavigateFunction, useNavigate } from 'react-router-dom';
+import { NavigateFunction, useNavigate } from 'react-router-dom';
 
 import HomeButton from '../home/HomeButton';
 import ProfileButton from '../profile/ProfileButton';
@@ -176,12 +176,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             <Col sm={2}>
               {this.state.loggedIn && (
                 <div className="header-profile-switcher">
-                  <Link to="/">
-                    <HomeButton />
-                  </Link>
-                  <Link to={this.state.currentProfilePath}>
-                    <ProfileButton />
-                  </Link>
+                  <HomeButton to="/" />
+                  <ProfileButton to={this.state.currentProfilePath} />
                   <ProfilePicker
                     className="header-profile-select"
                     ariaLabel="Current profile"
@@ -195,17 +191,15 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             <Col sm={9}>
               <div className="header-main-actions">
                 <SearchDialog />
-                <Link to="/clubs" className="header-inline-link"><ClubButton /></Link>
-                <Link to="/events" className="header-inline-link"><EventButton /></Link>
+                <ClubButton to="/clubs" />
+                <EventButton to="/events" />
                 {this.state.loggedIn && (
                   <>
-                    <Link to="/chat" className="header-inline-link"><ChatButton /></Link>
-                    <Link to="/notifications" className="header-inline-link"><NotificationButton /></Link>
+                    <ChatButton to="/chat" />
+                    <NotificationButton to="/notifications" />
                   </>
                 )}
-                <Link to="/library" className="header-inline-link">
-                  <LibraryButton />
-                </Link>
+                <LibraryButton to="/library" />
               </div>
             </Col>
             <Col sm={1}>
