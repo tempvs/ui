@@ -95,8 +95,7 @@ export default function LibrarySourceChangesetPage() {
         <div className="stash-shell p-3 p-md-4 mx-auto" style={{ maxWidth: "60rem" }}>
           <div className="d-flex justify-content-between gap-3 flex-wrap mb-3"><div><h1 className="h3 mb-1">{source.name}</h1><div className="text-muted small">Submitted {new Date(changeset.createdAt).toLocaleString()}</div></div><span className={`badge align-self-start ${pending ? "text-bg-warning" : "text-bg-secondary"}`}>{statusLabel(changeset.status)}</span></div>
           {error && <div className="alert alert-danger" role="alert">{error}</div>}
-          <SourceChangesetDiff base={changeset.base} proposed={changeset.proposed} />
-          {changeset.imageOperations.length > 0 && <div className="alert alert-info mt-3 mb-0">Image changes are not available in this first review release.</div>}
+          <SourceChangesetDiff base={changeset.base} proposed={changeset.proposed} imageOperations={changeset.imageOperations} />
           {changeset.reviewComment && <div className="border rounded p-3 mt-3 text-start"><div className="fw-semibold">Review comment</div><div>{changeset.reviewComment}</div></div>}
           {pending && <div className="d-flex justify-content-end gap-2 mt-4 flex-wrap">{own ? <><Link to={`/library/source/${source.id}/edit`} className="btn btn-outline-dark">Amend</Link><Button variant="outline-danger" disabled={busy} onClick={() => setShowWithdraw(true)}>Withdraw</Button></> : <><Button variant="outline-danger" disabled={busy} onClick={() => setShowReject(true)}>Reject</Button><Button variant="success" disabled={busy} onClick={() => void perform("approve")}>Approve</Button></>}</div>}
         </div>

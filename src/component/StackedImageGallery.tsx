@@ -30,6 +30,8 @@ type StackedImageGalleryProps = {
   previewSize?: "default" | "compact" | "inventory";
   mode?: "single" | "multiple";
   editable?: boolean;
+  /** Allows metadata editing without exposing image upload/delete controls. */
+  editableDescription?: boolean;
   onDeleteImage?: (imageId: GalleryImage["id"]) => void;
   onReplaceImage?: (image: GalleryImage) => void;
   onAddImage?: () => void;
@@ -70,6 +72,7 @@ export default function StackedImageGallery({
   previewSize = "default",
   mode = "multiple",
   editable = false,
+  editableDescription = editable,
   onDeleteImage,
   onReplaceImage,
   onAddImage,
@@ -128,7 +131,7 @@ export default function StackedImageGallery({
     .join(" ");
 
   const descriptionContent = (image: GalleryImage, className = "") =>
-    editable ? (
+    editableDescription ? (
       <EditableImageDescription
         editable
         value={imageDrafts[image.id] ?? image.description ?? ""}

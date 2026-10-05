@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import {
   type HistoricalYear,
+  type SourceImageOperation,
   type SourceChangesetSnapshot,
 } from "../libraryApi";
 
@@ -9,6 +10,7 @@ type Props = {
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
   compact?: boolean;
+  imageOperations?: SourceImageOperation[];
 };
 
 function formatYear(value: HistoricalYear | null | undefined) {
@@ -43,6 +45,7 @@ export default function SourceChangesetDiff({
   base,
   proposed,
   compact = false,
+  imageOperations = [],
 }: Props) {
   const values = {
     name: [base.name, proposed.name],
@@ -60,7 +63,8 @@ export default function SourceChangesetDiff({
     ([, [before, after]]) => JSON.stringify(before) !== JSON.stringify(after),
   );
 
-  if (!rows.length) return <p className="text-muted mb-0">No changes.</p>;
+  if (!rows.length && imageOperations.length === 0)
+    return <p className="text-muted mb-0">No changes.</p>;
 
   return (
     <div className={compact ? "small" : ""}>
@@ -79,6 +83,21 @@ export default function SourceChangesetDiff({
           </div>
         </div>
       ))}
+      {imageOperations.length > 0 && (
+        <div className="source-changeset-diff-row">
+          <div className="fw-semibold small text-uppercase text-muted">Images</div>
+          <ul className="mb-0 mt-2 ps-3">
+            {imageOperations.map((operation) => (
+              <li key={operation.kind === "ADD" ? operation.stagedImageId : `${operation.kind}:${operation.imageId}`}>
+                {operation.kind === "ADD" && "Added image"}
+                {operation.kind === "REMOVE" && "Removed image"}
+                {operation.kind === "REPLACE" && "Replaced image"}
+                {operation.kind === "UPDATE_DESCRIPTION" && "Changed image description"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

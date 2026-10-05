@@ -102,7 +102,7 @@ export type SourceChangeset = {
   status: SourceChangesetStatus;
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
-  imageOperations: unknown[];
+  imageOperations: SourceImageOperation[];
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -113,8 +113,19 @@ export type SourceChangeset = {
 
 export type SourceChangesetDraft = {
   proposed: SourceChangesetSnapshot;
-  imageOperations?: unknown[];
+  imageOperations?: SourceImageOperation[];
 };
+
+export type SourceImageOperation =
+  | { kind: "ADD"; stagedImageId: string; description: string | null }
+  | { kind: "REMOVE"; imageId: string }
+  | {
+      kind: "REPLACE";
+      imageId: string;
+      stagedImageId: string;
+      description: string | null;
+    }
+  | { kind: "UPDATE_DESCRIPTION"; imageId: string; description: string | null };
 
 export type PendingSourceChangeset = {
   source: LibrarySource;
@@ -537,6 +548,57 @@ export function getPendingSourceChangesets({
   return fetchJson<{ content?: PendingSourceChangeset[]; nextToken?: string | null }>(
     `/api/library/library/admin/changesets?${params}`,
   );
+}
+
+export function getSourceChangesetImages(
+  sourceId: string,
+  changesetId: string,
+) {
+  return fetchJson<{ content?: LibrarySourceImage[] }>(
+    `/api/images/source-changeset/${sourceId}/${changesetId}`,
+  ).then(
+    (result) =>
+      ({ ...result, data: result.data?.content || [] }) as ApiResponse<
+        LibrarySourceImage[]
+      >,
+  );
+}
+
+export async function uploadSourceChangesetImage(
+  sourceId: string,
+  changesetId: string,
+  imageId: string,
+  file: File,
+  description: string | null,
+): Promise<ApiResponse<LibrarySourceImage | ApiErrorPayload>> {
+  const result = await fetchJson<ImageUploadIntent | ApiErrorPayload>(
+    `/api/images/source-changeset/${sourceId}/${changesetId}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageId,
+        fileName: file.name,
+        contentType: file.type,
+        byteSize: file.size,
+        description,
+      }),
+    },
+  );
+  if (!result.ok) return { ...result, data: result.data as ApiErrorPayload | null };
+  const intent = result.data as ImageUploadIntent | null;
+  if (!intent?.upload || !intent.image) {
+    return { ok: false, status: 500, data: { message: "Invalid staged image upload response" } };
+  }
+  const uploaded = await fetch(intent.upload.url, {
+    method: intent.upload.method,
+    headers: intent.upload.headers,
+    body: file,
+  });
+  if (!uploaded.ok) {
+    return { ok: false, status: uploaded.status, data: { message: "Unable to upload staged image" } };
+  }
+  return { ok: true, status: 201, data: intent.image };
 }
 
 export function applySourceProposal(
