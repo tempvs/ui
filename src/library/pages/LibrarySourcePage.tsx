@@ -705,9 +705,9 @@ export default function LibrarySourcePage() {
         title: headerTitle,
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
+        middleContent: canEditSource(userInfo) ? <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}</Link> : null,
         rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
           <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
-          {canEditSource(userInfo) && <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}</Link>}
           {canDeleteSource(userInfo) && (
           <IconActionButton
             title="Delete source"

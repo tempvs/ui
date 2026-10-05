@@ -280,15 +280,13 @@ export default function LibraryPeriodPage() {
         subtitle={null}
         period={null}
         variant="period"
+        middleContent={canEditSource(userInfo) ? (
+          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals</Link>
+        ) : null}
         rightContent={
           <LibraryPeriodBreadcrumb period={periodCode} variant="period" />
         }
       />
-      {canEditSource(userInfo) && (
-        <div className="d-flex justify-content-end mb-3">
-          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals</Link>
-        </div>
-      )}
       <div className="mb-4 mt-2">
         <h1 className="mb-2">{getPeriodLabel(intl, periodCode)}</h1>
         <p className="text-muted mb-0">

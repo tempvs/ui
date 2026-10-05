@@ -1,7 +1,6 @@
 import React from "react";
 import { Container } from "react-bootstrap";
 import { createPortal } from "react-dom";
-import { useOutletContext } from "react-router-dom";
 
 import SectionHeaderBar from "./SectionHeaderBar";
 
@@ -18,13 +17,15 @@ export type PageShellOutletContext = {
   headerMount: HTMLDivElement;
 };
 
+export const PageShellContext = React.createContext<PageShellOutletContext | null>(null);
+
 /**
  * Renders routed-page header content into the persistent AppShell mount. The
  * shell owns the tile, its gutters, and its vertical position; route changes
  * replace only this content and the body below it.
  */
 export default function PageHeader(props: PageHeaderProps) {
-  const shell = useOutletContext<PageShellOutletContext | null>();
+  const shell = React.useContext(PageShellContext);
   const header = <SectionHeaderBar {...props} />;
 
   if (shell?.headerMount) {

@@ -4,6 +4,7 @@ import 'bootstrap/dist/css/bootstrap.css';
 import { BrowserRouter, Outlet, Route, Routes, useParams } from 'react-router-dom';
 
 import './App.css';
+import { PageShellContext } from './component/PageHeader';
 import Header from './header/Header';
 import ProfilePage from './profile/ProfilePage';
 import StashPage from './profile/StashPage';
@@ -58,7 +59,11 @@ function AppShell() {
   return <>
     <Header />
     <div ref={setHeaderMount} className="app-shell-header-slot px-4 px-xl-5" />
-    {headerMount && <Outlet context={{ headerMount }} />}
+    {headerMount && (
+      <PageShellContext.Provider value={{ headerMount }}>
+        <Outlet />
+      </PageShellContext.Provider>
+    )}
   </>;
 }
 
