@@ -2531,6 +2531,16 @@ button.stash-item-media-empty:disabled {
   border-radius: 0.25rem;
 }
 
+.source-changeset-image-added {
+  background: #eef9ef;
+  color: #1d6630;
+}
+
+.source-changeset-image-removed {
+  background: #fff0f0;
+  color: #7f2424;
+}
+
 .source-changeset-diff-before {
   color: #7f2424;
   background: #fff0f0;
