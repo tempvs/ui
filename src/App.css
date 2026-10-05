@@ -1158,7 +1158,6 @@ button.stash-item-media-empty:disabled {
 /* A two-endpoint version of the shared input row. It deliberately does not
    wrap while switching to edit mode, keeping both field slots stationary. */
 .historical-range-inline-control {
-  min-height: 2.4rem;
   width: max-content;
   white-space: nowrap;
 }
@@ -1173,24 +1172,44 @@ button.stash-item-media-empty:disabled {
 }
 
 .historical-range-inline-control .inline-editable-input.form-control {
-  width: 3.25rem;
-  min-width: 3.25rem;
-  padding-left: .2rem;
-  padding-right: .2rem;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  padding-left: .1rem;
+  padding-right: .1rem;
 }
 
-/* Editing uses the fixed BC slots next to each endpoint. Keep the separator
+/* Editing uses the fixed AD/BC slots next to each endpoint. Keep the separator
    slot reserved, but hide its dash until the read-only display returns. */
-.historical-range-inline-control:has(.form-check) > .text-muted {
+.historical-range-inline-control:has(.historical-year-era-toggle) > .text-muted {
   visibility: hidden;
 }
 
-.historical-year-era {
-  display: inline-block;
+.historical-year-era,
+.historical-year-era-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 1.9rem;
+  width: 1.9rem;
   font-size: inherit;
+  font-family: inherit;
   line-height: inherit;
   color: #5f574c;
+}
+
+.historical-year-era-toggle {
+  border: 1px solid rgba(79, 117, 103, 0.32);
+  border-radius: .25rem;
+  background: rgba(255, 255, 255, 0.92);
+  padding: .05rem .1rem;
+  cursor: pointer;
+}
+
+.historical-year-era-toggle:hover,
+.historical-year-era-toggle:focus-visible {
+  border-color: rgba(79, 117, 103, 0.7);
+  background: #f3f8f2;
+  outline: none;
 }
 
 .stash-source-copy {

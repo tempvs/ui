@@ -278,7 +278,7 @@ export default function InlineEditableText({
   );
 
   return (
-    <div className={`inline-editable-text ${className}`.trim()}>
+    <div className={`inline-editable-text ${textClassName} ${className}`.trim()}>
       {!editing && !multiline && !truncateSingleLine && popoverValue && isTruncated ? (
         <OverlayTrigger
           trigger={['hover', 'focus']}

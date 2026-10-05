@@ -4,6 +4,7 @@ import { SaveStatus } from './EditableFieldRow';
 import InlineEditableText from './InlineEditableText';
 
 type EditableDescriptionFieldProps = {
+  label?: React.ReactNode;
   editable: boolean;
   value?: string;
   readOnlyValue: string;
@@ -21,6 +22,7 @@ type EditableDescriptionFieldProps = {
 };
 
 export default function EditableDescriptionField({
+  label,
   editable,
   value = '',
   readOnlyValue,
@@ -36,7 +38,7 @@ export default function EditableDescriptionField({
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: EditableDescriptionFieldProps) {
-  return (
+  const field = (
     <InlineEditableText
       editable={editable}
       value={value}
@@ -51,9 +53,16 @@ export default function EditableDescriptionField({
       multiline
       multilineUseContentEditable={multilineUseContentEditable}
       multilineRows={rows}
-      className={className}
+      className={label !== undefined && label !== null ? '' : className}
       savingTitle={savingTitle}
       errorTitle={errorTitle}
     />
   );
+
+  return label !== undefined && label !== null ? (
+    <div className={`d-flex align-items-start gap-3 mb-2 ${className}`.trim()}>
+      <div className="text-start small fw-semibold" style={{ width: '7rem' }}>{label}</div>
+      <div className="flex-grow-1 min-width-0">{field}</div>
+    </div>
+  ) : field;
 }

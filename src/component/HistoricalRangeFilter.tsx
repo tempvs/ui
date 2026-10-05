@@ -151,6 +151,7 @@ export function HistoricalYearControl({
       <div className="d-flex align-items-center gap-1">
         <Form.Control
           type="text"
+          size="sm"
           inputMode="numeric"
           value={value.year}
           placeholder={placeholder}
@@ -170,21 +171,22 @@ export function HistoricalYearControl({
           onBlur={onBlur}
           // Four visible numeric characters is intentional: values are
           // validated and persisted as positive four-digit-or-shorter years.
-          style={{ minWidth: "3.25rem", width: "3.25rem" }}
+          style={{ minWidth: "2.75rem", width: "2.75rem" }}
         />
         {showEra ? (
-          <Form.Check
-            type="checkbox"
-            label="BC"
-            checked={value.era === "BC"}
-            aria-label={`${label || "Year"} is BC`}
-            onChange={(event) => {
-              onChange({ ...value, era: event.target.checked ? "BC" : "AD" });
+          <button
+            type="button"
+            className="historical-year-era-toggle"
+            aria-label={`${label || "Year"} era: ${value.era}. Activate to change to ${value.era === "BC" ? "AD" : "BC"}.`}
+            aria-pressed={value.era === "BC"}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              onChange({ ...value, era: value.era === "BC" ? "AD" : "BC" });
               onValueEntered?.();
             }}
-            onBlur={onBlur}
-            className="small text-nowrap"
-          />
+          >
+            {value.era}
+          </button>
         ) : showEraLabel ? (
           <span className="historical-year-era" aria-label={`${value.era} era`}>
             {value.year && (value.era === "BC" || Number(value.year) < 100) ? value.era : ""}

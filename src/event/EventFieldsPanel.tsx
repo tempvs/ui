@@ -64,6 +64,7 @@ export default function EventFieldsPanel({
         status={statuses.name}
       />
       <EditableDescriptionField
+        label="Description"
         editable={editable}
         value={event.description || ""}
         readOnlyValue={event.description || "No description."}
