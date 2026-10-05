@@ -27,14 +27,12 @@ import {
   getSource,
   getSourceImages,
   getSourceProfiles,
-  getSourceProposals,
   getSourceChangeLog,
   LibrarySource,
   LibrarySourceImage,
   LibrarySourceProfile,
   LibraryViewer,
   getLibraryViewer,
-  SourceChangeProposal,
   SourceChangeLogEntry,
   patchSourceField,
   patchSourceRange,
@@ -84,7 +82,6 @@ export default function LibrarySourcePage() {
   );
   const [profileFilter, setProfileFilter] = useState("");
   const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
-  const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
@@ -150,9 +147,6 @@ export default function LibrarySourcePage() {
         () => null,
       );
 
-      const proposalResult = canEditSource(viewer)
-        ? await getSourceProposals(sourceId).catch(() => null)
-        : null;
       const changeLogResult = await getSourceChangeLog(sourceId).catch(
         () => null,
       );
@@ -205,7 +199,6 @@ export default function LibrarySourcePage() {
       );
       setImageStatuses({});
       setUserInfo(viewer);
-      setProposals(proposalResult?.data || []);
       setChangeLog(changeLogResult?.data || []);
       setActors(
         Object.fromEntries(
@@ -292,15 +285,6 @@ export default function LibrarySourcePage() {
           : null;
       if (change && "source" in change && change.source) {
         setSource(change.source as LibrarySource);
-      } else if (change && "proposal" in change && change.proposal) {
-        const proposal = change.proposal as SourceChangeProposal;
-        setProposals((current) => [
-          ...current.filter((candidate) => candidate.id !== proposal.id),
-          proposal,
-        ]);
-        if (field === "name") setDraftName(persistedValue);
-        else setDraftDescription(persistedValue);
-        setNotice("Change proposed for another editor to review and apply.");
       }
       setFieldStatuses((prevState) => ({
         ...prevState,
@@ -391,15 +375,6 @@ export default function LibrarySourcePage() {
         result.data && typeof result.data === "object" ? result.data : null;
       if (change && "source" in change && change.source) {
         setSource(change.source as LibrarySource);
-      } else if (change && "proposal" in change && change.proposal) {
-        const proposal = change.proposal as SourceChangeProposal;
-        setProposals((current) => [
-          ...current.filter((candidate) => candidate.id !== proposal.id),
-          proposal,
-        ]);
-        setNotice(
-          "Year range change proposed for another editor to review and apply.",
-        );
       }
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
@@ -713,7 +688,7 @@ export default function LibrarySourcePage() {
         title: headerTitle,
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        middleContent: canEditSource(userInfo) ? <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}</Link> : null,
+        middleContent: canEditSource(userInfo) ? <div className="d-flex gap-2"><Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Changesets</Link><Link to={`/library/source/${source.id}/edit`} className="btn btn-dark btn-sm">Edit source</Link></div> : null,
         rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
           <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
           {canDeleteSource(userInfo) && (
@@ -755,7 +730,7 @@ export default function LibrarySourcePage() {
         <PageColumn>
           <div className="stash-source-copy stash-item-display-copy text-start">
             <InlineEditableText
-              editable={canEditSource(userInfo)}
+              editable={false}
               value={draftName}
               onChange={(event) => {
                 const value = event.target.value;
@@ -772,7 +747,7 @@ export default function LibrarySourcePage() {
               errorTitle="Save failed"
             />
             <EditableDescriptionField
-              editable={canEditSource(userInfo)}
+              editable={false}
               value={draftDescription}
               onValueChange={(value) => {
                 setDraftDescription(value);
@@ -792,7 +767,7 @@ export default function LibrarySourcePage() {
             <div className="mt-3 text-start">
               <EditableHistoricalRangeField
                 label="Years"
-                editable={canEditSource(userInfo)}
+                editable={false}
                 from={rangeFrom}
                 to={rangeTo}
                 onFromChange={setRangeFrom}
@@ -835,8 +810,8 @@ export default function LibrarySourcePage() {
               previewSize="compact"
               previewStyle={{ width: "100%" }}
               fitPreviewHeightToImage
-              editable={canEditSource(userInfo)}
-              canAddImage={canContribute(userInfo)}
+              editable={false}
+              canAddImage={false}
               onAddImage={() => {
                 setError(null);
                 setShowUploadModal(true);

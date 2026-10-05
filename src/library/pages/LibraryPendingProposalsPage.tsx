@@ -7,10 +7,9 @@ import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { getErrorMessage } from "../../util/errors";
 import {
-  findSources,
   getLibraryViewer,
-  getSourceProposals,
-  type LibrarySource,
+  getPendingSourceChangesets,
+  type PendingSourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
 import {
@@ -23,8 +22,6 @@ import {
   getTypeLabel,
 } from "../libraryShared";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
-
-type Row = { source: LibrarySource; count: number };
 
 type PendingProposalsContentProps = {
   period?: string | null;
@@ -41,7 +38,7 @@ export function LibraryPendingProposalsContent({
   period,
 }: PendingProposalsContentProps) {
   const intl = useIntl();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<PendingSourceChangeset[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -55,29 +52,22 @@ export function LibraryPendingProposalsContent({
     () => ({
       query: query.trim() || undefined,
       period: period?.toUpperCase() || selectedPeriod || undefined,
-      classifications: selectedClassification ? [selectedClassification] : undefined,
-      types: selectedType ? [selectedType] : undefined,
+      classification: selectedClassification || undefined,
+      type: selectedType || undefined,
     }),
     [period, query, selectedClassification, selectedPeriod, selectedType],
   );
 
   const load = useCallback(async (token?: string) => {
-    const result = await findSources({
+    const result = await getPendingSourceChangesets({
       ...sourceFilters,
-      size: PROPOSALS_PAGE_SIZE,
+      limit: PROPOSALS_PAGE_SIZE,
       nextToken: token,
     });
-    if (!result.ok) throw new Error("Unable to load sources.");
-    const candidates = result.data || [];
-    const counts = await Promise.all(
-      candidates.map(async (source) => {
-        const proposals = await getSourceProposals(source.id);
-        return { source, count: proposals.ok ? (proposals.data || []).length : 0 };
-      }),
-    );
+    if (!result.ok) throw new Error("Unable to load pending changesets.");
     return {
-      rows: counts.filter((row) => row.count > 0),
-      nextToken: result.nextToken,
+      rows: result.data?.content || [],
+      nextToken: result.data?.nextToken || null,
     };
   }, [sourceFilters]);
 
@@ -89,7 +79,7 @@ export function LibraryPendingProposalsContent({
       try {
         const viewer = await getLibraryViewer();
         if (!canEditSource(viewer)) {
-          throw new Error("Library editor access is required to review proposals.");
+          throw new Error("Library editor access is required to review changesets.");
         }
         const result = await load();
         if (active) {
@@ -121,7 +111,7 @@ export function LibraryPendingProposalsContent({
     }
   };
 
-  const heading = period ? "Pending period proposals" : "All pending source proposals";
+  const heading = period ? "Pending period changesets" : "All pending source changesets";
   return <>
     <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
       <h1 className="h3 mb-0">{heading}</h1>
@@ -129,7 +119,7 @@ export function LibraryPendingProposalsContent({
     <div className="d-flex align-items-center gap-2 flex-wrap mb-4">
       <div style={{ minWidth: "15rem", flex: "1 1 18rem" }}>
         <TextFilterInput
-          ariaLabel="Filter pending source proposals"
+          ariaLabel="Filter pending source changesets"
           placeholder="Filter by source name"
           value={query}
           onChange={setQuery}
@@ -137,7 +127,7 @@ export function LibraryPendingProposalsContent({
       </div>
       {!period && (
         <Form.Select
-          aria-label="Filter pending proposals by period"
+          aria-label="Filter pending changesets by period"
           value={selectedPeriod}
           onChange={(event) => setSelectedPeriod(event.target.value)}
           style={{ width: "auto", minWidth: "11rem" }}
@@ -173,18 +163,18 @@ export function LibraryPendingProposalsContent({
     </div>
     {error && <div className="tempvs-plain-message text-danger">{error}</div>}
     {loading && <Spinner />}
-    {!loading && rows.length === 0 && <div className="tempvs-plain-message text-muted">No pending proposals.</div>}
-    {!loading && rows.map(({ source, count }) => (
-      <div key={source.id} className="stash-shell p-3 mb-2 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+    {!loading && rows.length === 0 && <div className="tempvs-plain-message text-muted">No pending changesets.</div>}
+    {!loading && rows.map(({ source, changeset }) => (
+      <div key={changeset.id} className="stash-shell p-3 mb-2 d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div className="d-flex flex-column gap-2" style={{ minWidth: 0 }}>
-          <Link to={`/library/source/${source.id}/proposals`} className="text-reset text-decoration-none text-truncate"><strong>{source.name}</strong></Link>
+          <Link to={`/library/source/${source.id}/changesets/${changeset.id}`} className="text-reset text-decoration-none text-truncate"><strong>{source.name}</strong></Link>
           <div className="d-flex align-items-center gap-2 flex-wrap text-muted small">
             {source.period && <Badge bg="light" text="dark" className="border">{getPeriodLabel(intl, source.period)}</Badge>}
             {source.type && <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>}
             {source.classification && <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>}
           </div>
         </div>
-        <span className="badge text-bg-dark rounded-pill" title="Pending proposals">{count}</span>
+        <span className="badge text-bg-dark rounded-pill" title="Pending changeset">Pending</span>
       </div>
     ))}
     {nextToken && <Button variant="outline-dark" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Loading…" : "Load more"}</Button>}

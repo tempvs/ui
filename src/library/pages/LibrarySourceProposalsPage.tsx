@@ -1,60 +1,52 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "react-bootstrap";
+import { Button, Form, Modal } from "react-bootstrap";
 import { Link, useParams } from "react-router-dom";
 
-import ConfirmationModal from "../../component/ConfirmationModal";
 import Spinner from "../../component/Spinner";
 import { getErrorMessage } from "../../util/errors";
+import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
-  applySourceProposal,
+  approveSourceChangeset,
   getLibraryViewer,
   getSource,
-  getSourceProposals,
-  rejectSourceProposal,
+  getSourceChangesets,
+  rejectSourceChangeset,
   type LibrarySource,
-  type SourceChangeProposal,
+  type SourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
-import { formatSourceChangeValue, sourceChangeFieldLabel } from "../sourceChangeDisplay";
-import { getUserProfilesByUserIds } from "../../profile/profileApi";
-import { buildProfileLabel } from "../../profile/currentProfile";
-import type { Profile } from "../../profile/profileTypes";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 
-const PAGE_SIZE = 20;
-
-/** Dedicated review queue for one source; the source page only exposes its count. */
+/** Source-local changeset history and review queue. */
 export default function LibrarySourceProposalsPage() {
   const { sourceId } = useParams();
   const [source, setSource] = useState<LibrarySource | null>(null);
-  const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
-  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [changesets, setChangesets] = useState<SourceChangeset[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<SourceChangeProposal | null>(null);
-  const [viewerUserId, setViewerUserId] = useState<string | null>(null);
-  const [authors, setAuthors] = useState<Record<string, Profile>>({});
+  const [rejecting, setRejecting] = useState<SourceChangeset | null>(null);
+  const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [sourceResult, viewer, proposalsResult] = await Promise.all([
+      const [sourceResult, viewer, changesetsResult] = await Promise.all([
         getSource(sourceId),
         getLibraryViewer(),
-        getSourceProposals(sourceId),
+        getSourceChangesets(sourceId),
       ]);
-      if (!sourceResult.ok) throw new Error("Unable to load the source.");
-      if (!canEditSource(viewer) || !proposalsResult.ok)
-        throw new Error("Library editor access is required to review proposals.");
-      setViewerUserId(viewer?.userId || null);
+      if (!sourceResult.ok || !sourceResult.data) {
+        throw new Error("Unable to load the source.");
+      }
+      if (!canEditSource(viewer) || !changesetsResult.ok) {
+        throw new Error("Library editor access is required to review changesets.");
+      }
       setSource(sourceResult.data);
-      const rows = proposalsResult.data || [];
-      const profiles = await getUserProfilesByUserIds(rows.map((proposal) => proposal.proposerId)).catch(() => []);
-      setAuthors(Object.fromEntries(profiles.filter((profile) => Boolean(profile.userId)).map((profile) => [String(profile.userId), profile])));
-      setProposals(rows);
-      setVisible(PAGE_SIZE);
+      setViewerId(viewer?.userId || null);
+      setChangesets(changesetsResult.data?.content || []);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -66,15 +58,36 @@ export default function LibrarySourceProposalsPage() {
     void load();
   }, [load]);
 
-  const review = async (proposal: SourceChangeProposal, approved: boolean) => {
-    setBusy(proposal.id);
-    setError(null);
+  const approve = async (changeset: SourceChangeset) => {
+    setBusy(changeset.id);
     try {
-      const result = approved
-        ? await applySourceProposal(sourceId, proposal.id)
-        : await rejectSourceProposal(sourceId, proposal.id);
-      if (!result.ok) throw new Error("Unable to review the source proposal.");
+      const result = await approveSourceChangeset(
+        sourceId,
+        changeset.id,
+        changeset.version,
+      );
+      if (!result.ok) throw new Error("Unable to approve the changeset.");
+      await load();
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const reject = async () => {
+    if (!rejecting) return;
+    setBusy(rejecting.id);
+    try {
+      const result = await rejectSourceChangeset(
+        sourceId,
+        rejecting.id,
+        rejecting.version,
+        comment.trim(),
+      );
+      if (!result.ok) throw new Error("Unable to reject the changeset.");
       setRejecting(null);
+      setComment("");
       await load();
     } catch (caught) {
       setError(getErrorMessage(caught));
@@ -88,43 +101,30 @@ export default function LibrarySourceProposalsPage() {
       <LibrarySectionHeader
         title="LIBRARY"
         subtitle={null}
-        rightContent={source ? <Link className="btn btn-outline-dark btn-sm" to={`/library/source/${source.id}`}>Back to source</Link> : null}
+        rightContent={
+          source ? (
+            <Link className="btn btn-outline-dark btn-sm" to={`/library/source/${source.id}`}>
+              Back to source
+            </Link>
+          ) : null
+        }
       />
       <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
         <div>
-          <h1 className="h3 mb-1">Pending proposals</h1>
+          <h1 className="h3 mb-1">Source changesets</h1>
           {source && <div className="text-muted">{source.name}</div>}
         </div>
+        {source && <Link className="btn btn-dark btn-sm" to={`/library/source/${source.id}/edit`}>Edit source</Link>}
       </div>
-      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
+      {error && <div className="alert alert-danger" role="alert">{error}</div>}
       {loading && <Spinner />}
-      {!loading && proposals.length === 0 && <div className="tempvs-plain-message text-muted">No pending proposals for this source.</div>}
-      {!loading && proposals.slice(0, visible).map((proposal) => {
-        const ownProposal = proposal.proposerId === viewerUserId;
-        const author = authors[proposal.proposerId];
-        const authorLabel = ownProposal ? "You" : author ? buildProfileLabel(author) : "Unknown profile";
-        const authorPath = author ? `/profile/${author.alias || author.id}` : undefined;
-        return <div key={proposal.id} className="stash-shell p-3 mb-2 d-flex justify-content-between gap-3 flex-wrap">
-          <div>
-            <strong>{Object.entries(proposal.changes).map(([field, value]) => `${sourceChangeFieldLabel(field)}: ${formatSourceChangeValue(value)}`).join(" · ")}</strong>
-            <div className="small text-muted">Proposed by {authorPath ? <Link to={authorPath}>{authorLabel}</Link> : authorLabel} on {new Date(proposal.createdAt).toLocaleString()}</div>
-          </div>
-          <div className="d-flex gap-2 align-items-center">
-            <Button size="sm" variant="outline-success" disabled={busy !== null || ownProposal} onClick={() => void review(proposal, true)}>Approve</Button>
-            <Button size="sm" variant="outline-danger" disabled={busy !== null || ownProposal} onClick={() => setRejecting(proposal)}>Reject</Button>
-          </div>
-        </div>;
+      {!loading && changesets.length === 0 && <div className="tempvs-plain-message text-muted">No changesets for this source.</div>}
+      {!loading && changesets.map((changeset) => {
+        const own = changeset.proposerId === viewerId;
+        const pending = changeset.status === "PENDING";
+        return <div key={changeset.id} className="stash-shell p-3 mb-3"><div className="d-flex justify-content-between gap-3 flex-wrap mb-2"><div><Link className="text-reset" to={`/library/source/${sourceId}/changesets/${changeset.id}`}><strong>{changeset.status[0]}{changeset.status.slice(1).toLowerCase()} changeset</strong></Link><div className="small text-muted">Submitted {new Date(changeset.createdAt).toLocaleString()}</div></div><div className="d-flex gap-2 align-items-start">{pending && !own && <><Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button><Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button></>}</div></div><SourceChangesetDiff compact base={changeset.base} proposed={changeset.proposed} /></div>;
       })}
-      {!loading && visible < proposals.length && <Button variant="outline-dark" onClick={() => setVisible((count) => count + PAGE_SIZE)}>Load more</Button>}
-      <ConfirmationModal
-        show={Boolean(rejecting)}
-        title="Reject source proposal"
-        message="Reject this proposed source change? The source will remain unchanged."
-        confirmLabel="Reject proposal"
-        busy={busy !== null}
-        onHide={() => !busy && setRejecting(null)}
-        onConfirm={() => rejecting && void review(rejecting, false)}
-      />
+      <Modal show={Boolean(rejecting)} onHide={() => !busy && setRejecting(null)} centered><Modal.Header closeButton><Modal.Title>Reject changeset</Modal.Title></Modal.Header><Modal.Body><Form.Control as="textarea" rows={4} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="A review comment is required" /></Modal.Body><Modal.Footer><Button variant="outline-secondary" disabled={Boolean(busy)} onClick={() => setRejecting(null)}>Cancel</Button><Button variant="danger" disabled={Boolean(busy) || !comment.trim()} onClick={() => void reject()}>Reject</Button></Modal.Footer></Modal>
     </div>
   );
 }

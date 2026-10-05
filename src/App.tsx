@@ -37,6 +37,8 @@ function LibraryPeriodPage() {
 function LibrarySourcePage() {
   return <LibraryPage view="source" />;
 }
+function LibrarySourceEditPage() { return <LibraryPage view="source-edit" />; }
+function LibrarySourceChangesetPage() { return <LibraryPage view="changeset" />; }
 
 function LibraryAdminPage() {
   return <LibraryPage view="admin" />;
@@ -85,6 +87,8 @@ function App() {
               element={<Navigate replace to="/library/admin/members" />}
             />
             <Route path="/library/admin/:tab" element={<LibraryAdminPage />} />
+            <Route path="/library/source/:sourceId/edit" element={<LibrarySourceEditPage />} />
+            <Route path="/library/source/:sourceId/changesets/:changesetId" element={<LibrarySourceChangesetPage />} />
             <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
             <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
             <Route path="/library/period/:period" element={<LibraryPeriodPage />} />

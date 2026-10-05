@@ -2507,6 +2507,40 @@ button.stash-item-media-empty:disabled {
   font-size: 0.8rem;
 }
 
+.source-changeset-diff-row {
+  padding: 0.7rem 0;
+  border-top: 1px solid rgba(89, 76, 45, 0.14);
+  text-align: left;
+}
+
+.source-changeset-diff-row:first-child {
+  border-top: 0;
+}
+
+.source-changeset-diff-values {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.28rem;
+  white-space: pre-wrap;
+}
+
+.source-changeset-diff-before,
+.source-changeset-diff-after {
+  display: block;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.source-changeset-diff-before {
+  color: #7f2424;
+  background: #fff0f0;
+}
+
+.source-changeset-diff-after {
+  color: #1d6630;
+  background: #eef9ef;
+}
+
 @media (max-width: 991.98px) {
   .chat-page-grid {
     grid-template-columns: 1fr;

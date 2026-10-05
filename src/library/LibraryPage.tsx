@@ -6,8 +6,10 @@ import LibraryPendingProposalsPage from './pages/LibraryPendingProposalsPage';
 import LibraryLandingPage from './pages/LibraryLandingPage';
 import LibraryPeriodPage from './pages/LibraryPeriodPage';
 import LibrarySourcePage from './pages/LibrarySourcePage';
+import LibrarySourceEditPage from './pages/LibrarySourceEditPage';
+import LibrarySourceChangesetPage from './pages/LibrarySourceChangesetPage';
 
-type LibraryView = 'landing' | 'period' | 'source' | 'proposals' | 'pending-proposals' | 'admin';
+type LibraryView = 'landing' | 'period' | 'source' | 'source-edit' | 'changeset' | 'proposals' | 'pending-proposals' | 'admin';
 
 type LibraryPageProps = {
   view?: LibraryView;
@@ -21,6 +23,9 @@ export default function LibraryPage({ view = 'landing' }: LibraryPageProps) {
   if (view === 'source') {
     return <LibrarySourcePage />;
   }
+
+  if (view === 'source-edit') return <LibrarySourceEditPage />;
+  if (view === 'changeset') return <LibrarySourceChangesetPage />;
 
   if (view === 'admin') {
     return <LibraryAdminPage />;

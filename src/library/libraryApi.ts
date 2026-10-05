@@ -77,6 +77,50 @@ export type SourceChangeProposal = {
   createdAt: string;
 };
 
+export type SourceChangesetStatus =
+  | "PENDING"
+  | "APPLIED"
+  | "REJECTED"
+  | "WITHDRAWN"
+  | "SUPERSEDED";
+
+export type SourceChangesetSnapshot = Required<
+  Pick<
+    LibrarySource,
+    "name" | "description" | "period" | "classification" | "type"
+  >
+> & {
+  from: HistoricalYear | null;
+  to: HistoricalYear | null;
+};
+
+export type SourceChangeset = {
+  id: string;
+  sourceId: string;
+  proposerId: string;
+  baseVersion: number;
+  status: SourceChangesetStatus;
+  base: SourceChangesetSnapshot;
+  proposed: SourceChangesetSnapshot;
+  imageOperations: unknown[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  reviewerId?: string | null;
+  reviewedAt?: string | null;
+  reviewComment?: string | null;
+};
+
+export type SourceChangesetDraft = {
+  proposed: SourceChangesetSnapshot;
+  imageOperations?: unknown[];
+};
+
+export type PendingSourceChangeset = {
+  source: LibrarySource;
+  changeset: SourceChangeset;
+};
+
 export type SourceChangeLogEntry = {
   id: string;
   sourceId: string;
@@ -361,6 +405,137 @@ export function getSourceProposals(sourceId: string | undefined) {
       ({ ...result, data: result.data?.proposals || [] }) as ApiResponse<
         SourceChangeProposal[]
       >,
+  );
+}
+
+export function getSourceChangesets(
+  sourceId: string | undefined,
+  nextToken?: string,
+  limit = 40,
+) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (nextToken) params.set("nextToken", nextToken);
+  return fetchJson<{ content?: SourceChangeset[]; nextToken?: string | null }>(
+    `/api/library/source/${sourceId}/changesets?${params}`,
+  ).then(
+    (result) =>
+      ({
+        ...result,
+        data: {
+          content: result.data?.content || [],
+          nextToken: result.data?.nextToken || null,
+        },
+      }) as ApiResponse<{ content: SourceChangeset[]; nextToken: string | null }>,
+  );
+}
+
+export function getSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string | undefined,
+) {
+  return fetchJson<SourceChangeset>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}`,
+  );
+}
+
+export function createSourceChangeset(
+  sourceId: string | undefined,
+  draft: SourceChangesetDraft,
+  baseVersion: number,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${baseVersion}"`,
+        "Idempotency-Key": newIdempotencyKey(),
+      },
+      body: JSON.stringify(draft),
+    },
+  );
+}
+
+export function amendSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  draft: SourceChangesetDraft,
+  version: number,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+      body: JSON.stringify(draft),
+    },
+  );
+}
+
+export function withdrawSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/withdraw`,
+    { method: "POST", headers: { "If-Match": `"${version}"` } },
+  );
+}
+
+export function approveSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+  comment?: string,
+) {
+  return fetchJson<
+    { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
+  >(`/api/library/source/${sourceId}/changesets/${changesetId}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+    body: JSON.stringify(comment ? { comment } : {}),
+  });
+}
+
+export function rejectSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+  comment: string,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+      body: JSON.stringify({ comment }),
+    },
+  );
+}
+
+export function getPendingSourceChangesets({
+  query,
+  period,
+  type,
+  classification,
+  nextToken,
+  limit = 40,
+}: {
+  query?: string;
+  period?: string;
+  type?: string;
+  classification?: string;
+  nextToken?: string;
+  limit?: number;
+}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  for (const [key, value] of Object.entries({ query, period, type, classification, nextToken })) {
+    if (value) params.set(key, value);
+  }
+  return fetchJson<{ content?: PendingSourceChangeset[]; nextToken?: string | null }>(
+    `/api/library/library/admin/changesets?${params}`,
   );
 }
 
