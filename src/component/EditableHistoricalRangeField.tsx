@@ -1,7 +1,12 @@
 import React from "react";
 
 import EditableFieldRow, { type SaveStatus } from "./EditableFieldRow";
-import { HistoricalYearControl, type HistoricalYearInput } from "./HistoricalRangeFilter";
+import {
+  HistoricalYearControl,
+  isChronologicalHistoricalRange,
+  isValidHistoricalRange,
+  type HistoricalYearInput,
+} from "./HistoricalRangeFilter";
 
 type Props = {
   /** Omit the label when the range is paired with another field on one row. */
@@ -34,6 +39,8 @@ export default function EditableHistoricalRangeField({
   className = "mb-2",
   fieldMaxWidth = "13rem",
 }: Props) {
+  const rangeOrderInvalid = !isChronologicalHistoricalRange(from, to);
+  const canSaveRange = isValidHistoricalRange(from, to);
   return (
     <EditableFieldRow
       label={label}
@@ -50,9 +57,12 @@ export default function EditableHistoricalRangeField({
             readOnly={!editing}
             showEra={editing}
             showEraLabel={!editing}
-            inputClassName="inline-editable-input"
+            inputClassName="inline-editable-input historical-year-from"
             onChange={onFromChange}
-            onBlur={() => finishEditing(onBlur)}
+            onBlur={() => finishEditing(() => {
+              if (canSaveRange) onBlur();
+            })}
+            isInvalid={rangeOrderInvalid}
           />
           <span className="text-muted" aria-hidden="true">–</span>
           <HistoricalYearControl
@@ -64,7 +74,10 @@ export default function EditableHistoricalRangeField({
             showEraLabel={!editing}
             inputClassName="inline-editable-input"
             onChange={onToChange}
-            onBlur={() => finishEditing(onBlur)}
+            onBlur={() => finishEditing(() => {
+              if (canSaveRange) onBlur();
+            })}
+            isInvalid={rangeOrderInvalid}
           />
         </div>
       )}

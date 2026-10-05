@@ -226,6 +226,10 @@ export default function EventPage() {
   const saveField = async (field: EventField) => {
     const current = eventRef.current;
     if (!current) return;
+    if (new Date(current.schedule.endsAt).getTime() <= new Date(current.schedule.startsAt).getTime()) {
+      setFieldStatuses((statuses) => ({ ...statuses, endsAt: "error" }));
+      return;
+    }
     setFieldStatuses((statuses) => ({ ...statuses, [field]: "saving" }));
     setBusy(true);
     setError("");
@@ -246,8 +250,13 @@ export default function EventPage() {
       replaceItem(saved);
       setFieldStatuses((statuses) => ({ ...statuses, [field]: "saved" }));
     } catch (error) {
-      setError((error as Error).message);
-      setFieldStatuses((statuses) => ({ ...statuses, [field]: "error" }));
+      const message = (error as Error).message;
+      if (message.includes("schedule.endsAt must be after schedule.startsAt")) {
+        setFieldStatuses((statuses) => ({ ...statuses, endsAt: "error" }));
+      } else {
+        setError(message);
+        setFieldStatuses((statuses) => ({ ...statuses, [field]: "error" }));
+      }
     } finally {
       setBusy(false);
     }

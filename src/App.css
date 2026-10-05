@@ -1178,11 +1178,7 @@ button.stash-item-media-empty:disabled {
   padding-right: .1rem;
 }
 
-/* Editing uses the fixed AD/BC slots next to each endpoint. Keep the separator
-   slot reserved, but hide its dash until the read-only display returns. */
-.historical-range-inline-control:has(.historical-year-era-toggle) > .text-muted {
-  visibility: hidden;
-}
+.historical-year-from { text-align: right; }
 
 .historical-year-era,
 .historical-year-era-toggle {

@@ -5,6 +5,7 @@ import EditablePeriodSelectorField from "../component/EditablePeriodSelectorFiel
 import { SaveStatus } from "../component/EditableFieldRow";
 import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
+import InlineEditableText from "../component/InlineEditableText";
 import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import { TempvsEvent } from "./eventApi";
@@ -54,14 +55,15 @@ export default function EventFieldsPanel({
   const recurrence = event.schedule.recurrence;
   return (
     <section className="club-panel event-info-panel">
-      <EditableTextFieldRow
-        label="Event name"
+      <InlineEditableText
         editable={editable}
         value={event.name}
         readOnlyValue={event.name}
         onChange={(input) => onChange("name", input.target.value)}
         onBlur={() => onBlur("name")}
         status={statuses.name}
+        textClassName="event-info-title"
+        className="event-info-title-field mb-3"
       />
       <EditableDescriptionField
         label="Description"
@@ -130,6 +132,7 @@ export default function EventFieldsPanel({
         onChange={(input) => onChange("endsAt", input.target.value)}
         onBlur={() => onBlur("endsAt")}
         status={statuses.endsAt}
+        errorTitle="Can't be before Starts"
       />
       <EditableSelectFieldRow
         label="Time zone"

@@ -23,6 +23,8 @@
 .event-page-layout .event-people-grid > :nth-child(2) { order: 1; }
 .event-detail h1 { margin-top: .6rem; }
 .event-description { white-space: pre-wrap; }
+.event-info-title { font-size: 1.35rem; font-weight: 700; line-height: 1.25; }
+.event-info-title-field .inline-editable-input.form-control { min-height: 1.9rem; }
 .event-occurrences { list-style: none; padding: 0; max-width: 40rem; }
 .event-occurrences li { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid rgba(87, 102, 98, .12); }
 .event-managers { margin-top: 0; }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { OverlayTrigger, Popover } from 'react-bootstrap';
 import { FaHourglassHalf, FaTimes } from 'react-icons/fa';
 
 type InlineSaveStatusValue = 'saving' | 'saved' | 'error';
@@ -29,7 +30,17 @@ export default function InlineSaveStatus({
     <>
       {status === 'saving' && <SavingIcon className="text-muted" title={savingTitle} />}
       {status === 'saved' && <span className="text-success">&#10003;</span>}
-      {status === 'error' && <ErrorIcon className="text-danger" title={errorTitle} />}
+      {status === 'error' && (
+        <OverlayTrigger
+          trigger={['hover', 'focus']}
+          placement="top"
+          overlay={<Popover><Popover.Body>{errorTitle}</Popover.Body></Popover>}
+        >
+          <span className="d-inline-flex" tabIndex={0} aria-label={errorTitle}>
+            <ErrorIcon className="text-danger" />
+          </span>
+        </OverlayTrigger>
+      )}
     </>
   );
 }

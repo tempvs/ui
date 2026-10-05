@@ -42,7 +42,8 @@ export default function HistoricalRangeFilter({
   inlineToggle = false,
 }: Props) {
   const showFields = !showToggle || alwaysShowFields || enabled;
-  const validRange = isValidHistoricalYear(from) && isValidHistoricalYear(to);
+  const validRange = isValidHistoricalRange(from, to);
+  const rangeOrderInvalid = !isChronologicalHistoricalRange(from, to);
   const yearFields = (
     <div className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}>
       <HistoricalYearControl
@@ -52,6 +53,8 @@ export default function HistoricalRangeFilter({
         onChange={onFromChange}
         onValueEntered={onValueEntered}
         onBlur={validRange ? onBlur : undefined}
+        isInvalid={rangeOrderInvalid}
+        inputClassName="historical-year-from"
       />
       {!stacked && !compact && <span className="pb-2 text-muted" aria-hidden="true">–</span>}
       <HistoricalYearControl
@@ -61,6 +64,7 @@ export default function HistoricalRangeFilter({
         onChange={onToChange}
         onValueEntered={onValueEntered}
         onBlur={validRange ? onBlur : undefined}
+        isInvalid={rangeOrderInvalid}
       />
     </div>
   );
@@ -107,6 +111,8 @@ export default function HistoricalRangeFilter({
             onChange={onFromChange}
             onValueEntered={onValueEntered}
             onBlur={validRange ? onBlur : undefined}
+            isInvalid={rangeOrderInvalid}
+            inputClassName="historical-year-from"
           />
           {!stacked && <span className="pb-2 text-muted" aria-hidden="true">–</span>}
           <HistoricalYearControl
@@ -115,6 +121,7 @@ export default function HistoricalRangeFilter({
             onChange={onToChange}
             onValueEntered={onValueEntered}
             onBlur={validRange ? onBlur : undefined}
+            isInvalid={rangeOrderInvalid}
           />
         </div>
       )}
@@ -133,6 +140,7 @@ export function HistoricalYearControl({
   inputClassName = "",
   showEra = true,
   showEraLabel = false,
+  isInvalid = false,
 }: {
   label: string | null;
   placeholder?: string;
@@ -144,6 +152,7 @@ export function HistoricalYearControl({
   inputClassName?: string;
   showEra?: boolean;
   showEraLabel?: boolean;
+  isInvalid?: boolean;
 }) {
   return (
     <div className="d-flex flex-column gap-1">
@@ -159,7 +168,7 @@ export function HistoricalYearControl({
           readOnly={readOnly}
           tabIndex={readOnly ? -1 : undefined}
           className={`${inputClassName} ${readOnly && !value.year ? "description-placeholder" : ""}`.trim()}
-          isInvalid={value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year)}
+          isInvalid={isInvalid || (value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year))}
           aria-label={label ? `${label} year` : "Year"}
           onChange={(event) => {
             onChange({
@@ -199,6 +208,27 @@ export function HistoricalYearControl({
 
 export function isValidHistoricalYear(value: HistoricalYearInput): boolean {
   return value.year === "" || /^[1-9][0-9]*$/.test(value.year);
+}
+
+/** Open-ended ranges are valid; supplied endpoints must be chronological. */
+export function isChronologicalHistoricalRange(
+  from: HistoricalYearInput,
+  to: HistoricalYearInput,
+): boolean {
+  if (!from.year || !to.year) return true;
+  if (!isValidHistoricalYear(from) || !isValidHistoricalYear(to)) return false;
+  const ordinal = (value: HistoricalYearInput) =>
+    value.era === "BC" ? 1 - Number(value.year) : Number(value.year);
+  return ordinal(from) <= ordinal(to);
+}
+
+export function isValidHistoricalRange(
+  from: HistoricalYearInput,
+  to: HistoricalYearInput,
+): boolean {
+  return isValidHistoricalYear(from)
+    && isValidHistoricalYear(to)
+    && isChronologicalHistoricalRange(from, to);
 }
 
 export function formatHistoricalRange(
