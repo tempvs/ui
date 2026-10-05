@@ -108,11 +108,11 @@ export default function LibrarySourceEditPage() {
       setDraft(asDraft(sourceResult.data));
       setImages(imageResult?.data || []);
       const ownUserId = viewer?.userId;
-      setOwnPending(
-        changesetsResult?.data?.content.find(
+      const pending = changesetsResult?.data?.content.find(
           (changeset) => changeset.status === "PENDING" && changeset.proposerId === ownUserId,
-        ) || null,
-      );
+        ) || null;
+      setOwnPending(pending);
+      setImageOperations(pending?.imageOperations || []);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
