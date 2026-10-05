@@ -19,6 +19,7 @@ import { formatSourceChangeValue, sourceChangeFieldLabel } from "../sourceChange
 import { getUserProfilesByUserIds } from "../../profile/profileApi";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import type { Profile } from "../../profile/profileTypes";
+import LibrarySectionHeader from "../components/LibrarySectionHeader";
 
 const PAGE_SIZE = 20;
 
@@ -84,12 +85,16 @@ export default function LibrarySourceProposalsPage() {
 
   return (
     <div className="px-4 px-xl-5 pb-4">
+      <LibrarySectionHeader
+        title="LIBRARY"
+        subtitle={null}
+        rightContent={source ? <Link className="btn btn-outline-dark btn-sm" to={`/library/source/${source.id}`}>Back to source</Link> : null}
+      />
       <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
         <div>
           <h1 className="h3 mb-1">Pending proposals</h1>
           {source && <div className="text-muted">{source.name}</div>}
         </div>
-        {source && <Link className="btn btn-outline-dark btn-sm" to={`/library/source/${source.id}`}>Back to source</Link>}
       </div>
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {loading && <Spinner />}

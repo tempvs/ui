@@ -76,10 +76,48 @@ h3 {
     border-color 0.18s ease;
 }
 
+/* The common page chrome used by Profile, Stash, Library, Club, Event, and
+   administration screens. This intentionally overrides the legacy global
+   square-corner reset so navigation and primary actions read as one tile. */
+.tempvs-section-header {
+  border-radius: 0.65rem !important;
+  box-shadow: 0 0.2rem 0.8rem rgba(31, 38, 35, 0.05);
+}
+
 .tempvs-disclosure-card-collapsed:hover {
   background-color: #fffdf8;
   border-color: #d7c8b1 !important;
   box-shadow: 0 0 0 2px rgba(215, 200, 177, 0.22);
+}
+
+/* Shared metadata rows must never split a short label such as "Period *"
+   across lines when the editable control is rendered. */
+.inline-editable-row-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* A club profile's two compact historical fields deliberately behave as one
+   row. The parent profile layout gives this row six grid columns; below the
+   tablet breakpoint it may wrap rather than overflow the viewport. */
+.profile-period-years-row {
+  flex-wrap: nowrap;
+}
+
+.profile-period-years-row > div,
+.profile-years-field {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.profile-period-years-row .inline-editable-control {
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  .profile-period-years-row {
+    flex-wrap: wrap;
+  }
 }
 
 .library-source-filter .form-check-input {

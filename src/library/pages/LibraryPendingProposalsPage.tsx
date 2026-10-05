@@ -7,6 +7,7 @@ import { getErrorMessage } from "../../util/errors";
 import { findSources, getLibraryViewer, getSourceProposals, type LibrarySource } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
 import { PAGE_SIZE } from "../libraryShared";
+import LibrarySectionHeader from "../components/LibrarySectionHeader";
 
 type Row = { source: LibrarySource; count: number };
 
@@ -58,9 +59,14 @@ export default function LibraryPendingProposalsPage({ admin = false }: { admin?:
 
   const heading = period ? "Pending period proposals" : "All pending source proposals";
   return <div className="px-4 px-xl-5 pb-4">
+    <LibrarySectionHeader
+      title="LIBRARY"
+      subtitle={null}
+      period={period}
+      rightContent={<Link className="btn btn-outline-dark btn-sm" to={admin ? "/library/admin" : `/library/period/${period}`}>Back</Link>}
+    />
     <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
       <h1 className="h3 mb-0">{heading}</h1>
-      <Link className="btn btn-outline-dark btn-sm" to={admin ? "/library/admin" : `/library/period/${period}`}>Back</Link>
     </div>
     {error && <div className="tempvs-plain-message text-danger">{error}</div>}
     {loading && <Spinner />}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Container } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../component/ConfirmationModal';
+import SectionHeaderBar from '../component/SectionHeaderBar';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, fetchUserProfileByUserId } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import EventManagers from './EventManagers';
@@ -51,10 +52,10 @@ export default function EventAdminPage() {
   };
 
   return <Container className="events-page">
-    <Link to={`/events/${eventId}`}>Back to event</Link>
+    <SectionHeaderBar title="Events" rightContent={<Link className="btn btn-outline-dark" to={`/events/${eventId}`}>View event</Link>} />
     {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
     {loading ? <p role="status">Loading event administration…</p> : !event ? null : !canManage ? <Alert variant="danger" className="mt-3">Event administration is available only to the owner and event admins.</Alert> : <article className="event-panel event-detail mt-3">
-      <div className="event-heading"><div><h1>Admin actions</h1><p className="text-muted mb-0">Review participation requests and manage {event.name}.</p></div><Link className="btn btn-outline-dark" to={`/events/${event.id}`}>View event</Link></div>
+      <div className="event-heading"><div><h1>Admin actions</h1><p className="text-muted mb-0">Review participation requests and manage {event.name}.</p></div></div>
       <EventPeoplePanels eventId={event.id} canManage revision={revision} showPeople={false} onChanged={() => setRevision(value => value + 1)} />
       <EventManagers event={event} owner={owner} canManageAdmins={isOwner} onChange={setEvent} />
       {isOwner && <Button variant="outline-danger" className="mt-4" disabled={busy} onClick={() => setDeleting(true)}>Delete event</Button>}

@@ -115,7 +115,7 @@ export default function ProfileFieldsPanel({
         errorTitle={t('profile.status.saveFailed', 'Save failed')}
       />
       {type === 'CLUB' && (
-        <div className="d-flex align-items-end gap-3 flex-wrap mb-2">
+        <div className="profile-period-years-row d-flex align-items-end gap-2 mb-2">
           <div>
           <EditableSelectFieldRow
           label={t('profile.field.periodRequired', 'Period *')}
@@ -130,13 +130,13 @@ export default function ProfileFieldsPanel({
             ...periods.map(period => ({ value: period, label: getPeriodLabel(period) })),
           ]}
           className="mb-0"
-          fieldMaxWidth="10rem"
+          fieldMaxWidth="8.5rem"
           labelWidth="auto"
           savingTitle={t('profile.status.saving', 'Saving')}
           errorTitle={t('profile.status.saveFailed', 'Save failed')}
           />
           </div>
-          {rangeControl}
+          <div className="profile-years-field">{rangeControl}</div>
         </div>
       )}
     </>

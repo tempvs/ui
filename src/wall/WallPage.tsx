@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Spinner } from "react-bootstrap";
 
 import ConfirmationModal from "../component/ConfirmationModal";
+import SectionHeaderBar from "../component/SectionHeaderBar";
 import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
 import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
 import { resolveCurrentOwnedProfileId } from "../profile/currentProfile";
@@ -211,6 +212,7 @@ export default function WallPage({ userId }: { userId: string }) {
 
   return (
     <main className="wall-page">
+      <SectionHeaderBar title="Wall" />
       <div className="wall-header">
         <div>
           <h1>Your wall</h1>

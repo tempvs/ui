@@ -20,7 +20,7 @@ export default function SectionHeaderBar({
   return (
     <>
       <div
-        className="p-3 rounded border"
+        className="tempvs-section-header p-3 rounded border"
         style={{
           backgroundColor,
           borderColor,

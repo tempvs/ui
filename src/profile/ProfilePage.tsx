@@ -1408,7 +1408,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               )}
             </div>
           </Col>
-          <Col lg={5} md={8}>
+          <Col lg={6} md={8}>
             <ProfileFieldsPanel
               type={this.state.type}
               state={this.state}
@@ -1446,7 +1446,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               />
             )}
           </Col>
-          <Col lg={4} md={12}>
+          <Col lg={3} md={12}>
             {isClubProfile && (
               <div className="mb-3">
                 {isEditable && (

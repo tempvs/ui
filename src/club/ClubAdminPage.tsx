@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import Spinner from '../component/Spinner';
 import ConfirmationModal from '../component/ConfirmationModal';
+import SectionHeaderBar from '../component/SectionHeaderBar';
 import ClubEventRequestsPanel from '../event/ClubEventRequestsPanel';
 import { fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
@@ -102,13 +103,11 @@ export default function ClubAdminPage() {
   };
 
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
-    <Link to={clubPath}>{t('backToClub', 'Back to club')}</Link>
+    <SectionHeaderBar title={t('title', 'Clubs')} rightContent={<Link className="btn btn-outline-dark" to={clubPath}>{t('viewClub', 'View club')}</Link>} />
     {loading ? <Spinner /> : error ? <Alert variant="danger" className="mt-3">{error}</Alert> : !club ? null : !canManage ? (
       <Alert variant="danger" className="mt-3">{t('adminOnly', 'Club administration is available only to club admins.')}</Alert>
     ) : <>
-      <div className="club-page-heading mt-3"><h1>{t('adminActions', 'Admin actions')}</h1>
-        <Link className="btn btn-outline-dark" to={clubPath}>{t('viewClub', 'View club')}</Link>
-      </div>
+      <div className="club-page-heading mt-3"><h1>{t('adminActions', 'Admin actions')}</h1></div>
       <p className="text-muted">{t('adminActionsHint', 'Review membership applications and manage other club administration tasks here.')}</p>
       <JoinRequestsPanel clubId={club.id} onDecision={() => {}} />
       <ClubEventRequestsPanel clubId={club.id} reviewerProfileId={reviewerProfile ? String(reviewerProfile.id) : undefined} />

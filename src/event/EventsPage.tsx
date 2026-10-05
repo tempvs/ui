@@ -3,6 +3,7 @@ import { Alert, Button, Container } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import TextFilterInput from '../component/TextFilterInput';
 import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
+import SectionHeaderBar from '../component/SectionHeaderBar';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
@@ -65,7 +66,8 @@ export default function EventsPage() {
   });
 
   return <Container className="events-page">
-    <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div>{profiles.length > 0 && !creating && <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button>}</div>
+    <SectionHeaderBar title="Events" rightContent={profiles.length > 0 && !creating ? <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button> : null} />
+    <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div></div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
       <div className="event-search-row">

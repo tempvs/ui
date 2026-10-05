@@ -10,6 +10,7 @@ import {
 import { Profile } from "../profile/profileTypes";
 import { PeriodBadge, type Period } from "../util/periods";
 import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
+import SectionHeaderBar from "../component/SectionHeaderBar";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
@@ -287,6 +288,16 @@ export default function EventPage() {
     <Container className="events-page">
       {error && <Alert variant="danger">{error}</Alert>}
       <article className="event-detail">
+        <SectionHeaderBar
+          title="Events"
+          rightContent={(
+            <div className="event-actions mt-0">
+              {applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}
+              {ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}
+              {canManage && <Link className="btn btn-outline-dark" to={`/events/${item.id}/admin`}>Admin actions</Link>}
+            </div>
+          )}
+        />
         <div className="event-heading">
           <div>
             <div className="event-period-badges">
@@ -295,35 +306,6 @@ export default function EventPage() {
               ))}
             </div>
             <h1>{item.name}</h1>
-          </div>
-          <div className="event-actions">
-            {applicantProfiles.length > 0 && (
-              <Button
-                variant="outline-dark"
-                disabled={!occurrence}
-                onClick={() => setApplyOpen(true)}
-              >
-                Apply for event
-              </Button>
-            )}
-            {ownedProfiles.length > 0 && (
-              <Button
-                variant="outline-dark"
-                onClick={() => setFollowOpen(true)}
-              >
-                Follow event
-              </Button>
-            )}
-            {canManage && (
-              <>
-                <Link
-                  className="btn btn-outline-dark"
-                  to={`/events/${item.id}/admin`}
-                >
-                  Admin actions
-                </Link>
-              </>
-            )}
           </div>
         </div>
         <Row className="club-page-columns event-page-layout">

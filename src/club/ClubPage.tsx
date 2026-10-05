@@ -5,6 +5,7 @@ import { FaSignOutAlt, FaUserMinus } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
+import SectionHeaderBar from "../component/SectionHeaderBar";
 import Spinner from "../component/Spinner";
 import {
   fetchClubProfiles,
@@ -643,63 +644,35 @@ export default function ClubPage() {
       ) : (
         club && (
           <>
+            <SectionHeaderBar
+              title={t("title", "Clubs")}
+              rightContent={(
+                <div className="d-flex gap-2">
+                  {currentUserId != null && (
+                    <>
+                      <Button
+                        variant={memberProfile ? "outline-secondary" : "outline-dark"}
+                        disabled={unavailable}
+                        aria-label={memberProfile ? t("leaveClubAction", "Leave this club") : undefined}
+                        onClick={() => {
+                          if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
+                          else { setMembershipMessage(""); setApplyingForMembership(true); }
+                        }}
+                      >
+                        {memberProfile ? t("leave", "Leave club") : t("applyForMembership", "Apply for membership")}
+                      </Button>
+                      <Button variant={followingProfileIds.size > 0 ? "danger" : "outline-dark"} disabled={unavailable} onClick={() => { setFollowError(""); setFollowingClub(true); }}>
+                        {followingProfileIds.size > 0 ? t("following", "Following") : t("follow", "Follow")}
+                      </Button>
+                    </>
+                  )}
+                  {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>{t("adminActions", "Admin actions")}</Link>}
+                </div>
+              )}
+            />
             <div className="club-page-heading mt-3">
               <div>
                 <h1>{club.name}</h1>
-              </div>
-              <div className="d-flex gap-2">
-                {currentUserId != null && (
-                  <>
-                    <Button
-                      variant={
-                        memberProfile ? "outline-secondary" : "outline-dark"
-                      }
-                      disabled={unavailable}
-                      aria-label={
-                        memberProfile
-                          ? t("leaveClubAction", "Leave this club")
-                          : undefined
-                      }
-                      onClick={() => {
-                        if (memberProfile)
-                          setMemberRemoval({
-                            profile: memberProfile,
-                            leave: true,
-                          });
-                        else {
-                          setMembershipMessage("");
-                          setApplyingForMembership(true);
-                        }
-                      }}
-                    >
-                      {memberProfile
-                        ? t("leave", "Leave club")
-                        : t("applyForMembership", "Apply for membership")}
-                    </Button>
-                    <Button
-                      variant={
-                        followingProfileIds.size > 0 ? "danger" : "outline-dark"
-                      }
-                      disabled={unavailable}
-                      onClick={() => {
-                        setFollowError("");
-                        setFollowingClub(true);
-                      }}
-                    >
-                      {followingProfileIds.size > 0
-                        ? t("following", "Following")
-                        : t("follow", "Follow")}
-                    </Button>
-                  </>
-                )}
-                {canManage && (
-                  <Link
-                    className="btn btn-outline-dark"
-                    to={`/clubs/${club.alias || club.id}/admin`}
-                  >
-                    {t("adminActions", "Admin actions")}
-                  </Link>
-                )}
               </div>
             </div>
             <Row className="club-page-columns">

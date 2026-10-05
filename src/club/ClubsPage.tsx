@@ -4,6 +4,7 @@ import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
+import SectionHeaderBar from '../component/SectionHeaderBar';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
@@ -111,9 +112,12 @@ export default function ClubsPage() {
     finally { setBusy(false); }
   };
   return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
+    <SectionHeaderBar
+      title={t('title', 'Clubs')}
+      rightContent={signedIn && !creating ? <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button> : null}
+    />
     <div className="club-page-heading">
       <div><h1>{t('title', 'Clubs')}</h1><p>{t('intro', 'Find the people who bring your period to life.')}</p></div>
-      {signedIn && !creating && <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button>}
     </div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="club-panel"><h2>{t('create', 'Create club')}</h2><ClubForm busy={busy || unavailable} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
