@@ -88,7 +88,7 @@ export type SourceChangeLogEntry = {
   actorId: string;
   proposerId?: string;
   proposalId?: string;
-  changes: Record<string, { before: string | null; after: string | null }>;
+  changes: Record<string, { before: unknown; after: unknown }>;
   createdAt: string;
 };
 

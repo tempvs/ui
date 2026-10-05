@@ -48,6 +48,7 @@ export default function EditableHistoricalRangeField({
             value={from}
             readOnly={!editing}
             showEra={editing}
+            showEraLabel={!editing}
             inputClassName="inline-editable-input"
             onChange={onFromChange}
             onBlur={() => finishEditing(onBlur)}
@@ -59,6 +60,7 @@ export default function EditableHistoricalRangeField({
             value={to}
             readOnly={!editing}
             showEra={editing}
+            showEraLabel={!editing}
             inputClassName="inline-editable-input"
             onChange={onToChange}
             onBlur={() => finishEditing(onBlur)}

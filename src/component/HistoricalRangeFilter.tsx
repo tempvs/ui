@@ -1,4 +1,5 @@
 import { Form } from "react-bootstrap";
+import { formatHistoricalYear } from "../util/historicalYear";
 
 export type HistoricalYearInput = { year: string; era: "BC" | "AD" };
 
@@ -131,6 +132,7 @@ export function HistoricalYearControl({
   readOnly = false,
   inputClassName = "",
   showEra = true,
+  showEraLabel = false,
 }: {
   label: string | null;
   placeholder?: string;
@@ -141,6 +143,7 @@ export function HistoricalYearControl({
   readOnly?: boolean;
   inputClassName?: string;
   showEra?: boolean;
+  showEraLabel?: boolean;
 }) {
   return (
     <div className="d-flex flex-column gap-1">
@@ -151,6 +154,7 @@ export function HistoricalYearControl({
           inputMode="numeric"
           value={value.year}
           placeholder={placeholder}
+          maxLength={4}
           readOnly={readOnly}
           tabIndex={readOnly ? -1 : undefined}
           className={`${inputClassName} ${readOnly && !value.year ? "description-placeholder" : ""}`.trim()}
@@ -164,22 +168,26 @@ export function HistoricalYearControl({
             onValueEntered?.();
           }}
           onBlur={onBlur}
-          style={{ minWidth: "5.25rem", width: "5.25rem" }}
+          style={{ minWidth: "4.25rem", width: "4.25rem" }}
         />
-        <Form.Check
-          type="checkbox"
-          label="BC"
-          checked={value.era === "BC"}
-          aria-label={`${label || "Year"} is BC`}
-          onChange={(event) => {
-            onChange({ ...value, era: event.target.checked ? "BC" : "AD" });
-            onValueEntered?.();
-          }}
-          onBlur={onBlur}
-          className="small text-nowrap"
-          disabled={!showEra}
-          style={!showEra ? { visibility: "hidden" } : undefined}
-        />
+        {showEra ? (
+          <Form.Check
+            type="checkbox"
+            label="BC"
+            checked={value.era === "BC"}
+            aria-label={`${label || "Year"} is BC`}
+            onChange={(event) => {
+              onChange({ ...value, era: event.target.checked ? "BC" : "AD" });
+              onValueEntered?.();
+            }}
+            onBlur={onBlur}
+            className="small text-nowrap"
+          />
+        ) : showEraLabel ? (
+          <span className="historical-year-era" aria-label={`${value.era} era`}>
+            {value.year && (value.era === "BC" || Number(value.year) < 100) ? value.era : ""}
+          </span>
+        ) : <span className="historical-year-era" aria-hidden="true" />}
       </div>
     </div>
   );
@@ -193,8 +201,7 @@ export function formatHistoricalRange(
   from?: { year: number; era: "BC" | "AD" } | null,
   to?: { year: number; era: "BC" | "AD" } | null,
 ): string {
-  const format = (value?: { year: number; era: "BC" | "AD" } | null) =>
-    value ? `${value.year}${value.era === "BC" ? " BC" : ""}` : "…";
+  const format = (value?: { year: number; era: "BC" | "AD" } | null) => formatHistoricalYear(value);
   if (!from && !to) return "—";
   return `${format(from)} – ${format(to)}`;
 }

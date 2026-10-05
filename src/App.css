@@ -1171,6 +1171,18 @@ button.stash-item-media-empty:disabled {
   margin-bottom: 0;
 }
 
+.historical-range-inline-control .inline-editable-input.form-control {
+  min-width: 4.25rem;
+  padding-right: .35rem;
+}
+
+.historical-year-era {
+  display: inline-block;
+  min-width: 2.25rem;
+  font-size: .875rem;
+  color: #5f574c;
+}
+
 .stash-source-copy {
   max-width: 26rem;
   text-align: left;

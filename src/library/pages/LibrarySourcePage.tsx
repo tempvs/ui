@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Col, Form, Row } from "react-bootstrap";
+import { Button, Col, Form, Row, Toast, ToastContainer } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -57,6 +57,7 @@ import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
+import { formatSourceChangeValue, sourceChangeFieldLabel } from "../sourceChangeDisplay";
 
 type SourceField = "name" | "description" | "from" | "to";
 
@@ -225,6 +226,12 @@ export default function LibrarySourcePage() {
   useEffect(() => {
     loadSource();
   }, [loadSource]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   useEffect(
     () => () => {
@@ -782,11 +789,11 @@ export default function LibrarySourcePage() {
       />
 
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
-      {notice && (
-        <div className="tempvs-plain-message text-muted" role="status">
-          {notice}
-        </div>
-      )}
+      <ToastContainer position="top-end" className="p-3" style={{ zIndex: 1080 }}>
+        <Toast show={Boolean(notice)} onClose={() => setNotice(null)} delay={3000} autohide bg="light">
+          <Toast.Body role="status">{notice}</Toast.Body>
+        </Toast>
+      </ToastContainer>
 
       {canEditSource(userInfo) && (
         <div className="d-flex justify-content-end mb-3">
@@ -1048,6 +1055,10 @@ export default function LibrarySourcePage() {
               const actorPath = actor
                 ? `/profile/${actor.alias || actor.id}`
                 : `/profile/user/${entry.actorId}`;
+              const proposer = entry.proposerId ? actors[entry.proposerId] : null;
+              const proposerPath = proposer
+                ? `/profile/${proposer.alias || proposer.id}`
+                : entry.proposerId ? `/profile/user/${entry.proposerId}` : null;
               const action =
                 entry.action === "CREATED"
                   ? "created this source"
@@ -1063,6 +1074,9 @@ export default function LibrarySourcePage() {
                       {entry.actorId === userInfo?.userId ? "You" : actorLabel}
                     </Link>{" "}
                     {action}{" "}
+                    {entry.proposerId && proposerPath && (
+                      <><span className="text-muted">, proposed by </span><Link to={proposerPath}>{entry.proposerId === userInfo?.userId ? "You" : proposer ? buildProfileLabel(proposer) : "Unknown profile"}</Link>{" "}</>
+                    )}
                     <time className="text-muted">
                       {new Date(entry.createdAt).toLocaleString()}
                     </time>
@@ -1070,8 +1084,8 @@ export default function LibrarySourcePage() {
                   <ul className="small text-muted mt-1 mb-0">
                     {Object.entries(entry.changes).map(([field, change]) => (
                       <li key={field}>
-                        <strong>{field}</strong>: {change.before || "(empty)"} →{" "}
-                        {change.after || "(empty)"}
+                        <strong>{sourceChangeFieldLabel(field)}</strong>: {formatSourceChangeValue(change.before)} →{" "}
+                        {formatSourceChangeValue(change.after)}
                       </li>
                     ))}
                   </ul>
