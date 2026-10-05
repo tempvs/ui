@@ -1112,6 +1112,11 @@ button.stash-item-media-empty:disabled {
   border: 1px solid transparent;
   background-color: transparent;
   color: inherit;
+  /* Bootstrap gives controls their own font size.  Inline fields must inherit
+     the surrounding row/title metrics in both display and edit states. */
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
   line-height: inherit;
   box-shadow: none;
   opacity: 1;
