@@ -1165,6 +1165,17 @@ button.stash-item-media-empty:disabled {
 
 /* A two-endpoint version of the shared input row. It deliberately does not
    wrap while switching to edit mode, keeping both field slots stationary. */
+.historical-range-field-slot {
+  display: flex;
+  align-items: center;
+  /* The compact read-only text and two bordered inputs use this same fixed
+     slot. Without it, entering edit mode changes the flex item's intrinsic
+     width and makes the containing metadata row reflow. */
+  height: 1.6rem;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
 .historical-range-inline-control {
   width: max-content;
   /* InlineSaveStatus is absolutely positioned by the shared row. Reserve its

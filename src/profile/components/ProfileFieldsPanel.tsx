@@ -130,7 +130,8 @@ export default function ProfileFieldsPanel({
             ...periods.map(period => ({ value: period, label: getPeriodLabel(period) })),
           ]}
           className="mb-0"
-          fieldMaxWidth="12rem"
+          fieldMaxWidth="10rem"
+          labelWidth="auto"
           savingTitle={t('profile.status.saving', 'Saving')}
           errorTitle={t('profile.status.saveFailed', 'Save failed')}
           />

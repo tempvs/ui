@@ -43,7 +43,7 @@ export default function ClubFieldsPanel({ club, editable, statuses, onChange, on
         <EditableSelectFieldRow label="Period" editable={editable} value={club.period} readOnlyValue={getPeriodLabel(intl, club.period)}
           options={PERIODS.map(period => ({ value: period, label: getPeriodLabel(intl, period) }))}
           onChange={event => onChange('period', event.target.value)} onBlur={() => onBlur('period')}
-          status={statuses.period} className="mb-0" fieldMaxWidth="12rem" savingTitle="Saving" errorTitle="Save failed" />
+          status={statuses.period} className="mb-0" fieldMaxWidth="10rem" labelWidth="auto" savingTitle="Saving" errorTitle="Save failed" />
       </div>
       <EditableHistoricalRangeField
       label="Years"

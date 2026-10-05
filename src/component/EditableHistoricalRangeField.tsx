@@ -58,38 +58,43 @@ export default function EditableHistoricalRangeField({
       labelWidth={labelWidth}
       readOnlyValue={displayValue}
       renderControl={({ editing, onBlur: finishEditing }) => (
-        !editing ? (
-          <span className="historical-range-readonly-value">{displayValue}</span>
-        ) : <div className="historical-range-inline-control d-flex align-items-center gap-1">
-          <HistoricalYearControl
-            label={null}
-            placeholder="From"
-            value={from}
-            readOnly={!editing}
-            showEra={editing}
-            showEraLabel={!editing}
-            inputClassName="inline-editable-input historical-year-from"
-            onChange={onFromChange}
-            onBlur={() => finishEditing(() => {
-              if (canSaveRange) onBlur();
-            })}
-            isInvalid={rangeOrderInvalid}
-          />
-          <span className="text-muted" aria-hidden="true">–</span>
-          <HistoricalYearControl
-            label={null}
-            placeholder="To"
-            value={to}
-            readOnly={!editing}
-            showEra={editing}
-            showEraLabel={!editing}
-            inputClassName="inline-editable-input"
-            onChange={onToChange}
-            onBlur={() => finishEditing(() => {
-              if (canSaveRange) onBlur();
-            })}
-            isInvalid={rangeOrderInvalid}
-          />
+        <div
+          className="historical-range-field-slot"
+          style={{ width: fieldMaxWidth, minWidth: fieldMaxWidth }}
+        >
+          {!editing ? (
+            <span className="historical-range-readonly-value">{displayValue}</span>
+          ) : <div className="historical-range-inline-control d-flex align-items-center gap-1">
+            <HistoricalYearControl
+              label={null}
+              placeholder="From"
+              value={from}
+              readOnly={!editing}
+              showEra={editing}
+              showEraLabel={!editing}
+              inputClassName="inline-editable-input historical-year-from"
+              onChange={onFromChange}
+              onBlur={() => finishEditing(() => {
+                if (canSaveRange) onBlur();
+              })}
+              isInvalid={rangeOrderInvalid}
+            />
+            <span className="text-muted" aria-hidden="true">–</span>
+            <HistoricalYearControl
+              label={null}
+              placeholder="To"
+              value={to}
+              readOnly={!editing}
+              showEra={editing}
+              showEraLabel={!editing}
+              inputClassName="inline-editable-input"
+              onChange={onToChange}
+              onBlur={() => finishEditing(() => {
+                if (canSaveRange) onBlur();
+              })}
+              isInvalid={rangeOrderInvalid}
+            />
+          </div>}
         </div>
       )}
     />

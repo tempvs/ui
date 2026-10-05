@@ -19,6 +19,7 @@ type EditableSelectFieldRowProps = {
   options: EditableSelectOption[];
   className?: string;
   fieldMaxWidth?: string;
+  labelWidth?: string;
   savingTitle?: string;
   errorTitle?: string;
 };
@@ -34,6 +35,7 @@ export default function EditableSelectFieldRow({
   options,
   className = 'mb-2',
   fieldMaxWidth = '100%',
+  labelWidth,
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: EditableSelectFieldRowProps) {
@@ -56,6 +58,7 @@ export default function EditableSelectFieldRow({
       status={status}
       readOnlyValue={readOnlyValue}
       fieldMaxWidth={fieldMaxWidth}
+      labelWidth={labelWidth}
       className={className}
       savingTitle={savingTitle}
       errorTitle={errorTitle}
