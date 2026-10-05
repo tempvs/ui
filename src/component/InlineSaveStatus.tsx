@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { OverlayTrigger, Popover } from 'react-bootstrap';
 import { FaHourglassHalf, FaTimes } from 'react-icons/fa';
 
@@ -22,9 +22,23 @@ export default function InlineSaveStatus({
   savingTitle = 'Saving',
   errorTitle = 'Save failed',
 }: InlineSaveStatusProps) {
+  const [showSaved, setShowSaved] = useState(status === 'saved');
+
+  useEffect(() => {
+    if (status !== 'saved') {
+      setShowSaved(false);
+      return undefined;
+    }
+    setShowSaved(true);
+    const timer = window.setTimeout(() => setShowSaved(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
   if (!status || !['saving', 'saved', 'error'].includes(status)) {
     return null;
   }
+
+  if (status === 'saved' && !showSaved) return null;
 
   return (
     <>

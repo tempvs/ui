@@ -88,7 +88,7 @@ export default function EventForm({ profiles, initial, busy = false, onSave, onC
     {kind === 'RECURRING' && <div className="event-recurrence-grid mt-3">
       <Form.Group><Form.Label>Repeat</Form.Label><Form.Select value={frequency} onChange={event => setFrequency(event.target.value as typeof frequency)}><option value="DAILY">Daily</option><option value="WEEKLY">Weekly</option><option value="MONTHLY">Monthly</option></Form.Select></Form.Group>
       <Form.Group><Form.Label>Every</Form.Label><Form.Control type="number" min={1} max={12} value={interval} onChange={event => setInterval(Number(event.target.value))} /></Form.Group>
-      <Form.Group><Form.Label>Occurrences</Form.Label><Form.Control type="number" min={1} max={365} value={count} onChange={event => setCount(Number(event.target.value))} /></Form.Group>
+      <Form.Group><Form.Label>Number of dates</Form.Label><Form.Control type="number" min={1} max={365} value={count} onChange={event => setCount(Number(event.target.value))} /></Form.Group>
     </div>}
     <div className="event-form-actions"><Button type="button" variant="outline-secondary" onClick={onCancel} disabled={busy}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save event'}</Button></div>
   </Form>;

@@ -1167,6 +1167,9 @@ button.stash-item-media-empty:disabled {
    wrap while switching to edit mode, keeping both field slots stationary. */
 .historical-range-inline-control {
   width: max-content;
+  /* InlineSaveStatus is absolutely positioned by the shared row. Reserve its
+     slot so it stays after the To endpoint and era toggle. */
+  padding-right: 1.6rem;
   white-space: nowrap;
 }
 

@@ -172,7 +172,7 @@ export default function EventFieldsPanel({
             status={statuses.interval}
           />
           <EditableTextFieldRow
-            label="Occurrences"
+            label="Number of dates"
             editable={editable}
             type="number"
             value={recurrence?.count || 1}
@@ -183,15 +183,18 @@ export default function EventFieldsPanel({
           />
         </>
       )}
-      <h2 className="event-occurrences-heading">Occurrences</h2>
-      <ul className="event-occurrences">
-        {(event.upcomingOccurrences || []).map((occurrence) => (
-          <li key={occurrence.id}>
-            <time>{displayDateTime(occurrence.startsAt)}</time>
-            <span>{occurrence.status}</span>
-          </li>
-        ))}
-      </ul>
+      {event.schedule.kind === "RECURRING" && (event.upcomingOccurrences || []).length > 0 && (
+        <>
+          <h2 className="event-occurrences-heading">Upcoming dates</h2>
+          <ul className="event-occurrences">
+            {(event.upcomingOccurrences || []).map((occurrence) => (
+              <li key={occurrence.id}>
+                <time>{displayDateTime(occurrence.startsAt)}</time>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
