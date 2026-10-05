@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Col, Container, Form, Modal, Row } from "react-bootstrap";
+import { Button, Container, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
@@ -11,7 +11,7 @@ import EditableDescriptionField from "../component/EditableDescriptionField";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import InlineEditableText from "../component/InlineEditableText";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
-import SectionHeaderBar from "../component/SectionHeaderBar";
+import PageLayout from "../component/PageLayout";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
@@ -609,12 +609,9 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const ownerLabel = buildProfileLabel(ownerUserProfile);
 
   return (
-    <Container fluid className="px-4 px-xl-5 pb-4">
-      <Row>
-        <Col sm={12} className="mb-3">
-          <SectionHeaderBar
-            title="ITEM"
-            rightContent={
+    <PageLayout header={{
+      title: "ITEM",
+      rightContent:
               <SectionBreadcrumb
                 items={[
                   ownerUserProfile
@@ -644,13 +641,10 @@ function StashItemPage({ intl }: StashItemPageProps) {
                     to: `/stash/${profile.alias || profile.id}/items/${item.id}`,
                   },
                 ]}
-              />
-            }
-            backgroundColor="#f8f4ea"
-            borderColor="#d8c7a1"
-          />
-        </Col>
-      </Row>
+              />,
+      backgroundColor: "#f8f4ea",
+      borderColor: "#d8c7a1",
+    }}>
 
       <div className="stash-item-page-shell">
         <div className="stash-item-page-hero">
@@ -996,7 +990,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         uploading={imageUploading}
         uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
       />
-    </Container>
+    </PageLayout>
   );
 }
 

@@ -5,12 +5,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Button, Col, Form, Overlay, Popover, Row } from "react-bootstrap";
+import { Form, Overlay, Popover } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
+import PageLayout from "../../component/PageLayout";
+import { PageColumn, PageColumns } from "../../component/PageColumns";
 import ConfirmationModal from "../../component/ConfirmationModal";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
@@ -34,8 +36,6 @@ import {
   getLibraryViewer,
   SourceChangeProposal,
   SourceChangeLogEntry,
-  applySourceProposal,
-  rejectSourceProposal,
   patchSourceField,
   patchSourceRange,
   removeSource,
@@ -44,7 +44,6 @@ import {
   uploadSourceImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
-import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import { getClassificationLabel, getTypeLabel } from "../libraryShared";
 import { canContribute, canDeleteSource, canEditSource } from "../libraryRoles";
 import { prepareImageFile } from "../../util/fileUtils";
@@ -88,8 +87,6 @@ export default function LibrarySourcePage() {
   const [proposals, setProposals] = useState<SourceChangeProposal[]>([]);
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
   const [actors, setActors] = useState<Record<string, Profile>>({});
-  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<SourceChangeProposal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const pendingProposalsRef = useRef<HTMLAnchorElement>(null);
@@ -413,33 +410,6 @@ export default function LibrarySourcePage() {
     }, 250);
   };
 
-  const handleApplyProposal = async (proposal: SourceChangeProposal) => {
-    try {
-      setReviewBusy(proposal.id);
-      const result = await applySourceProposal(sourceId, proposal.id);
-      if (!result.ok) throw new Error("Unable to apply the source proposal.");
-      await loadSource();
-    } catch (applyError) {
-      setError(getErrorMessage(applyError));
-    } finally {
-      setReviewBusy(null);
-    }
-  };
-
-  const handleRejectProposal = async (proposal: SourceChangeProposal) => {
-    try {
-      setReviewBusy(proposal.id);
-      const result = await rejectSourceProposal(sourceId, proposal.id);
-      if (!result.ok) throw new Error("Unable to reject the source proposal.");
-      setRejectTarget(null);
-      await loadSource();
-    } catch (rejectError) {
-      setError(getErrorMessage(rejectError));
-    } finally {
-      setReviewBusy(null);
-    }
-  };
-
   const handleDeleteSource = async () => {
     if (!source) {
       return;
@@ -730,26 +700,15 @@ export default function LibrarySourcePage() {
   const sourceDescriptionMissing = !sourceDescription;
   const sourceDescriptionDisplay = sourceDescription || "No description";
   return (
-    <div className="px-4 px-xl-5 pb-4">
-      <LibrarySectionHeader
-        title={headerTitle}
-        subtitle={null}
-        period={source.period}
-        variant="source"
-        rightContent={
-          <LibraryPeriodBreadcrumb
-            period={source.period}
-            variant="source"
-            trailingItem={{
-              label: source.name,
-              to: `/library/source/${source.id}`,
-            }}
-          />
-        }
-      />
-
-      {canDeleteSource(userInfo) && (
-        <div className="d-flex justify-content-end mb-4">
+    <PageLayout
+      header={{
+        title: headerTitle,
+        backgroundColor: "#f3efe4",
+        borderColor: "#d9ccb0",
+        rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+          <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
+          {canEditSource(userInfo) && <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}</Link>}
+          {canDeleteSource(userInfo) && (
           <IconActionButton
             title="Delete source"
             onClick={() => setShowDeleteConfirmation(true)}
@@ -761,8 +720,10 @@ export default function LibrarySourcePage() {
           >
             <TrashIcon />
           </IconActionButton>
-        </div>
-      )}
+          )}
+        </div>,
+      }}
+    >
 
       <ConfirmationModal
         show={showDeleteConfirmation}
@@ -775,117 +736,13 @@ export default function LibrarySourcePage() {
           void handleDeleteSource();
         }}
       />
-      <ConfirmationModal
-        show={rejectTarget !== null}
-        title="Reject source proposal"
-        message="Reject this proposed source change? The source will remain unchanged."
-        confirmLabel="Reject proposal"
-        busy={reviewBusy !== null}
-        onHide={() => {
-          if (!reviewBusy) setRejectTarget(null);
-        }}
-        onConfirm={() => {
-          if (rejectTarget) void handleRejectProposal(rejectTarget);
-        }}
-      />
-
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
-      {canEditSource(userInfo) && (
-        <div className="d-flex justify-content-end mb-3">
-          <Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">
-            Pending proposals{proposals.length > 0 ? ` (${proposals.length})` : ""}
-          </Link>
-          <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
-            {(overlayProps) => (
-              <Popover {...overlayProps} id="source-proposal-notice">
-                <Popover.Body role="status">{notice}</Popover.Body>
-              </Popover>
-            )}
-          </Overlay>
-        </div>
-      )}
+      <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
+        {(overlayProps) => <Popover {...overlayProps} id="source-proposal-notice"><Popover.Body role="status">{notice}</Popover.Body></Popover>}
+      </Overlay>
 
-      {false && canEditSource(userInfo) && proposals.length > 0 && (
-        <div className="stash-shell p-3 mb-3">
-          <div className="stash-subheading mb-2">Pending source proposals</div>
-          <div className="d-flex flex-column gap-2">
-            {proposals.map((proposal) => {
-              const ownProposal = proposal.proposerId === userInfo?.userId;
-              const canReview = !ownProposal;
-              const proposer = actors[proposal.proposerId];
-              const proposerLabel = proposer
-                ? buildProfileLabel(proposer)
-                : proposal.proposerId;
-              const proposerPath = proposer
-                ? `/profile/${proposer.alias || proposer.id}`
-                : `/profile/user/${proposal.proposerId}`;
-              const changeSummary = [
-                proposal.changes.name !== undefined
-                  ? `Name: ${proposal.changes.name}`
-                  : null,
-                proposal.changes.description !== undefined
-                  ? "Description change"
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                <div
-                  key={proposal.id}
-                  className="d-flex justify-content-between align-items-center gap-3 flex-wrap"
-                >
-                  <div className="small">
-                    <strong>
-                      {Object.entries(proposal.changes)
-                        .map(([field, after]) => {
-                          const before =
-                            proposal.previous?.[field as SourceField];
-                          return `${field === "name" ? "Name" : "Description"}: ${before || "(empty)"} → ${after || "(empty)"}`;
-                        })
-                        .join(" · ") || changeSummary}
-                    </strong>
-                    <span className="text-muted ms-2">
-                      Proposed by{" "}
-                      <Link to={proposerPath}>
-                        {ownProposal ? "you" : proposerLabel}
-                      </Link>{" "}
-                      on {new Date(proposal.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline-success"
-                      disabled={!canReview || reviewBusy !== null}
-                      title={
-                        !canReview
-                          ? "Another editor must review your proposal."
-                          : undefined
-                      }
-                      onClick={() => void handleApplyProposal(proposal)}
-                    >
-                      {canReview ? "Approve" : "Awaiting another editor"}
-                    </Button>
-                    {canReview && (
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        disabled={reviewBusy !== null}
-                        onClick={() => setRejectTarget(proposal)}
-                      >
-                        Reject
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <Row className="g-4 align-items-start">
-        <Col md={7}>
+      <PageColumns variant="two" className="library-source-columns">
+        <PageColumn>
           <div className="stash-source-copy stash-item-display-copy text-start">
             <InlineEditableText
               editable={canEditSource(userInfo)}
@@ -940,8 +797,8 @@ export default function LibrarySourcePage() {
             targetId={source.id}
             canCreate={canContribute(userInfo)}
           />
-        </Col>
-        <Col md={5}>
+        </PageColumn>
+        <PageColumn>
           <section>
             <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
               <div className="stash-subheading mb-0">Images</div>
@@ -1039,8 +896,8 @@ export default function LibrarySourcePage() {
                 )}
             </section>
           </section>
-        </Col>
-      </Row>
+        </PageColumn>
+      </PageColumns>
 
       <section className="stash-shell p-3 mt-4" aria-label="Source change log">
         <div className="stash-subheading mb-2">Change log</div>
@@ -1107,6 +964,6 @@ export default function LibrarySourcePage() {
           uploading={uploadingImage}
         />
       )}
-    </div>
+    </PageLayout>
   );
 }

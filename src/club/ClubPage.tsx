@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Col, Container, Modal, Row } from "react-bootstrap";
+import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { FaSignOutAlt, FaUserMinus } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
-import SectionHeaderBar from "../component/SectionHeaderBar";
+import PageLayout from "../component/PageLayout";
+import { PageColumn, PageColumns } from "../component/PageColumns";
 import Spinner from "../component/Spinner";
 import {
   fetchClubProfiles,
@@ -624,9 +625,21 @@ export default function ClubPage() {
   const managedClub =
     club && canManage && !club.canManage ? { ...club, canManage: true } : club;
   return (
-    <Container
+    <PageLayout
       className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
-      aria-disabled={unavailable || undefined}
+      header={{
+        title: t("title", "Clubs"),
+        rightContent: club ? <div className="d-flex gap-2 flex-wrap justify-content-end">
+          {currentUserId != null && <>
+            <Button variant={memberProfile ? "outline-secondary" : "outline-dark"} disabled={unavailable} aria-label={memberProfile ? t("leaveClubAction", "Leave this club") : undefined} onClick={() => {
+              if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
+              else { setMembershipMessage(""); setApplyingForMembership(true); }
+            }}>{memberProfile ? t("leave", "Leave club") : t("applyForMembership", "Apply for membership")}</Button>
+            <Button variant={followingProfileIds.size > 0 ? "danger" : "outline-dark"} disabled={unavailable} onClick={() => { setFollowError(""); setFollowingClub(true); }}>{followingProfileIds.size > 0 ? t("following", "Following") : t("follow", "Follow")}</Button>
+          </>}
+          {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>{t("adminActions", "Admin actions")}</Link>}
+        </div> : null,
+      }}
     >
       {error && (
         <Alert variant="danger" className="mt-3">
@@ -644,39 +657,13 @@ export default function ClubPage() {
       ) : (
         club && (
           <>
-            <SectionHeaderBar
-              title={t("title", "Clubs")}
-              rightContent={(
-                <div className="d-flex gap-2">
-                  {currentUserId != null && (
-                    <>
-                      <Button
-                        variant={memberProfile ? "outline-secondary" : "outline-dark"}
-                        disabled={unavailable}
-                        aria-label={memberProfile ? t("leaveClubAction", "Leave this club") : undefined}
-                        onClick={() => {
-                          if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
-                          else { setMembershipMessage(""); setApplyingForMembership(true); }
-                        }}
-                      >
-                        {memberProfile ? t("leave", "Leave club") : t("applyForMembership", "Apply for membership")}
-                      </Button>
-                      <Button variant={followingProfileIds.size > 0 ? "danger" : "outline-dark"} disabled={unavailable} onClick={() => { setFollowError(""); setFollowingClub(true); }}>
-                        {followingProfileIds.size > 0 ? t("following", "Following") : t("follow", "Follow")}
-                      </Button>
-                    </>
-                  )}
-                  {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>{t("adminActions", "Admin actions")}</Link>}
-                </div>
-              )}
-            />
             <div className="club-page-heading mt-3">
               <div>
                 <h1>{club.name}</h1>
               </div>
             </div>
-            <Row className="club-page-columns">
-              <Col lg={3}>
+            <PageColumns variant="three" className="club-page-columns">
+              <PageColumn>
                 <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
                 <PhotoAlbumsPanel
                   targetType="club"
@@ -721,8 +708,8 @@ export default function ClubPage() {
                     });
                   }}
                 />
-              </Col>
-              <Col lg={6}>
+              </PageColumn>
+              <PageColumn>
                 <ClubFieldsPanel
                   club={club}
                   editable={canManage && !unavailable}
@@ -735,8 +722,8 @@ export default function ClubPage() {
                   targetId={club.id}
                   canCreate={canManage && !unavailable}
                 />
-              </Col>
-              <Col lg={3}>
+              </PageColumn>
+              <PageColumn>
                 <section className="club-panel">
                   <h3 className="h6">{t("owner", "Owner")}</h3>
                   {ownerProfile ? (
@@ -778,8 +765,8 @@ export default function ClubPage() {
                     </>
                   )}
                 </section>
-              </Col>
-            </Row>
+              </PageColumn>
+            </PageColumns>
           </>
         )
       )}
@@ -913,6 +900,6 @@ export default function ClubPage() {
           else void toggleClubFollow(profile);
         }}
       />
-    </Container>
+    </PageLayout>
   );
 }

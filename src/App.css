@@ -11,6 +11,43 @@ html {
   margin: 0;
 }
 
+.page-layout {
+  text-align: left;
+}
+
+.page-layout-container {
+  padding-top: 1.25rem;
+}
+
+.page-layout-content {
+  margin-top: 1rem;
+}
+
+.page-columns {
+  display: grid;
+  align-items: start;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.page-columns--one { grid-template-columns: minmax(0, 1fr); }
+.page-columns--two { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); }
+.page-columns--three { grid-template-columns: minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr); }
+
+.page-column { min-width: 0; }
+
+@media (max-width: 991.98px) {
+  .page-columns--three { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .page-columns--three > :last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 767.98px) {
+  .page-layout-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .page-columns--two,
+  .page-columns--three { grid-template-columns: minmax(0, 1fr); }
+  .page-columns--three > :last-child { grid-column: auto; }
+}
+
 .App {
   text-align: center;
 }

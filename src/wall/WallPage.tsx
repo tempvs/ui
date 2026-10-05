@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Spinner } from "react-bootstrap";
 
 import ConfirmationModal from "../component/ConfirmationModal";
-import SectionHeaderBar from "../component/SectionHeaderBar";
+import PageLayout from "../component/PageLayout";
 import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
 import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
 import { resolveCurrentOwnedProfileId } from "../profile/currentProfile";
@@ -211,8 +211,8 @@ export default function WallPage({ userId }: { userId: string }) {
   };
 
   return (
-    <main className="wall-page">
-      <SectionHeaderBar title="Wall" />
+    <PageLayout header={{ title: "Wall" }}>
+      <div className="wall-page">
       <div className="wall-header">
         <div>
           <h1>Your wall</h1>
@@ -269,6 +269,7 @@ export default function WallPage({ userId }: { userId: string }) {
         confirmLabel="Dismiss"
         busy={dismissing}
       />
-    </main>
+      </div>
+    </PageLayout>
   );
 }

@@ -34,7 +34,7 @@
 .club-event-request-event { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .club-event-request-event a { font-weight: 600; }
 .club-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; padding: 0; flex: 0 0 2rem; }
-.club-page-columns > [class*="col-"] { display: flex; flex-direction: column; }
+.club-page-columns > .page-column { display: flex; flex-direction: column; }
 .club-page-columns .club-panel { width: 100%; }
 .club-thumbnail-link { display: inline-flex; align-items: center; gap: .7rem; min-width: 0; }
 .club-list-thumbnail { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; object-fit: cover; border: 1px solid #ddd8d0; border-radius: .4rem; background: #f4f1ec; }

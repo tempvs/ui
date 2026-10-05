@@ -6,7 +6,8 @@ import { injectIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
 import IconActionButton from "../component/IconActionButton";
-import SectionHeaderBar from "../component/SectionHeaderBar";
+import PageLayout from "../component/PageLayout";
+import { PageColumn, PageColumns } from "../component/PageColumns";
 import Spinner from "../component/Spinner";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import {
@@ -1321,40 +1322,24 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     );
 
     return (
-      <Container fluid className="px-4 px-xl-5">
-        <Row>
-          <Col sm={12} className="mb-3">
-            <SectionHeaderBar
-              title={headerSubtitleDisplay}
-              rightContent={
-                <ProfileHeaderBreadcrumb
-                  ownerLink={ownerLink}
-                  ownerLabel={ownerLabel}
-                  currentProfile={{
-                    id: this.state.profileId || undefined,
-                    alias: this.state.alias,
-                    firstName: this.state.firstName,
-                    lastName: this.state.lastName,
-                    period: this.state.period,
-                  }}
-                  siblingClubProfiles={siblingClubProfiles}
-                  getCanonicalProfilePath={this.getCanonicalProfilePath.bind(
-                    this,
-                  )}
-                  getPeriodLabel={this.getPeriodLabel.bind(this)}
-                  emptyLabel={this.t(
-                    "profile.clubProfiles.noneOther",
-                    "No other club profiles",
-                  )}
-                />
-              }
-              backgroundColor={isClubProfile ? "#f8f4ea" : "#eef5ff"}
-              borderColor={isClubProfile ? "#d8c7a1" : "#bfd3f2"}
-            />
-          </Col>
-        </Row>
-        <Row className="g-4 align-items-start">
-          <Col lg={3} md={4}>
+      <PageLayout
+        header={{
+          title: headerSubtitleDisplay,
+          rightContent: <ProfileHeaderBreadcrumb
+            ownerLink={ownerLink}
+            ownerLabel={ownerLabel}
+            currentProfile={{ id: this.state.profileId || undefined, alias: this.state.alias, firstName: this.state.firstName, lastName: this.state.lastName, period: this.state.period }}
+            siblingClubProfiles={siblingClubProfiles}
+            getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
+            getPeriodLabel={this.getPeriodLabel.bind(this)}
+            emptyLabel={this.t("profile.clubProfiles.noneOther", "No other club profiles")}
+          />,
+          backgroundColor: isClubProfile ? "#f8f4ea" : "#eef5ff",
+          borderColor: isClubProfile ? "#d8c7a1" : "#bfd3f2",
+        }}
+      >
+        <PageColumns variant="three" className="profile-page-columns">
+          <PageColumn>
             <ProfileAvatarPanel
               avatarPanelWidth={AVATAR_PANEL_WIDTH}
               avatarVisible={this.state.avatarVisible}
@@ -1407,8 +1392,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 />
               )}
             </div>
-          </Col>
-          <Col lg={6} md={8}>
+          </PageColumn>
+          <PageColumn>
             <ProfileFieldsPanel
               type={this.state.type}
               state={this.state}
@@ -1445,8 +1430,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 canCreate={isEditable}
               />
             )}
-          </Col>
-          <Col lg={3} md={12}>
+          </PageColumn>
+          <PageColumn>
             {isClubProfile && (
               <div className="mb-3">
                 {isEditable && (
@@ -1540,9 +1525,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onHideDelete={this.closeDeleteClubProfileModal}
               onDelete={this.handleDeleteClubProfile}
             />
-          </Col>
-        </Row>
-      </Container>
+          </PageColumn>
+        </PageColumns>
+      </PageLayout>
     );
   }
 

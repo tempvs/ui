@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Container } from 'react-bootstrap';
+import { Alert, Button } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../component/ConfirmationModal';
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, fetchUserProfileByUserId } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import EventManagers from './EventManagers';
@@ -51,8 +51,10 @@ export default function EventAdminPage() {
     catch (caught) { setError((caught as Error).message); setDeleting(false); setBusy(false); }
   };
 
-  return <Container className="events-page">
-    <SectionHeaderBar title="Events" rightContent={<Link className="btn btn-outline-dark" to={`/events/${eventId}`}>View event</Link>} />
+  return <PageLayout className="events-page" header={{
+    title: "Events",
+    rightContent: <Link className="btn btn-outline-dark" to={`/events/${eventId}`}>View event</Link>,
+  }}>
     {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
     {loading ? <p role="status">Loading event administration…</p> : !event ? null : !canManage ? <Alert variant="danger" className="mt-3">Event administration is available only to the owner and event admins.</Alert> : <article className="event-panel event-detail mt-3">
       <div className="event-heading"><div><h1>Admin actions</h1><p className="text-muted mb-0">Review participation requests and manage {event.name}.</p></div></div>
@@ -61,5 +63,5 @@ export default function EventAdminPage() {
       {isOwner && <Button variant="outline-danger" className="mt-4" disabled={busy} onClick={() => setDeleting(true)}>Delete event</Button>}
     </article>}
     <ConfirmationModal show={deleting} title="Delete event" message="Are you sure you want to delete this event?" confirmLabel="Delete event" busy={busy} onConfirm={() => void remove()} onHide={() => { if (!busy) setDeleting(false); }} />
-  </Container>;
+  </PageLayout>;
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import 'bootstrap/dist/css/bootstrap.css';
 
-import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Outlet, Route, Routes, useParams } from 'react-router-dom';
 
 import './App.css';
 import Header from './header/Header';
@@ -52,33 +52,42 @@ function ClubPageWithParam() {
   return <ClubPage key={id} />;
 }
 
+/** Keeps the horizontal navigation mounted while React Router swaps page content. */
+function AppShell() {
+  return <>
+    <Header />
+    <Outlet />
+  </>;
+}
+
 function App() {
   return (
     <div className="App">
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Header />
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/user/:userId" element={<UserProfilePageWithParam />} />
-          <Route path="/profile/:id" element={<ProfilePageWithParam />} />
-          <Route path="/stash/:id" element={<StashPage />} />
-          <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
-          <Route path="/library" element={<LibraryPage />} />
-          <Route path="/library/admin" element={<LibraryAdminPage />} />
-          <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
-          <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
-          <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
-          <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/clubs" element={<ClubsPage />} />
-          <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
-          <Route path="/clubs/:id" element={<ClubPageWithParam />} />
-          <Route path="/events" element={<EventsPage />} />
-          <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
-          <Route path="/events/:eventId" element={<EventPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
+          <Route element={<AppShell />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/user/:userId" element={<UserProfilePageWithParam />} />
+            <Route path="/profile/:id" element={<ProfilePageWithParam />} />
+            <Route path="/stash/:id" element={<StashPage />} />
+            <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
+            <Route path="/library" element={<LibraryPage />} />
+            <Route path="/library/admin" element={<LibraryAdminPage />} />
+            <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
+            <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
+            <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
+            <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/clubs" element={<ClubsPage />} />
+            <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+            <Route path="/clubs/:id" element={<ClubPageWithParam />} />
+            <Route path="/events" element={<EventsPage />} />
+            <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
+            <Route path="/events/:eventId" element={<EventPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </div>

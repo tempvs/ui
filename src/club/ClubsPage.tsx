@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Container, Form } from 'react-bootstrap';
+import { Alert, Button, Form } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchCurrentUserInfo } from '../profile/profileApi';
 import { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
@@ -111,11 +111,10 @@ export default function ClubsPage() {
     }
     finally { setBusy(false); }
   };
-  return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
-    <SectionHeaderBar
-      title={t('title', 'Clubs')}
-      rightContent={signedIn && !creating ? <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button> : null}
-    />
+  return <PageLayout className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} header={{
+    title: t('title', 'Clubs'),
+    rightContent: signedIn && !creating ? <Button variant="secondary" disabled={unavailable} onClick={() => setCreating(true)}>{t('create', 'Create club')}</Button> : null,
+  }}>
     <div className="club-page-heading">
       <div><h1>{t('title', 'Clubs')}</h1><p>{t('intro', 'Find the people who bring your period to life.')}</p></div>
     </div>
@@ -162,5 +161,5 @@ export default function ClubsPage() {
       {!loading && !unavailable && !searchError && clubs.length === 0 && <p className="club-panel">{t('empty', 'No clubs found. Start one for your reenactment group.')}</p>}
       <div ref={sentinel} className="clubs-load-sentinel" aria-hidden="true" />
     </>}
-  </Container>;
+  </PageLayout>;
 }

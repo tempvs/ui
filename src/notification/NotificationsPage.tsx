@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Container } from 'react-bootstrap';
+import { Alert, Button } from 'react-bootstrap';
 import { FaTimes } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import TextFilterInput from '../component/TextFilterInput';
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import {
   archiveNotification,
   listNotifications,
@@ -56,11 +56,10 @@ export default function NotificationsPage() {
   const query = filter.trim().toLocaleLowerCase();
   const visible = query ? items.filter(item => `${item.title} ${item.summary || ''}`.toLocaleLowerCase().includes(query)) : items;
 
-  return <Container className="notifications-page">
-    <SectionHeaderBar title="Notifications" rightContent={<div className="notifications-heading-actions">
+  return <PageLayout className="notifications-page" header={{ title: "Notifications", rightContent: <div className="notifications-heading-actions">
       <Button variant={unreadOnly ? 'dark' : 'outline-dark'} onClick={() => setUnreadOnly(value => !value)}>Unread only</Button>
       <Button variant="outline-secondary" disabled={!items.some(item => !item.readAt)} onClick={() => void readAll()}>Mark all read</Button>
-    </div>} />
+    </div> }}>
     <div className="notifications-heading">
       <h1>Notifications</h1>
     </div>
@@ -80,5 +79,5 @@ export default function NotificationsPage() {
     </ul>
     {loading && <p role="status">Loading notifications…</p>}
     {!loading && nextToken && <Button variant="outline-dark" onClick={() => void load(true)}>Load more</Button>}
-  </Container>;
+  </PageLayout>;
 }

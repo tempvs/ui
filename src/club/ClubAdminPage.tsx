@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Container } from 'react-bootstrap';
+import { Alert, Button } from 'react-bootstrap';
 import { useIntl } from 'react-intl';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import Spinner from '../component/Spinner';
 import ConfirmationModal from '../component/ConfirmationModal';
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import ClubEventRequestsPanel from '../event/ClubEventRequestsPanel';
 import { fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
@@ -102,8 +102,10 @@ export default function ClubAdminPage() {
     } finally { setBusy(false); }
   };
 
-  return <Container className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} aria-disabled={unavailable || undefined}>
-    <SectionHeaderBar title={t('title', 'Clubs')} rightContent={<Link className="btn btn-outline-dark" to={clubPath}>{t('viewClub', 'View club')}</Link>} />
+  return <PageLayout className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} header={{
+    title: t('title', 'Clubs'),
+    rightContent: <Link className="btn btn-outline-dark" to={clubPath}>{t('viewClub', 'View club')}</Link>,
+  }}>
     {loading ? <Spinner /> : error ? <Alert variant="danger" className="mt-3">{error}</Alert> : !club ? null : !canManage ? (
       <Alert variant="danger" className="mt-3">{t('adminOnly', 'Club administration is available only to club admins.')}</Alert>
     ) : <>
@@ -158,5 +160,5 @@ export default function ClubAdminPage() {
         void act(async () => { await deleteClub(club.id); navigate('/clubs'); });
       }}
     />
-  </Container>;
+  </PageLayout>;
 }

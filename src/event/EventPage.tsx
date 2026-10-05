@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Col, Container, Modal, Row } from "react-bootstrap";
+import { Alert, Button, Modal } from "react-bootstrap";
 import { Link, useParams } from "react-router-dom";
 import {
   fetchClubProfiles,
@@ -10,7 +10,8 @@ import {
 import { Profile } from "../profile/profileTypes";
 import { PeriodBadge, type Period } from "../util/periods";
 import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
-import SectionHeaderBar from "../component/SectionHeaderBar";
+import PageLayout from "../component/PageLayout";
+import { PageColumn, PageColumns } from "../component/PageColumns";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
@@ -273,31 +274,31 @@ export default function EventPage() {
   };
   if (error && !item)
     return (
-      <Container className="events-page">
+      <PageLayout className="events-page" header={{ title: "Events" }}>
         <Alert variant="danger">{error}</Alert>
         <Link to="/events">All events</Link>
-      </Container>
+      </PageLayout>
     );
   if (!item)
     return (
-      <Container className="events-page">
+      <PageLayout className="events-page" header={{ title: "Events" }}>
         <p role="status">Loading event…</p>
-      </Container>
+      </PageLayout>
     );
   return (
-    <Container className="events-page">
+    <PageLayout
+      className="events-page"
+      header={{
+        title: "Events",
+        rightContent: <div className="event-actions mt-0">
+          {applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}
+          {ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}
+          {canManage && <Link className="btn btn-outline-dark" to={`/events/${item.id}/admin`}>Admin actions</Link>}
+        </div>,
+      }}
+    >
       {error && <Alert variant="danger">{error}</Alert>}
       <article className="event-detail">
-        <SectionHeaderBar
-          title="Events"
-          rightContent={(
-            <div className="event-actions mt-0">
-              {applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}
-              {ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}
-              {canManage && <Link className="btn btn-outline-dark" to={`/events/${item.id}/admin`}>Admin actions</Link>}
-            </div>
-          )}
-        />
         <div className="event-heading">
           <div>
             <div className="event-period-badges">
@@ -308,8 +309,8 @@ export default function EventPage() {
             <h1>{item.name}</h1>
           </div>
         </div>
-        <Row className="club-page-columns event-page-layout">
-          <Col lg={3}>
+        <PageColumns variant="three" className="event-page-layout">
+          <PageColumn>
         <EventPhotoPanel
           eventId={item.id}
           name={item.name}
@@ -327,8 +328,8 @@ export default function EventPage() {
             showApprovals={false}
             onChanged={() => setPeopleRevision((value) => value + 1)}
           />
-          </Col>
-          <Col lg={6}>
+          </PageColumn>
+          <PageColumn>
             <EventFieldsPanel
               event={item}
               // Keep every field in its inline-editable DOM while a save is
@@ -347,16 +348,16 @@ export default function EventPage() {
               targetId={item.id}
               canCreate={canManage}
             />
-          </Col>
-          <Col lg={3}>
+          </PageColumn>
+          <PageColumn>
             <EventManagers
               event={item}
               owner={owner}
               canManageAdmins={false}
               onChange={replaceItem}
             />
-          </Col>
-        </Row>
+          </PageColumn>
+        </PageColumns>
         {/*
                 <ul className="event-occurrences">
           {new Date(item.schedule.startsAt).toLocaleString()} –{" "}
@@ -467,6 +468,6 @@ export default function EventPage() {
           />
         </Modal.Body>
       </Modal>
-    </Container>
+    </PageLayout>
   );
 }

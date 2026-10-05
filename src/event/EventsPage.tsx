@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Container } from 'react-bootstrap';
+import { Alert, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import TextFilterInput from '../component/TextFilterInput';
 import HistoricalRangeFilter, { type HistoricalYearInput } from '../component/HistoricalRangeFilter';
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import RefreshingImage from '../image/RefreshingImage';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
@@ -65,8 +65,10 @@ export default function EventsPage() {
     return (eventTo === null || lower === null || eventTo >= lower) && (upper === null || eventFrom === null || eventFrom <= upper);
   });
 
-  return <Container className="events-page">
-    <SectionHeaderBar title="Events" rightContent={profiles.length > 0 && !creating ? <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button> : null} />
+  return <PageLayout className="events-page" header={{
+    title: "Events",
+    rightContent: profiles.length > 0 && !creating ? <Button variant="secondary" onClick={() => setCreating(true)}>Create event</Button> : null,
+  }}>
     <div className="event-heading"><div><h1>Events</h1><p>Festivals, meetings, and other themed gatherings.</p></div></div>
     {error && <Alert variant="danger">{error}</Alert>}
     {creating ? <section className="event-panel"><h2>Create event</h2><EventForm profiles={profiles} busy={busy} onSave={save} onCancel={() => setCreating(false)} /></section> : <>
@@ -84,5 +86,5 @@ export default function EventsPage() {
       {loading && <p role="status">Loading events…</p>}
       {!loading && !error && visible.length === 0 && <p className="event-panel">No events found.</p>}
     </>}
-  </Container>;
+  </PageLayout>;
 }

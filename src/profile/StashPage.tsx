@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
+import { Container } from 'react-bootstrap';
 import { injectIntl, IntlShape } from 'react-intl';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import SectionHeaderBar from '../component/SectionHeaderBar';
+import PageLayout from '../component/PageLayout';
+import { PageColumn, PageColumns } from '../component/PageColumns';
 import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import Spinner from '../component/Spinner';
 import { getPeriodLabel as getSharedPeriodLabel } from '../util/periods';
@@ -128,12 +129,9 @@ function StashPage({ intl }: StashPageProps) {
   }
 
   return (
-    <Container fluid className="px-4 px-xl-5 pb-4">
-      <Row>
-        <Col sm={12} className="mb-3">
-          <SectionHeaderBar
-            title="STASH"
-            rightContent={(
+    <PageLayout header={{
+      title: "STASH",
+      rightContent: (
               <SectionBreadcrumb
                 items={[
                   ownerUserProfile ? { label: ownerLabel, to: buildCanonicalProfilePath(ownerUserProfile) } : null,
@@ -154,14 +152,12 @@ function StashPage({ intl }: StashPageProps) {
                   activeGroup ? { label: activeGroup.name || t('profile.stash.groupName', 'Collection'), to: `/stash/${profile.alias || profile.id}?group=${activeGroup.id}` } : null,
                 ]}
               />
-            )}
-            backgroundColor="#f8f4ea"
-            borderColor="#d8c7a1"
-          />
-        </Col>
-      </Row>
-      <Row>
-        <Col sm={12}>
+            ),
+      backgroundColor: "#f8f4ea",
+      borderColor: "#d8c7a1",
+    }}>
+      <PageColumns>
+        <PageColumn>
           <StashOverview
             profile={{
               id: profile.id,
@@ -179,9 +175,9 @@ function StashPage({ intl }: StashPageProps) {
             initialGroupId={requestedGroupId}
             onActiveGroupChange={group => handleActiveGroupChange(group ? { id: group.id, name: group.name } : null)}
           />
-        </Col>
-      </Row>
-    </Container>
+        </PageColumn>
+      </PageColumns>
+    </PageLayout>
   );
 }
 
