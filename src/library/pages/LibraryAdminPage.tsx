@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Card, Form, Modal } from "react-bootstrap";
 import { FaPlus, FaTrash } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -75,7 +75,9 @@ function ProfileThumbnail({
 }
 
 export default function LibraryAdminPage() {
-  const [tab, setTab] = useState<AdminTab>("members");
+  const { tab: tabParam } = useParams<{ tab?: string }>();
+  const tab: AdminTab =
+    tabParam === "requests" || tabParam === "proposals" ? tabParam : "members";
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<LibraryMember[]>([]);
   const [memberUserIds, setMemberUserIds] = useState<string[]>([]);
@@ -194,14 +196,18 @@ export default function LibraryAdminPage() {
     }
   };
   useEffect(() => {
-    void loadMembers();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial load; tab changes refresh it.
-  const switchTab = (next: AdminTab) => {
-    setTab(next);
     setNotice(null);
-    if (next === "members") void loadMembers();
-    else if (next === "requests") void loadRoleRequests();
-  };
+    if (tab === "members") {
+      void loadMembers();
+      return;
+    }
+    if (tab === "requests") {
+      void loadRoleRequests();
+      return;
+    }
+    setLoading(false);
+    setError(null);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- loading functions intentionally refresh on a URL tab change.
   const updateMember = async (member: LibraryMember, role: string) => {
     setError(null);
     setNotice(null);
@@ -388,24 +394,24 @@ export default function LibraryAdminPage() {
         role="tablist"
         aria-label="Library administration"
       >
-        <Button
-          variant={tab === "members" ? "dark" : "outline-dark"}
-          onClick={() => switchTab("members")}
+        <Link
+          className={`btn btn-${tab === "members" ? "dark" : "outline-dark"}`}
+          to="/library/admin/members"
         >
           Members
-        </Button>
-        <Button
-          variant={tab === "requests" ? "dark" : "outline-dark"}
-          onClick={() => switchTab("requests")}
+        </Link>
+        <Link
+          className={`btn btn-${tab === "requests" ? "dark" : "outline-dark"}`}
+          to="/library/admin/requests"
         >
           Role requests
-        </Button>
-        <Button
-          variant={tab === "proposals" ? "dark" : "outline-dark"}
-          onClick={() => switchTab("proposals")}
+        </Link>
+        <Link
+          className={`btn btn-${tab === "proposals" ? "dark" : "outline-dark"}`}
+          to="/library/admin/proposals"
         >
           Pending proposals
-        </Button>
+        </Link>
       </div>
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {notice && (

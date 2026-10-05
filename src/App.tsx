@@ -1,7 +1,7 @@
 import React from 'react';
 import 'bootstrap/dist/css/bootstrap.css';
 
-import { BrowserRouter, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
 
 import './App.css';
 import { PageShellContext } from './component/PageHeader';
@@ -80,7 +80,11 @@ function App() {
             <Route path="/stash/:id" element={<StashPage />} />
             <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
             <Route path="/library" element={<LibraryPage />} />
-            <Route path="/library/admin" element={<LibraryAdminPage />} />
+            <Route
+              path="/library/admin"
+              element={<Navigate replace to="/library/admin/members" />}
+            />
+            <Route path="/library/admin/:tab" element={<LibraryAdminPage />} />
             <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
             <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
             <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
