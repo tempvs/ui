@@ -1,10 +1,11 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Form, OverlayTrigger } from 'react-bootstrap';
 
 import ImageDescriptionBlock from './ImageDescriptionBlock';
 import HoverPopover from './HoverPopover';
 import InlineSaveStatus from './InlineSaveStatus';
 import useIsTruncated from './useIsTruncated';
+import useInlineEditing from './useInlineEditing';
 import { SaveStatus } from './EditableFieldRow';
 
 type EditableImageDescriptionProps = {
@@ -14,7 +15,7 @@ type EditableImageDescriptionProps = {
   placeholder?: string;
   emptyText?: string;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement>;
   className?: string;
   bordered?: boolean;
   savingTitle?: string;
@@ -35,8 +36,13 @@ export default function EditableImageDescription({
   errorTitle = 'Save failed',
 }: EditableImageDescriptionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing<HTMLDivElement>(editable);
   const overlayText = value || placeholder;
   const isTruncated = useIsTruncated(inputRef, overlayText);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   if (!editable) {
     return <ImageDescriptionBlock description={value} emptyText={emptyText} bordered={bordered} className={className} />;
@@ -49,7 +55,11 @@ export default function EditableImageDescription({
       placeholder={placeholder}
       value={value || ''}
       onChange={onChange}
-      onBlur={onBlur}
+      onBlur={(event) => {
+        onBlur?.(event);
+        endEditing();
+      }}
+      readOnly={!editing}
       className="border-0 px-4 bg-transparent text-center"
       size="sm"
       style={{
@@ -57,12 +67,19 @@ export default function EditableImageDescription({
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
+        cursor: editing ? 'text' : 'pointer',
       }}
     />
   );
 
   return (
-    <div className={`${bordered ? 'p-2 border-top ' : ''}${className}`.trim()}>
+    <div
+      ref={editRootRef}
+      className={`${bordered ? 'p-2 border-top ' : ''}${className}`.trim()}
+      onClick={() => {
+        if (!editing) beginEditing();
+      }}
+    >
       <div className="position-relative d-flex align-items-center justify-content-center">
         {isTruncated ? (
           <OverlayTrigger

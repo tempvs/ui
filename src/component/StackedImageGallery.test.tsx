@@ -65,3 +65,32 @@ test('renders the shared hourglass placeholder when no images exist', () => {
 
   expect(screen.getByRole('img', { name: 'No source images' })).toHaveAttribute('src', 'default-image.png');
 });
+
+test('uses the shared click-to-edit description field below a compact image and in its preview', () => {
+  const changeDescription = jest.fn();
+  const saveDescription = jest.fn();
+  render(
+    <StackedImageGallery
+      images={images}
+      mode="single"
+      title="Source image"
+      editable
+      showInlineDescription
+      imageDrafts={{ 'image-1': 'Draft source description' }}
+      onDescriptionChange={changeDescription}
+      onDescriptionBlur={saveDescription}
+    />,
+  );
+
+  const compactDescription = screen.getByDisplayValue('Draft source description');
+  expect(compactDescription).toHaveAttribute('readonly');
+  fireEvent.click(compactDescription);
+  expect(compactDescription).not.toHaveAttribute('readonly');
+  fireEvent.change(compactDescription, { target: { value: 'Updated description' } });
+  fireEvent.blur(compactDescription);
+  expect(changeDescription).toHaveBeenCalledWith('image-1', 'Updated description');
+  expect(saveDescription).toHaveBeenCalledWith('image-1');
+
+  fireEvent.click(screen.getByRole('button', { name: 'One' }));
+  expect(screen.getAllByDisplayValue('Draft source description')).toHaveLength(2);
+});
