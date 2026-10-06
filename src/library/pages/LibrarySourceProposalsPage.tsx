@@ -4,7 +4,9 @@ import { Link, useParams } from "react-router-dom";
 
 import Spinner from "../../component/Spinner";
 import { getErrorMessage } from "../../util/errors";
-import SourceChangesetDiff from "../components/SourceChangesetDiff";
+import SourceChangesetDiff, {
+  summarizeSourceChangeset,
+} from "../components/SourceChangesetDiff";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import {
   approveSourceChangeset,
@@ -30,6 +32,9 @@ export default function LibrarySourceProposalsPage() {
   const [stagedImagesByChangeset, setStagedImagesByChangeset] = useState<
     Record<string, LibrarySourceImage[]>
   >({});
+  const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -57,6 +62,7 @@ export default function LibrarySourceProposalsPage() {
       const loadedSourceId = sourceResult.data.id;
       const content = changesetsResult.data?.content || [];
       setChangesets(content);
+      setExpandedChangesetIds(new Set());
       const changesetsWithStagedImages = content.filter((changeset) =>
         changeset.imageOperations.some(
           (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
@@ -125,6 +131,15 @@ export default function LibrarySourceProposalsPage() {
     }
   };
 
+  const toggleChangeset = (changesetId: string) => {
+    setExpandedChangesetIds((current) => {
+      const next = new Set(current);
+      if (next.has(changesetId)) next.delete(changesetId);
+      else next.add(changesetId);
+      return next;
+    });
+  };
+
   return (
     <div className="page-layout-content px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
@@ -153,7 +168,14 @@ export default function LibrarySourceProposalsPage() {
       {!loading && changesets.map((changeset) => {
         const own = changeset.proposerId === viewerId;
         const pending = changeset.status === "PENDING";
-          return <div key={changeset.id} className="stash-shell p-3 mb-3"><div className="d-flex justify-content-between gap-3 flex-wrap mb-2"><div><Link className="text-reset" to={`/library/source/${sourceId}/changesets/${changeset.id}`}><strong>{changeset.status[0]}{changeset.status.slice(1).toLowerCase()} changeset</strong></Link><div className="small text-muted">Submitted {new Date(changeset.createdAt).toLocaleString()}</div></div><div className="d-flex gap-2 align-items-start">{pending && !own && <><Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button><Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button></>}</div></div><SourceChangesetDiff compact base={changeset.base} proposed={changeset.proposed} imageOperations={changeset.imageOperations} imagePreviews={changeset.imageOperations.length > 0 ? { published: publishedImages, staged: stagedImagesByChangeset[changeset.id] || [] } : undefined} /></div>;
+        const expanded = expandedChangesetIds.has(changeset.id);
+        const summary = summarizeSourceChangeset(
+          changeset.base,
+          changeset.proposed,
+          changeset.imageOperations,
+          changeset.kind,
+        );
+        return <div key={changeset.id} className="stash-shell p-3 mb-3 source-changeset-card"><div className="d-flex justify-content-between gap-3 flex-wrap"><div className="min-width-0 flex-grow-1"><button type="button" className="source-changeset-toggle" aria-expanded={expanded} onClick={() => toggleChangeset(changeset.id)}><span aria-hidden="true" className="source-changeset-toggle-glyph">{expanded ? "▾" : "▸"}</span><span><strong>{changeset.status[0]}{changeset.status.slice(1).toLowerCase()} changeset</strong><span className="source-changeset-summary">{summary.length ? summary.join(" · ") : "No content changes"}</span><span className="small text-muted d-block mt-1">Submitted {new Date(changeset.createdAt).toLocaleString()}</span></span></button></div><div className="d-flex gap-2 align-items-start">{pending && !own && <><Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button><Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button></>}<Link className="btn btn-outline-dark btn-sm" to={`/library/source/${sourceId}/changesets/${changeset.id}`}>Open</Link></div></div>{expanded && <div className="source-changeset-expanded"><SourceChangesetDiff compact base={changeset.base} proposed={changeset.proposed} imageOperations={changeset.imageOperations} imagePreviews={changeset.imageOperations.length > 0 ? { published: publishedImages, staged: stagedImagesByChangeset[changeset.id] || [] } : undefined} /></div>}</div>;
       })}
       <Modal show={Boolean(rejecting)} onHide={() => !busy && setRejecting(null)} centered><Modal.Header closeButton><Modal.Title>Reject changeset</Modal.Title></Modal.Header><Modal.Body><Form.Control as="textarea" rows={4} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="A review comment is required" /></Modal.Body><Modal.Footer><Button variant="outline-secondary" disabled={Boolean(busy)} onClick={() => setRejecting(null)}>Cancel</Button><Button variant="danger" disabled={Boolean(busy) || !comment.trim()} onClick={() => void reject()}>Reject</Button></Modal.Footer></Modal>
     </div>

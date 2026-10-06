@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import SourceChangesetDiff from "./SourceChangesetDiff";
+import SourceChangesetDiff, {
+  summarizeSourceChangeset,
+} from "./SourceChangesetDiff";
 
 const source = {
   name: "Source",
@@ -90,4 +92,22 @@ test("identifies every image operation with the affected thumbnails", () => {
   ).toBeInTheDocument();
   expect(screen.getByText("Old caption")).toBeInTheDocument();
   expect(screen.getByText("Updated caption")).toBeInTheDocument();
+});
+
+test("summarizes changed fields and image operations for collapsed proposal cards", () => {
+  expect(
+    summarizeSourceChangeset(
+      source,
+      { ...source, name: "Renamed source", description: "Updated description" },
+      [
+        { kind: "ADD", stagedImageId: "new-image", description: null },
+        { kind: "REPLACE", imageId: "old-image", stagedImageId: "replacement", description: null },
+        { kind: "UPDATE_DESCRIPTION", imageId: "caption", description: "Updated caption" },
+      ],
+    ),
+  ).toEqual([
+    "Name",
+    "Description",
+    "Images: 1 added, 1 replaced, 1 description change",
+  ]);
 });
