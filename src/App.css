@@ -38,22 +38,41 @@ html {
   min-width: 0;
 }
 
-.page-columns--one { grid-template-columns: minmax(0, 1fr); }
-.page-columns--two { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); }
-.page-columns--three { grid-template-columns: minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr); }
+.page-columns--one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.page-columns--two {
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+}
+.page-columns--three {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr);
+}
 
-.page-column { min-width: 0; }
+.page-column {
+  min-width: 0;
+}
 
 @media (max-width: 991.98px) {
-  .page-columns--three { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
-  .page-columns--three > :last-child { grid-column: 1 / -1; }
+  .page-columns--three {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+  .page-columns--three > :last-child {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 767.98px) {
-  .page-layout-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .page-layout-container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
   .page-columns--two,
-  .page-columns--three { grid-template-columns: minmax(0, 1fr); }
-  .page-columns--three > :last-child { grid-column: auto; }
+  .page-columns--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-columns--three > :last-child {
+    grid-column: auto;
+  }
 }
 
 .App {
@@ -1307,11 +1326,13 @@ button.stash-item-media-empty:disabled {
 .historical-range-inline-control .inline-editable-input.form-control {
   width: 2.75rem;
   min-width: 2.75rem;
-  padding-left: .1rem;
-  padding-right: .1rem;
+  padding-left: 0.1rem;
+  padding-right: 0.1rem;
 }
 
-.historical-year-from { text-align: left; }
+.historical-year-from {
+  text-align: left;
+}
 
 .historical-year-era,
 .historical-year-era-toggle {
@@ -1330,9 +1351,9 @@ button.stash-item-media-empty:disabled {
 
 .historical-year-era-toggle {
   border: 1px solid rgba(79, 117, 103, 0.32);
-  border-radius: .25rem;
+  border-radius: 0.25rem;
   background: rgba(255, 255, 255, 0.92);
-  padding: 0 .1rem;
+  padding: 0 0.1rem;
   cursor: pointer;
 }
 
@@ -2549,6 +2570,90 @@ button.stash-item-media-empty:disabled {
 .source-changeset-diff-after {
   color: #1d6630;
   background: #eef9ef;
+}
+
+.source-changeset-image-changes {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.source-changeset-image-change {
+  padding: 0.65rem;
+  border: 1px solid rgba(89, 76, 45, 0.16);
+  border-radius: 0.35rem;
+  background: #fff;
+}
+
+.source-changeset-image-change-title,
+.source-changeset-image-thumbnail-label {
+  color: #625b50;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.source-changeset-image-pair,
+.source-changeset-image-description-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.source-changeset-image-thumbnail {
+  width: min(100%, 10rem);
+  padding: 0.35rem;
+  border: 1px solid rgba(89, 76, 45, 0.16);
+  border-radius: 0.3rem;
+  background: #faf9f6;
+}
+
+.source-changeset-image-thumbnail-before {
+  border-color: rgba(177, 77, 77, 0.42);
+  background: #fff5f5;
+}
+
+.source-changeset-image-thumbnail-after {
+  border-color: rgba(57, 130, 77, 0.42);
+  background: #f2fbf3;
+}
+
+.source-changeset-image-thumbnail img,
+.source-changeset-image-thumbnail-empty {
+  display: block;
+  width: 100%;
+  height: 5.5rem;
+  margin-top: 0.3rem;
+  border-radius: 0.2rem;
+  background: #f6f4ee;
+  object-fit: contain;
+}
+
+.source-changeset-image-thumbnail-empty {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+  color: #736c62;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.source-changeset-image-thumbnail-name {
+  overflow: hidden;
+  margin-top: 0.3rem;
+  color: #625b50;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-changeset-image-description-change .source-changeset-diff-values {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin-top: 0;
 }
 
 @media (max-width: 991.98px) {
