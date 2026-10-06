@@ -117,7 +117,7 @@ export default function LibrarySourceChangesetPage() {
   const stagedById = new Map(stagedImages.map((image) => [image.id, image]));
 
   return (
-    <PageLayout header={{ title: "SOURCE CHANGESET", backgroundColor: "#f3efe4", borderColor: "#d9ccb0", rightContent: <div className="d-flex align-items-center gap-2"><LibraryPeriodBreadcrumb period={source.period} trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} /><Link to={`/library/source/${source.id}`} className="btn btn-outline-dark btn-sm">Back to source</Link></div> }}>
+    <PageLayout header={{ title: "SOURCE CHANGESET", backgroundColor: "#f3efe4", borderColor: "#d9ccb0", rightContent: <LibraryPeriodBreadcrumb period={source.period} trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} /> }}>
       <div className="page-layout-content px-4 px-xl-5 pb-4">
         <div className="stash-shell p-3 p-md-4 mx-auto" style={{ maxWidth: "60rem" }}>
           <div className="d-flex justify-content-between gap-3 flex-wrap mb-3"><div><h1 className="h3 mb-1">{source.name}</h1><div className="text-muted small">Submitted {new Date(changeset.createdAt).toLocaleString()}</div></div><span className={`badge align-self-start ${pending ? "text-bg-warning" : "text-bg-secondary"}`}>{statusLabel(changeset.status)}</span></div>
