@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -19,6 +19,7 @@ import {
   getSourceImages,
   getSourceChangesets,
   proposeSourceDeletion,
+  rebaseSourceChangeset,
   uploadSourceChangesetImage,
   type LibrarySourceImage,
   type LibrarySource,
@@ -62,6 +63,18 @@ function responseError(
 }
 
 function asDraft(source: LibrarySource): Draft {
+  return {
+    name: source.name || "",
+    description: source.description || "",
+    period: source.period || "",
+    classification: source.classification || "",
+    type: source.type || "",
+    from: { year: source.from ? String(source.from.year) : "", era: source.from?.era || "AD" },
+    to: { year: source.to ? String(source.to.year) : "", era: source.to?.era || "AD" },
+  };
+}
+
+function asDraftSnapshot(source: SourceChangesetSnapshot): Draft {
   return {
     name: source.name || "",
     description: source.description || "",
@@ -133,13 +146,17 @@ export default function LibrarySourceEditPage() {
       if (changesetsResult && !changesetsResult.ok)
         throw responseError(changesetsResult, "Unable to load source changesets.");
       setSource(sourceResult.data);
-      setDraft(asDraft(sourceResult.data));
       setImages(imageResult?.data || []);
       const ownUserId = viewer?.userId;
       const pending = changesetsResult?.data?.content.find(
           (changeset) => changeset.status === "PENDING" && changeset.proposerId === ownUserId,
         ) || null;
       setOwnPending(pending);
+      if (pending?.kind === "DELETE") {
+        navigate(`/library/source/${sourceResult.data.id}/changesets/${pending.id}`, { replace: true });
+        return;
+      }
+      setDraft(pending ? asDraftSnapshot(pending.proposed) : asDraft(sourceResult.data));
       setOtherPendingCount(
         (changesetsResult?.data?.content || []).filter(
           (changeset) =>
@@ -152,7 +169,7 @@ export default function LibrarySourceEditPage() {
     } finally {
       setLoading(false);
     }
-  }, [sourceId]);
+  }, [navigate, sourceId]);
 
   useEffect(() => {
     void load();
@@ -310,6 +327,25 @@ export default function LibrarySourceEditPage() {
     }
   };
 
+  const rebase = async () => {
+    if (!source || !ownPending) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await rebaseSourceChangeset(source.id, ownPending.id, ownPending.version);
+      if (!result.ok || !result.data || !("id" in result.data))
+        throw responseError(result, "Unable to rebase this changeset.");
+      const rebased = result.data as SourceChangeset;
+      setOwnPending(rebased);
+      setDraft(asDraftSnapshot(rebased.proposed));
+      setImageOperations(rebased.imageOperations || []);
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <PageLayout header={{ title: "LIBRARY" }}><Spinner /></PageLayout>;
   if (!source || !draft || !proposed) {
     return <PageLayout header={{ title: "LIBRARY" }}><div className="tempvs-plain-message text-danger">{error || "Source not found."}</div></PageLayout>;
@@ -329,7 +365,7 @@ export default function LibrarySourceEditPage() {
           <div className="d-flex justify-content-between align-items-start gap-3 mb-1"><h1 className="h3 mb-0">Propose source changes</h1><Button type="button" size="sm" variant="outline-danger" disabled={submitting} onClick={() => setShowDeleteConfirmation(true)}>Delete source</Button></div>
           <p className="text-muted mb-4">Your edits will be reviewed before they change the published source.</p>
           {ownPending && <div className="alert alert-warning small">You have a pending changeset. Submitting this form will amend that changeset.</div>}
-          {ownPending && ownPending.baseVersion !== source.version && <div className="alert alert-warning small">The published source changed after this proposal was created. It cannot overwrite the newer source; review its diff and create a new proposal from the current source.</div>}
+          {ownPending && ownPending.baseVersion !== source.version && <div className="alert alert-warning small d-flex justify-content-between align-items-center gap-3"><span>The published source changed after this proposal was created. Rebase carries over non-conflicting fields only; it never overwrites approved changes.</span><Button size="sm" variant="outline-dark" disabled={submitting} onClick={() => void rebase()}>Rebase changes</Button></div>}
           {otherPendingCount > 0 && <div className="alert alert-info small">{otherPendingCount} pending proposal{otherPendingCount === 1 ? " is" : "s are"} from other editors. Your proposal is reviewed independently and cannot overwrite any approved changes.</div>}
           {error && <div className="alert alert-danger" role="alert">{error}</div>}
           <Form onSubmit={(event) => { event.preventDefault(); if (canReview) setShowReview(true); }}>

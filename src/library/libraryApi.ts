@@ -496,6 +496,17 @@ export function withdrawSourceChangeset(
   );
 }
 
+export function rebaseSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/rebase`,
+    { method: "POST", headers: { "If-Match": `"${version}"` } },
+  );
+}
+
 export function approveSourceChangeset(
   sourceId: string | undefined,
   changesetId: string,
