@@ -3,6 +3,7 @@ import { Button, Form, Modal } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
+import ConfirmationModal from "../../component/ConfirmationModal";
 import Spinner from "../../component/Spinner";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
@@ -17,6 +18,7 @@ import {
   getSource,
   getSourceImages,
   getSourceChangesets,
+  proposeSourceDeletion,
   uploadSourceChangesetImage,
   type LibrarySourceImage,
   type LibrarySource,
@@ -99,9 +101,12 @@ export default function LibrarySourceEditPage() {
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [ownPending, setOwnPending] = useState<SourceChangeset | null>(null);
+  const [otherPendingCount, setOtherPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<{ src: string; alt: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [imageOperations, setImageOperations] = useState<SourceImageOperation[]>([]);
@@ -135,6 +140,12 @@ export default function LibrarySourceEditPage() {
           (changeset) => changeset.status === "PENDING" && changeset.proposerId === ownUserId,
         ) || null;
       setOwnPending(pending);
+      setOtherPendingCount(
+        (changesetsResult?.data?.content || []).filter(
+          (changeset) =>
+            changeset.status === "PENDING" && changeset.proposerId !== ownUserId,
+        ).length,
+      );
       setImageOperations(pending?.imageOperations || []);
     } catch (caught) {
       setError(getErrorMessage(caught));
@@ -282,6 +293,23 @@ export default function LibrarySourceEditPage() {
     }
   };
 
+  const proposeDeletion = async () => {
+    if (!source) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await proposeSourceDeletion(source.id, source.version);
+      if (!result.ok || !result.data || typeof result.data !== "object" || !("id" in result.data))
+        throw responseError(result, "Unable to create the deletion changeset.");
+      setShowDeleteConfirmation(false);
+      navigate(`/library/source/${source.id}/changesets/${String(result.data.id)}`);
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <PageLayout header={{ title: "LIBRARY" }}><Spinner /></PageLayout>;
   if (!source || !draft || !proposed) {
     return <PageLayout header={{ title: "LIBRARY" }}><div className="tempvs-plain-message text-danger">{error || "Source not found."}</div></PageLayout>;
@@ -293,14 +321,16 @@ export default function LibrarySourceEditPage() {
         title: "EDIT SOURCE",
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        rightContent: <div className="d-flex align-items-center gap-2"><LibraryPeriodBreadcrumb period={source.period} trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} /><Link to={`/library/source/${source.id}`} className="btn btn-outline-dark btn-sm">Cancel</Link></div>,
+        rightContent: <LibraryPeriodBreadcrumb period={source.period} trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />,
       }}
     >
       <div className="page-layout-content px-4 px-xl-5 pb-4">
         <div className="stash-shell p-3 p-md-4 mx-auto" style={{ maxWidth: "52rem" }}>
-          <h1 className="h3 mb-1">Propose source changes</h1>
+          <div className="d-flex justify-content-between align-items-start gap-3 mb-1"><h1 className="h3 mb-0">Propose source changes</h1><Button type="button" size="sm" variant="outline-danger" disabled={submitting} onClick={() => setShowDeleteConfirmation(true)}>Delete source</Button></div>
           <p className="text-muted mb-4">Your edits will be reviewed before they change the published source.</p>
           {ownPending && <div className="alert alert-warning small">You have a pending changeset. Submitting this form will amend that changeset.</div>}
+          {ownPending && ownPending.baseVersion !== source.version && <div className="alert alert-warning small">The published source changed after this proposal was created. It cannot overwrite the newer source; review its diff and create a new proposal from the current source.</div>}
+          {otherPendingCount > 0 && <div className="alert alert-info small">{otherPendingCount} pending proposal{otherPendingCount === 1 ? " is" : "s are"} from other editors. Your proposal is reviewed independently and cannot overwrite any approved changes.</div>}
           {error && <div className="alert alert-danger" role="alert">{error}</div>}
           <Form onSubmit={(event) => { event.preventDefault(); if (canReview) setShowReview(true); }}>
             <Form.Group className="mb-3"><Form.Label>Name</Form.Label><Form.Control required value={draft.name} onChange={(event) => update("name", event.target.value)} /></Form.Group>
@@ -321,21 +351,21 @@ export default function LibrarySourceEditPage() {
                   const descriptionChange = imageOperations.find((operation) => operation.kind === "UPDATE_DESCRIPTION" && operation.imageId === image.id) as Extract<SourceImageOperation, { kind: "UPDATE_DESCRIPTION" }> | undefined;
                   return <div className="col-md-6" key={image.id}>
                     <div className={`border rounded p-2 h-100 ${removed ? "border-danger bg-danger-subtle" : ""}`}>
-                      {image.thumbnailUrl || image.url ? <img className="w-100 rounded object-fit-contain mb-2" style={{ height: "9rem" }} src={image.thumbnailUrl || image.url || undefined} alt={image.description || image.fileName || "Source image"} /> : <div className="border rounded bg-light d-flex align-items-center justify-content-center mb-2" style={{ height: "9rem" }}>No preview</div>}
+                      {image.thumbnailUrl || image.url ? <button type="button" className="p-0 border-0 bg-transparent w-100 mb-2" onClick={() => setExpandedImage({ src: image.url || image.thumbnailUrl || "", alt: image.description || image.fileName || "Source image" })}><img className="w-100 rounded object-fit-contain" style={{ height: "9rem" }} src={image.thumbnailUrl || image.url || undefined} alt={image.description || image.fileName || "Source image"} /></button> : <div className="border rounded bg-light d-flex align-items-center justify-content-center mb-2" style={{ height: "9rem" }}>No preview</div>}
                       <div className="fw-semibold text-truncate">{image.fileName || "Image"}</div>
                       {removed ? <div className="small text-danger mt-1">Marked for deletion</div> : <>
                         <Form.Control className="my-2" value={descriptionChange?.description ?? image.description ?? ""} placeholder="Image description" onChange={(event) => updatePublishedDescription(image.id, event.target.value)} />
                         <div className="d-flex gap-2"><Form.Label className="btn btn-outline-dark btn-sm mb-0">Replace<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event, image.id)} /></Form.Label><Button size="sm" variant="outline-danger" type="button" onClick={() => removePublishedImage(image.id)}>Delete</Button></div>
                       </>}
-                      {replacement && <div className="mt-3 border border-success rounded p-2 bg-success-subtle"><div className="small text-success fw-semibold mb-1">Replacement preview</div><img className="w-100 rounded object-fit-contain mb-2" style={{ height: "7rem" }} src={replacement.previewUrl} alt={`Replacement for ${image.fileName || "source image"}`} /><Button size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(replacement.id)}>Cancel replacement</Button></div>}
+                      {replacement && <div className="mt-3 border border-success rounded p-2 bg-success-subtle"><div className="small text-success fw-semibold mb-1">Replacement preview</div><button type="button" className="p-0 border-0 bg-transparent w-100 mb-2" onClick={() => setExpandedImage({ src: replacement.previewUrl, alt: `Replacement for ${image.fileName || "source image"}` })}><img className="w-100 rounded object-fit-contain" style={{ height: "7rem" }} src={replacement.previewUrl} alt={`Replacement for ${image.fileName || "source image"}`} /></button><Button size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(replacement.id)}>Cancel replacement</Button></div>}
                     </div>
                   </div>;
                 })}
-                {pendingImages.filter((image) => !image.replacementFor).map((image) => <div className="col-md-6" key={image.id}><div className="border border-success rounded p-2 h-100 bg-success-subtle"><div className="small text-success fw-semibold mb-1">New image</div><img className="w-100 rounded object-fit-contain mb-2" style={{ height: "9rem" }} src={image.previewUrl} alt={image.file.name} /><div className="text-truncate">{image.file.name}</div><Form.Control className="mt-2" value={image.description} placeholder="Image description" onChange={(event) => updatePendingDescription(image.id, event.target.value)} /><Button className="mt-2" size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(image.id)}>Remove</Button></div></div>)}
+                {pendingImages.filter((image) => !image.replacementFor).map((image) => <div className="col-md-6" key={image.id}><div className="border border-success rounded p-2 h-100 bg-success-subtle"><div className="small text-success fw-semibold mb-1">New image</div><button type="button" className="p-0 border-0 bg-transparent w-100 mb-2" onClick={() => setExpandedImage({ src: image.previewUrl, alt: image.file.name })}><img className="w-100 rounded object-fit-contain" style={{ height: "9rem" }} src={image.previewUrl} alt={image.file.name} /></button><div className="text-truncate">{image.file.name}</div><Form.Control className="mt-2" value={image.description} placeholder="Image description" onChange={(event) => updatePendingDescription(image.id, event.target.value)} /><Button className="mt-2" size="sm" variant="outline-danger" type="button" onClick={() => removePendingImage(image.id)}>Remove</Button></div></div>)}
               </div>
               <Form.Label className="btn btn-outline-dark btn-sm mb-0">Add image<input className="d-none" type="file" accept="image/jpeg,image/png,image/gif" onChange={(event) => void addPendingImage(event)} /></Form.Label>
             </fieldset>
-            <div className="d-flex justify-content-end gap-2"><Link to={`/library/source/${source.id}`} className="btn btn-outline-secondary">Cancel</Link><Button type="submit" variant="dark" disabled={!canReview}>Review changes</Button></div>
+            <div className="d-flex justify-content-end"><Button type="submit" variant="dark" disabled={!canReview}>Review changes</Button></div>
           </Form>
         </div>
       </div>
@@ -344,6 +374,8 @@ export default function LibrarySourceEditPage() {
         <Modal.Body><p className="text-muted">The published source and its images will stay unchanged until another Library editor approves this changeset.</p><SourceChangesetDiff base={{ name: source.name || "", description: source.description || null, period: source.period || null, classification: source.classification || null, type: source.type || null, from: source.from || null, to: source.to || null }} proposed={proposed} imageOperations={imageOperations} /></Modal.Body>
         <Modal.Footer><Button variant="outline-secondary" disabled={submitting} onClick={() => setShowReview(false)}>Back to editing</Button><Button variant="dark" disabled={submitting} onClick={() => void submit()}>{submitting ? "Submitting…" : ownPending ? "Amend changeset" : "Propose changes"}</Button></Modal.Footer>
       </Modal>
+      <Modal show={Boolean(expandedImage)} onHide={() => setExpandedImage(null)} size="xl" centered><Modal.Header closeButton><Modal.Title>Image preview</Modal.Title></Modal.Header><Modal.Body className="text-center">{expandedImage && <img className="img-fluid rounded" src={expandedImage.src} alt={expandedImage.alt} />}</Modal.Body></Modal>
+      <ConfirmationModal show={showDeleteConfirmation} title="Delete source" message="Create a deletion changeset for review? The source remains visible until another Library editor approves it." confirmLabel="Delete source" busy={submitting} onHide={() => !submitting && setShowDeleteConfirmation(false)} onConfirm={() => void proposeDeletion()} />
     </PageLayout>
   );
 }

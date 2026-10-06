@@ -7,11 +7,10 @@ import React, {
 } from "react";
 import { Form, Overlay, Popover } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
 import { PageColumn, PageColumns } from "../../component/PageColumns";
-import ConfirmationModal from "../../component/ConfirmationModal";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import InlineEditableText from "../../component/InlineEditableText";
 import ImmediateImageUploadModal from "../../component/ImmediateImageUploadModal";
@@ -34,14 +33,13 @@ import {
   SourceChangeLogEntry,
   patchSourceField,
   patchSourceRange,
-  proposeSourceDeletion,
   replaceSourceImage,
   updateSourceImageDescription,
   uploadSourceImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import { getClassificationLabel, getTypeLabel } from "../libraryShared";
-import { canContribute, canDeleteSource, canEditSource } from "../libraryRoles";
+import { canContribute, canEditSource } from "../libraryRoles";
 import { prepareImageFile } from "../../util/fileUtils";
 import { getErrorMessage } from "../../util/errors";
 import { clearAllTimers, clearTimer } from "../../util/timers";
@@ -62,12 +60,10 @@ type ImageRecord<T> = Record<string | number, T>;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
-  const navigate = useNavigate();
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
@@ -390,33 +386,6 @@ export default function LibrarySourcePage() {
     }, 250);
   };
 
-  const handleDeleteSource = async () => {
-    if (!source) {
-      return;
-    }
-
-    try {
-      const result = await proposeSourceDeletion(sourceId, source.version);
-      if (!result.ok) {
-        throw new Error(
-          (typeof result.data === "string" && result.data) ||
-            (result.data &&
-            typeof result.data === "object" &&
-            "message" in result.data
-              ? result.data.message
-              : null) ||
-            "Unable to propose source deletion.",
-        );
-      }
-
-      if (!result.data || typeof result.data !== "object" || !("id" in result.data))
-        throw new Error("Library returned an invalid deletion changeset.");
-      navigate(`/library/source/${source.id}/changesets/${String(result.data.id)}`);
-    } catch (fetchError) {
-      setError(getErrorMessage(fetchError));
-    }
-  };
-
 
   const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
@@ -690,22 +659,10 @@ export default function LibrarySourcePage() {
         middleContent: canEditSource(userInfo) ? <div className="d-flex gap-2"><Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Changesets</Link><Link to={`/library/source/${source.id}/edit`} className="btn btn-dark btn-sm">Edit source</Link></div> : null,
         rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
           <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
-          {canDeleteSource(userInfo) && <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => setShowDeleteConfirmation(true)}>Propose deletion</button>}
         </div>,
       }}
     >
 
-      <ConfirmationModal
-        show={showDeleteConfirmation}
-        title="Propose source deletion"
-        message="Create a deletion changeset for review? The source remains visible until another Library editor approves it."
-        confirmLabel="Propose deletion"
-        onHide={() => setShowDeleteConfirmation(false)}
-        onConfirm={() => {
-          setShowDeleteConfirmation(false);
-          void handleDeleteSource();
-        }}
-      />
       <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
         {(overlayProps) => <Popover {...overlayProps} id="source-proposal-notice"><Popover.Body role="status">{notice}</Popover.Body></Popover>}
       </Overlay>
