@@ -6,9 +6,13 @@ import { Link, useParams } from "react-router-dom";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { getErrorMessage } from "../../util/errors";
+import SourceChangesetProposalCard from "../components/SourceChangesetProposalCard";
 import {
   getLibraryViewer,
   getPendingSourceChangesets,
+  getSourceChangesetImages,
+  getSourceImages,
+  type LibrarySourceImage,
   type PendingSourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
@@ -47,6 +51,16 @@ export function LibraryPendingProposalsContent({
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedClassification, setSelectedClassification] = useState("");
   const [selectedType, setSelectedType] = useState("");
+  const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [imagePreviewsByChangeset, setImagePreviewsByChangeset] = useState<Record<string, {
+    published: LibrarySourceImage[];
+    staged: LibrarySourceImage[];
+  }>>({});
+  const [loadingImagePreviewIds, setLoadingImagePreviewIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const sourceFilters = useMemo(
     () => ({
@@ -85,6 +99,8 @@ export function LibraryPendingProposalsContent({
         if (active) {
           setRows(result.rows);
           setNextToken(result.nextToken);
+          setExpandedChangesetIds(new Set());
+          setImagePreviewsByChangeset({});
         }
       } catch (caught) {
         if (active) setError(getErrorMessage(caught));
@@ -108,6 +124,45 @@ export function LibraryPendingProposalsContent({
       setError(getErrorMessage(caught));
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const toggleChangeset = async (row: PendingSourceChangeset) => {
+    const { source, changeset } = row;
+    const isExpanded = expandedChangesetIds.has(changeset.id);
+    setExpandedChangesetIds((current) => {
+      const next = new Set(current);
+      if (next.has(changeset.id)) next.delete(changeset.id);
+      else next.add(changeset.id);
+      return next;
+    });
+    if (isExpanded || !changeset.imageOperations.length || imagePreviewsByChangeset[changeset.id]) {
+      return;
+    }
+    setLoadingImagePreviewIds((current) => new Set(current).add(changeset.id));
+    try {
+      const needsStagedImages = changeset.imageOperations.some(
+        (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
+      );
+      const [published, staged] = await Promise.all([
+        getSourceImages(source.id).catch(() => null),
+        needsStagedImages
+          ? getSourceChangesetImages(source.id, changeset.id).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      setImagePreviewsByChangeset((current) => ({
+        ...current,
+        [changeset.id]: {
+          published: published?.data || [],
+          staged: staged?.data || [],
+        },
+      }));
+    } finally {
+      setLoadingImagePreviewIds((current) => {
+        const next = new Set(current);
+        next.delete(changeset.id);
+        return next;
+      });
     }
   };
 
@@ -164,19 +219,23 @@ export function LibraryPendingProposalsContent({
     {error && <div className="tempvs-plain-message text-danger">{error}</div>}
     {loading && <Spinner />}
     {!loading && rows.length === 0 && <div className="tempvs-plain-message text-muted">No pending changesets.</div>}
-    {!loading && rows.map(({ source, changeset }) => (
-      <div key={changeset.id} className="stash-shell p-3 mb-2 d-flex justify-content-between align-items-center gap-3 flex-wrap">
-        <div className="d-flex flex-column gap-2" style={{ minWidth: 0 }}>
-          <Link to={`/library/source/${source.id}/changesets/${changeset.id}`} className="text-reset text-decoration-none text-truncate"><strong>{source.name}</strong></Link>
-          <div className="d-flex align-items-center gap-2 flex-wrap text-muted small">
-            {source.period && <Badge bg="light" text="dark" className="border">{getPeriodLabel(intl, source.period)}</Badge>}
-            {source.type && <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>}
-            {source.classification && <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>}
-          </div>
-        </div>
-        <span className="badge text-bg-dark rounded-pill" title="Pending changeset">Pending</span>
-      </div>
-    ))}
+    {!loading && rows.map((row) => {
+      const { source, changeset } = row;
+      return <SourceChangesetProposalCard
+        key={changeset.id}
+        source={source}
+        changeset={changeset}
+        expanded={expandedChangesetIds.has(changeset.id)}
+        onToggle={() => void toggleChangeset(row)}
+        loadingImagePreviews={loadingImagePreviewIds.has(changeset.id)}
+        imagePreviews={imagePreviewsByChangeset[changeset.id]}
+        context={<div className="d-flex align-items-center gap-2 flex-wrap text-muted small mt-1">
+          {source.period && <Badge bg="light" text="dark" className="border">{getPeriodLabel(intl, source.period)}</Badge>}
+          {source.type && <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>}
+          {source.classification && <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>}
+        </div>}
+      />;
+    })}
     {nextToken && <Button variant="outline-dark" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Loading…" : "Load more"}</Button>}
   </>;
 }

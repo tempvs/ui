@@ -4,9 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import Spinner from "../../component/Spinner";
 import { getErrorMessage } from "../../util/errors";
-import SourceChangesetDiff, {
-  summarizeSourceChangeset,
-} from "../components/SourceChangesetDiff";
+import SourceChangesetProposalCard from "../components/SourceChangesetProposalCard";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import {
   approveSourceChangeset,
@@ -23,11 +21,14 @@ import {
 import { canEditSource } from "../libraryRoles";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 
+const PROPOSALS_PAGE_SIZE = 20;
+
 /** Source-local changeset history and review queue. */
 export default function LibrarySourceProposalsPage() {
   const { sourceId } = useParams();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changesets, setChangesets] = useState<SourceChangeset[]>([]);
+  const [nextToken, setNextToken] = useState<string | null>(null);
   const [publishedImages, setPublishedImages] = useState<LibrarySourceImage[]>([]);
   const [stagedImagesByChangeset, setStagedImagesByChangeset] = useState<
     Record<string, LibrarySourceImage[]>
@@ -37,6 +38,7 @@ export default function LibrarySourceProposalsPage() {
   );
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<SourceChangeset | null>(null);
   const [comment, setComment] = useState("");
@@ -49,7 +51,7 @@ export default function LibrarySourceProposalsPage() {
       const [sourceResult, viewer, changesetsResult] = await Promise.all([
         getSource(sourceId),
         getLibraryViewer(),
-        getSourceChangesets(sourceId),
+        getSourceChangesets(sourceId, undefined, PROPOSALS_PAGE_SIZE),
       ]);
       if (!sourceResult.ok || !sourceResult.data) {
         throw new Error("Unable to load the source.");
@@ -62,6 +64,7 @@ export default function LibrarySourceProposalsPage() {
       const loadedSourceId = sourceResult.data.id;
       const content = changesetsResult.data?.content || [];
       setChangesets(content);
+      setNextToken(changesetsResult.data?.nextToken || null);
       setExpandedChangesetIds(new Set());
       const changesetsWithStagedImages = content.filter((changeset) =>
         changeset.imageOperations.some(
@@ -140,6 +143,41 @@ export default function LibrarySourceProposalsPage() {
     });
   };
 
+  const loadMore = async () => {
+    if (!sourceId || !nextToken || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await getSourceChangesets(
+        sourceId,
+        nextToken,
+        PROPOSALS_PAGE_SIZE,
+      );
+      if (!result.ok) throw new Error("Unable to load more changesets.");
+      const additional = result.data?.content || [];
+      const stagedEntries = await Promise.all(
+        additional
+          .filter((changeset) => changeset.imageOperations.some(
+            (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
+          ))
+          .map(async (changeset) => {
+            const staged = await getSourceChangesetImages(sourceId, changeset.id)
+              .catch(() => null);
+            return [changeset.id, staged?.data || []] as const;
+          }),
+      );
+      setChangesets((current) => [...current, ...additional]);
+      setNextToken(result.data?.nextToken || null);
+      setStagedImagesByChangeset((current) => ({
+        ...current,
+        ...Object.fromEntries(stagedEntries),
+      }));
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   return (
     <div className="page-layout-content px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
@@ -168,15 +206,24 @@ export default function LibrarySourceProposalsPage() {
       {!loading && changesets.map((changeset) => {
         const own = changeset.proposerId === viewerId;
         const pending = changeset.status === "PENDING";
-        const expanded = expandedChangesetIds.has(changeset.id);
-        const summary = summarizeSourceChangeset(
-          changeset.base,
-          changeset.proposed,
-          changeset.imageOperations,
-          changeset.kind,
-        );
-        return <div key={changeset.id} className="stash-shell p-3 mb-3 source-changeset-card"><div className="d-flex justify-content-between gap-3 flex-wrap"><div className="min-width-0 flex-grow-1"><button type="button" className="source-changeset-toggle" aria-expanded={expanded} onClick={() => toggleChangeset(changeset.id)}><span aria-hidden="true" className="source-changeset-toggle-glyph">{expanded ? "▾" : "▸"}</span><span><strong>{changeset.status[0]}{changeset.status.slice(1).toLowerCase()} changeset</strong><span className="source-changeset-summary">{summary.length ? summary.join(" · ") : "No content changes"}</span><span className="small text-muted d-block mt-1">Submitted {new Date(changeset.createdAt).toLocaleString()}</span></span></button></div><div className="d-flex gap-2 align-items-start">{pending && !own && <><Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button><Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button></>}<Link className="btn btn-outline-dark btn-sm" to={`/library/source/${sourceId}/changesets/${changeset.id}`}>Open</Link></div></div>{expanded && <div className="source-changeset-expanded"><SourceChangesetDiff compact base={changeset.base} proposed={changeset.proposed} imageOperations={changeset.imageOperations} imagePreviews={changeset.imageOperations.length > 0 ? { published: publishedImages, staged: stagedImagesByChangeset[changeset.id] || [] } : undefined} /></div>}</div>;
+        return <SourceChangesetProposalCard
+          key={changeset.id}
+          source={source!}
+          changeset={changeset}
+          showSource={false}
+          expanded={expandedChangesetIds.has(changeset.id)}
+          onToggle={() => toggleChangeset(changeset.id)}
+          imagePreviews={{
+            published: publishedImages,
+            staged: stagedImagesByChangeset[changeset.id] || [],
+          }}
+          actions={pending && !own ? <>
+            <Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button>
+            <Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button>
+          </> : null}
+        />;
       })}
+      {nextToken && <Button variant="outline-dark" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Loading…" : "Load more"}</Button>}
       <Modal show={Boolean(rejecting)} onHide={() => !busy && setRejecting(null)} centered><Modal.Header closeButton><Modal.Title>Reject changeset</Modal.Title></Modal.Header><Modal.Body><Form.Control as="textarea" rows={4} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="A review comment is required" /></Modal.Body><Modal.Footer><Button variant="outline-secondary" disabled={Boolean(busy)} onClick={() => setRejecting(null)}>Cancel</Button><Button variant="danger" disabled={Boolean(busy) || !comment.trim()} onClick={() => void reject()}>Reject</Button></Modal.Footer></Modal>
     </div>
   );
