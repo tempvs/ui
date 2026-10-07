@@ -19,6 +19,7 @@ import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import EditableHistoricalRangeField from "../../component/EditableHistoricalRangeField";
+import PlacePickerField from "../../component/PlacePickerField";
 import {
   deleteSourceImage,
   getSource,
@@ -50,7 +51,10 @@ import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
-import { formatSourceChangeValue, sourceChangeFieldLabel } from "../sourceChangeDisplay";
+import {
+  formatSourceChangeValue,
+  sourceChangeFieldLabel,
+} from "../sourceChangeDisplay";
 
 type SourceField = "name" | "description" | "from" | "to";
 
@@ -125,11 +129,15 @@ export default function LibrarySourcePage() {
       setDraftName(sourceResult.data?.name || "");
       setDraftDescription(sourceResult.data?.description || "");
       setRangeFrom({
-        year: sourceResult.data?.from?.year ? String(sourceResult.data.from.year) : "",
+        year: sourceResult.data?.from?.year
+          ? String(sourceResult.data.from.year)
+          : "",
         era: sourceResult.data?.from?.era || "AD",
       });
       setRangeTo({
-        year: sourceResult.data?.to?.year ? String(sourceResult.data.to.year) : "",
+        year: sourceResult.data?.to?.year
+          ? String(sourceResult.data.to.year)
+          : "",
         era: sourceResult.data?.to?.era || "AD",
       });
       setFieldStatuses({});
@@ -386,7 +394,6 @@ export default function LibrarySourcePage() {
     }, 250);
   };
 
-
   const handleUploadImage: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
   ) => {
@@ -627,7 +634,11 @@ export default function LibrarySourcePage() {
   }, [profileFilter, sourceProfiles]);
 
   if (loading) {
-    return <PageLayout header={{ title: "SOURCE" }}><Spinner /></PageLayout>;
+    return (
+      <PageLayout header={{ title: "SOURCE" }}>
+        <Spinner />
+      </PageLayout>
+    );
   }
 
   if (!source) {
@@ -656,18 +667,60 @@ export default function LibrarySourcePage() {
         title: headerTitle,
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        middleContent: canEditSource(userInfo) ? <div className="d-flex gap-2"><Link ref={pendingProposalsRef} to={`/library/source/${source.id}/proposals`} className="btn btn-outline-dark btn-sm">Changesets</Link><Link to={`/library/source/${source.id}/edit`} className="btn btn-dark btn-sm">Edit source</Link></div> : null,
-        rightContent: <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
-          <LibraryPeriodBreadcrumb period={source.period} variant="source" trailingItem={{ label: source.name, to: `/library/source/${source.id}` }} />
-        </div>,
+        middleContent: canEditSource(userInfo) ? (
+          <div className="d-flex gap-2">
+            <Link
+              ref={pendingProposalsRef}
+              to={`/library/source/${source.id}/proposals`}
+              className="btn btn-outline-dark btn-sm"
+            >
+              Changesets
+            </Link>
+            <Link
+              to={`/library/source/${source.id}/edit`}
+              className="btn btn-dark btn-sm"
+            >
+              Edit source
+            </Link>
+          </div>
+        ) : null,
+        rightContent: (
+          <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+            <LibraryPeriodBreadcrumb
+              period={source.period}
+              variant="source"
+              trailingItem={{
+                label: source.name,
+                to: `/library/source/${source.id}`,
+              }}
+            />
+          </div>
+        ),
       }}
     >
-
-      <Overlay target={pendingProposalsRef.current} show={Boolean(notice)} placement="bottom">
-        {(overlayProps) => <Popover {...overlayProps} id="source-proposal-notice"><Popover.Body role="status">{notice}</Popover.Body></Popover>}
+      <Overlay
+        target={pendingProposalsRef.current}
+        show={Boolean(notice)}
+        placement="bottom"
+      >
+        {(overlayProps) => (
+          <Popover {...overlayProps} id="source-proposal-notice">
+            <Popover.Body role="status">{notice}</Popover.Body>
+          </Popover>
+        )}
       </Overlay>
-      <Overlay target={pendingProposalsRef.current} show={Boolean(error)} placement="bottom">
-        {(overlayProps) => <Popover {...overlayProps} id="source-save-error"><Popover.Body className="text-danger" role="alert">{error}</Popover.Body></Popover>}
+      <Overlay
+        target={pendingProposalsRef.current}
+        show={Boolean(error)}
+        placement="bottom"
+      >
+        {(overlayProps) => (
+          <Popover {...overlayProps} id="source-save-error">
+            <Popover.Body className="text-danger" role="alert">
+              {error}
+            </Popover.Body>
+          </Popover>
+        )}
       </Overlay>
 
       <PageColumns variant="two" className="library-source-columns">
@@ -718,6 +771,34 @@ export default function LibrarySourcePage() {
                 onToChange={setRangeTo}
                 onBlur={scheduleSourceRangeSave}
                 status={savingRange ? "saving" : null}
+              />
+              <PlacePickerField
+                label="Discovered at"
+                value={
+                  source.discoveredAtPlaceId && source.discoveredAtPlaceName
+                    ? {
+                        id: source.discoveredAtPlaceId,
+                        canonicalName: source.discoveredAtPlaceName,
+                      }
+                    : null
+                }
+                editable={false}
+                onChange={() => undefined}
+                className="mt-2 mb-0"
+              />
+              <PlacePickerField
+                label="Held at"
+                value={
+                  source.heldAtPlaceId && source.heldAtPlaceName
+                    ? {
+                        id: source.heldAtPlaceId,
+                        canonicalName: source.heldAtPlaceName,
+                      }
+                    : null
+                }
+                editable={false}
+                onChange={() => undefined}
+                className="mt-2 mb-0"
               />
             </div>
           </div>
@@ -842,10 +923,14 @@ export default function LibrarySourcePage() {
               const actorPath = actor
                 ? `/profile/${actor.alias || actor.id}`
                 : `/profile/user/${entry.actorId}`;
-              const proposer = entry.proposerId ? actors[entry.proposerId] : null;
+              const proposer = entry.proposerId
+                ? actors[entry.proposerId]
+                : null;
               const proposerPath = proposer
                 ? `/profile/${proposer.alias || proposer.id}`
-                : entry.proposerId ? `/profile/user/${entry.proposerId}` : null;
+                : entry.proposerId
+                  ? `/profile/user/${entry.proposerId}`
+                  : null;
               const action =
                 entry.action === "CREATED"
                   ? "created this source"
@@ -862,7 +947,16 @@ export default function LibrarySourcePage() {
                     </Link>{" "}
                     {action}{" "}
                     {entry.proposerId && proposerPath && (
-                      <><span className="text-muted">, proposed by </span><Link to={proposerPath}>{entry.proposerId === userInfo?.userId ? "You" : proposer ? buildProfileLabel(proposer) : "Unknown profile"}</Link>{" "}</>
+                      <>
+                        <span className="text-muted">, proposed by </span>
+                        <Link to={proposerPath}>
+                          {entry.proposerId === userInfo?.userId
+                            ? "You"
+                            : proposer
+                              ? buildProfileLabel(proposer)
+                              : "Unknown profile"}
+                        </Link>{" "}
+                      </>
                     )}
                     <time className="text-muted">
                       {new Date(entry.createdAt).toLocaleString()}
@@ -871,7 +965,8 @@ export default function LibrarySourcePage() {
                   <ul className="small text-muted mt-1 mb-0">
                     {Object.entries(entry.changes).map(([field, change]) => (
                       <li key={field}>
-                        <strong>{sourceChangeFieldLabel(field)}</strong>: {formatSourceChangeValue(change.before)} →{" "}
+                        <strong>{sourceChangeFieldLabel(field)}</strong>:{" "}
+                        {formatSourceChangeValue(change.before)} →{" "}
                         {formatSourceChangeValue(change.after)}
                       </li>
                     ))}

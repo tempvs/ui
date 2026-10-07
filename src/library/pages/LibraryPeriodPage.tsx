@@ -8,6 +8,8 @@ import Spinner from "../../component/Spinner";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
+import PlacePickerField from "../../component/PlacePickerField";
+import type { MapPlace } from "../../map/mapApi";
 import { getErrorMessage } from "../../util/errors";
 import {
   createSource,
@@ -61,6 +63,10 @@ export default function LibraryPeriodPage() {
     era: "AD",
   });
   const [to, setTo] = useState<HistoricalYearInput>({ year: "", era: "AD" });
+  const [discoveredAtPlace, setDiscoveredAtPlace] = useState<MapPlace | null>(
+    null,
+  );
+  const [heldAtPlace, setHeldAtPlace] = useState<MapPlace | null>(null);
   const [draftSource, setDraftSource] = useState({
     name: "",
     description: "",
@@ -76,9 +82,9 @@ export default function LibraryPeriodPage() {
     year: "",
     era: "AD",
   });
-  const [pendingProposalCount, setPendingProposalCount] = useState<number | null>(
-    null,
-  );
+  const [pendingProposalCount, setPendingProposalCount] = useState<
+    number | null
+  >(null);
 
   const periodCode = (period || "").toUpperCase();
 
@@ -90,7 +96,9 @@ export default function LibraryPeriodPage() {
         onSuccess: (profiles) => {
           if (!active) return;
           const selected = profiles.find(
-            (profile) => `profile:${String(profile.id)}` === getStoredCurrentProfileValue(),
+            (profile) =>
+              `profile:${String(profile.id)}` ===
+              getStoredCurrentProfileValue(),
           );
           const selectedFrom = selected?.from || null;
           const selectedTo = selected?.to || null;
@@ -128,6 +136,10 @@ export default function LibraryPeriodPage() {
           ...(rangeEnabled && to.year
             ? { to: { year: Number(to.year), era: to.era } }
             : {}),
+          ...(discoveredAtPlace
+            ? { discoveredAtPlaceId: discoveredAtPlace.id }
+            : {}),
+          ...(heldAtPlace ? { heldAtPlaceId: heldAtPlace.id } : {}),
           page: 0,
           size: PAGE_SIZE,
         }),
@@ -171,6 +183,8 @@ export default function LibraryPeriodPage() {
     rangeEnabled,
     from,
     to,
+    discoveredAtPlace,
+    heldAtPlace,
   ]);
 
   const loadMoreSources = async () => {
@@ -188,6 +202,10 @@ export default function LibraryPeriodPage() {
         ...(rangeEnabled && to.year
           ? { to: { year: Number(to.year), era: to.era } }
           : {}),
+        ...(discoveredAtPlace
+          ? { discoveredAtPlaceId: discoveredAtPlace.id }
+          : {}),
+        ...(heldAtPlace ? { heldAtPlaceId: heldAtPlace.id } : {}),
         size: PAGE_SIZE,
         nextToken,
       });
@@ -323,9 +341,19 @@ export default function LibraryPeriodPage() {
         subtitle={null}
         period={null}
         variant="period"
-        middleContent={canReviewProposals ? (
-          <Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}/proposals`}>Pending proposals{pendingProposalCount === null ? "" : ` (${pendingProposalCount})`}</Link>
-        ) : null}
+        middleContent={
+          canReviewProposals ? (
+            <Link
+              className="btn btn-outline-dark btn-sm"
+              to={`/library/period/${period}/proposals`}
+            >
+              Pending proposals
+              {pendingProposalCount === null
+                ? ""
+                : ` (${pendingProposalCount})`}
+            </Link>
+          ) : null
+        }
         rightContent={
           <LibraryPeriodBreadcrumb period={periodCode} variant="period" />
         }
@@ -368,6 +396,26 @@ export default function LibraryPeriodPage() {
                   alwaysShowFields
                   onValueEntered={() => setRangeEnabled(true)}
                 />
+                <div className="mb-3">
+                  <PlacePickerField
+                    label="Discovered at"
+                    value={discoveredAtPlace}
+                    editable
+                    onChange={setDiscoveredAtPlace}
+                    labelWidth="7rem"
+                    fieldMaxWidth="100%"
+                    className="mb-2"
+                  />
+                  <PlacePickerField
+                    label="Held at"
+                    value={heldAtPlace}
+                    editable
+                    onChange={setHeldAtPlace}
+                    labelWidth="7rem"
+                    fieldMaxWidth="100%"
+                    className="mb-0"
+                  />
+                </div>
                 <Form.Group className="mb-3">
                   <Form.Label className="library-source-filter-heading">
                     Classification
@@ -434,9 +482,9 @@ export default function LibraryPeriodPage() {
                         setDraftSource({
                           name: "",
                           description: "",
-                        classification: "",
-                        type: "",
-                      });
+                          classification: "",
+                          type: "",
+                        });
                         setDraftRangeEnabled(false);
                         setDraftFrom({ year: "", era: "AD" });
                         setDraftTo({ year: "", era: "AD" });
