@@ -26,6 +26,7 @@ import EventsPage from "./event/EventsPage";
 import EventPage from "./event/EventPage";
 import EventAdminPage from "./event/EventAdminPage";
 import NotificationsPage from "./notification/NotificationsPage";
+import MapAdminPage from "./map/MapAdminPage";
 import MapPage from "./map/MapPage";
 
 function ProfilePageWithParam() {
@@ -150,6 +151,7 @@ function App() {
             <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
             <Route path="/events/:eventId" element={<EventPage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/map/admin" element={<MapAdminPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route
               path="/chat/:conversationId"

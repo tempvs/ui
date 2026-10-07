@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import {
   getMapPlace,
@@ -11,6 +12,7 @@ import {
   type MapPlace,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
+import PlaceProposalModal from "./PlaceProposalModal";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -25,6 +27,7 @@ const entityTypes: MapEntityLocation["entityType"][] = [
  */
 export default function MapPage() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const [query, setQuery] = useState(params.get("q") || "");
   const [contentQuery, setContentQuery] = useState(params.get("content") || "");
   const [latitude, setLatitude] = useState(params.get("lat") || "");
@@ -43,6 +46,16 @@ export default function MapPage() {
     null,
   );
   const [loading, setLoading] = useState(false);
+  const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+
+  useEffect(() => {
+    void getViewer().then(setViewer);
+  }, []);
+
+  const canReviewPlaces = viewer?.roles.some(
+    (role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR",
+  );
 
   const search = async (event?: React.FormEvent) => {
     event?.preventDefault();
@@ -238,6 +251,24 @@ export default function MapPage() {
           <Button type="submit" variant="dark" disabled={loading}>
             {loading ? "Searching…" : "Search"}
           </Button>
+          {viewer && (
+            <Button
+              type="button"
+              variant="outline-dark"
+              onClick={() => setShowProposalModal(true)}
+            >
+              Propose a place
+            </Button>
+          )}
+          {canReviewPlaces && (
+            <Button
+              type="button"
+              variant="outline-dark"
+              onClick={() => navigate("/map/admin")}
+            >
+              Review proposals
+            </Button>
+          )}
         </Form>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
@@ -324,6 +355,12 @@ export default function MapPage() {
           </ul>
         </section>
       )}
+      <PlaceProposalModal
+        show={showProposalModal}
+        initialLatitude={latitude}
+        initialLongitude={longitude}
+        onHide={() => setShowProposalModal(false)}
+      />
     </PageLayout>
   );
 }

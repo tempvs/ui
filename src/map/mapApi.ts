@@ -22,6 +22,25 @@ export type MapEntityLocation = {
   longitude: number;
 };
 
+export type MapPlaceProposal = {
+  canonicalName: string;
+  latitude: number;
+  longitude: number;
+  featureType: string;
+  description?: string;
+  aliases?: string[];
+};
+
+/** A non-public point awaiting an editor's approval.  Keeping it separate
+ * from MapPlace prevents a pending proposal from accidentally being rendered
+ * in a public picker or on the map. */
+export type PendingMapPlace = MapPlace & {
+  description?: string;
+  names?: Array<{ value: string; preferred: boolean }>;
+  createdAt?: string;
+  createdByUserId?: string;
+};
+
 async function responseJson(response: Response): Promise<unknown> {
   const text = await response.text();
   return text ? JSON.parse(text) : null;
@@ -55,6 +74,42 @@ export async function getMapPlace(
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("Unable to load this place");
   return (await responseJson(response)) as MapPlace;
+}
+
+/** Submit a point proposal. The Map API deliberately keeps it pending until
+ * an editor reviews it, so it never leaks into public place search. */
+export async function proposeMapPlace(
+  proposal: MapPlaceProposal,
+): Promise<void> {
+  const response = await fetch("/api/map/places/proposals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(proposal),
+  });
+  if (response.status === 401) throw new Error("Sign in to propose a place");
+  if (!response.ok) throw new Error("Unable to submit this place proposal");
+}
+
+export async function listPendingMapPlaces(): Promise<PendingMapPlace[]> {
+  const response = await fetch("/api/map/admin/places/proposals");
+  if (response.status === 401 || response.status === 403)
+    throw new Error("Map editor access is required");
+  if (!response.ok) throw new Error("Unable to load pending place proposals");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const items = body?.items;
+  return Array.isArray(items) ? (items as PendingMapPlace[]) : [];
+}
+
+export async function approveMapPlace(id: string, note?: string): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/places/${encodeURIComponent(id)}/approve`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note?.trim() ? { note: note.trim() } : {}),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to approve this place proposal");
 }
 
 /** Public bounded-radius lookup through the same-origin Map API. */
