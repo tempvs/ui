@@ -35,6 +35,7 @@ import ClubFollowersPanel from "./ClubFollowersPanel";
 import ClubFieldsPanel, { ClubField } from "./ClubFieldsPanel";
 import ClubPhotoPanel from "./ClubPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
+import type { MapPlace } from "../map/mapApi";
 import PostPanel from "../post/PostPanel";
 import "./clubs.css";
 
@@ -68,6 +69,7 @@ function clubDraft(club: Club): ClubDraft {
     name: club.name,
     alias: club.alias,
     description: club.description,
+    locationPlaceId: club.locationPlaceId || null,
     location: club.location,
     contactEmail: club.contactEmail,
     period: club.period,
@@ -216,25 +218,52 @@ function ClubMembersPanel({
   onLeave,
   t,
 }: ClubMembersPanelProps) {
-  return <ProfileCollectionPanel
-    title={t("members", "Members")}
-    profiles={members}
-    filter={memberFilter}
-    onFilterChange={onMemberFilterChange}
-    filterPlaceholder={t("filterMembers", "Filter members")}
-    emptyText={t("noMembers", "No members yet.")}
-    noMatchesText={t("noMatchingMembers", "No members match this filter.")}
-    loading={participantsLoading}
-    error={participantsError}
-    onRetry={onRetry}
-    onReachEnd={onReachEnd}
-    renderActions={profile => {
-      const owned = currentUserId != null && profile.userId != null && String(profile.userId) === String(currentUserId);
-      return owned ? <Button className="club-icon-action" size="sm" variant="outline-secondary" title={t("leave", "Leave club")} aria-label={t("leave", "Leave club")} disabled={busy || unavailable} onClick={() => onLeave(profile)}><LeaveIcon aria-hidden="true" /></Button>
-        : canManage ? <Button size="sm" variant="outline-danger" className="club-icon-action" title={t("removeMember", "Remove member")} aria-label={t("removeMember", "Remove member")} disabled={busy || unavailable} onClick={() => onRemove(profile)}><RemoveMemberIcon aria-hidden="true" /></Button>
-          : null;
-    }}
-  />;
+  return (
+    <ProfileCollectionPanel
+      title={t("members", "Members")}
+      profiles={members}
+      filter={memberFilter}
+      onFilterChange={onMemberFilterChange}
+      filterPlaceholder={t("filterMembers", "Filter members")}
+      emptyText={t("noMembers", "No members yet.")}
+      noMatchesText={t("noMatchingMembers", "No members match this filter.")}
+      loading={participantsLoading}
+      error={participantsError}
+      onRetry={onRetry}
+      onReachEnd={onReachEnd}
+      renderActions={(profile) => {
+        const owned =
+          currentUserId != null &&
+          profile.userId != null &&
+          String(profile.userId) === String(currentUserId);
+        return owned ? (
+          <Button
+            className="club-icon-action"
+            size="sm"
+            variant="outline-secondary"
+            title={t("leave", "Leave club")}
+            aria-label={t("leave", "Leave club")}
+            disabled={busy || unavailable}
+            onClick={() => onLeave(profile)}
+          >
+            <LeaveIcon aria-hidden="true" />
+          </Button>
+        ) : canManage ? (
+          <Button
+            size="sm"
+            variant="outline-danger"
+            className="club-icon-action"
+            title={t("removeMember", "Remove member")}
+            aria-label={t("removeMember", "Remove member")}
+            disabled={busy || unavailable}
+            onClick={() => onRemove(profile)}
+          >
+            <RemoveMemberIcon aria-hidden="true" />
+          </Button>
+        ) : null;
+      }}
+    />
+  );
 }
 
 export default function ClubPage() {
@@ -521,6 +550,26 @@ export default function ClubPage() {
       existing ? ({ ...existing, [field]: value || null } as Club) : existing,
     );
   };
+  const changeClubLocation = (place: MapPlace | null) => {
+    const current = draftRef.current || (club ? clubDraft(club) : null);
+    if (!current) return;
+    const next = {
+      ...current,
+      locationPlaceId: place?.id || null,
+      location: place?.canonicalName || "",
+    };
+    draftRef.current = next;
+    setClub((existing) =>
+      existing
+        ? {
+            ...existing,
+            locationPlaceId: next.locationPlaceId,
+            location: next.location || null,
+          }
+        : existing,
+    );
+    void saveClubField("location");
+  };
   const saveClubField = async (field: ClubField) => {
     const draft = draftRef.current;
     if (!draft || !canManage) return;
@@ -629,16 +678,57 @@ export default function ClubPage() {
       className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
       header={{
         title: t("title", "Clubs"),
-        rightContent: club ? <div className="d-flex gap-2 flex-wrap justify-content-end">
-          {currentUserId != null && <>
-            <Button variant={memberProfile ? "outline-secondary" : "outline-dark"} disabled={unavailable} aria-label={memberProfile ? t("leaveClubAction", "Leave this club") : undefined} onClick={() => {
-              if (memberProfile) setMemberRemoval({ profile: memberProfile, leave: true });
-              else { setMembershipMessage(""); setApplyingForMembership(true); }
-            }}>{memberProfile ? t("leave", "Leave club") : t("applyForMembership", "Apply for membership")}</Button>
-            <Button variant={followingProfileIds.size > 0 ? "danger" : "outline-dark"} disabled={unavailable} onClick={() => { setFollowError(""); setFollowingClub(true); }}>{followingProfileIds.size > 0 ? t("following", "Following") : t("follow", "Follow")}</Button>
-          </>}
-          {canManage && <Link className="btn btn-outline-dark" to={`/clubs/${club.alias || club.id}/admin`}>{t("adminActions", "Admin actions")}</Link>}
-        </div> : null,
+        rightContent: club ? (
+          <div className="d-flex gap-2 flex-wrap justify-content-end">
+            {currentUserId != null && (
+              <>
+                <Button
+                  variant={memberProfile ? "outline-secondary" : "outline-dark"}
+                  disabled={unavailable}
+                  aria-label={
+                    memberProfile
+                      ? t("leaveClubAction", "Leave this club")
+                      : undefined
+                  }
+                  onClick={() => {
+                    if (memberProfile)
+                      setMemberRemoval({ profile: memberProfile, leave: true });
+                    else {
+                      setMembershipMessage("");
+                      setApplyingForMembership(true);
+                    }
+                  }}
+                >
+                  {memberProfile
+                    ? t("leave", "Leave club")
+                    : t("applyForMembership", "Apply for membership")}
+                </Button>
+                <Button
+                  variant={
+                    followingProfileIds.size > 0 ? "danger" : "outline-dark"
+                  }
+                  disabled={unavailable}
+                  onClick={() => {
+                    setFollowError("");
+                    setFollowingClub(true);
+                  }}
+                >
+                  {followingProfileIds.size > 0
+                    ? t("following", "Following")
+                    : t("follow", "Follow")}
+                </Button>
+              </>
+            )}
+            {canManage && (
+              <Link
+                className="btn btn-outline-dark"
+                to={`/clubs/${club.alias || club.id}/admin`}
+              >
+                {t("adminActions", "Admin actions")}
+              </Link>
+            )}
+          </div>
+        ) : null,
       }}
     >
       {error && (
@@ -715,6 +805,7 @@ export default function ClubPage() {
                   editable={canManage && !unavailable}
                   statuses={fieldStatuses}
                   onChange={changeClubField}
+                  onLocationChange={changeClubLocation}
                   onBlur={saveClubField}
                 />
                 <PostPanel
