@@ -107,6 +107,11 @@ jobs:
         shell: bash
         run: |
           aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
+          # Public GeoJSON basemap layers are runtime data rather than bundled
+          # JavaScript, so publish them alongside the existing static assets.
+          if [[ -d build/maps ]]; then
+            aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=31536000,immutable' --no-progress
+          fi
           for asset in build/*; do
             if [[ -f "$asset" && "$asset" != 'build/index.html' ]]; then
               aws s3 cp "$asset" "s3://$WEB_BUCKET_NAME/$(basename "$asset")" --cache-control 'public,max-age=3600' --no-progress
