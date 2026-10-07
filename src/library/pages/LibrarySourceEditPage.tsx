@@ -908,6 +908,10 @@ export default function LibrarySourceEditPage() {
               type: source.type || null,
               from: source.from || null,
               to: source.to || null,
+              discoveredAtPlaceId: source.discoveredAtPlaceId || null,
+              discoveredAtPlaceName: source.discoveredAtPlaceName || null,
+              heldAtPlaceId: source.heldAtPlaceId || null,
+              heldAtPlaceName: source.heldAtPlaceName || null,
             }}
             proposed={proposed}
             imageOperations={imageOperations}

@@ -47,6 +47,8 @@ const fieldLabels: Record<string, string> = {
   classification: "Classification",
   type: "Type",
   years: "Years",
+  discoveredAtPlaceName: "Discovered at",
+  heldAtPlaceName: "Held at",
 };
 
 export function summarizeSourceChangeset(
@@ -66,21 +68,32 @@ export function summarizeSourceChangeset(
       { from: base.from, to: base.to },
       { from: proposed.from, to: proposed.to },
     ],
+    discoveredAtPlaceName: [
+      base.discoveredAtPlaceName,
+      proposed.discoveredAtPlaceName,
+    ],
+    heldAtPlaceName: [base.heldAtPlaceName, proposed.heldAtPlaceName],
   } as const;
   const changedFields = Object.entries(values)
-    .filter(([, [before, after]]) => JSON.stringify(before) !== JSON.stringify(after))
+    .filter(
+      ([, [before, after]]) => JSON.stringify(before) !== JSON.stringify(after),
+    )
     .map(([field]) => fieldLabels[field]);
   if (!imageOperations.length) return changedFields;
 
   const counts = imageOperations.reduce(
-    (current, operation) => ({ ...current, [operation.kind]: (current[operation.kind] || 0) + 1 }),
+    (current, operation) => ({
+      ...current,
+      [operation.kind]: (current[operation.kind] || 0) + 1,
+    }),
     {} as Record<SourceImageOperation["kind"], number>,
   );
   const labels = [
     counts.ADD && `${counts.ADD} added`,
     counts.REMOVE && `${counts.REMOVE} removed`,
     counts.REPLACE && `${counts.REPLACE} replaced`,
-    counts.UPDATE_DESCRIPTION && `${counts.UPDATE_DESCRIPTION} description ${counts.UPDATE_DESCRIPTION === 1 ? "change" : "changes"}`,
+    counts.UPDATE_DESCRIPTION &&
+      `${counts.UPDATE_DESCRIPTION} description ${counts.UPDATE_DESCRIPTION === 1 ? "change" : "changes"}`,
   ].filter(Boolean);
   return [...changedFields, `Images: ${labels.join(", ")}`];
 }
