@@ -782,6 +782,7 @@ export default function LibrarySourcePage() {
                       }
                     : null
                 }
+                readOnlyLabel={source.discoveredAtPlaceName}
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
@@ -796,6 +797,7 @@ export default function LibrarySourcePage() {
                       }
                     : null
                 }
+                readOnlyLabel={source.heldAtPlaceName}
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
