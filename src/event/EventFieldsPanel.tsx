@@ -8,6 +8,8 @@ import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import InlineEditableText from "../component/InlineEditableText";
 import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
+import PlacePickerField from "../component/PlacePickerField";
+import type { MapPlace } from "../map/mapApi";
 import { TempvsEvent } from "./eventApi";
 
 export type EventField =
@@ -20,7 +22,8 @@ export type EventField =
   | "timeZone"
   | "frequency"
   | "interval"
-  | "count";
+  | "count"
+  | "venue";
 
 type Props = {
   event: TempvsEvent;
@@ -30,6 +33,7 @@ type Props = {
   onBlur: (field: EventField) => void;
   onRangeChange?: (from: HistoricalYearInput, to: HistoricalYearInput) => void;
   onRangeBlur?: () => void;
+  onVenueChange?: (place: MapPlace | null) => void;
 };
 
 function localDateTimeInput(iso: string) {
@@ -51,6 +55,7 @@ export default function EventFieldsPanel({
   onBlur,
   onRangeChange,
   onRangeBlur,
+  onVenueChange,
 }: Props) {
   const recurrence = event.schedule.recurrence;
   return (
@@ -87,12 +92,46 @@ export default function EventFieldsPanel({
       <EditableHistoricalRangeField
         label="Years"
         editable={editable}
-        from={{ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }}
-        to={{ year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" }}
-        onFromChange={(from) => onRangeChange?.(from, { year: event.to ? String(event.to.year) : "", era: event.to?.era || "AD" })}
-        onToChange={(to) => onRangeChange?.({ year: event.from ? String(event.from.year) : "", era: event.from?.era || "AD" }, to)}
+        from={{
+          year: event.from ? String(event.from.year) : "",
+          era: event.from?.era || "AD",
+        }}
+        to={{
+          year: event.to ? String(event.to.year) : "",
+          era: event.to?.era || "AD",
+        }}
+        onFromChange={(from) =>
+          onRangeChange?.(from, {
+            year: event.to ? String(event.to.year) : "",
+            era: event.to?.era || "AD",
+          })
+        }
+        onToChange={(to) =>
+          onRangeChange?.(
+            {
+              year: event.from ? String(event.from.year) : "",
+              era: event.from?.era || "AD",
+            },
+            to,
+          )
+        }
         onBlur={() => onRangeBlur?.()}
         fieldMaxWidth="13rem"
+      />
+      <PlacePickerField
+        label="Venue"
+        editable={editable}
+        value={
+          event.venuePlaceId
+            ? {
+                id: event.venuePlaceId,
+                canonicalName: event.venuePlaceName || "",
+              }
+            : null
+        }
+        readOnlyLabel={event.venuePlaceName}
+        onChange={(place) => onVenueChange?.(place)}
+        status={statuses.venue}
       />
       <EditableTextFieldRow
         label="Status"
@@ -103,7 +142,9 @@ export default function EventFieldsPanel({
         label="Schedule"
         editable={editable}
         value={event.schedule.kind}
-        readOnlyValue={event.schedule.kind === "RECURRING" ? "Recurring" : "One-time"}
+        readOnlyValue={
+          event.schedule.kind === "RECURRING" ? "Recurring" : "One-time"
+        }
         options={[
           { value: "ONE_TIME", label: "One-time" },
           { value: "RECURRING", label: "Recurring" },
@@ -156,7 +197,10 @@ export default function EventFieldsPanel({
             editable={editable}
             value={recurrence?.frequency || "WEEKLY"}
             readOnlyValue={`Every ${recurrence?.interval || 1} ${(recurrence?.frequency || "WEEKLY").toLowerCase()}.`}
-            options={["DAILY", "WEEKLY", "MONTHLY"].map((value) => ({ value, label: value[0] + value.slice(1).toLowerCase() }))}
+            options={["DAILY", "WEEKLY", "MONTHLY"].map((value) => ({
+              value,
+              label: value[0] + value.slice(1).toLowerCase(),
+            }))}
             onChange={(input) => onChange("frequency", input.target.value)}
             onBlur={() => onBlur("frequency")}
             status={statuses.frequency}
@@ -183,18 +227,19 @@ export default function EventFieldsPanel({
           />
         </>
       )}
-      {event.schedule.kind === "RECURRING" && (event.upcomingOccurrences || []).length > 0 && (
-        <>
-          <h2 className="event-occurrences-heading">Upcoming dates</h2>
-          <ul className="event-occurrences">
-            {(event.upcomingOccurrences || []).map((occurrence) => (
-              <li key={occurrence.id}>
-                <time>{displayDateTime(occurrence.startsAt)}</time>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {event.schedule.kind === "RECURRING" &&
+        (event.upcomingOccurrences || []).length > 0 && (
+          <>
+            <h2 className="event-occurrences-heading">Upcoming dates</h2>
+            <ul className="event-occurrences">
+              {(event.upcomingOccurrences || []).map((occurrence) => (
+                <li key={occurrence.id}>
+                  <time>{displayDateTime(occurrence.startsAt)}</time>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
     </section>
   );
 }

@@ -16,6 +16,7 @@ import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import EventFieldsPanel, { EventField } from "./EventFieldsPanel";
+import type { MapPlace } from "../map/mapApi";
 import EventApplicationActions from "./EventApplicationActions";
 import EventPeoplePanels from "./EventPeoplePanels";
 import ProfileList from "../profile/components/ProfileList";
@@ -182,20 +183,22 @@ export default function EventPage() {
     });
     let next = current;
     if (field === "name") next = { ...current, name: String(value) };
-    if (field === "description") next = { ...current, description: String(value) || null };
+    if (field === "description")
+      next = { ...current, description: String(value) || null };
     if (field === "periods") next = { ...current, periods: value as Period[] };
     if (field === "kind") {
-      next = String(value) === "RECURRING"
-        ? { ...current, schedule: recurringSchedule() }
-        : {
-          ...current,
-          schedule: {
-            kind: "ONE_TIME",
-            startsAt: current.schedule.startsAt,
-            endsAt: current.schedule.endsAt,
-            timeZone: current.schedule.timeZone,
-          },
-        };
+      next =
+        String(value) === "RECURRING"
+          ? { ...current, schedule: recurringSchedule() }
+          : {
+              ...current,
+              schedule: {
+                kind: "ONE_TIME",
+                startsAt: current.schedule.startsAt,
+                endsAt: current.schedule.endsAt,
+                timeZone: current.schedule.timeZone,
+              },
+            };
     }
     if (field === "startsAt" || field === "endsAt") {
       const date = new Date(String(value));
@@ -206,7 +209,10 @@ export default function EventPage() {
       };
     }
     if (field === "timeZone") {
-      next = { ...current, schedule: { ...current.schedule, timeZone: String(value) } };
+      next = {
+        ...current,
+        schedule: { ...current.schedule, timeZone: String(value) },
+      };
     }
     if (field === "frequency" || field === "interval" || field === "count") {
       const schedule = recurringSchedule();
@@ -216,9 +222,10 @@ export default function EventPage() {
           ...schedule,
           recurrence: {
             ...schedule.recurrence,
-            [field]: field === "frequency"
-              ? value as "DAILY" | "WEEKLY" | "MONTHLY"
-              : Math.max(1, Number(value) || 1),
+            [field]:
+              field === "frequency"
+                ? (value as "DAILY" | "WEEKLY" | "MONTHLY")
+                : Math.max(1, Number(value) || 1),
           },
         },
       };
@@ -228,7 +235,10 @@ export default function EventPage() {
   const saveField = async (field: EventField) => {
     const current = eventRef.current;
     if (!current) return;
-    if (new Date(current.schedule.endsAt).getTime() <= new Date(current.schedule.startsAt).getTime()) {
+    if (
+      new Date(current.schedule.endsAt).getTime() <=
+      new Date(current.schedule.startsAt).getTime()
+    ) {
       setFieldStatuses((statuses) => ({ ...statuses, endsAt: "error" }));
       return;
     }
@@ -245,6 +255,8 @@ export default function EventPage() {
           periods: current.periods,
           from: current.from || null,
           to: current.to || null,
+          venuePlaceId: current.venuePlaceId || null,
+          venuePlaceName: current.venuePlaceName || null,
           schedule: current.schedule,
         },
         current.version,
@@ -262,6 +274,16 @@ export default function EventPage() {
     } finally {
       setBusy(false);
     }
+  };
+  const updateVenue = (place: MapPlace | null) => {
+    const current = eventRef.current;
+    if (!current) return;
+    replaceItem({
+      ...current,
+      venuePlaceId: place?.id || null,
+      venuePlaceName: place?.canonicalName || null,
+    });
+    void saveField("venue");
   };
   const updateRange = (from: HistoricalYearInput, to: HistoricalYearInput) => {
     const current = eventRef.current;
@@ -290,11 +312,35 @@ export default function EventPage() {
       className="events-page"
       header={{
         title: "Events",
-        rightContent: <div className="event-actions mt-0">
-          {applicantProfiles.length > 0 && <Button variant="outline-dark" disabled={!occurrence} onClick={() => setApplyOpen(true)}>Apply for event</Button>}
-          {ownedProfiles.length > 0 && <Button variant="outline-dark" onClick={() => setFollowOpen(true)}>Follow event</Button>}
-          {canManage && <Link className="btn btn-outline-dark" to={`/events/${item.id}/admin`}>Admin actions</Link>}
-        </div>,
+        rightContent: (
+          <div className="event-actions mt-0">
+            {applicantProfiles.length > 0 && (
+              <Button
+                variant="outline-dark"
+                disabled={!occurrence}
+                onClick={() => setApplyOpen(true)}
+              >
+                Apply for event
+              </Button>
+            )}
+            {ownedProfiles.length > 0 && (
+              <Button
+                variant="outline-dark"
+                onClick={() => setFollowOpen(true)}
+              >
+                Follow event
+              </Button>
+            )}
+            {canManage && (
+              <Link
+                className="btn btn-outline-dark"
+                to={`/events/${item.id}/admin`}
+              >
+                Admin actions
+              </Link>
+            )}
+          </div>
+        ),
       }}
     >
       {error && <Alert variant="danger">{error}</Alert>}
@@ -311,23 +357,23 @@ export default function EventPage() {
         </div>
         <PageColumns variant="three" className="event-page-layout">
           <PageColumn>
-        <EventPhotoPanel
-          eventId={item.id}
-          name={item.name}
-          editable={canManage}
-        />
-        <PhotoAlbumsPanel
-          targetType="event"
-          targetId={item.id}
-          editable={canManage}
-        />
-          <EventPeoplePanels
-            eventId={item.id}
-            canManage={canManage}
-            revision={peopleRevision}
-            showApprovals={false}
-            onChanged={() => setPeopleRevision((value) => value + 1)}
-          />
+            <EventPhotoPanel
+              eventId={item.id}
+              name={item.name}
+              editable={canManage}
+            />
+            <PhotoAlbumsPanel
+              targetType="event"
+              targetId={item.id}
+              editable={canManage}
+            />
+            <EventPeoplePanels
+              eventId={item.id}
+              canManage={canManage}
+              revision={peopleRevision}
+              showApprovals={false}
+              onChanged={() => setPeopleRevision((value) => value + 1)}
+            />
           </PageColumn>
           <PageColumn>
             <EventFieldsPanel
@@ -342,6 +388,7 @@ export default function EventPage() {
               onBlur={saveField}
               onRangeChange={updateRange}
               onRangeBlur={() => void saveField("periods")}
+              onVenueChange={updateVenue}
             />
             <PostPanel
               targetType="EVENT"
