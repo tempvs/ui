@@ -30,6 +30,9 @@ export default function MapPage() {
   const [latitude, setLatitude] = useState(params.get("lat") || "");
   const [longitude, setLongitude] = useState(params.get("lng") || "");
   const [radius, setRadius] = useState(params.get("radiusKm") || "25");
+  const [showModernBorders, setShowModernBorders] = useState(
+    params.get("borders") === "modern",
+  );
   const [items, setItems] = useState<MapPlace[]>([]);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [types, setTypes] =
@@ -82,6 +85,7 @@ export default function MapPage() {
     if (linkedPlace?.canonicalName || trimmed)
       next.set("q", linkedPlace?.canonicalName || trimmed);
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
+    if (showModernBorders) next.set("borders", "modern");
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
@@ -190,6 +194,12 @@ export default function MapPage() {
               ))}
             </div>
           </Form.Group>
+          <Form.Check
+            id="map-modern-borders"
+            label="Modern borders"
+            checked={showModernBorders}
+            onChange={(event) => setShowModernBorders(event.target.checked)}
+          />
           <Form.Group>
             <Form.Label>Content</Form.Label>
             <Form.Control
@@ -240,6 +250,7 @@ export default function MapPage() {
           places={items}
           entities={entities}
           focus={focus}
+          showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
           onEntitySelect={setSelectedEntityKey}
           onMapError={setMapError}
@@ -266,7 +277,12 @@ export default function MapPage() {
               </span>
               <Link
                 className="ms-2"
-                to={nearPlacePath(place, radius, contentQuery)}
+                to={nearPlacePath(
+                  place,
+                  radius,
+                  contentQuery,
+                  showModernBorders,
+                )}
               >
                 Show nearby
               </Link>
@@ -339,6 +355,7 @@ function nearPlacePath(
   place: MapPlace,
   radius: string,
   contentQuery: string,
+  showModernBorders: boolean,
 ): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
@@ -348,6 +365,7 @@ function nearPlacePath(
     radiusKm: radius || "25",
   });
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
+  if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
 }
 

@@ -9,6 +9,7 @@ type MapCanvasProps = {
   places: MapPlace[];
   entities: MapEntityLocation[];
   focus?: { latitude: number; longitude: number } | null;
+  showModernBorders: boolean;
   selectedEntityKey?: string | null;
   onEntitySelect: (key: string) => void;
   onMapError: (message: string) => void;
@@ -35,6 +36,7 @@ export default function MapCanvas({
   places,
   entities,
   focus,
+  showModernBorders,
   selectedEntityKey = null,
   onEntitySelect,
   onMapError,
@@ -108,6 +110,15 @@ export default function MapCanvas({
   }, [ready, selectedEntityKey]);
 
   useEffect(() => {
+    if (!ready || !map.current) return;
+    map.current.setLayoutProperty(
+      "borders",
+      "visibility",
+      showModernBorders ? "visible" : "none",
+    );
+  }, [ready, showModernBorders]);
+
+  useEffect(() => {
     if (!ready || !map.current || !focus) return;
     map.current.flyTo({
       center: [focus.longitude, focus.latitude],
@@ -174,6 +185,7 @@ function mapStyle(): maplibregl.StyleSpecification {
         id: "borders",
         type: "line",
         source: "borders",
+        layout: { visibility: "none" },
         paint: {
           "line-color": "#b9af9e",
           "line-width": 0.65,
