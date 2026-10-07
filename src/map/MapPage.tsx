@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../component/PageLayout";
@@ -9,6 +9,7 @@ import {
   type MapEntityLocation,
   type MapPlace,
 } from "./mapApi";
+import MapCanvas, { entityKey } from "./MapCanvas";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -32,11 +33,16 @@ export default function MapPage() {
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
   const [error, setError] = useState("");
+  const [mapError, setMapError] = useState("");
+  const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   const search = async (event?: React.FormEvent) => {
     event?.preventDefault();
     setError("");
+    setMapError("");
     const trimmed = query.trim();
     const lat = Number(latitude);
     const lng = Number(longitude);
@@ -83,6 +89,24 @@ export default function MapPage() {
     // Query parameters are intentionally applied only on navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const focus = useMemo(() => {
+    const selected = entities.find(
+      (entity) => entityKey(entity) === selectedEntityKey,
+    );
+    if (selected)
+      return { latitude: selected.latitude, longitude: selected.longitude };
+    if (latitude !== "" && longitude !== "") {
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng))
+        return { latitude: lat, longitude: lng };
+    }
+    const first = items[0];
+    return first
+      ? { latitude: first.latitude, longitude: first.longitude }
+      : null;
+  }, [entities, items, latitude, longitude, selectedEntityKey]);
 
   return (
     <PageLayout className="map-page" header={{ title: "Map" }}>
@@ -161,6 +185,22 @@ export default function MapPage() {
           </Alert>
         )}
       </section>
+      <section className="club-panel mt-3" aria-label="Interactive map">
+        <MapCanvas
+          places={items}
+          entities={entities}
+          focus={focus}
+          selectedEntityKey={selectedEntityKey}
+          onEntitySelect={setSelectedEntityKey}
+          onMapError={setMapError}
+        />
+        {mapError && (
+          <p className="text-muted small mt-2 mb-0">
+            The interactive map is unavailable; the accessible result lists
+            below remain available.
+          </p>
+        )}
+      </section>
       <section className="club-panel mt-3" aria-label="Matching places">
         <h2 className="h5">Places</h2>
         {!loading && !error && items.length === 0 && (
@@ -196,7 +236,8 @@ export default function MapPage() {
             {entities.map((entity) => (
               <li
                 key={`${entity.entityType}:${entity.entityId}:${entity.locationRole}`}
-                className="border-top py-2"
+                className={`border-top py-2 ${selectedEntityKey === entityKey(entity) ? "map-result-selected" : ""}`}
+                onClick={() => setSelectedEntityKey(entityKey(entity))}
               >
                 <Link to={entityPath(entity)}>{entity.label}</Link>
                 <span className="text-muted ms-2">
