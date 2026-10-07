@@ -214,11 +214,8 @@ export default function MapPage() {
                 {place.featureType} · {place.latitude.toFixed(4)},{" "}
                 {place.longitude.toFixed(4)}
               </span>
-              <Link
-                className="ms-2"
-                to={`/map?q=${encodeURIComponent(place.canonicalName)}`}
-              >
-                Open
+              <Link className="ms-2" to={nearPlacePath(place, radius)}>
+                Show nearby
               </Link>
             </li>
           ))}
@@ -242,6 +239,16 @@ export default function MapPage() {
                 <Link to={entityPath(entity)}>{entity.label}</Link>
                 <span className="text-muted ms-2">
                   {locationRoleLabel(entity)} · {entity.placeName}
+                  {Number.isFinite(Number(latitude)) &&
+                    Number.isFinite(Number(longitude)) &&
+                    ` · ${formatDistance(
+                      distanceKilometres(
+                        Number(latitude),
+                        Number(longitude),
+                        entity.latitude,
+                        entity.longitude,
+                      ),
+                    )}`}
                 </span>
               </li>
             ))}
@@ -273,4 +280,37 @@ function locationRoleLabel(entity: MapEntityLocation): string {
     DISCOVERED_AT: "Discovered at",
     HELD_AT: "Held at",
   }[entity.locationRole];
+}
+
+function nearPlacePath(place: MapPlace, radius: string): string {
+  const parameters = new URLSearchParams({
+    q: place.canonicalName,
+    lat: String(place.latitude),
+    lng: String(place.longitude),
+    radiusKm: radius || "25",
+  });
+  return `/map?${parameters.toString()}`;
+}
+
+function distanceKilometres(
+  fromLatitude: number,
+  fromLongitude: number,
+  toLatitude: number,
+  toLongitude: number,
+): number {
+  const radians = (value: number) => (value * Math.PI) / 180;
+  const latitudeDelta = radians(toLatitude - fromLatitude);
+  const longitudeDelta = radians(toLongitude - fromLongitude);
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(radians(fromLatitude)) *
+      Math.cos(radians(toLatitude)) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(distance: number): string {
+  return distance < 1
+    ? `${Math.round(distance * 1000)} m away`
+    : `${distance.toFixed(distance < 10 ? 1 : 0)} km away`;
 }
