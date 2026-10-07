@@ -6,6 +6,7 @@ import PageLayout from "../component/PageLayout";
 import {
   approveMapPlace,
   listPendingMapPlaces,
+  rejectMapPlace,
   type PendingMapPlace,
 } from "./mapApi";
 
@@ -23,7 +24,7 @@ export default function MapAdminPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -43,18 +44,22 @@ export default function MapAdminPage() {
       .finally(() => setLoading(false));
   }, [mayReview]);
 
-  const approve = async (proposal: PendingMapPlace) => {
-    setApprovingId(proposal.id);
+  const review = async (proposal: PendingMapPlace, decision: "approve" | "reject") => {
+    setReviewingId(proposal.id);
     setError("");
     try {
-      await approveMapPlace(proposal.id, notes[proposal.id]);
+      if (decision === "approve")
+        await approveMapPlace(proposal.id, notes[proposal.id]);
+      else await rejectMapPlace(proposal.id, notes[proposal.id]);
       setProposals((current) =>
         current.filter((item) => item.id !== proposal.id),
       );
     } catch (caught) {
-      setError((caught as Error).message || "Unable to approve this place.");
+      setError(
+        (caught as Error).message || `Unable to ${decision} this place.`,
+      );
     } finally {
-      setApprovingId(null);
+      setReviewingId(null);
     }
   };
 
@@ -114,10 +119,17 @@ export default function MapAdminPage() {
                     />
                     <Button
                       variant="dark"
-                      disabled={approvingId === proposal.id}
-                      onClick={() => void approve(proposal)}
+                      disabled={reviewingId === proposal.id}
+                      onClick={() => void review(proposal, "approve")}
                     >
-                      {approvingId === proposal.id ? "Approving…" : "Approve"}
+                      {reviewingId === proposal.id ? "Reviewing…" : "Approve"}
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      disabled={reviewingId === proposal.id}
+                      onClick={() => void review(proposal, "reject")}
+                    >
+                      Reject
                     </Button>
                   </div>
                 </div>

@@ -134,6 +134,18 @@ export async function approveMapPlace(id: string, note?: string): Promise<void> 
   if (!response.ok) throw new Error("Unable to approve this place proposal");
 }
 
+export async function rejectMapPlace(id: string, note?: string): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/places/${encodeURIComponent(id)}/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note?.trim() ? { note: note.trim() } : {}),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to reject this place proposal");
+}
+
 /** Public bounded-radius lookup through the same-origin Map API. */
 export async function nearbyMapPlaces(
   latitude: number,
