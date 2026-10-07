@@ -123,6 +123,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       lastName: "",
       nickName: "",
       profileEmail: "",
+      locationPlaceId: null,
       location: "",
       alias: "",
       period: "",
@@ -496,6 +497,20 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     );
   };
 
+  handleLocationPlaceChange = (
+    place: { id: string; canonicalName: string } | null,
+  ) => {
+    this.setState(
+      {
+        locationPlaceId: place?.id || null,
+        location: place?.canonicalName || "",
+      },
+      () => {
+        if (this.isEditableProfile()) this.saveField("location");
+      },
+    );
+  };
+
   handleFieldBlur = (fieldName: ProfileField) => {
     if (!this.isEditableProfile()) {
       return;
@@ -524,12 +539,16 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }, 2000);
   }
 
-  buildProfilePayload(): Record<string, string | null | { year: number; era: "BC" | "AD" }> {
+  buildProfilePayload(): Record<
+    string,
+    string | null | { year: number; era: "BC" | "AD" }
+  > {
     return {
       firstName: this.state.firstName,
       lastName: this.state.lastName,
       nickName: this.state.nickName || null,
       profileEmail: this.state.profileEmail || null,
+      locationPlaceId: this.state.locationPlaceId || null,
       location: this.state.location || null,
       alias: this.state.alias || null,
       period: this.state.type === "CLUB" ? this.state.period || null : null,
@@ -553,6 +572,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       lastName: profile.lastName || "",
       nickName: profile.nickName || "",
       profileEmail: profile.profileEmail || "",
+      locationPlaceId: profile.locationPlaceId || null,
       location: profile.location || "",
       alias: profile.alias || "",
       period: profile.period || "",
@@ -610,14 +630,24 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       return;
     }
 
-    const isRangeField = ["fromYear", "fromEra", "toYear", "toEra"].includes(fieldName);
-    const persistedValue = this.state.persistedProfile?.[fieldName] || "";
-    const rangeUnchanged = isRangeField &&
+    const isRangeField = ["fromYear", "fromEra", "toYear", "toEra"].includes(
+      fieldName,
+    );
+    const persistedValue =
+      fieldName === "location"
+        ? this.state.persistedProfile?.locationPlaceId || ""
+        : this.state.persistedProfile?.[fieldName] || "";
+    const currentValue =
+      fieldName === "location"
+        ? this.state.locationPlaceId || ""
+        : this.state[fieldName] || "";
+    const rangeUnchanged =
+      isRangeField &&
       this.state.fromYear === (this.state.persistedProfile?.fromYear || "") &&
       this.state.fromEra === (this.state.persistedProfile?.fromEra || "AD") &&
       this.state.toYear === (this.state.persistedProfile?.toYear || "") &&
       this.state.toEra === (this.state.persistedProfile?.toEra || "AD");
-    if (rangeUnchanged || (!isRangeField && (this.state[fieldName] || "") === persistedValue)) {
+    if (rangeUnchanged || (!isRangeField && currentValue === persistedValue)) {
       this.setState((prevState) => ({
         fieldStatuses: {
           ...prevState.fieldStatuses,
@@ -674,6 +704,12 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         (prevState) =>
           ({
             [fieldName]: prevState.persistedProfile?.[fieldName] || "",
+            ...(fieldName === "location"
+              ? {
+                  locationPlaceId:
+                    prevState.persistedProfile?.locationPlaceId || null,
+                }
+              : {}),
             fieldStatuses: {
               ...prevState.fieldStatuses,
               [fieldName]: null,
@@ -850,6 +886,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         lastName: profile.lastName || "",
         nickName: profile.nickName || "",
         profileEmail: profile.profileEmail || "",
+        locationPlaceId: profile.locationPlaceId || null,
         location: profile.location || "",
         alias: profile.alias || "",
         period: profile.period || "",
@@ -1264,11 +1301,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           lastName={this.state.lastName}
           nickName={this.state.nickName}
           profileEmail={this.state.profileEmail}
+          locationPlaceId={this.state.locationPlaceId}
           location={this.state.location}
           alias={this.state.alias}
           isErrorMessage={this.state.messageVariant === "error"}
           t={this.t.bind(this)}
           onChange={this.handleInputChange}
+          onLocationChange={this.handleLocationPlaceChange}
           onSubmit={this.handleCreateProfile}
         />
       </PageLayout>
@@ -1327,15 +1366,26 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       <PageLayout
         header={{
           title: headerSubtitleDisplay,
-          rightContent: <ProfileHeaderBreadcrumb
-            ownerLink={ownerLink}
-            ownerLabel={ownerLabel}
-            currentProfile={{ id: this.state.profileId || undefined, alias: this.state.alias, firstName: this.state.firstName, lastName: this.state.lastName, period: this.state.period }}
-            siblingClubProfiles={siblingClubProfiles}
-            getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
-            getPeriodLabel={this.getPeriodLabel.bind(this)}
-            emptyLabel={this.t("profile.clubProfiles.noneOther", "No other club profiles")}
-          />,
+          rightContent: (
+            <ProfileHeaderBreadcrumb
+              ownerLink={ownerLink}
+              ownerLabel={ownerLabel}
+              currentProfile={{
+                id: this.state.profileId || undefined,
+                alias: this.state.alias,
+                firstName: this.state.firstName,
+                lastName: this.state.lastName,
+                period: this.state.period,
+              }}
+              siblingClubProfiles={siblingClubProfiles}
+              getCanonicalProfilePath={this.getCanonicalProfilePath.bind(this)}
+              getPeriodLabel={this.getPeriodLabel.bind(this)}
+              emptyLabel={this.t(
+                "profile.clubProfiles.noneOther",
+                "No other club profiles",
+              )}
+            />
+          ),
           backgroundColor: isClubProfile ? "#f8f4ea" : "#eef5ff",
           borderColor: isClubProfile ? "#d8c7a1" : "#bfd3f2",
         }}
@@ -1384,7 +1434,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 hideWhenEmpty
               />
               {this.state.profileId && (
-                <ProfileFollowedClubsPanel profileId={this.state.profileId} hideWhenEmpty />
+                <ProfileFollowedClubsPanel
+                  profileId={this.state.profileId}
+                  hideWhenEmpty
+                />
               )}
               {this.state.profileId && (
                 <ProfileEventsPanel
@@ -1405,25 +1458,34 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               editable={isEditable}
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
-              rangeControl={isClubProfile ? (
-                <EditableHistoricalRangeField
-                label={this.t('profile.field.years', 'Years')}
-                editable={isEditable}
-                from={{ year: this.state.fromYear, era: this.state.fromEra }}
-                to={{ year: this.state.toYear, era: this.state.toEra }}
-                onFromChange={(value) =>
-                  this.setState({ fromYear: value.year, fromEra: value.era })
-                }
-                onToChange={(value) =>
-                  this.setState({ toYear: value.year, toEra: value.era })
-                }
-                onBlur={() => this.handleFieldBlur("fromYear")}
-                status={this.state.fieldStatuses.fromYear}
-                className="mb-0"
-                fieldMaxWidth="13rem"
-                labelWidth="auto"
-              />
-              ) : undefined}
+              onLocationChange={this.handleLocationPlaceChange}
+              rangeControl={
+                isClubProfile ? (
+                  <EditableHistoricalRangeField
+                    label={this.t("profile.field.years", "Years")}
+                    editable={isEditable}
+                    from={{
+                      year: this.state.fromYear,
+                      era: this.state.fromEra,
+                    }}
+                    to={{ year: this.state.toYear, era: this.state.toEra }}
+                    onFromChange={(value) =>
+                      this.setState({
+                        fromYear: value.year,
+                        fromEra: value.era,
+                      })
+                    }
+                    onToChange={(value) =>
+                      this.setState({ toYear: value.year, toEra: value.era })
+                    }
+                    onBlur={() => this.handleFieldBlur("fromYear")}
+                    status={this.state.fieldStatuses.fromYear}
+                    className="mb-0"
+                    fieldMaxWidth="13rem"
+                    labelWidth="auto"
+                  />
+                ) : undefined
+              }
             />
             {this.state.profileId && (
               <PostPanel
@@ -1555,7 +1617,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   render() {
     if (!this.state.loaded) {
-      return <PageLayout header={{ title: "Profile" }}><Spinner /></PageLayout>;
+      return (
+        <PageLayout header={{ title: "Profile" }}>
+          <Spinner />
+        </PageLayout>
+      );
     }
 
     if (this.state.createMode) {

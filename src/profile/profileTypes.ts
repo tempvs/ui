@@ -1,17 +1,17 @@
-import { IntlShape } from 'react-intl';
+import { IntlShape } from "react-intl";
 
-import { SaveStatus } from '../component/EditableFieldRow';
-import { GalleryImage } from '../component/StackedImageGallery';
+import { SaveStatus } from "../component/EditableFieldRow";
+import { GalleryImage } from "../component/StackedImageGallery";
 
 export type Id = string | number;
 
 export type MessageFormatter = (
   messageId: string,
   defaultMessage: string,
-  values?: Record<string, string | number | boolean | Date>
+  values?: Record<string, string | number | boolean | Date>,
 ) => string;
 
-export type ProfileType = 'USER' | 'CLUB' | string;
+export type ProfileType = "USER" | "CLUB" | string;
 
 export type Profile = {
   id: string;
@@ -21,6 +21,7 @@ export type Profile = {
   lastName?: string | null;
   nickName?: string | null;
   profileEmail?: string | null;
+  locationPlaceId?: string | null;
   location?: string | null;
   alias?: string | null;
   period?: string | null;
@@ -37,6 +38,7 @@ export type PersistedProfile = {
   lastName: string;
   nickName: string;
   profileEmail: string;
+  locationPlaceId: string | null;
   location: string;
   alias: string;
   period: string;
@@ -63,7 +65,18 @@ export type Avatar = {
   description?: string | null;
 };
 
-export type ProfileField = 'firstName' | 'lastName' | 'nickName' | 'profileEmail' | 'location' | 'alias' | 'period' | 'fromYear' | 'fromEra' | 'toYear' | 'toEra';
+export type ProfileField =
+  | "firstName"
+  | "lastName"
+  | "nickName"
+  | "profileEmail"
+  | "location"
+  | "alias"
+  | "period"
+  | "fromYear"
+  | "fromEra"
+  | "toYear"
+  | "toEra";
 
 export type ProfilePageProps = {
   id?: string | null;
@@ -99,7 +112,7 @@ export type ProfilePageState = PersistedProfile & {
   clubProfileCreateError: boolean;
   clubProfileDeleteTarget: Profile | null;
   clubProfileDeleteError: boolean;
-  avatarUploadStatus: SaveStatus | 'uploading' | 'success';
+  avatarUploadStatus: SaveStatus | "uploading" | "success";
   avatarUploadMessage: string | null;
   avatarDescriptionDraft: string;
   avatarDescriptionStatus: SaveStatus;
