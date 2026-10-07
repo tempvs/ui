@@ -76,6 +76,28 @@ export async function getMapPlace(
   return (await responseJson(response)) as MapPlace;
 }
 
+/** Public duplicate check for a prospective point. It never exposes pending
+ * proposals: only approved canonical places are returned. */
+export async function findLikelyDuplicateMapPlaces(
+  canonicalName: string,
+  latitude: number,
+  longitude: number,
+  signal?: AbortSignal,
+): Promise<MapPlace[]> {
+  const response = await fetch(
+    `/api/map/places/duplicates?${new URLSearchParams({
+      name: canonicalName,
+      latitude: String(latitude),
+      longitude: String(longitude),
+    })}`,
+    { signal },
+  );
+  if (!response.ok) throw new Error("Unable to check for similar places");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const items = body?.items;
+  return Array.isArray(items) ? (items as MapPlace[]) : [];
+}
+
 /** Submit a point proposal. The Map API deliberately keeps it pending until
  * an editor reviews it, so it never leaks into public place search. */
 export async function proposeMapPlace(

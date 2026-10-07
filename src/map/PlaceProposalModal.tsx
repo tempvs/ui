@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 
-import { proposeMapPlace } from "./mapApi";
+import {
+  findLikelyDuplicateMapPlaces,
+  proposeMapPlace,
+  type MapPlace,
+} from "./mapApi";
 
 type PlaceProposalModalProps = {
   show: boolean;
@@ -27,6 +31,7 @@ export default function PlaceProposalModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [duplicates, setDuplicates] = useState<MapPlace[]>([]);
 
   useEffect(() => {
     if (!show) return;
@@ -34,7 +39,44 @@ export default function PlaceProposalModal({
     setLongitude(initialLongitude);
     setError("");
     setSubmitted(false);
+    setDuplicates([]);
   }, [initialLatitude, initialLongitude, show]);
+
+  useEffect(() => {
+    const parsedLatitude = Number(latitude);
+    const parsedLongitude = Number(longitude);
+    const normalizedName = name.trim();
+    if (
+      !show ||
+      normalizedName.length < 2 ||
+      !Number.isFinite(parsedLatitude) ||
+      parsedLatitude < -90 ||
+      parsedLatitude > 90 ||
+      !Number.isFinite(parsedLongitude) ||
+      parsedLongitude < -180 ||
+      parsedLongitude > 180
+    ) {
+      setDuplicates([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void findLikelyDuplicateMapPlaces(
+        normalizedName,
+        parsedLatitude,
+        parsedLongitude,
+        controller.signal,
+      )
+        .then(setDuplicates)
+        .catch(() => {
+          if (!controller.signal.aborted) setDuplicates([]);
+        });
+    }, 350);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [latitude, longitude, name, show]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -154,6 +196,13 @@ export default function PlaceProposalModal({
                   maxLength={1000}
                 />
               </Form.Group>
+              {duplicates.length > 0 && (
+                <Alert className="mt-3 mb-0" variant="warning">
+                  <strong>Possible existing place{duplicates.length > 1 ? "s" : ""}:</strong>{" "}
+                  {duplicates.map((place) => place.canonicalName).join(", ")}.{" "}
+                  Search the map before submitting a duplicate.
+                </Alert>
+              )}
               {error && (
                 <Alert className="mt-3 mb-0" variant="danger">
                   {error}
