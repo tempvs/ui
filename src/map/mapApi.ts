@@ -85,6 +85,7 @@ export async function nearbyMapEntities(
   longitude: number,
   radiusKm: number,
   types: MapEntityLocation["entityType"][] = [],
+  query?: string,
   signal?: AbortSignal,
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
@@ -94,6 +95,7 @@ export async function nearbyMapEntities(
       radiusKm: String(radiusKm),
       limit: "100",
       ...(types.length ? { types: types.join(",") } : {}),
+      ...(query?.trim() ? { search: query.trim() } : {}),
     })}`,
     { signal },
   );

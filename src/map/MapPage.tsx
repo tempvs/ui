@@ -26,6 +26,7 @@ const entityTypes: MapEntityLocation["entityType"][] = [
 export default function MapPage() {
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") || "");
+  const [contentQuery, setContentQuery] = useState(params.get("content") || "");
   const [latitude, setLatitude] = useState(params.get("lat") || "");
   const [longitude, setLongitude] = useState(params.get("lng") || "");
   const [radius, setRadius] = useState(params.get("radiusKm") || "25");
@@ -80,6 +81,7 @@ export default function MapPage() {
     if (linkedPlace) next.set("placeId", linkedPlace.id);
     if (linkedPlace?.canonicalName || trimmed)
       next.set("q", linkedPlace?.canonicalName || trimmed);
+    if (contentQuery.trim()) next.set("content", contentQuery.trim());
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
@@ -96,7 +98,7 @@ export default function MapPage() {
       if (hasCoordinates) {
         const [places, nearbyEntities] = await Promise.all([
           nearbyMapPlaces(lat, lng, Number(radius)),
-          nearbyMapEntities(lat, lng, Number(radius), types),
+          nearbyMapEntities(lat, lng, Number(radius), types, contentQuery),
         ]);
         setItems(
           linkedPlace
@@ -189,6 +191,15 @@ export default function MapPage() {
             </div>
           </Form.Group>
           <Form.Group>
+            <Form.Label>Content</Form.Label>
+            <Form.Control
+              value={contentQuery}
+              onChange={(event) => setContentQuery(event.target.value)}
+              placeholder="Name or place"
+              aria-label="Filter nearby content"
+            />
+          </Form.Group>
+          <Form.Group>
             <Form.Label>Latitude</Form.Label>
             <Form.Control
               value={latitude}
@@ -253,7 +264,10 @@ export default function MapPage() {
                 {place.featureType} · {place.latitude.toFixed(4)},{" "}
                 {place.longitude.toFixed(4)}
               </span>
-              <Link className="ms-2" to={nearPlacePath(place, radius)}>
+              <Link
+                className="ms-2"
+                to={nearPlacePath(place, radius, contentQuery)}
+              >
                 Show nearby
               </Link>
             </li>
@@ -321,7 +335,11 @@ function locationRoleLabel(entity: MapEntityLocation): string {
   }[entity.locationRole];
 }
 
-function nearPlacePath(place: MapPlace, radius: string): string {
+function nearPlacePath(
+  place: MapPlace,
+  radius: string,
+  contentQuery: string,
+): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
     q: place.canonicalName,
@@ -329,6 +347,7 @@ function nearPlacePath(place: MapPlace, radius: string): string {
     lng: String(place.longitude),
     radiusKm: radius || "25",
   });
+  if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
   return `/map?${parameters.toString()}`;
 }
 
