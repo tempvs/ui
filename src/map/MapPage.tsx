@@ -3,6 +3,7 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../component/PageLayout";
 import {
+  getMapPlace,
   nearbyMapEntities,
   nearbyMapPlaces,
   searchMapPlaces,
@@ -44,9 +45,29 @@ export default function MapPage() {
     setError("");
     setMapError("");
     const trimmed = query.trim();
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-    const hasCoordinates = latitude !== "" || longitude !== "";
+    const linkedPlaceId = event ? null : params.get("placeId");
+    let linkedPlace: MapPlace | null = null;
+    if (linkedPlaceId) {
+      try {
+        linkedPlace = await getMapPlace(linkedPlaceId);
+      } catch (caught) {
+        setError((caught as Error).message || "Unable to load this place.");
+        return;
+      }
+      if (!linkedPlace) {
+        setError("This place is no longer available.");
+        return;
+      }
+    }
+    const activeLatitude = linkedPlace
+      ? String(linkedPlace.latitude)
+      : latitude;
+    const activeLongitude = linkedPlace
+      ? String(linkedPlace.longitude)
+      : longitude;
+    const lat = Number(activeLatitude);
+    const lng = Number(activeLongitude);
+    const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
     if (!hasCoordinates && trimmed.length < 2) {
       setError("Enter at least two characters, or both coordinates.");
       return;
@@ -56,13 +77,20 @@ export default function MapPage() {
       return;
     }
     const next = new URLSearchParams();
-    if (trimmed) next.set("q", trimmed);
+    if (linkedPlace) next.set("placeId", linkedPlace.id);
+    if (linkedPlace?.canonicalName || trimmed)
+      next.set("q", linkedPlace?.canonicalName || trimmed);
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
       next.set("radiusKm", radius);
     }
     setParams(next, { replace: true });
+    if (linkedPlace) {
+      setQuery(linkedPlace.canonicalName);
+      setLatitude(String(linkedPlace.latitude));
+      setLongitude(String(linkedPlace.longitude));
+    }
     setLoading(true);
     try {
       if (hasCoordinates) {
@@ -70,7 +98,14 @@ export default function MapPage() {
           nearbyMapPlaces(lat, lng, Number(radius)),
           nearbyMapEntities(lat, lng, Number(radius), types),
         ]);
-        setItems(places);
+        setItems(
+          linkedPlace
+            ? [
+                linkedPlace,
+                ...places.filter((place) => place.id !== linkedPlace?.id),
+              ]
+            : places,
+        );
         setEntities(nearbyEntities);
       } else {
         setItems(await searchMapPlaces(trimmed));
@@ -84,7 +119,11 @@ export default function MapPage() {
   };
 
   useEffect(() => {
-    if (params.get("q") || (params.get("lat") && params.get("lng")))
+    if (
+      params.get("placeId") ||
+      params.get("q") ||
+      (params.get("lat") && params.get("lng"))
+    )
       void search();
     // Query parameters are intentionally applied only on navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,6 +323,7 @@ function locationRoleLabel(entity: MapEntityLocation): string {
 
 function nearPlacePath(place: MapPlace, radius: string): string {
   const parameters = new URLSearchParams({
+    placeId: place.id,
     q: place.canonicalName,
     lat: String(place.latitude),
     lng: String(place.longitude),

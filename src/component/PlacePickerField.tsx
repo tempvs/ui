@@ -103,7 +103,7 @@ export default function PlacePickerField({
             ) : value?.id ? (
               <Link
                 className="small text-start px-1 py-1 d-inline-block"
-                to={`/map?q=${encodeURIComponent(value.canonicalName)}`}
+                to={`/map?placeId=${encodeURIComponent(value.id)}`}
               >
                 {value.canonicalName}
               </Link>

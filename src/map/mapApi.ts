@@ -44,6 +44,19 @@ export async function searchMapPlaces(
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
 
+/** Load one canonical place for a stable, shareable map deep link. */
+export async function getMapPlace(
+  id: string,
+  signal?: AbortSignal,
+): Promise<MapPlace | null> {
+  const response = await fetch(`/api/map/places/${encodeURIComponent(id)}`, {
+    signal,
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("Unable to load this place");
+  return (await responseJson(response)) as MapPlace;
+}
+
 /** Public bounded-radius lookup through the same-origin Map API. */
 export async function nearbyMapPlaces(
   latitude: number,
