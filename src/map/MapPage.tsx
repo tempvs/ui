@@ -2,7 +2,20 @@ import React, { useEffect, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "../component/PageLayout";
-import { nearbyMapPlaces, searchMapPlaces, type MapPlace } from "./mapApi";
+import {
+  nearbyMapEntities,
+  nearbyMapPlaces,
+  searchMapPlaces,
+  type MapEntityLocation,
+  type MapPlace,
+} from "./mapApi";
+
+const entityTypes: MapEntityLocation["entityType"][] = [
+  "PROFILE",
+  "CLUB",
+  "EVENT",
+  "SOURCE",
+];
 
 /**
  * Public, keyboard-accessible discovery fallback. It persists its query in
@@ -15,6 +28,9 @@ export default function MapPage() {
   const [longitude, setLongitude] = useState(params.get("lng") || "");
   const [radius, setRadius] = useState(params.get("radiusKm") || "25");
   const [items, setItems] = useState<MapPlace[]>([]);
+  const [entities, setEntities] = useState<MapEntityLocation[]>([]);
+  const [types, setTypes] =
+    useState<MapEntityLocation["entityType"][]>(entityTypes);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,11 +59,17 @@ export default function MapPage() {
     setParams(next, { replace: true });
     setLoading(true);
     try {
-      setItems(
-        hasCoordinates
-          ? await nearbyMapPlaces(lat, lng, Number(radius))
-          : await searchMapPlaces(trimmed),
-      );
+      if (hasCoordinates) {
+        const [places, nearbyEntities] = await Promise.all([
+          nearbyMapPlaces(lat, lng, Number(radius)),
+          nearbyMapEntities(lat, lng, Number(radius), types),
+        ]);
+        setItems(places);
+        setEntities(nearbyEntities);
+      } else {
+        setItems(await searchMapPlaces(trimmed));
+        setEntities([]);
+      }
     } catch (caught) {
       setError((caught as Error).message || "Unable to load places.");
     } finally {
@@ -81,6 +103,27 @@ export default function MapPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Rome, Constantinople…"
             />
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Show</Form.Label>
+            <div className="d-flex gap-2 flex-wrap">
+              {entityTypes.map((type) => (
+                <Form.Check
+                  inline
+                  key={type}
+                  id={`map-type-${type}`}
+                  label={type[0] + type.slice(1).toLowerCase()}
+                  checked={types.includes(type)}
+                  onChange={() =>
+                    setTypes((current) =>
+                      current.includes(type)
+                        ? current.filter((value) => value !== type)
+                        : [...current, type],
+                    )
+                  }
+                />
+              ))}
+            </div>
           </Form.Group>
           <Form.Group>
             <Form.Label>Latitude</Form.Label>
@@ -141,6 +184,52 @@ export default function MapPage() {
           ))}
         </ul>
       </section>
+      {(latitude || longitude) && (
+        <section className="club-panel mt-3" aria-label="Nearby content">
+          <h2 className="h5">Nearby content</h2>
+          {!loading && !error && entities.length === 0 && (
+            <p className="text-muted mb-0">
+              No matching public content in this radius.
+            </p>
+          )}
+          <ul className="list-unstyled mb-0">
+            {entities.map((entity) => (
+              <li
+                key={`${entity.entityType}:${entity.entityId}:${entity.locationRole}`}
+                className="border-top py-2"
+              >
+                <Link to={entityPath(entity)}>{entity.label}</Link>
+                <span className="text-muted ms-2">
+                  {locationRoleLabel(entity)} · {entity.placeName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </PageLayout>
   );
+}
+
+function entityPath(entity: MapEntityLocation): string {
+  switch (entity.entityType) {
+    case "PROFILE":
+      return `/profile/${entity.entityId}`;
+    case "CLUB":
+      return `/clubs/${entity.entityId}`;
+    case "EVENT":
+      return `/events/${entity.entityId}`;
+    case "SOURCE":
+      return `/library/source/${entity.entityId}`;
+  }
+}
+
+function locationRoleLabel(entity: MapEntityLocation): string {
+  return {
+    CURRENT_RESIDENCE: "Residence",
+    CLUB_ASSOCIATION: "Associated place",
+    VENUE: "Venue",
+    DISCOVERED_AT: "Discovered at",
+    HELD_AT: "Held at",
+  }[entity.locationRole];
 }

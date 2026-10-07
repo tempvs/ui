@@ -6,6 +6,22 @@ export type MapPlace = {
   featureType: string;
 };
 
+export type MapEntityLocation = {
+  entityType: "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
+  entityId: string;
+  locationRole:
+    | "CURRENT_RESIDENCE"
+    | "CLUB_ASSOCIATION"
+    | "VENUE"
+    | "DISCOVERED_AT"
+    | "HELD_AT";
+  label: string;
+  placeId: string;
+  placeName: string;
+  latitude: number;
+  longitude: number;
+};
+
 async function responseJson(response: Response): Promise<unknown> {
   const text = await response.text();
   return text ? JSON.parse(text) : null;
@@ -47,4 +63,28 @@ export async function nearbyMapPlaces(
   if (!response.ok) throw new Error("Unable to find nearby places");
   const body = (await responseJson(response)) as { items?: unknown } | null;
   return Array.isArray(body?.items) ? (body?.items as MapPlace[]) : [];
+}
+
+/** Public, denormalized entity markers near a point. Map owns this read model
+ * so discovery never fans out to four service APIs. */
+export async function nearbyMapEntities(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  types: MapEntityLocation["entityType"][] = [],
+  signal?: AbortSignal,
+): Promise<MapEntityLocation[]> {
+  const response = await fetch(
+    `/api/map/entities?${new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      radiusKm: String(radiusKm),
+      limit: "100",
+      ...(types.length ? { types: types.join(",") } : {}),
+    })}`,
+    { signal },
+  );
+  if (!response.ok) throw new Error("Unable to find nearby content");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items) ? (body?.items as MapEntityLocation[]) : [];
 }
