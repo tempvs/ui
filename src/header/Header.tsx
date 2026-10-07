@@ -1,28 +1,33 @@
-import React, { Component } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
-import { NavigateFunction, useNavigate } from 'react-router-dom';
+import React, { Component } from "react";
+import { Col, Container, Row } from "react-bootstrap";
+import { NavigateFunction, useNavigate } from "react-router-dom";
 
-import HomeButton from '../home/HomeButton';
-import ProfileButton from '../profile/ProfileButton';
-import LibraryButton from '../library/LibraryButton';
-import ChatButton from '../chat/ChatButton';
-import ClubButton from '../club/ClubButton';
-import EventButton from '../event/EventButton';
-import NotificationButton from '../notification/NotificationButton';
-import SearchDialog from '../search/SearchDialog';
-import LoginRegisterButton from '../auth/LoginRegisterButton';
-import LogOutButton from '../auth/LogOutButton';
-import { fetchClubProfiles, fetchCurrentUserInfo, fetchUserProfileByUserId } from '../profile/profileApi';
+import HomeButton from "../home/HomeButton";
+import ProfileButton from "../profile/ProfileButton";
+import LibraryButton from "../library/LibraryButton";
+import ChatButton from "../chat/ChatButton";
+import ClubButton from "../club/ClubButton";
+import EventButton from "../event/EventButton";
+import MapButton from "../map/MapButton";
+import NotificationButton from "../notification/NotificationButton";
+import SearchDialog from "../search/SearchDialog";
+import LoginRegisterButton from "../auth/LoginRegisterButton";
+import LogOutButton from "../auth/LogOutButton";
+import {
+  fetchClubProfiles,
+  fetchCurrentUserInfo,
+  fetchUserProfileByUserId,
+} from "../profile/profileApi";
 import {
   buildOwnedProfileOptions,
   CurrentProfileOption,
   resolveCurrentProfileOption,
   setStoredCurrentProfileValue,
-} from '../profile/currentProfile';
-import { Profile } from '../profile/profileTypes';
-import ProfilePicker from '../profile/components/ProfilePicker';
+} from "../profile/currentProfile";
+import { Profile } from "../profile/profileTypes";
+import ProfilePicker from "../profile/components/ProfilePicker";
 
-import './Header.css';
+import "./Header.css";
 
 type OAuthProfile = {
   picture?: string | null;
@@ -54,11 +59,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       avatarText: null,
       currentUserId: null,
       currentProfileValue: null,
-      currentProfilePath: '/profile',
+      currentProfilePath: "/profile",
       profileOptions: [],
     };
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
-    this.handleCurrentProfileChange = this.handleCurrentProfileChange.bind(this);
+    this.handleCurrentProfileChange =
+      this.handleCurrentProfileChange.bind(this);
   }
 
   componentDidMount() {
@@ -66,64 +72,74 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
   }
 
   loadOAuthProfile() {
-    const clearAvatar = () => this.setState({
-      loggedIn: false,
-      avatarUrl: null,
-      avatarText: null,
-      currentUserId: null,
-      currentProfileValue: null,
-      currentProfilePath: '/profile',
-      profileOptions: [],
-    });
-    fetchCurrentUserInfo(result => {
+    const clearAvatar = () =>
+      this.setState({
+        loggedIn: false,
+        avatarUrl: null,
+        avatarText: null,
+        currentUserId: null,
+        currentProfileValue: null,
+        currentProfilePath: "/profile",
+        profileOptions: [],
+      });
+    fetchCurrentUserInfo((result) => {
       if (!result.currentUserId) {
         clearAvatar();
         return;
       }
 
       const oauthProfile = (result.oauthProfile || null) as OAuthProfile | null;
-      this.setState({
-        avatarUrl: oauthProfile?.picture || null,
-        avatarText: this.buildAvatarText(oauthProfile),
-        loggedIn: true,
-        currentUserId: String(result.currentUserId),
-      }, () => {
-        this.loadOwnedProfiles(String(result.currentUserId));
-      });
+      this.setState(
+        {
+          avatarUrl: oauthProfile?.picture || null,
+          avatarText: this.buildAvatarText(oauthProfile),
+          loggedIn: true,
+          currentUserId: String(result.currentUserId),
+        },
+        () => {
+          this.loadOwnedProfiles(String(result.currentUserId));
+        },
+      );
     });
   }
 
   loadOwnedProfiles(userId: string) {
-    const toPromiseUserProfile = () => new Promise<Profile | null>(resolve => {
-      fetchUserProfileByUserId(userId, {
-        onSuccess: profile => resolve(profile || null),
-        onMissing: () => resolve(null),
-        onError: () => resolve(null),
+    const toPromiseUserProfile = () =>
+      new Promise<Profile | null>((resolve) => {
+        fetchUserProfileByUserId(userId, {
+          onSuccess: (profile) => resolve(profile || null),
+          onMissing: () => resolve(null),
+          onError: () => resolve(null),
+        });
       });
-    });
 
-    const toPromiseClubProfiles = () => new Promise<Profile[]>(resolve => {
-      fetchClubProfiles(userId, {
-        onSuccess: profiles => resolve(Array.isArray(profiles) ? profiles : []),
-        onError: () => resolve([]),
+    const toPromiseClubProfiles = () =>
+      new Promise<Profile[]>((resolve) => {
+        fetchClubProfiles(userId, {
+          onSuccess: (profiles) =>
+            resolve(Array.isArray(profiles) ? profiles : []),
+          onError: () => resolve([]),
+        });
       });
-    });
 
     Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
       .then(([userProfile, clubProfiles]) => {
-        const profileOptions = buildOwnedProfileOptions(userProfile, clubProfiles);
+        const profileOptions = buildOwnedProfileOptions(
+          userProfile,
+          clubProfiles,
+        );
         const currentProfile = resolveCurrentProfileOption(profileOptions);
         this.setState({
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
-          currentProfilePath: currentProfile?.path || '/profile',
+          currentProfilePath: currentProfile?.path || "/profile",
         });
       })
       .catch(() => {
         this.setState({
           profileOptions: buildOwnedProfileOptions(null, []),
           currentProfileValue: null,
-          currentProfilePath: '/profile',
+          currentProfilePath: "/profile",
         });
       });
   }
@@ -133,18 +149,23 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       return;
     }
 
-    const selectedOption = this.state.profileOptions.find(option => option.value === nextValue);
+    const selectedOption = this.state.profileOptions.find(
+      (option) => option.value === nextValue,
+    );
     setStoredCurrentProfileValue(nextValue);
-    this.setState({
-      currentProfileValue: nextValue,
-      currentProfilePath: selectedOption?.path || '/profile',
-    }, () => {
-      this.props.navigate(selectedOption?.path || '/profile');
-    });
+    this.setState(
+      {
+        currentProfileValue: nextValue,
+        currentProfilePath: selectedOption?.path || "/profile",
+      },
+      () => {
+        this.props.navigate(selectedOption?.path || "/profile");
+      },
+    );
   }
 
   buildAvatarText(profile?: OAuthProfile | null) {
-    const name = (profile?.name || '').trim();
+    const name = (profile?.name || "").trim();
     if (name) {
       const words = name.split(/\s+/).filter(Boolean);
       if (words.length > 1) {
@@ -154,12 +175,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       return name.slice(0, 2).toUpperCase();
     }
 
-    const email = (profile?.email || '').trim();
+    const email = (profile?.email || "").trim();
     if (!email) {
       return null;
     }
 
-    const localPart = email.split('@')[0];
+    const localPart = email.split("@")[0];
     const tokens = localPart.split(/[._-]+/).filter(Boolean);
     if (tokens.length > 1) {
       return (tokens[0][0] + tokens[1][0]).toUpperCase();
@@ -193,6 +214,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                 <SearchDialog />
                 <ClubButton to="/clubs" />
                 <EventButton to="/events" />
+                <MapButton />
                 {this.state.loggedIn && (
                   <>
                     <ChatButton to="/chat" />
@@ -203,9 +225,14 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
               </div>
             </Col>
             <Col sm={1}>
-              {this.state.loggedIn
-                ? <LogOutButton avatarUrl={this.state.avatarUrl} avatarText={this.state.avatarText} />
-                : <LoginRegisterButton />}
+              {this.state.loggedIn ? (
+                <LogOutButton
+                  avatarUrl={this.state.avatarUrl}
+                  avatarText={this.state.avatarText}
+                />
+              ) : (
+                <LoginRegisterButton />
+              )}
             </Col>
           </Row>
         </Container>

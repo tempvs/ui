@@ -1,33 +1,41 @@
-import React from 'react';
-import 'bootstrap/dist/css/bootstrap.css';
+import React from "react";
+import "bootstrap/dist/css/bootstrap.css";
 
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useParams,
+} from "react-router-dom";
 
-import './App.css';
-import { PageShellContext } from './component/PageHeader';
-import Header from './header/Header';
-import ProfilePage from './profile/ProfilePage';
-import StashPage from './profile/StashPage';
-import StashItemPage from './profile/StashItemPage';
-import LibraryPage from './library/LibraryPage';
-import HomePage from './HomePage';
-import ChatPage from './chat/ChatPage';
-import ClubsPage from './club/ClubsPage';
-import ClubPage from './club/ClubPage';
-import ClubAdminPage from './club/ClubAdminPage';
-import EventsPage from './event/EventsPage';
-import EventPage from './event/EventPage';
-import EventAdminPage from './event/EventAdminPage';
-import NotificationsPage from './notification/NotificationsPage';
+import "./App.css";
+import { PageShellContext } from "./component/PageHeader";
+import Header from "./header/Header";
+import ProfilePage from "./profile/ProfilePage";
+import StashPage from "./profile/StashPage";
+import StashItemPage from "./profile/StashItemPage";
+import LibraryPage from "./library/LibraryPage";
+import HomePage from "./HomePage";
+import ChatPage from "./chat/ChatPage";
+import ClubsPage from "./club/ClubsPage";
+import ClubPage from "./club/ClubPage";
+import ClubAdminPage from "./club/ClubAdminPage";
+import EventsPage from "./event/EventsPage";
+import EventPage from "./event/EventPage";
+import EventAdminPage from "./event/EventAdminPage";
+import NotificationsPage from "./notification/NotificationsPage";
+import MapPage from "./map/MapPage";
 
 function ProfilePageWithParam() {
   const { id } = useParams();
-  return <ProfilePage key={`profile:${id || ''}`} id={id} />;
+  return <ProfilePage key={`profile:${id || ""}`} id={id} />;
 }
 
 function UserProfilePageWithParam() {
   const { userId } = useParams();
-  return <ProfilePage key={`user-profile:${userId || ''}`} userId={userId} />;
+  return <ProfilePage key={`user-profile:${userId || ""}`} userId={userId} />;
 }
 
 function LibraryPeriodPage() {
@@ -37,14 +45,22 @@ function LibraryPeriodPage() {
 function LibrarySourcePage() {
   return <LibraryPage view="source" />;
 }
-function LibrarySourceEditPage() { return <LibraryPage view="source-edit" />; }
-function LibrarySourceChangesetPage() { return <LibraryPage view="changeset" />; }
+function LibrarySourceEditPage() {
+  return <LibraryPage view="source-edit" />;
+}
+function LibrarySourceChangesetPage() {
+  return <LibraryPage view="changeset" />;
+}
 
 function LibraryAdminPage() {
   return <LibraryPage view="admin" />;
 }
-function LibrarySourceProposalsPage() { return <LibraryPage view="proposals" />; }
-function LibraryPendingProposalsPage() { return <LibraryPage view="pending-proposals" />; }
+function LibrarySourceProposalsPage() {
+  return <LibraryPage view="proposals" />;
+}
+function LibraryPendingProposalsPage() {
+  return <LibraryPage view="pending-proposals" />;
+}
 
 function ChatConversationPage() {
   return <ChatPage />;
@@ -57,42 +73,75 @@ function ClubPageWithParam() {
 
 /** Keeps the horizontal navigation mounted while React Router swaps page content. */
 function AppShell() {
-  const [headerMount, setHeaderMount] = React.useState<HTMLDivElement | null>(null);
-  return <>
-    <Header />
-    <div ref={setHeaderMount} className="app-shell-header-slot px-4 px-xl-5" />
-    {headerMount && (
-      <PageShellContext.Provider value={{ headerMount }}>
-        <Outlet />
-      </PageShellContext.Provider>
-    )}
-  </>;
+  const [headerMount, setHeaderMount] = React.useState<HTMLDivElement | null>(
+    null,
+  );
+  return (
+    <>
+      <Header />
+      <div
+        ref={setHeaderMount}
+        className="app-shell-header-slot px-4 px-xl-5"
+      />
+      {headerMount && (
+        <PageShellContext.Provider value={{ headerMount }}>
+          <Outlet />
+        </PageShellContext.Provider>
+      )}
+    </>
+  );
 }
 
 function App() {
   return (
     <div className="App">
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/user/:userId" element={<UserProfilePageWithParam />} />
+            <Route
+              path="/profile/user/:userId"
+              element={<UserProfilePageWithParam />}
+            />
             <Route path="/profile/:id" element={<ProfilePageWithParam />} />
             <Route path="/stash/:id" element={<StashPage />} />
-            <Route path="/stash/:id/items/:itemId" element={<StashItemPage />} />
+            <Route
+              path="/stash/:id/items/:itemId"
+              element={<StashItemPage />}
+            />
             <Route path="/library" element={<LibraryPage />} />
             <Route
               path="/library/admin"
               element={<Navigate replace to="/library/admin/members" />}
             />
             <Route path="/library/admin/:tab" element={<LibraryAdminPage />} />
-            <Route path="/library/source/:sourceId/edit" element={<LibrarySourceEditPage />} />
-            <Route path="/library/source/:sourceId/changesets/:changesetId" element={<LibrarySourceChangesetPage />} />
-            <Route path="/library/source/:sourceId/proposals" element={<LibrarySourceProposalsPage />} />
-            <Route path="/library/period/:period/proposals" element={<LibraryPendingProposalsPage />} />
-            <Route path="/library/period/:period" element={<LibraryPeriodPage />} />
-            <Route path="/library/source/:sourceId" element={<LibrarySourcePage />} />
+            <Route
+              path="/library/source/:sourceId/edit"
+              element={<LibrarySourceEditPage />}
+            />
+            <Route
+              path="/library/source/:sourceId/changesets/:changesetId"
+              element={<LibrarySourceChangesetPage />}
+            />
+            <Route
+              path="/library/source/:sourceId/proposals"
+              element={<LibrarySourceProposalsPage />}
+            />
+            <Route
+              path="/library/period/:period/proposals"
+              element={<LibraryPendingProposalsPage />}
+            />
+            <Route
+              path="/library/period/:period"
+              element={<LibraryPeriodPage />}
+            />
+            <Route
+              path="/library/source/:sourceId"
+              element={<LibrarySourcePage />}
+            />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/clubs" element={<ClubsPage />} />
             <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
@@ -100,8 +149,12 @@ function App() {
             <Route path="/events" element={<EventsPage />} />
             <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
             <Route path="/events/:eventId" element={<EventPage />} />
+            <Route path="/map" element={<MapPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
+            <Route
+              path="/chat/:conversationId"
+              element={<ChatConversationPage />}
+            />
           </Route>
         </Routes>
       </BrowserRouter>

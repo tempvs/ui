@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 import InlineSaveStatus from "./InlineSaveStatus";
 import type { SaveStatus } from "./EditableFieldRow";
@@ -99,9 +100,16 @@ export default function PlacePickerField({
               >
                 {value?.canonicalName || readOnlyLabel || placeholder}
               </button>
+            ) : value?.id ? (
+              <Link
+                className="small text-start px-1 py-1 d-inline-block"
+                to={`/map?q=${encodeURIComponent(value.canonicalName)}`}
+              >
+                {value.canonicalName}
+              </Link>
             ) : (
               <div className="small text-start px-1 py-1">
-                {value?.canonicalName || readOnlyLabel || "-"}
+                {readOnlyLabel || "-"}
               </div>
             )}
             {editable && (

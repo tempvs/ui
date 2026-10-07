@@ -27,3 +27,24 @@ export async function searchMapPlaces(
   const items = body?.items;
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
+
+/** Public bounded-radius lookup through the same-origin Map API. */
+export async function nearbyMapPlaces(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  signal?: AbortSignal,
+): Promise<MapPlace[]> {
+  const response = await fetch(
+    `/api/map/places/search?${new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      radiusKm: String(radiusKm),
+      limit: "50",
+    })}`,
+    { signal },
+  );
+  if (!response.ok) throw new Error("Unable to find nearby places");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items) ? (body?.items as MapPlace[]) : [];
+}
