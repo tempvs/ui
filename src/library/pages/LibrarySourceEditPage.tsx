@@ -8,6 +8,8 @@ import Spinner from "../../component/Spinner";
 import StackedImageGallery, {
   type GalleryImage,
 } from "../../component/StackedImageGallery";
+import PlacePickerField from "../../component/PlacePickerField";
+import type { MapPlace } from "../../map/mapApi";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
@@ -41,6 +43,10 @@ type Draft = {
   type: string;
   from: HistoricalYearInput;
   to: HistoricalYearInput;
+  discoveredAtPlaceId: string | null;
+  discoveredAtPlaceName: string;
+  heldAtPlaceId: string | null;
+  heldAtPlaceName: string;
 };
 
 type PendingImage = {
@@ -80,6 +86,10 @@ function asDraft(source: LibrarySource): Draft {
       year: source.to ? String(source.to.year) : "",
       era: source.to?.era || "AD",
     },
+    discoveredAtPlaceId: source.discoveredAtPlaceId || null,
+    discoveredAtPlaceName: source.discoveredAtPlaceName || "",
+    heldAtPlaceId: source.heldAtPlaceId || null,
+    heldAtPlaceName: source.heldAtPlaceName || "",
   };
 }
 
@@ -98,6 +108,10 @@ function asDraftSnapshot(source: SourceChangesetSnapshot): Draft {
       year: source.to ? String(source.to.year) : "",
       era: source.to?.era || "AD",
     },
+    discoveredAtPlaceId: source.discoveredAtPlaceId || null,
+    discoveredAtPlaceName: source.discoveredAtPlaceName || "",
+    heldAtPlaceId: source.heldAtPlaceId || null,
+    heldAtPlaceName: source.heldAtPlaceName || "",
   };
 }
 
@@ -115,6 +129,10 @@ function snapshot(draft: Draft): SourceChangesetSnapshot {
     to: draft.to.year
       ? { year: Number(draft.to.year), era: draft.to.era }
       : null,
+    discoveredAtPlaceId: draft.discoveredAtPlaceId,
+    discoveredAtPlaceName: draft.discoveredAtPlaceName || null,
+    heldAtPlaceId: draft.heldAtPlaceId,
+    heldAtPlaceName: draft.heldAtPlaceName || null,
   };
 }
 
@@ -692,6 +710,44 @@ export default function LibrarySourceEditPage() {
                   From cannot be later than To.
                 </div>
               )}
+            </fieldset>
+            <fieldset className="border rounded p-3 mb-4">
+              <legend className="float-none w-auto px-2 fs-6 mb-0">
+                Places
+              </legend>
+              <PlacePickerField
+                label="Discovered at"
+                editable
+                value={
+                  draft.discoveredAtPlaceId
+                    ? {
+                        id: draft.discoveredAtPlaceId,
+                        canonicalName: draft.discoveredAtPlaceName,
+                      }
+                    : null
+                }
+                onChange={(place: MapPlace | null) => {
+                  update("discoveredAtPlaceId", place?.id || null);
+                  update("discoveredAtPlaceName", place?.canonicalName || "");
+                }}
+              />
+              <PlacePickerField
+                label="Held at"
+                editable
+                value={
+                  draft.heldAtPlaceId
+                    ? {
+                        id: draft.heldAtPlaceId,
+                        canonicalName: draft.heldAtPlaceName,
+                      }
+                    : null
+                }
+                onChange={(place: MapPlace | null) => {
+                  update("heldAtPlaceId", place?.id || null);
+                  update("heldAtPlaceName", place?.canonicalName || "");
+                }}
+                className="mb-0"
+              />
             </fieldset>
             <fieldset className="border rounded p-3 mb-4">
               <legend className="float-none w-auto px-2 fs-6 mb-0">

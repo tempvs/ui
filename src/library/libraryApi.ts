@@ -28,6 +28,10 @@ export type LibrarySource = {
   type?: string | null;
   from?: HistoricalYear | null;
   to?: HistoricalYear | null;
+  discoveredAtPlaceId?: string | null;
+  discoveredAtPlaceName?: string | null;
+  heldAtPlaceId?: string | null;
+  heldAtPlaceName?: string | null;
 };
 
 export type HistoricalEra = "BC" | "AD";
@@ -71,18 +75,16 @@ export type SourceChangeProposal = {
   sourceId: string;
   proposerId: string;
   changes: Partial<Pick<LibrarySource, "name" | "description" | "from" | "to">>;
-  previous: Partial<Pick<LibrarySource, "name" | "description" | "from" | "to">>;
+  previous: Partial<
+    Pick<LibrarySource, "name" | "description" | "from" | "to">
+  >;
   baseVersion: number;
   status: "PENDING" | "APPLIED" | "REJECTED" | "SUPERSEDED";
   createdAt: string;
 };
 
 export type SourceChangesetStatus =
-  | "PENDING"
-  | "APPLIED"
-  | "REJECTED"
-  | "WITHDRAWN"
-  | "SUPERSEDED";
+  "PENDING" | "APPLIED" | "REJECTED" | "WITHDRAWN" | "SUPERSEDED";
 
 export type SourceChangesetSnapshot = Required<
   Pick<
@@ -92,6 +94,10 @@ export type SourceChangesetSnapshot = Required<
 > & {
   from: HistoricalYear | null;
   to: HistoricalYear | null;
+  discoveredAtPlaceId?: string | null;
+  discoveredAtPlaceName?: string | null;
+  heldAtPlaceId?: string | null;
+  heldAtPlaceName?: string | null;
 };
 
 export type SourceChangeset = {
@@ -437,7 +443,10 @@ export function getSourceChangesets(
           content: result.data?.content || [],
           nextToken: result.data?.nextToken || null,
         },
-      }) as ApiResponse<{ content: SourceChangeset[]; nextToken: string | null }>,
+      }) as ApiResponse<{
+        content: SourceChangeset[];
+        nextToken: string | null;
+      }>,
   );
 }
 
@@ -479,7 +488,10 @@ export function amendSourceChangeset(
     `/api/library/source/${sourceId}/changesets/${changesetId}`,
     {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${version}"`,
+      },
       body: JSON.stringify(draft),
     },
   );
@@ -532,7 +544,10 @@ export function rejectSourceChangeset(
     `/api/library/source/${sourceId}/changesets/${changesetId}/reject`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${version}"`,
+      },
       body: JSON.stringify({ comment }),
     },
   );
@@ -554,12 +569,19 @@ export function getPendingSourceChangesets({
   limit?: number;
 }) {
   const params = new URLSearchParams({ limit: String(limit) });
-  for (const [key, value] of Object.entries({ query, period, type, classification, nextToken })) {
+  for (const [key, value] of Object.entries({
+    query,
+    period,
+    type,
+    classification,
+    nextToken,
+  })) {
     if (value) params.set(key, value);
   }
-  return fetchJson<{ content?: PendingSourceChangeset[]; nextToken?: string | null }>(
-    `/api/library/library/admin/changesets?${params}`,
-  );
+  return fetchJson<{
+    content?: PendingSourceChangeset[];
+    nextToken?: string | null;
+  }>(`/api/library/library/admin/changesets?${params}`);
 }
 
 export function getSourceChangesetImages(
@@ -597,10 +619,15 @@ export async function uploadSourceChangesetImage(
       }),
     },
   );
-  if (!result.ok) return { ...result, data: result.data as ApiErrorPayload | null };
+  if (!result.ok)
+    return { ...result, data: result.data as ApiErrorPayload | null };
   const intent = result.data as ImageUploadIntent | null;
   if (!intent?.upload || !intent.image) {
-    return { ok: false, status: 500, data: { message: "Invalid staged image upload response" } };
+    return {
+      ok: false,
+      status: 500,
+      data: { message: "Invalid staged image upload response" },
+    };
   }
   const uploaded = await fetch(intent.upload.url, {
     method: intent.upload.method,
@@ -608,7 +635,11 @@ export async function uploadSourceChangesetImage(
     body: file,
   });
   if (!uploaded.ok) {
-    return { ok: false, status: uploaded.status, data: { message: "Unable to upload staged image" } };
+    return {
+      ok: false,
+      status: uploaded.status,
+      data: { message: "Unable to upload staged image" },
+    };
   }
   return { ok: true, status: 201, data: intent.image };
 }
