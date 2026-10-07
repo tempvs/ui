@@ -21,6 +21,7 @@ function canReviewPlaces(viewer: Viewer | null): boolean {
 export default function MapAdminPage() {
   const [viewer, setViewer] = useState<Viewer | null | undefined>(undefined);
   const [proposals, setProposals] = useState<PendingMapPlace[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,12 +38,30 @@ export default function MapAdminPage() {
     setLoading(true);
     setError("");
     void listPendingMapPlaces()
-      .then(setProposals)
+      .then((page) => {
+        setProposals(page.items);
+        setNextCursor(page.nextCursor);
+      })
       .catch((caught: unknown) =>
         setError((caught as Error).message || "Unable to load proposals."),
       )
       .finally(() => setLoading(false));
   }, [mayReview]);
+
+  const loadMore = async () => {
+    if (!nextCursor) return;
+    setLoading(true);
+    setError("");
+    try {
+      const page = await listPendingMapPlaces(nextCursor);
+      setProposals((current) => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load more proposals.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const review = async (proposal: PendingMapPlace, decision: "approve" | "reject") => {
     setReviewingId(proposal.id);
@@ -83,8 +102,9 @@ export default function MapAdminPage() {
           <p className="text-muted mb-0">There are no pending proposals.</p>
         )}
         {mayReview && proposals.length > 0 && (
-          <ul className="list-unstyled mb-0">
-            {proposals.map((proposal) => (
+          <>
+            <ul className="list-unstyled mb-0">
+              {proposals.map((proposal) => (
               <li key={proposal.id} className="border-top py-3">
                 <div className="d-flex justify-content-between gap-3 flex-wrap">
                   <div>
@@ -134,8 +154,19 @@ export default function MapAdminPage() {
                   </div>
                 </div>
               </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
+            {nextCursor && (
+              <Button
+                className="mt-3"
+                variant="outline-dark"
+                disabled={loading}
+                onClick={() => void loadMore()}
+              >
+                {loading ? "Loading…" : "Load more"}
+              </Button>
+            )}
+          </>
         )}
       </section>
     </PageLayout>

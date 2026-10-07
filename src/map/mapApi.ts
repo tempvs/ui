@@ -58,7 +58,9 @@ export async function searchMapPlaces(
     { signal },
   );
   if (!response.ok) throw new Error("Unable to search places");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const body = (await responseJson(response)) as
+    | { items?: unknown; nextCursor?: unknown }
+    | null;
   const items = body?.items;
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
@@ -93,7 +95,9 @@ export async function findLikelyDuplicateMapPlaces(
     { signal },
   );
   if (!response.ok) throw new Error("Unable to check for similar places");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const body = (await responseJson(response)) as
+    | { items?: unknown; nextCursor?: unknown }
+    | null;
   const items = body?.items;
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
@@ -112,14 +116,29 @@ export async function proposeMapPlace(
   if (!response.ok) throw new Error("Unable to submit this place proposal");
 }
 
-export async function listPendingMapPlaces(): Promise<PendingMapPlace[]> {
-  const response = await fetch("/api/map/admin/places/proposals");
+export type PendingMapPlacePage = {
+  items: PendingMapPlace[];
+  nextCursor?: string;
+};
+
+export async function listPendingMapPlaces(
+  cursor?: string,
+): Promise<PendingMapPlacePage> {
+  const query = cursor ? `?${new URLSearchParams({ cursor })}` : "";
+  const response = await fetch(`/api/map/admin/places/proposals${query}`);
   if (response.status === 401 || response.status === 403)
     throw new Error("Map editor access is required");
   if (!response.ok) throw new Error("Unable to load pending place proposals");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const body = (await responseJson(response)) as
+    | { items?: unknown; nextCursor?: unknown }
+    | null;
   const items = body?.items;
-  return Array.isArray(items) ? (items as PendingMapPlace[]) : [];
+  return {
+    items: Array.isArray(items) ? (items as PendingMapPlace[]) : [],
+    ...(typeof body?.nextCursor === "string"
+      ? { nextCursor: body.nextCursor }
+      : {}),
+  };
 }
 
 export async function approveMapPlace(id: string, note?: string): Promise<void> {
