@@ -49,6 +49,8 @@ export default function PlaceProposalModal({
     if (
       !show ||
       normalizedName.length < 2 ||
+      !latitude.trim() ||
+      !longitude.trim() ||
       !Number.isFinite(parsedLatitude) ||
       parsedLatitude < -90 ||
       parsedLatitude > 90 ||
@@ -87,6 +89,8 @@ export default function PlaceProposalModal({
       return;
     }
     if (
+      !latitude.trim() ||
+      !longitude.trim() ||
       !Number.isFinite(parsedLatitude) ||
       parsedLatitude < -90 ||
       parsedLatitude > 90 ||
