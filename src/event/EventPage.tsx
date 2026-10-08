@@ -281,7 +281,7 @@ export default function EventPage() {
     replaceItem({
       ...current,
       venuePlaceId: place?.id || null,
-      venuePlaceName: place?.canonicalName || null,
+      venuePlaceName: place?.matchedName || place?.canonicalName || null,
     });
     void saveField("venue");
   };

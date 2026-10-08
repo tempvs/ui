@@ -3,7 +3,7 @@ import { OverlayTrigger, Popover, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import { getMapPlace, type MapPlace } from "../map/mapApi";
-import { formatPlaceNameRange } from "../map/placeNames";
+import PlaceNamesList from "./PlaceNamesList";
 
 type PlaceNamePopoverProps = {
   placeId: string;
@@ -42,18 +42,7 @@ export default function PlaceNamePopover({
             ) : place ? (
               <>
                 <strong>{displayName}</strong>
-                <ul className="map-place-name-list">
-                  {(place.names?.length
-                    ? place.names
-                    : [{ value: place.canonicalName, preferred: true }]
-                  ).map((name, index) => (
-                    <li key={`${name.value}:${index}`}>
-                      {name.value}
-                      {name.preferred ? " (canonical)" : ""}
-                      {formatPlaceNameRange(name.validFrom, name.validTo)}
-                    </li>
-                  ))}
-                </ul>
+                <PlaceNamesList place={place} />
                 <Link to={`/map?placeId=${encodeURIComponent(placeId)}`}>
                   Open on map
                 </Link>

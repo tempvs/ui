@@ -54,7 +54,7 @@ export default function EventForm({
   const [periods, setPeriods] = useState<Period[]>(initial?.periods || []);
   const [venue, setVenue] = useState<Pick<
     MapPlace,
-    "id" | "canonicalName"
+    "id" | "canonicalName" | "matchedName"
   > | null>(
     initial?.venuePlaceId
       ? {
@@ -114,7 +114,7 @@ export default function EventForm({
       description: description.trim() || null,
       periods,
       venuePlaceId: venue?.id || null,
-      venuePlaceName: venue?.canonicalName || null,
+      venuePlaceName: venue?.matchedName || venue?.canonicalName || null,
       schedule,
     });
   };
