@@ -641,13 +641,25 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       fieldName === "location"
         ? this.state.locationPlaceId || ""
         : this.state[fieldName] || "";
+    // A place ID alone is not the complete location value: choosing a
+    // historical approved name for the same place must still be persisted.
+    const locationUnchanged =
+      fieldName === "location" &&
+      currentValue === persistedValue &&
+      this.state.location === (this.state.persistedProfile?.location || "");
     const rangeUnchanged =
       isRangeField &&
       this.state.fromYear === (this.state.persistedProfile?.fromYear || "") &&
       this.state.fromEra === (this.state.persistedProfile?.fromEra || "AD") &&
       this.state.toYear === (this.state.persistedProfile?.toYear || "") &&
       this.state.toEra === (this.state.persistedProfile?.toEra || "AD");
-    if (rangeUnchanged || (!isRangeField && currentValue === persistedValue)) {
+    if (
+      rangeUnchanged ||
+      (!isRangeField &&
+        (fieldName === "location"
+          ? locationUnchanged
+          : currentValue === persistedValue))
+    ) {
       this.setState((prevState) => ({
         fieldStatuses: {
           ...prevState.fieldStatuses,
