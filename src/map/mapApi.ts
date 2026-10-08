@@ -5,6 +5,12 @@ export type MapPlaceName = {
   validTo?: number;
 };
 
+export type MapHistoricalNameRange = {
+  /** Astronomical years used by the Map API. An omitted end stays open. */
+  from?: number;
+  to?: number;
+};
+
 export type MapPlace = {
   id: string;
   canonicalName: string;
@@ -63,17 +69,24 @@ async function responseJson(response: Response): Promise<unknown> {
 export async function searchMapPlaces(
   query: string,
   signal?: AbortSignal,
+  nameRange: MapHistoricalNameRange = {},
 ): Promise<MapPlace[]> {
   const normalized = query.trim();
   if (normalized.length < 2) return [];
   const response = await fetch(
-    `/api/map/places/search?${new URLSearchParams({ q: normalized, limit: "20" })}`,
+    `/api/map/places/search?${new URLSearchParams({
+      q: normalized,
+      limit: "20",
+      ...(nameRange.from !== undefined ? { from: String(nameRange.from) } : {}),
+      ...(nameRange.to !== undefined ? { to: String(nameRange.to) } : {}),
+    })}`,
     { signal },
   );
   if (!response.ok) throw new Error("Unable to search places");
-  const body = (await responseJson(response)) as
-    | { items?: unknown; nextCursor?: unknown }
-    | null;
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
   const items = body?.items;
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
@@ -99,10 +112,12 @@ export async function listMapPlaceEntities(
   signal?: AbortSignal,
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
-    `/api/map/places/${encodeURIComponent(placeId)}/entities?${new URLSearchParams({
-      limit: "100",
-      ...(types.length ? { types: types.join(",") } : {}),
-    })}`,
+    `/api/map/places/${encodeURIComponent(placeId)}/entities?${new URLSearchParams(
+      {
+        limit: "100",
+        ...(types.length ? { types: types.join(",") } : {}),
+      },
+    )}`,
     { signal },
   );
   if (response.status === 404) return [];
@@ -129,9 +144,10 @@ export async function findLikelyDuplicateMapPlaces(
     { signal },
   );
   if (!response.ok) throw new Error("Unable to check for similar places");
-  const body = (await responseJson(response)) as
-    | { items?: unknown; nextCursor?: unknown }
-    | null;
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
   const items = body?.items;
   return Array.isArray(items) ? (items as MapPlace[]) : [];
 }
@@ -163,9 +179,10 @@ export async function listPendingMapPlaces(
   if (response.status === 401 || response.status === 403)
     throw new Error("Map editor access is required");
   if (!response.ok) throw new Error("Unable to load pending place proposals");
-  const body = (await responseJson(response)) as
-    | { items?: unknown; nextCursor?: unknown }
-    | null;
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
   const items = body?.items;
   return {
     items: Array.isArray(items) ? (items as PendingMapPlace[]) : [],
@@ -175,7 +192,10 @@ export async function listPendingMapPlaces(
   };
 }
 
-export async function approveMapPlace(id: string, note?: string): Promise<void> {
+export async function approveMapPlace(
+  id: string,
+  note?: string,
+): Promise<void> {
   const response = await fetch(
     `/api/map/admin/places/${encodeURIComponent(id)}/approve`,
     {
