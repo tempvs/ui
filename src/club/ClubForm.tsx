@@ -115,7 +115,7 @@ export default function ClubForm({
                 setDraft({
                   ...draft,
                   locationPlaceId: place?.id || null,
-                  location: place?.canonicalName || "",
+                  location: place?.matchedName || place?.canonicalName || "",
                 })
               }
             />

@@ -728,7 +728,7 @@ export default function LibrarySourceEditPage() {
                 }
                 onChange={(place: MapPlace | null) => {
                   update("discoveredAtPlaceId", place?.id || null);
-                  update("discoveredAtPlaceName", place?.canonicalName || "");
+                  update("discoveredAtPlaceName", place?.matchedName || place?.canonicalName || "");
                 }}
               />
               <PlacePickerField
@@ -744,7 +744,7 @@ export default function LibrarySourceEditPage() {
                 }
                 onChange={(place: MapPlace | null) => {
                   update("heldAtPlaceId", place?.id || null);
-                  update("heldAtPlaceName", place?.canonicalName || "");
+                  update("heldAtPlaceName", place?.matchedName || place?.canonicalName || "");
                 }}
                 className="mb-0"
               />

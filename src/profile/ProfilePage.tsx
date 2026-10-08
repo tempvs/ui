@@ -498,12 +498,12 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   };
 
   handleLocationPlaceChange = (
-    place: { id: string; canonicalName: string } | null,
+    place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => {
     this.setState(
       {
         locationPlaceId: place?.id || null,
-        location: place?.canonicalName || "",
+        location: place?.matchedName || place?.canonicalName || "",
       },
       () => {
         if (this.isEditableProfile()) this.saveField("location");

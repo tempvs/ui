@@ -556,7 +556,7 @@ export default function ClubPage() {
     const next = {
       ...current,
       locationPlaceId: place?.id || null,
-      location: place?.canonicalName || "",
+      location: place?.matchedName || place?.canonicalName || "",
     };
     draftRef.current = next;
     setClub((existing) =>

@@ -145,6 +145,18 @@
   padding-left: 1rem;
 }
 
+.place-name-popover-trigger {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+}
+
+.place-name-popover-trigger:hover,
+.place-name-popover-trigger:focus-visible {
+  color: #72562f;
+}
+
 @media (max-width: 575px) {
   .map-canvas-shell {
     min-height: 22rem;

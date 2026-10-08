@@ -13,6 +13,7 @@ import {
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import PlaceProposalModal from "./PlaceProposalModal";
+import { matchingPlaceName } from "./placeNames";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -292,7 +293,10 @@ export default function MapPage() {
           onSubmit={search}
           className="d-flex gap-2 flex-wrap align-items-end"
         >
-          <Form.Group className="map-place-search-field" controlId="map-place-search">
+          <Form.Group
+            className="map-place-search-field"
+            controlId="map-place-search"
+          >
             <Form.Label>Place</Form.Label>
             <Form.Control
               value={query}
@@ -311,12 +315,19 @@ export default function MapPage() {
               </p>
             )}
             {suggestionsFailed && (
-              <p className="map-place-suggestions-status text-danger" role="alert">
+              <p
+                className="map-place-suggestions-status text-danger"
+                role="alert"
+              >
                 Unable to search places right now.
               </p>
             )}
             {!suggestionsLoading && suggestions && (
-              <div className="map-place-suggestions" role="listbox" aria-label="Matching places">
+              <div
+                className="map-place-suggestions"
+                role="listbox"
+                aria-label="Matching places"
+              >
                 {suggestions.length === 0 ? (
                   <p className="small text-muted mb-0 px-2 py-1">
                     No approved places match this search.
@@ -331,11 +342,19 @@ export default function MapPage() {
                       aria-selected={selectedPlaceId === place.id}
                       onClick={() => void selectPlace(place)}
                     >
-                      <strong>{place.matchedName || place.canonicalName}</strong>
-                      {place.matchedName && place.matchedName !== place.canonicalName && (
-                        <span className="text-muted"> ({place.canonicalName})</span>
-                      )}
-                      <span className="text-muted ms-2 small">{place.featureType}</span>
+                      <strong>
+                        {place.matchedName || place.canonicalName}
+                      </strong>
+                      {place.matchedName &&
+                        place.matchedName !== place.canonicalName && (
+                          <span className="text-muted">
+                            {" "}
+                            ({place.canonicalName})
+                          </span>
+                        )}
+                      <span className="text-muted ms-2 small">
+                        {place.featureType}
+                      </span>
                     </button>
                   ))
                 )}
@@ -469,9 +488,12 @@ export default function MapPage() {
               >
                 {place.matchedName || place.canonicalName}
               </button>
-              {place.matchedName && place.matchedName !== place.canonicalName && (
-                <span className="text-muted ms-1">({place.canonicalName})</span>
-              )}
+              {place.matchedName &&
+                place.matchedName !== place.canonicalName && (
+                  <span className="text-muted ms-1">
+                    ({place.canonicalName})
+                  </span>
+                )}
               <span className="text-muted ms-2">
                 {place.featureType} · {place.latitude.toFixed(4)},{" "}
                 {place.longitude.toFixed(4)}
@@ -539,30 +561,6 @@ export default function MapPage() {
       />
     </PageLayout>
   );
-}
-
-function matchingPlaceName(place: MapPlace, query: string): string {
-  const normalizedQuery = normalizePlaceName(query);
-  if (!normalizedQuery) return place.canonicalName;
-  const names = place.names?.length
-    ? place.names
-    : [{ value: place.canonicalName, preferred: true }];
-  return (
-    names.find((name) => normalizePlaceName(name.value).startsWith(normalizedQuery))
-      ?.value ||
-    names.find((name) => normalizePlaceName(name.value).includes(normalizedQuery))
-      ?.value ||
-    place.canonicalName
-  );
-}
-
-function normalizePlaceName(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
 }
 
 function entityPath(entity: MapEntityLocation): string {

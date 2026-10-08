@@ -3,6 +3,7 @@ import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { MapEntityLocation, MapPlace } from "./mapApi";
+import { formatPlaceNameRange } from "./placeNames";
 import "./map.css";
 
 type MapCanvasProps = {
@@ -155,7 +156,11 @@ export default function MapCanvas({
       .addTo(map.current);
     element.addEventListener("click", () => {
       placeSelectRef.current?.(place);
-      new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "18rem" })
+      new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: true,
+        maxWidth: "18rem",
+      })
         .setLngLat([place.longitude, place.latitude])
         .setDOMContent(placePopover(place))
         .addTo(map.current as maplibregl.Map);
@@ -363,7 +368,11 @@ function addMarkerLayers(
     if (!place) return;
     const coordinates = (event.features?.[0]?.geometry as GeoJSON.Point)
       .coordinates as [number, number];
-    new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "18rem" })
+    new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: true,
+      maxWidth: "18rem",
+    })
       .setLngLat(coordinates)
       .setDOMContent(placePopover(place))
       .addTo(map);
@@ -461,27 +470,12 @@ function placePopover(place: MapPlace): HTMLDivElement {
     list.className = "map-place-name-list";
     for (const name of distinctNames) {
       const item = document.createElement("li");
-      item.textContent = `${name.value}${name.preferred ? " (canonical)" : ""}${formatNameRange(name.validFrom, name.validTo)}`;
+      item.textContent = `${name.value}${name.preferred ? " (canonical)" : ""}${formatPlaceNameRange(name.validFrom, name.validTo)}`;
       list.append(item);
     }
     container.append(list);
   }
   return container;
-}
-
-function formatNameRange(from?: number, to?: number): string {
-  if (from === undefined && to === undefined) return "";
-  if (from !== undefined && to !== undefined)
-    return ` · ${formatNameYear(from)}–${formatNameYear(to)}`;
-  return from !== undefined
-    ? ` · from ${formatNameYear(from)}`
-    : ` · until ${formatNameYear(to as number)}`;
-}
-
-function formatNameYear(year: number): string {
-  // Map records use astronomical numbering internally: zero is 1 BC.
-  if (year <= 0) return `${1 - year} BC`;
-  return year < 100 ? `${year} AD` : String(year);
 }
 
 export function entityKey(entity: MapEntityLocation): string {

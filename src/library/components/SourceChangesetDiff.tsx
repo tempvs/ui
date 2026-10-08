@@ -238,6 +238,11 @@ export default function SourceChangesetDiff({
       { from: base.from, to: base.to },
       { from: proposed.from, to: proposed.to },
     ],
+    discoveredAtPlaceName: [
+      base.discoveredAtPlaceName,
+      proposed.discoveredAtPlaceName,
+    ],
+    heldAtPlaceName: [base.heldAtPlaceName, proposed.heldAtPlaceName],
   } as const;
 
   const rows = Object.entries(values).filter(

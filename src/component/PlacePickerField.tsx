@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
-import { Link } from "react-router-dom";
 
 import InlineSaveStatus from "./InlineSaveStatus";
+import PlaceNamePopover from "./PlaceNamePopover";
 import type { SaveStatus } from "./EditableFieldRow";
 import { MapPlace, searchMapPlaces } from "../map/mapApi";
+import { matchingPlaceName } from "../map/placeNames";
 
 type PlacePickerFieldProps = {
   label: React.ReactNode;
@@ -60,7 +61,14 @@ export default function PlacePickerField({
       setLoading(true);
       setFailed(false);
       searchMapPlaces(query, controller.signal)
-        .then(setResults)
+        .then((places) =>
+          setResults(
+            places.map((place) => ({
+              ...place,
+              matchedName: matchingPlaceName(place, query),
+            })),
+          ),
+        )
         .catch((error) => {
           if ((error as Error).name !== "AbortError") setFailed(true);
         })
@@ -73,7 +81,10 @@ export default function PlacePickerField({
   }, [query, show]);
 
   const select = (place: MapPlace) => {
-    onChange(place);
+    onChange({
+      ...place,
+      matchedName: place.matchedName || matchingPlaceName(place, query),
+    });
     setShow(false);
     setQuery("");
   };
@@ -101,12 +112,10 @@ export default function PlacePickerField({
                 {value?.canonicalName || readOnlyLabel || placeholder}
               </button>
             ) : value?.id ? (
-              <Link
-                className="small text-start px-1 py-1 d-inline-block"
-                to={`/map?placeId=${encodeURIComponent(value.id)}`}
-              >
-                {value.canonicalName}
-              </Link>
+              <PlaceNamePopover
+                placeId={value.id}
+                displayName={value.canonicalName}
+              />
             ) : (
               <div className="small text-start px-1 py-1">
                 {readOnlyLabel || "-"}
@@ -174,7 +183,14 @@ export default function PlacePickerField({
                   className="w-100 text-start mb-1"
                   onClick={() => select(place)}
                 >
-                  <strong>{place.canonicalName}</strong>
+                  <strong>{place.matchedName || place.canonicalName}</strong>
+                  {place.matchedName &&
+                    place.matchedName !== place.canonicalName && (
+                      <span className="text-muted">
+                        {" "}
+                        ({place.canonicalName})
+                      </span>
+                    )}
                   <span className="ms-2 small text-muted">
                     {place.featureType}
                   </span>

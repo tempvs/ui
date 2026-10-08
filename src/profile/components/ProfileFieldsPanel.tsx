@@ -28,7 +28,7 @@ type ProfileFieldsPanelProps = {
   onInputChange: (event: { target: { name: string; value: string } }) => void;
   onFieldBlur: (field: ProfileField) => void;
   onLocationChange: (
-    place: { id: string; canonicalName: string } | null,
+    place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => void;
   rangeControl?: React.ReactNode;
 };

@@ -16,7 +16,7 @@ type CreateProfileFormProps = {
   t: MessageFormatter;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
   onLocationChange?: (
-    place: { id: string; canonicalName: string } | null,
+    place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => void;
   onSubmit?: React.FormEventHandler<HTMLFormElement>;
 };
