@@ -115,7 +115,9 @@ export default function MapPage() {
       if (hasCoordinates) {
         const [places, nearbyEntities] = await Promise.all([
           nearbyMapPlaces(lat, lng, Number(radius)),
-          nearbyMapEntities(lat, lng, Number(radius), types, contentQuery),
+          types.length
+            ? nearbyMapEntities(lat, lng, Number(radius), types, contentQuery)
+            : Promise.resolve([]),
         ]);
         setItems(
           linkedPlace
