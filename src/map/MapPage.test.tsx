@@ -1,5 +1,11 @@
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
@@ -14,14 +20,36 @@ jest.mock("./MapCanvas", () => {
   const React = require("react");
   return {
     __esModule: true,
-    default: ({ places, selectedPlaceId }: { places: Array<{ id: string; matchedName?: string; canonicalName: string }>; selectedPlaceId?: string | null }) =>
+    default: ({
+      places,
+      selectedPlaceId,
+    }: {
+      places: Array<{
+        id: string;
+        matchedName?: string;
+        canonicalName: string;
+      }>;
+      selectedPlaceId?: string | null;
+    }) =>
       React.createElement(
         "div",
-        { "data-testid": "map-canvas", "data-selected-place": selectedPlaceId || "" },
-        places.map((place) => React.createElement("span", { key: place.id }, place.matchedName || place.canonicalName)),
+        {
+          "data-testid": "map-canvas",
+          "data-selected-place": selectedPlaceId || "",
+        },
+        places.map((place) =>
+          React.createElement(
+            "span",
+            { key: place.id },
+            place.matchedName || place.canonicalName,
+          ),
+        ),
       ),
-    entityKey: (entity: { entityType: string; entityId: string; locationRole: string }) =>
-      `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
+    entityKey: (entity: {
+      entityType: string;
+      entityId: string;
+      locationRole: string;
+    }) => `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
   };
 });
 
@@ -46,7 +74,12 @@ test("searches places while typing and labels the selected marker with the match
       canonicalName: "Regensburg",
       names: [
         { value: "Regensburg", preferred: true },
-        { value: "Castra Regina", preferred: false, validFrom: 179, validTo: 500 },
+        {
+          value: "Castra Regina",
+          preferred: false,
+          validFrom: 179,
+          validTo: 500,
+        },
       ],
       latitude: 49.0198,
       longitude: 12.0985,
@@ -68,10 +101,17 @@ test("searches places while typing and labels the selected marker with the match
   await act(async () => {
     jest.advanceTimersByTime(200);
   });
-  await waitFor(() => expect(mockSearchMapPlaces).toHaveBeenCalledWith("Castra", expect.anything()));
+  await waitFor(() =>
+    expect(mockSearchMapPlaces).toHaveBeenCalledWith(
+      "Castra",
+      expect.anything(),
+    ),
+  );
 
   await act(async () => {
-    fireEvent.click(await screen.findByRole("option", { name: /Castra Regina.*Regensburg/ }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Castra Regina.*Regensburg/ }),
+    );
     await Promise.resolve();
   });
   await waitFor(() => {
@@ -84,4 +124,37 @@ test("searches places while typing and labels the selected marker with the match
   });
 
   jest.useRealTimers();
+});
+
+test("restores source discovery facets from a shareable map URL", async () => {
+  mockGetViewer.mockResolvedValue(null);
+  mockNearbyMapPlaces.mockResolvedValue([]);
+  mockNearbyMapEntities.mockResolvedValue([]);
+
+  render(
+    <MemoryRouter
+      initialEntries={[
+        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL",
+      ]}
+    >
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() =>
+    expect(mockNearbyMapEntities).toHaveBeenCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      "",
+      undefined,
+      ["DISCOVERED_AT"],
+      {
+        period: "ANTIQUITY",
+        classifications: ["WEAPON"],
+        types: ["ARCHAEOLOGICAL"],
+      },
+    ),
+  );
 });
