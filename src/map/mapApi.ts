@@ -48,6 +48,9 @@ export type MapEntityLocation = {
   placeName: string;
   latitude: number;
   longitude: number;
+  sourcePeriod?: string;
+  sourceClassification?: string;
+  sourceType?: string;
 };
 
 export type MapEntityLocationPage = {
@@ -58,6 +61,11 @@ export type MapEntityLocationPage = {
 /** A source's two distinct map meanings. These deliberately do not filter
  * profile, club, or event markers when used in a mixed nearby search. */
 export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
+export type MapSourceFilters = {
+  period?: string;
+  classifications?: string[];
+  types?: string[];
+};
 
 export type MapPlaceProposal = {
   canonicalName: string;
@@ -299,6 +307,7 @@ export async function nearbyMapEntities(
   query?: string,
   signal?: AbortSignal,
   sourceRoles: SourceLocationRole[] = [],
+  sourceFilters: MapSourceFilters = {},
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -309,6 +318,13 @@ export async function nearbyMapEntities(
       ...(types.length ? { types: types.join(",") } : {}),
       ...(query?.trim() ? { search: query.trim() } : {}),
       ...(sourceRoles.length ? { sourceRoles: sourceRoles.join(",") } : {}),
+      ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
+      ...(sourceFilters.classifications?.length
+        ? { sourceClassifications: sourceFilters.classifications.join(",") }
+        : {}),
+      ...(sourceFilters.types?.length
+        ? { sourceTypes: sourceFilters.types.join(",") }
+        : {}),
     })}`,
     { signal },
   );

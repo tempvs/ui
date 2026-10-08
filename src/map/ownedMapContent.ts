@@ -7,7 +7,7 @@ import {
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import type { Profile } from "../profile/profileTypes";
-import { getMapPlace } from "./mapApi";
+import { getMapPlace, type MapPlace } from "./mapApi";
 
 export type OwnedMapMarker = {
   key: string;
@@ -51,28 +51,30 @@ export async function loadOwnedMapContent(
         : []),
     ].filter((profile): profile is Profile => Boolean(profile)),
   );
+  const resolvePlace = placeResolver();
 
   const [profileMarkers, clubs, sourceIds] = await Promise.all([
-    profileMapMarkers(profiles),
+    profileMapMarkers(profiles, resolvePlace),
     memberClubs(profiles),
     sourceIdsUsedByClubProfiles(
       profiles.filter((profile) => profile.type === "CLUB"),
     ),
   ]);
   const [clubMarkers, sourceMarkers] = await Promise.all([
-    clubMapMarkers(clubs),
-    sourceMapMarkers(sourceIds),
+    clubMapMarkers(clubs, resolvePlace),
+    sourceMapMarkers(sourceIds, resolvePlace),
   ]);
   return [...profileMarkers, ...clubMarkers, ...sourceMarkers];
 }
 
 async function profileMapMarkers(
   profiles: Profile[],
+  resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker[]> {
   const prepared = await Promise.all(
     profiles.map(async (profile) => {
       const [place, avatar] = await Promise.all([
-        placeFor(profile),
+        placeFor(profile, resolvePlace),
         getProfileAvatar(profile.id).catch(() => null),
       ]);
       if (!place || !profile.locationPlaceId) return null;
@@ -104,10 +106,13 @@ async function memberClubs(profiles: Profile[]): Promise<Club[]> {
   );
 }
 
-async function clubMapMarkers(clubs: Club[]): Promise<OwnedMapMarker[]> {
+async function clubMapMarkers(
+  clubs: Club[],
+  resolvePlace: PlaceResolver,
+): Promise<OwnedMapMarker[]> {
   const prepared = await Promise.all(
     clubs.map(async (club) => {
-      const place = await placeFor(club);
+      const place = await placeFor(club, resolvePlace);
       if (!place || !club.locationPlaceId) return null;
       return marker({
         entityType: "CLUB",
@@ -151,25 +156,28 @@ async function sourceIdsUsedByClubProfiles(
 
 async function sourceMapMarkers(
   sourceIds: string[],
+  resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker[]> {
-  const sources = await Promise.allSettled(
-    sourceIds.map(async (sourceId) => {
-      const result = await getSource(sourceId);
-      return result.ok ? result.data : null;
-    }),
+  const sources = await inBatches(sourceIds, 8, async (sourceId) => {
+    const result = await getSource(sourceId);
+    return result.ok ? result.data : null;
+  });
+  const sourceLocationsToResolve = sources
+    .flatMap((result) =>
+      result.status === "fulfilled" && result.value ? [result.value] : [],
+    )
+    .flatMap((source) =>
+      sourceLocations(source).map((location) => ({ source, location })),
+    );
+  const markers = await inBatches(
+    sourceLocationsToResolve,
+    8,
+    async ({ source, location }) =>
+      sourceMarker(source, location, resolvePlace),
   );
-  const markers = await Promise.all(
-    sources
-      .flatMap((result) =>
-        result.status === "fulfilled" && result.value ? [result.value] : [],
-      )
-      .flatMap((source) =>
-        sourceLocations(source).map((location) =>
-          sourceMarker(source, location),
-        ),
-      ),
-  );
-  return markers.filter((value): value is OwnedMapMarker => Boolean(value));
+  return markers
+    .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
+    .filter((value): value is OwnedMapMarker => Boolean(value));
 }
 
 type SourceLocation = {
@@ -200,8 +208,9 @@ function sourceLocations(source: LibrarySource): SourceLocation[] {
 async function sourceMarker(
   source: LibrarySource,
   location: SourceLocation,
+  resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker | null> {
-  const place = await getMapPlace(location.placeId).catch(() => null);
+  const place = await resolvePlace(location.placeId);
   if (!place) return null;
   return marker({
     entityType: "SOURCE",
@@ -216,10 +225,37 @@ async function sourceMarker(
   });
 }
 
-async function placeFor(value: Located) {
-  return value.locationPlaceId
-    ? getMapPlace(value.locationPlaceId).catch(() => null)
-    : null;
+type PlaceResolver = (placeId: string) => Promise<MapPlace | null>;
+
+function placeResolver(): PlaceResolver {
+  const reads = new Map<string, Promise<MapPlace | null>>();
+  return (placeId) => {
+    const existing = reads.get(placeId);
+    if (existing) return existing;
+    const read = getMapPlace(placeId).catch(() => null);
+    reads.set(placeId, read);
+    return read;
+  };
+}
+
+async function placeFor(value: Located, resolvePlace: PlaceResolver) {
+  return value.locationPlaceId ? resolvePlace(value.locationPlaceId) : null;
+}
+
+async function inBatches<TInput, TResult>(
+  values: readonly TInput[],
+  batchSize: number,
+  load: (value: TInput) => Promise<TResult>,
+): Promise<PromiseSettledResult<TResult>[]> {
+  const results: PromiseSettledResult<TResult>[] = [];
+  for (let offset = 0; offset < values.length; offset += batchSize) {
+    results.push(
+      ...(await Promise.allSettled(
+        values.slice(offset, offset + batchSize).map(load),
+      )),
+    );
+  }
+  return results;
 }
 
 function marker(value: Omit<OwnedMapMarker, "key">): OwnedMapMarker {

@@ -3,6 +3,7 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import { CLASSIFICATIONS, PERIODS, TYPES } from "../library/libraryShared";
 import HistoricalRangeFilter, {
   isValidHistoricalRange,
   type HistoricalYearInput,
@@ -14,6 +15,7 @@ import {
   searchMapPlaces,
   type MapEntityLocation,
   type MapPlace,
+  type MapSourceFilters,
   type SourceLocationRole,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
@@ -53,6 +55,13 @@ export default function MapPage() {
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
     parseSourceRoles(params.get("sourceRoles")),
   );
+  const [sourcePeriod, setSourcePeriod] = useState(
+    params.get("sourcePeriod") || "",
+  );
+  const [sourceClassification, setSourceClassification] = useState(
+    params.get("sourceClassification") || "",
+  );
+  const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
   const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("nameFrom")),
   );
@@ -104,6 +113,13 @@ export default function MapPage() {
   const canReviewPlaces = viewer?.roles.some(
     (role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR",
   );
+  const sourceFilters: MapSourceFilters = {
+    ...(sourcePeriod ? { period: sourcePeriod } : {}),
+    ...(sourceClassification
+      ? { classifications: [sourceClassification] }
+      : {}),
+    ...(sourceType ? { types: [sourceType] } : {}),
+  };
 
   // Match the profile picker: query after a short pause and discard every
   // superseded response. This keeps the main map stable while someone types.
@@ -173,6 +189,7 @@ export default function MapPage() {
     });
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
+    appendSourceFilters(next, sourceFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     setParams(next, { replace: true });
@@ -189,6 +206,7 @@ export default function MapPage() {
               contentQuery,
               undefined,
               sourceRoles,
+              sourceFilters,
             )
           : Promise.resolve([]),
       ]);
@@ -250,6 +268,7 @@ export default function MapPage() {
       next.set("q", linkedPlace?.canonicalName || trimmed);
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
+    appendSourceFilters(next, sourceFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (hasCoordinates) {
@@ -284,6 +303,7 @@ export default function MapPage() {
                 contentQuery,
                 undefined,
                 sourceRoles,
+                sourceFilters,
               )
             : Promise.resolve([]),
         ]);
@@ -465,32 +485,78 @@ export default function MapPage() {
             </div>
           </Form.Group>
           {types.includes("SOURCE") && (
-            <Form.Group>
-              <Form.Label>Source place</Form.Label>
-              <div className="d-flex gap-2 flex-wrap">
-                {(
-                  [
-                    ["DISCOVERED_AT", "Discovered at"],
-                    ["HELD_AT", "Held at"],
-                  ] as const
-                ).map(([role, label]) => (
-                  <Form.Check
-                    inline
-                    key={role}
-                    id={`map-source-role-${role}`}
-                    label={label}
-                    checked={sourceRoles.includes(role)}
-                    onChange={() =>
-                      setSourceRoles((current) =>
-                        current.includes(role)
-                          ? current.filter((value) => value !== role)
-                          : [...current, role],
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            </Form.Group>
+            <>
+              <Form.Group>
+                <Form.Label>Source place</Form.Label>
+                <div className="d-flex gap-2 flex-wrap">
+                  {(
+                    [
+                      ["DISCOVERED_AT", "Discovered at"],
+                      ["HELD_AT", "Held at"],
+                    ] as const
+                  ).map(([role, label]) => (
+                    <Form.Check
+                      inline
+                      key={role}
+                      id={`map-source-role-${role}`}
+                      label={label}
+                      checked={sourceRoles.includes(role)}
+                      onChange={() =>
+                        setSourceRoles((current) =>
+                          current.includes(role)
+                            ? current.filter((value) => value !== role)
+                            : [...current, role],
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Source period</Form.Label>
+                <Form.Select
+                  value={sourcePeriod}
+                  onChange={(event) => setSourcePeriod(event.target.value)}
+                >
+                  <option value="">All periods</option>
+                  {PERIODS.map((period) => (
+                    <option key={period} value={period}>
+                      {humanizeFilterValue(period)}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Classification</Form.Label>
+                <Form.Select
+                  value={sourceClassification}
+                  onChange={(event) =>
+                    setSourceClassification(event.target.value)
+                  }
+                >
+                  <option value="">All classifications</option>
+                  {CLASSIFICATIONS.map((classification) => (
+                    <option key={classification} value={classification}>
+                      {humanizeFilterValue(classification)}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Source type</Form.Label>
+                <Form.Select
+                  value={sourceType}
+                  onChange={(event) => setSourceType(event.target.value)}
+                >
+                  <option value="">All types</option>
+                  {TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {humanizeFilterValue(type)}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </>
           )}
           <Form.Check
             id="map-modern-borders"
@@ -624,6 +690,7 @@ export default function MapPage() {
                   contentQuery,
                   showModernBorders,
                   sourceRoles,
+                  sourceFilters,
                 )}
               >
                 Show nearby
@@ -705,6 +772,7 @@ function nearPlacePath(
   contentQuery: string,
   showModernBorders: boolean,
   sourceRoles: SourceLocationRole[],
+  sourceFilters: MapSourceFilters,
 ): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
@@ -715,6 +783,7 @@ function nearPlacePath(
   });
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
   appendSourceRoles(parameters, sourceRoles);
+  appendSourceFilters(parameters, sourceFilters);
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
 }
@@ -742,6 +811,24 @@ function appendSourceRoles(
     "sourceRoles",
     sourceRoles.length ? sourceRoles.join(",") : "all",
   );
+}
+
+function appendSourceFilters(
+  parameters: URLSearchParams,
+  filters: MapSourceFilters,
+): void {
+  if (filters.period) parameters.set("sourcePeriod", filters.period);
+  if (filters.classifications?.length)
+    parameters.set("sourceClassification", filters.classifications[0]);
+  if (filters.types?.length) parameters.set("sourceType", filters.types[0]);
+}
+
+function humanizeFilterValue(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .split("_")
+    .map((part) => part.slice(0, 1).toLocaleUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function parseHistoricalYear(value: string | null): HistoricalYearInput {

@@ -99,4 +99,8 @@ test("composes profile, membership club, and club-stash source markers", async (
       }),
     ]),
   );
+  // Personal profile, club membership, and source all share Rome; the map
+  // overlay must resolve that canonical place once instead of fanning out a
+  // duplicate map request for every marker.
+  expect(getMapPlace).toHaveBeenCalledTimes(1);
 });
