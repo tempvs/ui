@@ -3,6 +3,10 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import HistoricalRangeFilter, {
+  isValidHistoricalRange,
+  type HistoricalYearInput,
+} from "../component/HistoricalRangeFilter";
 import {
   getMapPlace,
   nearbyMapEntities,
@@ -10,6 +14,7 @@ import {
   searchMapPlaces,
   type MapEntityLocation,
   type MapPlace,
+  type SourceLocationRole,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import PlaceProposalModal from "./PlaceProposalModal";
@@ -44,6 +49,15 @@ export default function MapPage() {
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
+  const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
+    parseSourceRoles(params.get("sourceRoles")),
+  );
+  const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("nameFrom")),
+  );
+  const [nameTo, setNameTo] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("nameTo")),
+  );
   const [error, setError] = useState("");
   const [mapError, setMapError] = useState("");
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
@@ -78,7 +92,7 @@ export default function MapPage() {
     const timer = window.setTimeout(() => {
       setSuggestionsLoading(true);
       setSuggestionsFailed(false);
-      searchMapPlaces(normalized, controller.signal)
+      searchPlacesWithNameRange(normalized, controller.signal, nameFrom, nameTo)
         .then((places) => {
           if (requestId !== suggestionRequest.current) return;
           setSuggestions(
@@ -106,7 +120,7 @@ export default function MapPage() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, selectedPlaceId]);
+  }, [query, selectedPlaceId, nameFrom, nameTo]);
 
   const selectPlace = async (place: MapPlace) => {
     const selected = {
@@ -130,6 +144,8 @@ export default function MapPage() {
       radiusKm: radius,
     });
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
+    if (sourceRoles.length) next.set("sourceRoles", sourceRoles.join(","));
+    appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     setParams(next, { replace: true });
     setLoading(true);
@@ -143,6 +159,8 @@ export default function MapPage() {
               Number(radius),
               types,
               contentQuery,
+              undefined,
+              sourceRoles,
             )
           : Promise.resolve([]),
       ]);
@@ -186,6 +204,10 @@ export default function MapPage() {
     const lat = Number(activeLatitude);
     const lng = Number(activeLongitude);
     const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
+    if (!isValidHistoricalRange(nameFrom, nameTo)) {
+      setError("Name years must be chronological positive years.");
+      return;
+    }
     if (!hasCoordinates && trimmed.length < 2) {
       setError("Enter at least two characters, or both coordinates.");
       return;
@@ -199,6 +221,8 @@ export default function MapPage() {
     if (linkedPlace?.canonicalName || trimmed)
       next.set("q", linkedPlace?.canonicalName || trimmed);
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
+    if (sourceRoles.length) next.set("sourceRoles", sourceRoles.join(","));
+    appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (hasCoordinates) {
       next.set("lat", String(lat));
@@ -224,7 +248,15 @@ export default function MapPage() {
         const [places, nearbyEntities] = await Promise.all([
           nearbyMapPlaces(lat, lng, Number(radius)),
           types.length
-            ? nearbyMapEntities(lat, lng, Number(radius), types, contentQuery)
+            ? nearbyMapEntities(
+                lat,
+                lng,
+                Number(radius),
+                types,
+                contentQuery,
+                undefined,
+                sourceRoles,
+              )
             : Promise.resolve([]),
         ]);
         setItems(
@@ -238,7 +270,14 @@ export default function MapPage() {
         setEntities(nearbyEntities);
       } else {
         setItems(
-          (await searchMapPlaces(trimmed)).map((place) => ({
+          (
+            await searchPlacesWithNameRange(
+              trimmed,
+              undefined,
+              nameFrom,
+              nameTo,
+            )
+          ).map((place) => ({
             ...place,
             matchedName: matchingPlaceName(place, trimmed),
           })),
@@ -361,6 +400,19 @@ export default function MapPage() {
               </div>
             )}
           </Form.Group>
+          <HistoricalRangeFilter
+            enabled
+            from={nameFrom}
+            to={nameTo}
+            onEnabledChange={() => undefined}
+            onFromChange={setNameFrom}
+            onToChange={setNameTo}
+            label="Name years"
+            showToggle={false}
+            alwaysShowFields
+            compact
+            className="mb-0"
+          />
           <Form.Group>
             <Form.Label>Show</Form.Label>
             <div className="d-flex gap-2 flex-wrap">
@@ -382,6 +434,34 @@ export default function MapPage() {
               ))}
             </div>
           </Form.Group>
+          {types.includes("SOURCE") && (
+            <Form.Group>
+              <Form.Label>Source place</Form.Label>
+              <div className="d-flex gap-2 flex-wrap">
+                {(
+                  [
+                    ["DISCOVERED_AT", "Discovered at"],
+                    ["HELD_AT", "Held at"],
+                  ] as const
+                ).map(([role, label]) => (
+                  <Form.Check
+                    inline
+                    key={role}
+                    id={`map-source-role-${role}`}
+                    label={label}
+                    checked={sourceRoles.includes(role)}
+                    onChange={() =>
+                      setSourceRoles((current) =>
+                        current.includes(role)
+                          ? current.filter((value) => value !== role)
+                          : [...current, role],
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </Form.Group>
+          )}
           <Form.Check
             id="map-modern-borders"
             label="Modern borders"
@@ -511,6 +591,7 @@ export default function MapPage() {
                   radius,
                   contentQuery,
                   showModernBorders,
+                  sourceRoles,
                 )}
               >
                 Show nearby
@@ -591,6 +672,7 @@ function nearPlacePath(
   radius: string,
   contentQuery: string,
   showModernBorders: boolean,
+  sourceRoles: SourceLocationRole[],
 ): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
@@ -600,8 +682,61 @@ function nearPlacePath(
     radiusKm: radius || "25",
   });
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
+  if (sourceRoles.length) parameters.set("sourceRoles", sourceRoles.join(","));
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
+}
+
+function parseSourceRoles(value: string | null): SourceLocationRole[] {
+  return (value ?? "")
+    .split(",")
+    .filter(
+      (role): role is SourceLocationRole =>
+        role === "DISCOVERED_AT" || role === "HELD_AT",
+    )
+    .filter((role, index, all) => all.indexOf(role) === index);
+}
+
+function parseHistoricalYear(value: string | null): HistoricalYearInput {
+  const parsed = value === null ? Number.NaN : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed === 0)
+    return { year: "", era: "AD" };
+  return parsed < 0
+    ? { year: String(1 - parsed), era: "BC" }
+    : { year: String(parsed), era: "AD" };
+}
+
+function toAstronomicalYear(value: HistoricalYearInput): number | undefined {
+  if (!value.year || !/^[1-9][0-9]*$/.test(value.year)) return undefined;
+  const year = Number(value.year);
+  return value.era === "BC" ? 1 - year : year;
+}
+
+function appendNameRange(
+  parameters: URLSearchParams,
+  from: HistoricalYearInput,
+  to: HistoricalYearInput,
+): void {
+  const start = toAstronomicalYear(from);
+  const end = toAstronomicalYear(to);
+  if (start !== undefined) parameters.set("nameFrom", String(start));
+  if (end !== undefined) parameters.set("nameTo", String(end));
+}
+
+function searchPlacesWithNameRange(
+  query: string,
+  signal: AbortSignal | undefined,
+  from: HistoricalYearInput,
+  to: HistoricalYearInput,
+): ReturnType<typeof searchMapPlaces> {
+  const start = toAstronomicalYear(from);
+  const end = toAstronomicalYear(to);
+  return start === undefined && end === undefined
+    ? searchMapPlaces(query, signal)
+    : searchMapPlaces(query, signal, {
+        ...(start !== undefined ? { from: start } : {}),
+        ...(end !== undefined ? { to: end } : {}),
+      });
 }
 
 function distanceKilometres(

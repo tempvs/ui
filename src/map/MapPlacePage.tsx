@@ -3,6 +3,7 @@ import { Alert, Form, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
+import PlaceNamesList from "../component/PlaceNamesList";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import {
   getMapPlace,
@@ -19,7 +20,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [showModernBorders, setShowModernBorders] = useState(false);
-  const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(null);
+  const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -57,7 +60,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   if (!place)
     return (
       <PageLayout className="map-page" header={{ title: "Place" }}>
-        <Alert variant="warning">{error || "This place is not available."}</Alert>
+        <Alert variant="warning">
+          {error || "This place is not available."}
+        </Alert>
         <Link to="/map">Back to map</Link>
       </PageLayout>
     );
@@ -65,19 +70,61 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   return (
     <PageLayout className="map-page" header={{ title: place.canonicalName }}>
       <section className="club-panel" aria-label="Place details">
-        <Link className="small" to={`/map?placeId=${encodeURIComponent(place.id)}`}>
+        <Link
+          className="small"
+          to={`/map?placeId=${encodeURIComponent(place.id)}`}
+        >
           Back to map discovery
         </Link>
         <h1 className="mt-2">{place.canonicalName}</h1>
         <p className="text-muted mb-2">
-          {place.featureType} · {place.latitude.toFixed(4)}, {place.longitude.toFixed(4)}
+          {place.featureType} · {place.latitude.toFixed(4)},{" "}
+          {place.longitude.toFixed(4)}
         </p>
+        {place.description && <p className="mb-2">{place.description}</p>}
         <Form.Check
           id="place-modern-borders"
           label="Modern borders"
           checked={showModernBorders}
           onChange={(event) => setShowModernBorders(event.target.checked)}
         />
+      </section>
+      <section
+        className="club-panel mt-3"
+        aria-label="Place names and provenance"
+      >
+        <h2 className="h5">Names</h2>
+        <PlaceNamesList place={place} />
+        {(place.periods?.length || place.selectionReasons?.length) && (
+          <dl className="row mb-0 mt-3 small">
+            {place.periods?.length ? (
+              <>
+                <dt className="col-sm-3">Periods</dt>
+                <dd className="col-sm-9">{place.periods.join(", ")}</dd>
+              </>
+            ) : null}
+            {place.selectionReasons?.length ? (
+              <>
+                <dt className="col-sm-3">Included because</dt>
+                <dd className="col-sm-9">
+                  {place.selectionReasons.join(", ")}
+                </dd>
+              </>
+            ) : null}
+          </dl>
+        )}
+        {place.provenance?.length ? (
+          <>
+            <h3 className="h6 mt-3">Sources</h3>
+            <ul className="mb-0">
+              {place.provenance.map((source) => (
+                <li key={`${source.dataset}:${source.externalId}`}>
+                  {source.dataset} ({source.externalId}) — {source.license}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </section>
       <section className="club-panel mt-3" aria-label="Place on map">
         <MapCanvas
@@ -92,10 +139,15 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         />
         {error && <p className="small text-muted mt-2 mb-0">{error}</p>}
       </section>
-      <section className="club-panel mt-3" aria-label="Public content at this place">
+      <section
+        className="club-panel mt-3"
+        aria-label="Public content at this place"
+      >
         <h2 className="h5">At this place</h2>
         {entities.length === 0 ? (
-          <p className="text-muted mb-0">No public content is assigned here yet.</p>
+          <p className="text-muted mb-0">
+            No public content is assigned here yet.
+          </p>
         ) : (
           <ul className="list-unstyled mb-0">
             {entities.map((entity) => (
@@ -106,7 +158,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               >
                 <Link to={entityPath(entity)}>{entity.label}</Link>
                 <span className="text-muted ms-2">
-                  {entity.entityType[0] + entity.entityType.slice(1).toLowerCase()} · {roleLabel(entity)}
+                  {entity.entityType[0] +
+                    entity.entityType.slice(1).toLowerCase()}{" "}
+                  · {roleLabel(entity)}
                 </span>
               </li>
             ))}

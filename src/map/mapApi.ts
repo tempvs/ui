@@ -20,6 +20,15 @@ export type MapPlace = {
   latitude: number;
   longitude: number;
   featureType: string;
+  description?: string;
+  parentPlaceId?: string;
+  periods?: string[];
+  selectionReasons?: string[];
+  provenance?: Array<{
+    dataset: string;
+    externalId: string;
+    license: string;
+  }>;
   /** UI-only label for the particular canonical or historical name that
    * matched the user's current search. */
   matchedName?: string;
@@ -40,6 +49,10 @@ export type MapEntityLocation = {
   latitude: number;
   longitude: number;
 };
+
+/** A source's two distinct map meanings. These deliberately do not filter
+ * profile, club, or event markers when used in a mixed nearby search. */
+export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
 
 export type MapPlaceProposal = {
   canonicalName: string;
@@ -270,6 +283,7 @@ export async function nearbyMapEntities(
   types: MapEntityLocation["entityType"][] = [],
   query?: string,
   signal?: AbortSignal,
+  sourceRoles: SourceLocationRole[] = [],
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -279,6 +293,7 @@ export async function nearbyMapEntities(
       limit: "100",
       ...(types.length ? { types: types.join(",") } : {}),
       ...(query?.trim() ? { search: query.trim() } : {}),
+      ...(sourceRoles.length ? { sourceRoles: sourceRoles.join(",") } : {}),
     })}`,
     { signal },
   );
