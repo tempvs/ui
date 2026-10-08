@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { OverlayTrigger, Popover, Spinner } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Button, Modal } from "react-bootstrap";
 
-import { getMapPlace, type MapPlace } from "../map/mapApi";
-import PlaceNamesList from "./PlaceNamesList";
+import PlaceDetailsPanel from "./PlaceDetailsPanel";
 
 type PlaceNamePopoverProps = {
   placeId: string;
@@ -11,56 +9,39 @@ type PlaceNamePopoverProps = {
   className?: string;
 };
 
-/** Compact entity-page reference with on-demand historical-name context. */
+/** Read-only entity-page reference with the same map-backed context as the
+ * editable location picker. */
 export default function PlaceNamePopover({
   placeId,
   displayName,
   className = "small text-start px-1 py-1 d-inline-block",
 }: PlaceNamePopoverProps) {
-  const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-
-  const load = () => {
-    if (loading || place !== undefined) return;
-    setLoading(true);
-    void getMapPlace(placeId)
-      .then(setPlace)
-      .catch(() => setPlace(null))
-      .finally(() => setLoading(false));
-  };
+  const [show, setShow] = useState(false);
 
   return (
-    <OverlayTrigger
-      trigger="click"
-      rootClose
-      placement="auto"
-      overlay={
-        <Popover className="map-place-popover">
-          <Popover.Body>
-            {loading || place === undefined ? (
-              <Spinner animation="border" size="sm" />
-            ) : place ? (
-              <>
-                <strong>{displayName}</strong>
-                <PlaceNamesList place={place} />
-                <Link to={`/map?placeId=${encodeURIComponent(placeId)}`}>
-                  Open on map
-                </Link>
-              </>
-            ) : (
-              <span>Place details are unavailable.</span>
-            )}
-          </Popover.Body>
-        </Popover>
-      }
-    >
+    <>
       <button
         type="button"
         className={`place-name-popover-trigger ${className}`}
-        onClick={load}
+        onClick={() => setShow(true)}
       >
         {displayName}
       </button>
-    </OverlayTrigger>
+      <Modal show={show} onHide={() => setShow(false)} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Place details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {show && (
+            <PlaceDetailsPanel placeId={placeId} displayName={displayName} />
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShow(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 }

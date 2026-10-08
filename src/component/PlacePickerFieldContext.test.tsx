@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 jest.mock("../map/MapCanvas", () => ({
   __esModule: true,
@@ -33,12 +34,14 @@ test("opens the selected place with its map preview and historical names", async
   } as Response);
 
   render(
-    <PlacePickerField
-      label="Location"
-      editable
-      value={{ id: "seed:pleiades:118929", canonicalName: "Castra Regina" }}
-      onChange={jest.fn()}
-    />,
+    <MemoryRouter>
+      <PlacePickerField
+        label="Location"
+        editable
+        value={{ id: "seed:pleiades:118929", canonicalName: "Castra Regina" }}
+        onChange={jest.fn()}
+      />
+    </MemoryRouter>,
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Castra Regina" }));

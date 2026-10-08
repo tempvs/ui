@@ -3,11 +3,10 @@ import { Button, Form, Modal, Spinner } from "react-bootstrap";
 import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
 
 import InlineSaveStatus from "./InlineSaveStatus";
-import PlaceNamesList from "./PlaceNamesList";
+import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
 import type { SaveStatus } from "./EditableFieldRow";
-import MapCanvas from "../map/MapCanvas";
-import { getMapPlace, MapPlace, searchMapPlaces } from "../map/mapApi";
+import { MapPlace, searchMapPlaces } from "../map/mapApi";
 import { matchingPlaceName } from "../map/placeNames";
 
 type PlacePickerFieldProps = {
@@ -50,25 +49,6 @@ export default function PlacePickerField({
   const [results, setResults] = useState<MapPlace[]>([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<
-    MapPlace | null | undefined
-  >(undefined);
-
-  useEffect(() => {
-    if (!show || !value?.id) {
-      setSelectedPlace(undefined);
-      return undefined;
-    }
-    const controller = new AbortController();
-    setSelectedPlace(undefined);
-    void getMapPlace(value.id, controller.signal)
-      .then((place) => setSelectedPlace(place))
-      .catch((error) => {
-        if ((error as Error).name !== "AbortError") setSelectedPlace(null);
-      });
-    return () => controller.abort();
-  }, [show, value?.id]);
-
   useEffect(() => {
     if (!show || query.trim().length < 2) {
       setResults([]);
@@ -164,45 +144,12 @@ export default function PlacePickerField({
         </Modal.Header>
         <Modal.Body>
           {value?.id && (
-            <section className="place-picker-selected mb-4" aria-live="polite">
-              <div className="d-flex align-items-baseline justify-content-between gap-2">
-                <strong>{value.canonicalName || "Selected place"}</strong>
-                {selectedPlace && (
-                  <span className="small text-muted">
-                    {selectedPlace.featureType}
-                  </span>
-                )}
-              </div>
-              {selectedPlace === undefined ? (
-                <div className="py-3 text-center">
-                  <Spinner animation="border" size="sm" />
-                </div>
-              ) : selectedPlace ? (
-                <>
-                  <div className="place-picker-map mt-2">
-                    <MapCanvas
-                      places={[
-                        {
-                          ...selectedPlace,
-                          matchedName: value.canonicalName,
-                        },
-                      ]}
-                      entities={[]}
-                      focus={selectedPlace}
-                      selectedPlaceId={selectedPlace.id}
-                      showModernBorders={false}
-                      onEntitySelect={() => undefined}
-                      onMapError={() => undefined}
-                    />
-                  </div>
-                  <PlaceNamesList place={selectedPlace} />
-                </>
-              ) : (
-                <p className="small text-muted mb-0 mt-2">
-                  Place details are unavailable.
-                </p>
-              )}
-            </section>
+            <div className="mb-4">
+              <PlaceDetailsPanel
+                placeId={value.id}
+                displayName={value.canonicalName}
+              />
+            </div>
           )}
           <Form.Control
             autoFocus
