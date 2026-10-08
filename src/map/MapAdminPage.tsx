@@ -5,8 +5,11 @@ import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import {
   approveMapPlace,
+  findLikelyDuplicateMapPlaces,
   listPendingMapPlaces,
+  mergeMapPlace,
   rejectMapPlace,
+  type MapPlace,
   type PendingMapPlace,
 } from "./mapApi";
 
@@ -77,6 +80,21 @@ export default function MapAdminPage() {
       setError(
         (caught as Error).message || `Unable to ${decision} this place.`,
       );
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const merge = async (proposal: PendingMapPlace, target: MapPlace) => {
+    setReviewingId(proposal.id);
+    setError("");
+    try {
+      await mergeMapPlace(proposal.id, target.id, notes[proposal.id]);
+      setProposals((current) =>
+        current.filter((item) => item.id !== proposal.id),
+      );
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to merge this place.");
     } finally {
       setReviewingId(null);
     }
@@ -153,6 +171,11 @@ export default function MapAdminPage() {
                     </Button>
                   </div>
                 </div>
+                <DuplicateMergeActions
+                  proposal={proposal}
+                  disabled={reviewingId === proposal.id}
+                  onMerge={(target) => void merge(proposal, target)}
+                />
               </li>
               ))}
             </ul>
@@ -170,5 +193,50 @@ export default function MapAdminPage() {
         )}
       </section>
     </PageLayout>
+  );
+}
+
+function DuplicateMergeActions({
+  proposal,
+  disabled,
+  onMerge,
+}: {
+  proposal: PendingMapPlace;
+  disabled: boolean;
+  onMerge: (target: MapPlace) => void;
+}) {
+  const [matches, setMatches] = useState<MapPlace[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void findLikelyDuplicateMapPlaces(
+      proposal.canonicalName,
+      proposal.latitude,
+      proposal.longitude,
+      controller.signal,
+    )
+      .then(setMatches)
+      .catch(() => {
+        if (!controller.signal.aborted) setMatches([]);
+      });
+    return () => controller.abort();
+  }, [proposal.canonicalName, proposal.latitude, proposal.longitude]);
+
+  if (matches.length === 0) return null;
+  return (
+    <div className="mt-2 d-flex align-items-center flex-wrap gap-2">
+      <small className="text-muted">Possible duplicate:</small>
+      {matches.map((target) => (
+        <Button
+          key={target.id}
+          size="sm"
+          variant="outline-secondary"
+          disabled={disabled}
+          onClick={() => onMerge(target)}
+        >
+          Merge into {target.canonicalName}
+        </Button>
+      ))}
+    </div>
   );
 }

@@ -165,6 +165,27 @@ export async function rejectMapPlace(id: string, note?: string): Promise<void> {
   if (!response.ok) throw new Error("Unable to reject this place proposal");
 }
 
+/** Retain a duplicate proposal for audit, linked to the approved canonical
+ * place selected by the editor. The pending point is never made public. */
+export async function mergeMapPlace(
+  id: string,
+  targetPlaceId: string,
+  note?: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/places/${encodeURIComponent(id)}/merge`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetPlaceId,
+        ...(note?.trim() ? { note: note.trim() } : {}),
+      }),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to merge this place proposal");
+}
+
 /** Public bounded-radius lookup through the same-origin Map API. */
 export async function nearbyMapPlaces(
   latitude: number,
