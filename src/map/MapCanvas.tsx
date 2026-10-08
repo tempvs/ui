@@ -3,12 +3,16 @@ import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { MapEntityLocation, MapPlace } from "./mapApi";
+import type { OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
 import "./map.css";
 
 type MapCanvasProps = {
   places: MapPlace[];
   entities: MapEntityLocation[];
+  /** Viewer-scoped markers assembled in the browser. They are kept out of
+   * the public entity source because membership/ownership is private context. */
+  ownedMarkers?: OwnedMapMarker[];
   focus?: { latitude: number; longitude: number } | null;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
@@ -17,6 +21,7 @@ type MapCanvasProps = {
   selectedPlaceId?: string | null;
   onEntitySelect: (key: string) => void;
   onPlaceSelect?: (place: MapPlace) => void;
+  onOwnedMarkerSelect?: (marker: OwnedMapMarker) => void;
   onMapError: (message: string) => void;
 };
 
@@ -40,19 +45,23 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
 export default function MapCanvas({
   places,
   entities,
+  ownedMarkers = [],
   focus,
   showModernBorders,
   selectedEntityKey = null,
   selectedPlaceId = null,
   onEntitySelect,
   onPlaceSelect,
+  onOwnedMarkerSelect,
   onMapError,
 }: MapCanvasProps) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
+  const ownedMarkerInstances = useRef<maplibregl.Marker[]>([]);
   const selectRef = useRef(onEntitySelect);
   const placeSelectRef = useRef(onPlaceSelect);
+  const ownedMarkerSelectRef = useRef(onOwnedMarkerSelect);
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
@@ -60,8 +69,9 @@ export default function MapCanvas({
   useEffect(() => {
     selectRef.current = onEntitySelect;
     placeSelectRef.current = onPlaceSelect;
+    ownedMarkerSelectRef.current = onOwnedMarkerSelect;
     errorRef.current = onMapError;
-  }, [onEntitySelect, onMapError, onPlaceSelect]);
+  }, [onEntitySelect, onMapError, onOwnedMarkerSelect, onPlaceSelect]);
 
   useEffect(() => {
     placesRef.current = places;
@@ -106,6 +116,8 @@ export default function MapCanvas({
       setReady(false);
       selectedPlaceMarker.current?.remove();
       selectedPlaceMarker.current = null;
+      ownedMarkerInstances.current.forEach((marker) => marker.remove());
+      ownedMarkerInstances.current = [];
       next.remove();
       map.current = null;
     };
@@ -124,6 +136,50 @@ export default function MapCanvas({
       GeoJSONSource | undefined;
     source?.setData(placeCollection(places));
   }, [places, ready]);
+
+  useEffect(() => {
+    ownedMarkerInstances.current.forEach((marker) => marker.remove());
+    ownedMarkerInstances.current = [];
+    if (!ready || !map.current) return undefined;
+    const offsets = markerOffsets(ownedMarkers);
+    const instances = ownedMarkers.map((ownedMarker) => {
+      const element = document.createElement("button");
+      element.type = "button";
+      element.className = `map-owned-marker map-owned-marker-${ownedMarker.entityType.toLowerCase()}`;
+      element.setAttribute("aria-label", `Open ${ownedMarker.label}`);
+      element.title = `${ownedMarker.label} · ${ownedMarker.placeName}`;
+      if (ownedMarker.thumbnailUrl) {
+        const image = document.createElement("img");
+        image.src = ownedMarker.thumbnailUrl;
+        image.alt = "";
+        image.addEventListener("error", () => {
+          image.remove();
+          addMarkerFallback(element, ownedMarker);
+        });
+        element.append(image);
+      } else {
+        addMarkerFallback(element, ownedMarker);
+      }
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        ownedMarkerSelectRef.current?.(ownedMarker);
+      });
+      return new maplibregl.Marker({
+        element,
+        anchor: "center",
+        offset: offsets.get(ownedMarker.key) || [0, 0],
+      })
+        .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
+        .addTo(map.current as maplibregl.Map);
+    });
+    ownedMarkerInstances.current = instances;
+    return () => {
+      instances.forEach((marker) => marker.remove());
+      if (ownedMarkerInstances.current === instances)
+        ownedMarkerInstances.current = [];
+    };
+  }, [ownedMarkers, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -212,6 +268,47 @@ export default function MapCanvas({
       </div>
     </div>
   );
+}
+
+function addMarkerFallback(
+  element: HTMLButtonElement,
+  marker: OwnedMapMarker,
+): void {
+  const fallback = document.createElement("span");
+  fallback.className = "map-owned-marker-fallback";
+  fallback.textContent =
+    marker.entityType === "SOURCE"
+      ? "◆"
+      : marker.label.trim().slice(0, 1).toLocaleUpperCase() || "⌛";
+  element.append(fallback);
+}
+
+/** Keep several owned records at the same place individually reachable while
+ * leaving their actual coordinates untouched. */
+function markerOffsets(
+  markers: OwnedMapMarker[],
+): Map<string, [number, number]> {
+  const grouped = new Map<string, OwnedMapMarker[]>();
+  markers.forEach((marker) => {
+    const samePlace = grouped.get(marker.placeId) || [];
+    samePlace.push(marker);
+    grouped.set(marker.placeId, samePlace);
+  });
+  const offsets = new Map<string, [number, number]>();
+  grouped.forEach((group) => {
+    if (group.length === 1) {
+      offsets.set(group[0].key, [0, 0]);
+      return;
+    }
+    group.forEach((marker, index) => {
+      const angle = (Math.PI * 2 * index) / group.length - Math.PI / 2;
+      offsets.set(marker.key, [
+        Math.round(Math.cos(angle) * 20),
+        Math.round(Math.sin(angle) * 20),
+      ]);
+    });
+  });
+  return offsets;
 }
 
 function mapStyle(): maplibregl.StyleSpecification {

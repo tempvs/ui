@@ -140,6 +140,57 @@
   background: #f5edda;
 }
 
+/* Authenticated, viewer-scoped content uses DOM markers so avatars and club
+ * photos retain their familiar thumbnail treatment. Public discovery remains
+ * on clustered GeoJSON layers above, which keeps broad searches inexpensive. */
+.map-owned-marker {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  overflow: hidden;
+  place-items: center;
+  border: 2px solid #fffdf7;
+  border-radius: 50%;
+  background: #4f6d7a;
+  color: #fff;
+  box-shadow: 0 0.1rem 0.35rem rgb(38 29 17 / 48%);
+  cursor: pointer;
+}
+
+.map-owned-marker:hover,
+.map-owned-marker:focus-visible {
+  outline: 3px solid #b7944f;
+  outline-offset: 1px;
+}
+
+.map-owned-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-owned-marker-club {
+  background: #8a5a44;
+}
+
+.map-owned-marker-source {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-color: #fff;
+  background: #6d7c4a;
+}
+
+.map-owned-marker-fallback {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.map-owned-marker-source .map-owned-marker-fallback {
+  font-size: 0.62rem;
+}
+
 .map-place-name-list {
   margin: 0.35rem 0 0;
   padding-left: 1rem;

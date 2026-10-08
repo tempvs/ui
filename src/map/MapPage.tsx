@@ -17,6 +17,7 @@ import {
   type SourceLocationRole,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
+import { loadOwnedMapContent, type OwnedMapMarker } from "./ownedMapContent";
 import PlaceProposalModal from "./PlaceProposalModal";
 import { matchingPlaceName } from "./placeNames";
 
@@ -66,12 +67,39 @@ export default function MapPage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const suggestionRequest = useRef(0);
 
   useEffect(() => {
     void getViewer().then(setViewer);
   }, []);
+
+  // Opening the Map from the horizontal navigation should be useful even
+  // before a search: show the signed-in person's profiles, their club
+  // memberships, and sources used by their club profiles. This is a private
+  // overlay assembled in the browser, not a new public discovery endpoint.
+  useEffect(() => {
+    let active = true;
+    if (!viewer) {
+      setOwnedMarkers([]);
+      return () => {
+        active = false;
+      };
+    }
+    void loadOwnedMapContent(viewer.userId)
+      .then((markers) => {
+        if (active) setOwnedMarkers(markers);
+      })
+      .catch(() => {
+        // Ownership context is a convenience. Keep public map search usable
+        // when an optional profile, club, or stash read is unavailable.
+        if (active) setOwnedMarkers([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [viewer]);
 
   const canReviewPlaces = viewer?.roles.some(
     (role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR",
@@ -315,10 +343,12 @@ export default function MapPage() {
         return { latitude: lat, longitude: lng };
     }
     const first = items[0];
-    return first
-      ? { latitude: first.latitude, longitude: first.longitude }
+    if (first) return { latitude: first.latitude, longitude: first.longitude };
+    const owned = ownedMarkers[0];
+    return owned
+      ? { latitude: owned.latitude, longitude: owned.longitude }
       : null;
-  }, [entities, items, latitude, longitude, selectedEntityKey]);
+  }, [entities, items, latitude, longitude, ownedMarkers, selectedEntityKey]);
 
   return (
     <PageLayout className="map-page" header={{ title: "Map" }}>
@@ -535,6 +565,7 @@ export default function MapPage() {
         <MapCanvas
           places={items}
           entities={entities}
+          ownedMarkers={ownedMarkers}
           focus={focus}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
@@ -544,6 +575,7 @@ export default function MapPage() {
             setSelectedPlaceId(place.id);
             setQuery(place.matchedName || place.canonicalName);
           }}
+          onOwnedMarkerSelect={(marker) => navigate(marker.path)}
           onMapError={setMapError}
         />
         {mapError && (

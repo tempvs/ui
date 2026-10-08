@@ -216,6 +216,16 @@ export function fetchClubProfiles(
     .catch(() => handlers.onError?.());
 }
 
+/**
+ * Promise counterpart for views which load a signed-in user's complete
+ * identity context at once (for example the personal map overlay). Keeping
+ * this on the same cached read as the callback API prevents a second request
+ * when Header/ProfilePage are mounting at the same time.
+ */
+export async function getClubProfiles(userId: Id): Promise<Profile[]> {
+  return readClubProfiles(userId);
+}
+
 function readClubProfiles(userId: Id): Promise<Profile[]> {
   const key = String(userId);
   return cachedRead(clubProfileReads, key, async () => {
