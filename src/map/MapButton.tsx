@@ -1,9 +1,9 @@
 import React from "react";
-import { FaMapMarkedAlt } from "react-icons/fa";
+import { FaGlobeAmericas } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import HeaderIconPopover from "../component/HeaderIconPopover";
 
-const MapIcon = FaMapMarkedAlt as React.ComponentType;
+const MapIcon = FaGlobeAmericas as React.ComponentType;
 
 export default function MapButton() {
   return (
