@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
@@ -37,6 +37,9 @@ export default function MapPage() {
     params.get("borders") === "modern",
   );
   const [items, setItems] = useState<MapPlace[]>([]);
+  const [suggestions, setSuggestions] = useState<MapPlace[] | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsFailed, setSuggestionsFailed] = useState(false);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
@@ -45,9 +48,11 @@ export default function MapPage() {
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
     null,
   );
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
+  const suggestionRequest = useRef(0);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -56,6 +61,101 @@ export default function MapPage() {
   const canReviewPlaces = viewer?.roles.some(
     (role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR",
   );
+
+  // Match the profile picker: query after a short pause and discard every
+  // superseded response. This keeps the main map stable while someone types.
+  useEffect(() => {
+    const normalized = query.trim();
+    if (selectedPlaceId || normalized.length < 2) {
+      setSuggestions(null);
+      setSuggestionsLoading(false);
+      setSuggestionsFailed(false);
+      return undefined;
+    }
+    const requestId = ++suggestionRequest.current;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setSuggestionsLoading(true);
+      setSuggestionsFailed(false);
+      searchMapPlaces(normalized, controller.signal)
+        .then((places) => {
+          if (requestId !== suggestionRequest.current) return;
+          setSuggestions(
+            places.map((place) => ({
+              ...place,
+              matchedName: matchingPlaceName(place, normalized),
+            })),
+          );
+        })
+        .catch((caught: unknown) => {
+          if (
+            requestId === suggestionRequest.current &&
+            (caught as Error).name !== "AbortError"
+          ) {
+            setSuggestions(null);
+            setSuggestionsFailed(true);
+          }
+        })
+        .finally(() => {
+          if (requestId === suggestionRequest.current)
+            setSuggestionsLoading(false);
+        });
+    }, 200);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, selectedPlaceId]);
+
+  const selectPlace = async (place: MapPlace) => {
+    const selected = {
+      ...place,
+      matchedName: place.matchedName || matchingPlaceName(place, query),
+    };
+    const nextQuery = selected.matchedName || selected.canonicalName;
+    setError("");
+    setMapError("");
+    setQuery(nextQuery);
+    setLatitude(String(selected.latitude));
+    setLongitude(String(selected.longitude));
+    setSelectedPlaceId(selected.id);
+    setSelectedEntityKey(null);
+    setSuggestions(null);
+    const next = new URLSearchParams({
+      placeId: selected.id,
+      q: nextQuery,
+      lat: String(selected.latitude),
+      lng: String(selected.longitude),
+      radiusKm: radius,
+    });
+    if (contentQuery.trim()) next.set("content", contentQuery.trim());
+    if (showModernBorders) next.set("borders", "modern");
+    setParams(next, { replace: true });
+    setLoading(true);
+    try {
+      const [places, nearbyEntities] = await Promise.all([
+        nearbyMapPlaces(selected.latitude, selected.longitude, Number(radius)),
+        types.length
+          ? nearbyMapEntities(
+              selected.latitude,
+              selected.longitude,
+              Number(radius),
+              types,
+              contentQuery,
+            )
+          : Promise.resolve([]),
+      ]);
+      setItems([
+        selected,
+        ...places.filter((candidate) => candidate.id !== selected.id),
+      ]);
+      setEntities(nearbyEntities);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load places.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const search = async (event?: React.FormEvent) => {
     event?.preventDefault();
@@ -106,9 +206,16 @@ export default function MapPage() {
     }
     setParams(next, { replace: true });
     if (linkedPlace) {
-      setQuery(linkedPlace.canonicalName);
+      linkedPlace = {
+        ...linkedPlace,
+        matchedName: matchingPlaceName(linkedPlace, trimmed),
+      };
+      setQuery(linkedPlace.matchedName || linkedPlace.canonicalName);
       setLatitude(String(linkedPlace.latitude));
       setLongitude(String(linkedPlace.longitude));
+      setSelectedPlaceId(linkedPlace.id);
+    } else {
+      setSelectedPlaceId(null);
     }
     setLoading(true);
     try {
@@ -129,7 +236,12 @@ export default function MapPage() {
         );
         setEntities(nearbyEntities);
       } else {
-        setItems(await searchMapPlaces(trimmed));
+        setItems(
+          (await searchMapPlaces(trimmed)).map((place) => ({
+            ...place,
+            matchedName: matchingPlaceName(place, trimmed),
+          })),
+        );
         setEntities([]);
       }
     } catch (caught) {
@@ -180,13 +292,55 @@ export default function MapPage() {
           onSubmit={search}
           className="d-flex gap-2 flex-wrap align-items-end"
         >
-          <Form.Group>
+          <Form.Group className="map-place-search-field" controlId="map-place-search">
             <Form.Label>Place</Form.Label>
             <Form.Control
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectedPlaceId(null);
+                setLatitude("");
+                setLongitude("");
+              }}
+              autoComplete="off"
               placeholder="Rome, Constantinople…"
             />
+            {suggestionsLoading && (
+              <p className="map-place-suggestions-status" role="status">
+                Searching…
+              </p>
+            )}
+            {suggestionsFailed && (
+              <p className="map-place-suggestions-status text-danger" role="alert">
+                Unable to search places right now.
+              </p>
+            )}
+            {!suggestionsLoading && suggestions && (
+              <div className="map-place-suggestions" role="listbox" aria-label="Matching places">
+                {suggestions.length === 0 ? (
+                  <p className="small text-muted mb-0 px-2 py-1">
+                    No approved places match this search.
+                  </p>
+                ) : (
+                  suggestions.map((place) => (
+                    <button
+                      type="button"
+                      key={place.id}
+                      className="map-place-suggestion"
+                      role="option"
+                      aria-selected={selectedPlaceId === place.id}
+                      onClick={() => void selectPlace(place)}
+                    >
+                      <strong>{place.matchedName || place.canonicalName}</strong>
+                      {place.matchedName && place.matchedName !== place.canonicalName && (
+                        <span className="text-muted"> ({place.canonicalName})</span>
+                      )}
+                      <span className="text-muted ms-2 small">{place.featureType}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </Form.Group>
           <Form.Group>
             <Form.Label>Show</Form.Label>
@@ -285,7 +439,12 @@ export default function MapPage() {
           focus={focus}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
+          selectedPlaceId={selectedPlaceId}
           onEntitySelect={setSelectedEntityKey}
+          onPlaceSelect={(place) => {
+            setSelectedPlaceId(place.id);
+            setQuery(place.matchedName || place.canonicalName);
+          }}
           onMapError={setMapError}
         />
         {mapError && (
@@ -303,7 +462,16 @@ export default function MapPage() {
         <ul className="list-unstyled mb-0">
           {items.map((place) => (
             <li key={place.id} className="border-top py-2">
-              <strong>{place.canonicalName}</strong>
+              <button
+                type="button"
+                className="map-place-result-name"
+                onClick={() => void selectPlace(place)}
+              >
+                {place.matchedName || place.canonicalName}
+              </button>
+              {place.matchedName && place.matchedName !== place.canonicalName && (
+                <span className="text-muted ms-1">({place.canonicalName})</span>
+              )}
               <span className="text-muted ms-2">
                 {place.featureType} · {place.latitude.toFixed(4)},{" "}
                 {place.longitude.toFixed(4)}
@@ -371,6 +539,30 @@ export default function MapPage() {
       />
     </PageLayout>
   );
+}
+
+function matchingPlaceName(place: MapPlace, query: string): string {
+  const normalizedQuery = normalizePlaceName(query);
+  if (!normalizedQuery) return place.canonicalName;
+  const names = place.names?.length
+    ? place.names
+    : [{ value: place.canonicalName, preferred: true }];
+  return (
+    names.find((name) => normalizePlaceName(name.value).startsWith(normalizedQuery))
+      ?.value ||
+    names.find((name) => normalizePlaceName(name.value).includes(normalizedQuery))
+      ?.value ||
+    place.canonicalName
+  );
+}
+
+function normalizePlaceName(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function entityPath(entity: MapEntityLocation): string {

@@ -11,7 +11,11 @@ type MapCanvasProps = {
   focus?: { latitude: number; longitude: number } | null;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
+  /** The one place deliberately chosen from map search. Its matched name is
+   * rendered beside the pin instead of labelling every nearby result. */
+  selectedPlaceId?: string | null;
   onEntitySelect: (key: string) => void;
+  onPlaceSelect?: (place: MapPlace) => void;
   onMapError: (message: string) => void;
 };
 
@@ -38,19 +42,29 @@ export default function MapCanvas({
   focus,
   showModernBorders,
   selectedEntityKey = null,
+  selectedPlaceId = null,
   onEntitySelect,
+  onPlaceSelect,
   onMapError,
 }: MapCanvasProps) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
   const selectRef = useRef(onEntitySelect);
+  const placeSelectRef = useRef(onPlaceSelect);
+  const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     selectRef.current = onEntitySelect;
+    placeSelectRef.current = onPlaceSelect;
     errorRef.current = onMapError;
-  }, [onEntitySelect, onMapError]);
+  }, [onEntitySelect, onMapError, onPlaceSelect]);
+
+  useEffect(() => {
+    placesRef.current = places;
+  }, [places]);
 
   useEffect(() => {
     if (!element.current || map.current) return undefined;
@@ -76,11 +90,21 @@ export default function MapCanvas({
       if (!/source .* is not loaded/i.test(message)) errorRef.current(message);
     });
     next.on("load", () => {
-      addMarkerLayers(next, (key) => selectRef.current(key));
+      addMarkerLayers(
+        next,
+        (key) => selectRef.current(key),
+        (id) => {
+          const place = placesRef.current.find((item) => item.id === id);
+          if (place) placeSelectRef.current?.(place);
+          return place;
+        },
+      );
       setReady(true);
     });
     return () => {
       setReady(false);
+      selectedPlaceMarker.current?.remove();
+      selectedPlaceMarker.current = null;
       next.remove();
       map.current = null;
     };
@@ -108,6 +132,39 @@ export default function MapCanvas({
       selectedEntityKey || "__none__",
     ]);
   }, [ready, selectedEntityKey]);
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    const key = selectedPlaceId ? `PLACE:${selectedPlaceId}` : "__none__";
+    map.current.setFilter("map-place-selected", ["==", ["get", "key"], key]);
+  }, [ready, selectedPlaceId]);
+
+  useEffect(() => {
+    selectedPlaceMarker.current?.remove();
+    selectedPlaceMarker.current = null;
+    if (!ready || !map.current || !selectedPlaceId) return undefined;
+    const place = places.find((item) => item.id === selectedPlaceId);
+    if (!place) return undefined;
+    const element = document.createElement("button");
+    element.type = "button";
+    element.className = "map-selected-place-label";
+    element.textContent = place.matchedName || place.canonicalName;
+    element.setAttribute("aria-label", `Show names for ${element.textContent}`);
+    const marker = new maplibregl.Marker({ element, anchor: "bottom" })
+      .setLngLat([place.longitude, place.latitude])
+      .addTo(map.current);
+    element.addEventListener("click", () => {
+      placeSelectRef.current?.(place);
+      new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "18rem" })
+        .setLngLat([place.longitude, place.latitude])
+        .setDOMContent(placePopover(place))
+        .addTo(map.current as maplibregl.Map);
+    });
+    selectedPlaceMarker.current = marker;
+    return () => {
+      marker.remove();
+    };
+  }, [places, ready, selectedPlaceId]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -199,6 +256,7 @@ function mapStyle(): maplibregl.StyleSpecification {
 function addMarkerLayers(
   map: maplibregl.Map,
   onEntitySelect: (key: string) => void,
+  onPlaceSelect: (id: string) => MapPlace | undefined,
 ): void {
   map.addSource("map-entities", {
     type: "geojson",
@@ -264,6 +322,19 @@ function addMarkerLayers(
       "circle-stroke-color": "#fff",
     },
   });
+  map.addLayer({
+    id: "map-place-selected",
+    type: "circle",
+    source: "map-places",
+    filter: ["==", ["get", "key"], "__none__"],
+    paint: {
+      "circle-radius": 8,
+      "circle-color": "#fff",
+      "circle-opacity": 0.45,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#15120f",
+    },
+  });
 
   map.on("click", "map-clusters", (event) => {
     const feature = event.features?.[0];
@@ -285,7 +356,24 @@ function addMarkerLayers(
     const key = event.features?.[0]?.properties?.key;
     if (typeof key === "string") onEntitySelect(key);
   });
-  for (const layer of ["map-clusters", "map-entity-points"]) {
+  const openPlace = (event: maplibregl.MapLayerMouseEvent) => {
+    const id = event.features?.[0]?.properties?.placeId;
+    if (typeof id !== "string") return;
+    const place = onPlaceSelect(id);
+    if (!place) return;
+    const coordinates = (event.features?.[0]?.geometry as GeoJSON.Point)
+      .coordinates as [number, number];
+    new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "18rem" })
+      .setLngLat(coordinates)
+      .setDOMContent(placePopover(place))
+      .addTo(map);
+  };
+  map.on("click", "map-place-points", openPlace);
+  for (const layer of [
+    "map-clusters",
+    "map-entity-points",
+    "map-place-points",
+  ]) {
     map.on("mouseenter", layer, () => {
       map.getCanvas().style.cursor = "pointer";
     });
@@ -346,10 +434,54 @@ function placeCollection(
       properties: {
         key: `PLACE:${place.id}`,
         kind: "PLACE",
-        label: place.canonicalName,
+        placeId: place.id,
+        label: place.matchedName || place.canonicalName,
       },
     })),
   };
+}
+
+/** Build popup content with DOM nodes rather than HTML so imported place names
+ * are always displayed as text, never interpreted as markup. */
+function placePopover(place: MapPlace): HTMLDivElement {
+  const container = document.createElement("div");
+  container.className = "map-place-popover";
+  const heading = document.createElement("strong");
+  heading.textContent = place.matchedName || place.canonicalName;
+  container.append(heading);
+  const names = place.names?.length
+    ? place.names
+    : [{ value: place.canonicalName, preferred: true }];
+  const distinctNames = names.filter(
+    (name, index) =>
+      names.findIndex((candidate) => candidate.value === name.value) === index,
+  );
+  if (distinctNames.length) {
+    const list = document.createElement("ul");
+    list.className = "map-place-name-list";
+    for (const name of distinctNames) {
+      const item = document.createElement("li");
+      item.textContent = `${name.value}${name.preferred ? " (canonical)" : ""}${formatNameRange(name.validFrom, name.validTo)}`;
+      list.append(item);
+    }
+    container.append(list);
+  }
+  return container;
+}
+
+function formatNameRange(from?: number, to?: number): string {
+  if (from === undefined && to === undefined) return "";
+  if (from !== undefined && to !== undefined)
+    return ` · ${formatNameYear(from)}–${formatNameYear(to)}`;
+  return from !== undefined
+    ? ` · from ${formatNameYear(from)}`
+    : ` · until ${formatNameYear(to as number)}`;
+}
+
+function formatNameYear(year: number): string {
+  // Map records use astronomical numbering internally: zero is 1 BC.
+  if (year <= 0) return `${1 - year} BC`;
+  return year < 100 ? `${year} AD` : String(year);
 }
 
 export function entityKey(entity: MapEntityLocation): string {

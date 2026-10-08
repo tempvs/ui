@@ -86,6 +86,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           focus={{ latitude: place.latitude, longitude: place.longitude }}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
+          selectedPlaceId={place.id}
           onEntitySelect={setSelectedEntityKey}
           onMapError={(message) => setError(message)}
         />

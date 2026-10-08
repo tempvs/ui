@@ -1,9 +1,22 @@
+export type MapPlaceName = {
+  value: string;
+  preferred: boolean;
+  validFrom?: number;
+  validTo?: number;
+};
+
 export type MapPlace = {
   id: string;
   canonicalName: string;
+  /** Names are returned by the public Map API so choosing a result does not
+   * require a second request before its historical context can be displayed. */
+  names?: MapPlaceName[];
   latitude: number;
   longitude: number;
   featureType: string;
+  /** UI-only label for the particular canonical or historical name that
+   * matched the user's current search. */
+  matchedName?: string;
 };
 
 export type MapEntityLocation = {

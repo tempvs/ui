@@ -58,6 +58,93 @@
   outline-offset: -2px;
 }
 
+.map-place-suggestions {
+  position: absolute;
+  z-index: 4;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid #cfc4b0;
+  border-radius: 0.35rem;
+  background: #fffdf7;
+  box-shadow: 0 0.4rem 1rem rgb(38 29 17 / 18%);
+}
+
+.map-place-search-field {
+  position: relative;
+}
+
+.map-place-suggestion {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-bottom: 1px solid #eee6d7;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.map-place-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.map-place-suggestion:hover,
+.map-place-suggestion:focus-visible {
+  background: #f5edda;
+  outline: none;
+}
+
+.map-place-suggestions-status {
+  position: absolute;
+  z-index: 4;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+}
+
+.map-place-result-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #332c24;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.map-place-result-name:hover,
+.map-place-result-name:focus-visible {
+  color: #72562f;
+}
+
+.map-place-popover {
+  color: #332c24;
+  font-size: 0.82rem;
+}
+
+.map-selected-place-label {
+  margin-bottom: 0.35rem;
+  padding: 0.15rem 0.38rem;
+  border: 1px solid #66533b;
+  border-radius: 0.25rem;
+  background: rgb(255 253 247 / 95%);
+  color: #15120f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 0.1rem 0.25rem rgb(38 29 17 / 20%);
+}
+
+.map-selected-place-label:hover,
+.map-selected-place-label:focus-visible {
+  background: #f5edda;
+}
+
+.map-place-name-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+}
+
 @media (max-width: 575px) {
   .map-canvas-shell {
     min-height: 22rem;
