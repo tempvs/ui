@@ -172,7 +172,7 @@ export default function MapPage() {
       radiusKm: radius,
     });
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
-    if (sourceRoles.length) next.set("sourceRoles", sourceRoles.join(","));
+    appendSourceRoles(next, sourceRoles);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     setParams(next, { replace: true });
@@ -249,7 +249,7 @@ export default function MapPage() {
     if (linkedPlace?.canonicalName || trimmed)
       next.set("q", linkedPlace?.canonicalName || trimmed);
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
-    if (sourceRoles.length) next.set("sourceRoles", sourceRoles.join(","));
+    appendSourceRoles(next, sourceRoles);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (hasCoordinates) {
@@ -714,12 +714,17 @@ function nearPlacePath(
     radiusKm: radius || "25",
   });
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
-  if (sourceRoles.length) parameters.set("sourceRoles", sourceRoles.join(","));
+  appendSourceRoles(parameters, sourceRoles);
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
 }
 
 function parseSourceRoles(value: string | null): SourceLocationRole[] {
+  // A source is primarily native to its find/discovery place. Deliberately
+  // keep an explicit empty query value meaningful: clearing both toggles is
+  // the inclusive mode that shows both find and holding locations.
+  if (value === null) return ["DISCOVERED_AT"];
+  if (value === "all") return [];
   return (value ?? "")
     .split(",")
     .filter(
@@ -727,6 +732,16 @@ function parseSourceRoles(value: string | null): SourceLocationRole[] {
         role === "DISCOVERED_AT" || role === "HELD_AT",
     )
     .filter((role, index, all) => all.indexOf(role) === index);
+}
+
+function appendSourceRoles(
+  parameters: URLSearchParams,
+  sourceRoles: SourceLocationRole[],
+): void {
+  parameters.set(
+    "sourceRoles",
+    sourceRoles.length ? sourceRoles.join(",") : "all",
+  );
 }
 
 function parseHistoricalYear(value: string | null): HistoricalYearInput {

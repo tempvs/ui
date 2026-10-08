@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Form, Spinner } from "react-bootstrap";
+import { Alert, Button, ButtonGroup, Form, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
@@ -13,12 +13,23 @@ import {
 } from "./mapApi";
 
 type MapPlacePageProps = { id?: string };
+type EntityTypeFilter = MapEntityLocation["entityType"] | "ALL";
+const entityTypeFilters: EntityTypeFilter[] = [
+  "ALL",
+  "PROFILE",
+  "CLUB",
+  "EVENT",
+  "SOURCE",
+];
 
 /** Public landing page for one approved canonical point. It uses the exact
  * place-assignment API rather than an imprecise radius lookup. */
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
+  const [entityCursor, setEntityCursor] = useState<string | undefined>();
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [entityType, setEntityType] = useState<EntityTypeFilter>("ALL");
   const [showModernBorders, setShowModernBorders] = useState(false);
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
     null,
@@ -32,23 +43,53 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
     const controller = new AbortController();
     setPlace(undefined);
+    setEntities([]);
+    setEntityCursor(undefined);
     setError("");
+    setEntitiesLoading(true);
     void Promise.all([
       getMapPlace(id, controller.signal),
-      listMapPlaceEntities(id, [], controller.signal),
+      listMapPlaceEntities(
+        id,
+        entityType === "ALL" ? [] : [entityType],
+        controller.signal,
+      ),
     ])
       .then(([nextPlace, nextEntities]) => {
         setPlace(nextPlace);
-        setEntities(nextEntities);
+        setEntities(nextEntities.items);
+        setEntityCursor(nextEntities.nextCursor);
       })
       .catch((caught: unknown) => {
         if (!controller.signal.aborted) {
           setError((caught as Error).message || "Unable to load this place.");
           setPlace(null);
         }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setEntitiesLoading(false);
       });
     return () => controller.abort();
-  }, [id]);
+  }, [entityType, id]);
+
+  const loadMoreEntities = async () => {
+    if (!id || !entityCursor || entitiesLoading) return;
+    setEntitiesLoading(true);
+    try {
+      const page = await listMapPlaceEntities(
+        id,
+        entityType === "ALL" ? [] : [entityType],
+        undefined,
+        entityCursor,
+      );
+      setEntities((current) => [...current, ...page.items]);
+      setEntityCursor(page.nextCursor);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load more content.");
+    } finally {
+      setEntitiesLoading(false);
+    }
+  };
 
   if (place === undefined)
     return (
@@ -144,9 +185,24 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         aria-label="Public content at this place"
       >
         <h2 className="h5">At this place</h2>
+        <ButtonGroup className="mb-2 flex-wrap" aria-label="Content type">
+          {entityTypeFilters.map((type) => (
+            <Button
+              key={type}
+              type="button"
+              size="sm"
+              variant={entityType === type ? "dark" : "outline-dark"}
+              onClick={() => setEntityType(type)}
+            >
+              {type === "ALL" ? "All" : type[0] + type.slice(1).toLowerCase()}
+            </Button>
+          ))}
+        </ButtonGroup>
         {entities.length === 0 ? (
           <p className="text-muted mb-0">
-            No public content is assigned here yet.
+            {entitiesLoading
+              ? "Loading public content…"
+              : "No public content is assigned here yet."}
           </p>
         ) : (
           <ul className="list-unstyled mb-0">
@@ -165,6 +221,18 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               </li>
             ))}
           </ul>
+        )}
+        {entityCursor && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline-dark"
+            className="mt-2"
+            disabled={entitiesLoading}
+            onClick={() => void loadMoreEntities()}
+          >
+            {entitiesLoading ? "Loading…" : "Show more"}
+          </Button>
         )}
       </section>
     </PageLayout>

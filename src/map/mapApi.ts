@@ -50,6 +50,11 @@ export type MapEntityLocation = {
   longitude: number;
 };
 
+export type MapEntityLocationPage = {
+  items: MapEntityLocation[];
+  nextCursor?: string;
+};
+
 /** A source's two distinct map meanings. These deliberately do not filter
  * profile, club, or event markers when used in a mixed nearby search. */
 export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
@@ -123,21 +128,31 @@ export async function listMapPlaceEntities(
   placeId: string,
   types: MapEntityLocation["entityType"][] = [],
   signal?: AbortSignal,
-): Promise<MapEntityLocation[]> {
+  cursor?: string,
+): Promise<MapEntityLocationPage> {
   const response = await fetch(
     `/api/map/places/${encodeURIComponent(placeId)}/entities?${new URLSearchParams(
       {
         limit: "100",
         ...(types.length ? { types: types.join(",") } : {}),
+        ...(cursor ? { cursor } : {}),
       },
     )}`,
     { signal },
   );
-  if (response.status === 404) return [];
+  if (response.status === 404) return { items: [] };
   if (!response.ok) throw new Error("Unable to load content at this place");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
   const items = body?.items;
-  return Array.isArray(items) ? (items as MapEntityLocation[]) : [];
+  return {
+    items: Array.isArray(items) ? (items as MapEntityLocation[]) : [],
+    ...(typeof body?.nextCursor === "string"
+      ? { nextCursor: body.nextCursor }
+      : {}),
+  };
 }
 
 /** Public duplicate check for a prospective point. It never exposes pending
