@@ -27,6 +27,7 @@ import EventPage from "./event/EventPage";
 import EventAdminPage from "./event/EventAdminPage";
 import NotificationsPage from "./notification/NotificationsPage";
 import MapAdminPage from "./map/MapAdminPage";
+import MapPlacePage from "./map/MapPlacePage";
 import MapPage from "./map/MapPage";
 
 function ProfilePageWithParam() {
@@ -70,6 +71,11 @@ function ChatConversationPage() {
 function ClubPageWithParam() {
   const { id } = useParams();
   return <ClubPage key={id} />;
+}
+
+function MapPlacePageWithParam() {
+  const { placeId } = useParams();
+  return <MapPlacePage key={`map-place:${placeId || ""}`} id={placeId} />;
 }
 
 /** Keeps the horizontal navigation mounted while React Router swaps page content. */
@@ -152,6 +158,7 @@ function App() {
             <Route path="/events/:eventId" element={<EventPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/map/admin" element={<MapAdminPage />} />
+            <Route path="/map/place/:placeId" element={<MapPlacePageWithParam />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route
               path="/chat/:conversationId"

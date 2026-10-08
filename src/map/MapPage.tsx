@@ -310,6 +310,12 @@ export default function MapPage() {
               </span>
               <Link
                 className="ms-2"
+                to={`/map/place/${encodeURIComponent(place.id)}`}
+              >
+                Place details
+              </Link>
+              <Link
+                className="ms-2"
                 to={nearPlacePath(
                   place,
                   radius,

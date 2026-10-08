@@ -78,6 +78,27 @@ export async function getMapPlace(
   return (await responseJson(response)) as MapPlace;
 }
 
+/** Public assignments at an exact canonical place. This is intentionally
+ * separate from radius discovery so a place page never includes neighbours. */
+export async function listMapPlaceEntities(
+  placeId: string,
+  types: MapEntityLocation["entityType"][] = [],
+  signal?: AbortSignal,
+): Promise<MapEntityLocation[]> {
+  const response = await fetch(
+    `/api/map/places/${encodeURIComponent(placeId)}/entities?${new URLSearchParams({
+      limit: "100",
+      ...(types.length ? { types: types.join(",") } : {}),
+    })}`,
+    { signal },
+  );
+  if (response.status === 404) return [];
+  if (!response.ok) throw new Error("Unable to load content at this place");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  const items = body?.items;
+  return Array.isArray(items) ? (items as MapEntityLocation[]) : [];
+}
+
 /** Public duplicate check for a prospective point. It never exposes pending
  * proposals: only approved canonical places are returned. */
 export async function findLikelyDuplicateMapPlaces(
