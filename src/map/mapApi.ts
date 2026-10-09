@@ -320,7 +320,7 @@ export async function listMyMapRoleRequests(): Promise<MapRoleRequest[]> {
     throw new Error("Sign in to view Map role requests");
   if (!response.ok) throw new Error("Unable to load Map role requests");
   const body = (await responseJson(response)) as { items?: unknown } | null;
-  return Array.isArray(body?.items) ? (body.items as MapRoleRequest[]) : [];
+  return Array.isArray(body?.items) ? (body?.items as MapRoleRequest[]) : [];
 }
 
 export async function listPendingMapRoleRequests(
@@ -340,7 +340,7 @@ export async function listPendingMapRoleRequests(
     nextCursor?: unknown;
   } | null;
   return {
-    items: Array.isArray(body?.items) ? (body.items as MapRoleRequest[]) : [],
+    items: Array.isArray(body?.items) ? (body?.items as MapRoleRequest[]) : [],
     ...(typeof body?.nextCursor === "string"
       ? { nextCursor: body.nextCursor }
       : {}),
