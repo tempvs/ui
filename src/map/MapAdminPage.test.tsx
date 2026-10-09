@@ -81,5 +81,5 @@ test("lets a map editor approve a proposal", async () => {
   await waitFor(() =>
     expect(approveMock).toHaveBeenCalledWith("tempvs:proposal-1", undefined),
   );
-  expect(screen.queryByText("Augusta Raurica")).toBeNull();
+  await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
 });
