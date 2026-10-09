@@ -3,7 +3,7 @@ import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { MapEntityLocation, MapPlace } from "./mapApi";
-import type { OwnedMapMarker } from "./ownedMapContent";
+import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
 import "./map.css";
 
@@ -13,6 +13,8 @@ type MapCanvasProps = {
   /** Viewer-scoped markers assembled in the browser. They are kept out of
    * the public entity source because membership/ownership is private context. */
   ownedMarkers?: OwnedMapMarker[];
+  /** Viewer-scoped relationship edges between the private overlay markers. */
+  ownedConnections?: OwnedMapConnection[];
   focus?: { latitude: number; longitude: number } | null;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
@@ -51,6 +53,7 @@ export default function MapCanvas({
   places,
   entities,
   ownedMarkers = [],
+  ownedConnections = [],
   focus,
   showModernBorders,
   selectedEntityKey = null,
@@ -207,6 +210,13 @@ export default function MapCanvas({
 
   useEffect(() => {
     if (!ready || !map.current) return;
+    const source = map.current.getSource("map-owned-connections") as
+      GeoJSONSource | undefined;
+    source?.setData(ownedConnectionCollection(ownedConnections, ownedMarkers));
+  }, [ownedConnections, ownedMarkers, ready]);
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
     map.current.setFilter("map-entity-selected", [
       "==",
       ["get", "key"],
@@ -305,6 +315,12 @@ export default function MapCanvas({
           <i className="map-legend-dot map-legend-source" />
           Sources
         </span>
+        {ownedConnections.length > 0 && (
+          <span>
+            <i className="map-legend-line" />
+            Your connections
+          </span>
+        )}
       </div>
     </div>
   );
@@ -408,6 +424,29 @@ function addMarkerLayers(
     clusterRadius: 48,
   });
   map.addSource("map-places", { type: "geojson", data: EMPTY_COLLECTION });
+  map.addSource("map-owned-connections", {
+    type: "geojson",
+    data: EMPTY_COLLECTION,
+  });
+  map.addLayer({
+    id: "map-owned-connections",
+    type: "line",
+    source: "map-owned-connections",
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "kind"],
+        "PROFILE_SOURCE",
+        "#6d7c4a",
+        "PROFILE_CLUB",
+        "#8a5a44",
+        "#4f6d7a",
+      ],
+      "line-width": 2,
+      "line-opacity": 0.65,
+      "line-dasharray": [2, 1.5],
+    },
+  });
   map.addLayer({
     id: "map-clusters",
     type: "circle",
@@ -584,6 +623,34 @@ function placeCollection(
         label: place.matchedName || place.canonicalName,
       },
     })),
+  };
+}
+
+function ownedConnectionCollection(
+  connections: OwnedMapConnection[],
+  markers: OwnedMapMarker[],
+): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+  const markerByKey = new Map(markers.map((marker) => [marker.key, marker]));
+  return {
+    type: "FeatureCollection",
+    features: connections.flatMap((connection) => {
+      const from = markerByKey.get(connection.fromKey);
+      const to = markerByKey.get(connection.toKey);
+      if (!from || !to) return [];
+      return [
+        {
+          type: "Feature" as const,
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              [from.longitude, from.latitude],
+              [to.longitude, to.latitude],
+            ],
+          },
+          properties: { kind: connection.kind },
+        },
+      ];
+    }),
   };
 }
 

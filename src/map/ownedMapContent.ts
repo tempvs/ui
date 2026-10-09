@@ -28,6 +28,20 @@ export type OwnedMapMarker = {
   path: string;
 };
 
+/** Private relationship edges drawn only for the signed-in person's map
+ * overlay. They are never sent to public Map API callers. */
+export type OwnedMapConnection = {
+  key: string;
+  fromKey: string;
+  toKey: string;
+  kind: "PROFILE_SOURCE" | "PROFILE_CLUB" | "USER_CLUB_PROFILE";
+};
+
+export type OwnedMapContent = {
+  markers: OwnedMapMarker[];
+  connections: OwnedMapConnection[];
+};
+
 type Located = {
   locationPlaceId?: string | null;
   location?: string | null;
@@ -42,14 +56,16 @@ type Located = {
  */
 export async function loadOwnedMapContent(
   userId: string,
-): Promise<OwnedMapMarker[]> {
+): Promise<OwnedMapContent> {
   const [personalResult, clubProfilesResult] = await Promise.allSettled([
     getUserProfileByUserId(userId),
     getClubProfiles(userId),
   ]);
+  const personalProfile =
+    personalResult.status === "fulfilled" ? personalResult.value : null;
   const profiles = uniqueById(
     [
-      personalResult.status === "fulfilled" ? personalResult.value : null,
+      personalProfile,
       ...(clubProfilesResult.status === "fulfilled"
         ? clubProfilesResult.value
         : []),
@@ -57,18 +73,32 @@ export async function loadOwnedMapContent(
   );
   const resolvePlace = placeResolver();
 
-  const [profileMarkers, clubs, sourceIds] = await Promise.all([
+  const [profileMarkers, memberships, sourceUsage] = await Promise.all([
     profileMapMarkers(profiles, resolvePlace),
-    memberClubs(profiles),
-    sourceIdsUsedByClubProfiles(
-      profiles.filter((profile) => profile.type === "CLUB"),
-    ),
+    clubsByProfile(profiles),
+    sourceIdsUsedByProfiles(profiles),
   ]);
+  const clubs = uniqueById(
+    Array.from(memberships.values()).flatMap((profileClubs) => profileClubs),
+  );
+  const sourceIds = Array.from(
+    new Set(Array.from(sourceUsage.values()).flat()),
+  );
   const [clubMarkers, sourceMarkers] = await Promise.all([
     clubMapMarkers(clubs, resolvePlace),
     sourceMapMarkers(sourceIds, resolvePlace),
   ]);
-  return [...profileMarkers, ...clubMarkers, ...sourceMarkers];
+  const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
+  return {
+    markers,
+    connections: buildConnections(
+      markers,
+      personalProfile?.id,
+      profiles,
+      memberships,
+      sourceUsage,
+    ),
+  };
 }
 
 async function profileMapMarkers(
@@ -99,14 +129,20 @@ async function profileMapMarkers(
   return prepared.filter((value): value is OwnedMapMarker => Boolean(value));
 }
 
-async function memberClubs(profiles: Profile[]): Promise<Club[]> {
+async function clubsByProfile(
+  profiles: Profile[],
+): Promise<Map<string, Club[]>> {
   const results = await Promise.allSettled(
     profiles.map((profile) => getProfileClubs(profile.id)),
   );
-  return uniqueById(
-    results.flatMap((result) =>
-      result.status === "fulfilled" ? result.value : [],
-    ),
+  return new Map(
+    profiles.map((profile, index) => {
+      const result = results[index];
+      return [
+        profile.id,
+        result && result.status === "fulfilled" ? result.value : [],
+      ];
+    }),
   );
 }
 
@@ -135,27 +171,34 @@ async function clubMapMarkers(
   return prepared.filter((value): value is OwnedMapMarker => Boolean(value));
 }
 
-async function sourceIdsUsedByClubProfiles(
+async function sourceIdsUsedByProfiles(
   profiles: Profile[],
-): Promise<string[]> {
+): Promise<Map<string, string[]>> {
   const stashes = await Promise.allSettled(
     profiles.map((profile) => getProfileStash(profile.id)),
   );
-  const groups = stashes.flatMap((result) =>
-    result.status === "fulfilled" ? result.value.groups || [] : [],
+  const sourceIds = await Promise.all(
+    profiles.map(async (profile, index) => {
+      const stash = stashes[index];
+      if (stash.status !== "fulfilled") return [profile.id, []] as const;
+      const pages = await Promise.allSettled(
+        (stash.value.groups || []).map((group) => getGroupItems(group.id)),
+      );
+      return [
+        profile.id,
+        Array.from(
+          new Set(
+            pages.flatMap((result) =>
+              result.status === "fulfilled"
+                ? result.value.flatMap((item) => item.sources || [])
+                : [],
+            ),
+          ),
+        ),
+      ] as const;
+    }),
   );
-  const itemPages = await Promise.allSettled(
-    groups.map((group) => getGroupItems(group.id)),
-  );
-  return Array.from(
-    new Set(
-      itemPages.flatMap((result) =>
-        result.status === "fulfilled"
-          ? result.value.flatMap((item) => item.sources || [])
-          : [],
-      ),
-    ),
-  );
+  return new Map(sourceIds.map(([profileId, ids]) => [profileId, [...ids]]));
 }
 
 async function sourceMapMarkers(
@@ -274,6 +317,54 @@ function marker(value: Omit<OwnedMapMarker, "key">): OwnedMapMarker {
     ...value,
     key: `${value.entityType}:${value.entityId}:${value.locationRole}`,
   };
+}
+
+function buildConnections(
+  markers: OwnedMapMarker[],
+  personalProfileId: string | undefined,
+  profiles: Profile[],
+  memberships: Map<string, Club[]>,
+  sourceUsage: Map<string, string[]>,
+): OwnedMapConnection[] {
+  const byEntity = new Map<string, OwnedMapMarker[]>();
+  markers.forEach((value) => {
+    const key = `${value.entityType}:${value.entityId}`;
+    byEntity.set(key, [...(byEntity.get(key) || []), value]);
+  });
+  const connections: OwnedMapConnection[] = [];
+  const connect = (
+    fromEntity: string,
+    toEntity: string,
+    kind: OwnedMapConnection["kind"],
+  ) => {
+    for (const from of byEntity.get(fromEntity) || []) {
+      for (const to of byEntity.get(toEntity) || []) {
+        if (from.key === to.key) continue;
+        connections.push({
+          key: `${kind}:${from.key}:${to.key}`,
+          fromKey: from.key,
+          toKey: to.key,
+          kind,
+        });
+      }
+    }
+  };
+  profiles.forEach((profile) => {
+    const profileEntity = `PROFILE:${profile.id}`;
+    (memberships.get(profile.id) || []).forEach((club) =>
+      connect(profileEntity, `CLUB:${club.id}`, "PROFILE_CLUB"),
+    );
+    (sourceUsage.get(profile.id) || []).forEach((sourceId) =>
+      connect(profileEntity, `SOURCE:${sourceId}`, "PROFILE_SOURCE"),
+    );
+    if (personalProfileId && profile.type === "CLUB")
+      connect(
+        `PROFILE:${personalProfileId}`,
+        profileEntity,
+        "USER_CLUB_PROFILE",
+      );
+  });
+  return connections;
 }
 
 function profileLabel(profile: Profile): string {

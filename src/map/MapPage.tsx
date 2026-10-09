@@ -19,7 +19,11 @@ import {
   type SourceLocationRole,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
-import { loadOwnedMapContent, type OwnedMapMarker } from "./ownedMapContent";
+import {
+  loadOwnedMapContent,
+  type OwnedMapConnection,
+  type OwnedMapMarker,
+} from "./ownedMapContent";
 import PlaceProposalModal from "./PlaceProposalModal";
 import { matchingPlaceName } from "./placeNames";
 
@@ -77,6 +81,9 @@ export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
+  const [ownedConnections, setOwnedConnections] = useState<
+    OwnedMapConnection[]
+  >([]);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const suggestionRequest = useRef(0);
 
@@ -92,18 +99,24 @@ export default function MapPage() {
     let active = true;
     if (!viewer) {
       setOwnedMarkers([]);
+      setOwnedConnections([]);
       return () => {
         active = false;
       };
     }
     void loadOwnedMapContent(viewer.userId)
-      .then((markers) => {
-        if (active) setOwnedMarkers(markers);
+      .then((content) => {
+        if (!active) return;
+        setOwnedMarkers(content.markers);
+        setOwnedConnections(content.connections);
       })
       .catch(() => {
         // Ownership context is a convenience. Keep public map search usable
         // when an optional profile, club, or stash read is unavailable.
-        if (active) setOwnedMarkers([]);
+        if (active) {
+          setOwnedMarkers([]);
+          setOwnedConnections([]);
+        }
       });
     return () => {
       active = false;
@@ -632,6 +645,7 @@ export default function MapPage() {
           places={items}
           entities={entities}
           ownedMarkers={ownedMarkers}
+          ownedConnections={ownedConnections}
           focus={focus}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}

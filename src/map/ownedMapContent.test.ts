@@ -94,9 +94,9 @@ beforeEach(() => {
 });
 
 test("composes profile, membership club, and club-stash source markers", async () => {
-  const markers = await loadOwnedMapContent("viewer");
+  const content = await loadOwnedMapContent("viewer");
 
-  expect(markers).toEqual(
+  expect(content.markers).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         key: "PROFILE:personal:CURRENT_RESIDENCE",
@@ -111,6 +111,25 @@ test("composes profile, membership club, and club-stash source markers", async (
         key: "SOURCE:source:DISCOVERED_AT",
         path: "/library/source/source",
         thumbnailUrl: "https://images.test/source-thumb.jpg",
+      }),
+    ]),
+  );
+  expect(content.connections).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: "PROFILE_CLUB",
+        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        toKey: "CLUB:club:CLUB_ASSOCIATION",
+      }),
+      expect.objectContaining({
+        kind: "PROFILE_SOURCE",
+        fromKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
+        toKey: "SOURCE:source:DISCOVERED_AT",
+      }),
+      expect.objectContaining({
+        kind: "USER_CLUB_PROFILE",
+        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        toKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
       }),
     ]),
   );
