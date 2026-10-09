@@ -27,6 +27,7 @@ import {
   type OwnedMapMarker,
 } from "./ownedMapContent";
 import PlaceProposalModal from "./PlaceProposalModal";
+import MapRoleRequestModal from "./MapRoleRequestModal";
 import { matchingPlaceName } from "./placeNames";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
@@ -98,6 +99,7 @@ export default function MapPage() {
   );
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
+  const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
   const suggestionRequest = useRef(0);
 
   useEffect(() => {
@@ -685,6 +687,15 @@ export default function MapPage() {
               Propose a place
             </Button>
           )}
+          {viewer && (
+            <Button
+              type="button"
+              variant="outline-dark"
+              onClick={() => setShowRoleRequestModal(true)}
+            >
+              Map roles
+            </Button>
+          )}
           {canReviewPlaces && (
             <Button
               type="button"
@@ -853,7 +864,9 @@ export default function MapPage() {
         proposal={editingProposal}
         onSubmitted={(proposal) =>
           setOwnProposals((current) => {
-            const existing = current.findIndex((item) => item.id === proposal.id);
+            const existing = current.findIndex(
+              (item) => item.id === proposal.id,
+            );
             if (existing < 0) return [proposal, ...current];
             return current.map((item) =>
               item.id === proposal.id ? proposal : item,
@@ -864,6 +877,10 @@ export default function MapPage() {
           setShowProposalModal(false);
           setEditingProposal(null);
         }}
+      />
+      <MapRoleRequestModal
+        show={showRoleRequestModal}
+        onHide={() => setShowRoleRequestModal(false)}
       />
     </PageLayout>
   );

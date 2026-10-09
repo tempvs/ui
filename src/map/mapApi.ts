@@ -105,6 +105,30 @@ export type MapPlaceProposalActivity = {
   note?: string;
 };
 
+export type MapRole =
+  "MAP_CONTRIBUTOR" | "MAP_REVIEWER" | "MAP_EDITOR" | "MAP_ADMIN";
+export type MapRoleRequest = {
+  id: string;
+  userId: string;
+  role: Exclude<MapRole, "MAP_ADMIN">;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  updatedAt: string;
+  note?: string;
+  decidedByUserId?: string;
+  decisionNote?: string;
+};
+export type MapRoleRequestPage = {
+  items: MapRoleRequest[];
+  nextCursor?: string;
+};
+export type MapRoleMember = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  roles: MapRole[];
+};
+
 /** A non-public point awaiting an editor's approval.  Keeping it separate
  * from MapPlace prevents a pending proposal from accidentally being rendered
  * in a public picker or on the map. */
@@ -269,6 +293,91 @@ export async function proposeMapPlace(
   if (response.status === 401) throw new Error("Sign in to propose a place");
   if (!response.ok) throw new Error("Unable to submit this place proposal");
   return (await responseJson(response)) as MapPlaceProposalRecord;
+}
+
+export async function requestMapRole(
+  role: MapRoleRequest["role"],
+  note?: string,
+): Promise<MapRoleRequest> {
+  const response = await fetch("/api/map/roles/requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      role,
+      ...(note?.trim() ? { note: note.trim() } : {}),
+    }),
+  });
+  if (response.status === 401) throw new Error("Sign in to request a Map role");
+  if (response.status === 409)
+    throw new Error("You already have an active request for this Map role.");
+  if (!response.ok) throw new Error("Unable to request this Map role");
+  return (await responseJson(response)) as MapRoleRequest;
+}
+
+export async function listMyMapRoleRequests(): Promise<MapRoleRequest[]> {
+  const response = await fetch("/api/map/roles/requests/mine?limit=20");
+  if (response.status === 401)
+    throw new Error("Sign in to view Map role requests");
+  if (!response.ok) throw new Error("Unable to load Map role requests");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items) ? (body.items as MapRoleRequest[]) : [];
+}
+
+export async function listPendingMapRoleRequests(
+  cursor?: string,
+): Promise<MapRoleRequestPage> {
+  const response = await fetch(
+    `/api/map/admin/roles/requests?${new URLSearchParams({
+      limit: "20",
+      ...(cursor ? { cursor } : {}),
+    })}`,
+  );
+  if (response.status === 401 || response.status === 403)
+    throw new Error("Map admin access is required");
+  if (!response.ok) throw new Error("Unable to load Map role requests");
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
+  return {
+    items: Array.isArray(body?.items) ? (body.items as MapRoleRequest[]) : [],
+    ...(typeof body?.nextCursor === "string"
+      ? { nextCursor: body.nextCursor }
+      : {}),
+  };
+}
+
+async function decideMapRoleRequest(
+  id: string,
+  decision: "approve" | "reject",
+  note?: string,
+): Promise<MapRoleRequest> {
+  const response = await fetch(
+    `/api/map/admin/roles/requests/${encodeURIComponent(id)}/${decision}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note?.trim() ? { note: note.trim() } : {}),
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Unable to ${decision} this Map role request`);
+  return (await responseJson(response)) as MapRoleRequest;
+}
+
+export function approveMapRoleRequest(id: string, note?: string) {
+  return decideMapRoleRequest(id, "approve", note);
+}
+
+export function rejectMapRoleRequest(id: string, note?: string) {
+  return decideMapRoleRequest(id, "reject", note);
+}
+
+export async function listMapRoleMembers(): Promise<MapRoleMember[]> {
+  const response = await fetch("/api/map/admin/roles/members");
+  if (!response.ok) throw new Error("Unable to load Map role members");
+  const body = await responseJson(response);
+  return Array.isArray(body) ? (body as MapRoleMember[]) : [];
 }
 
 /** Private, author-scoped active proposals. Pending names and coordinates are

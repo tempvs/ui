@@ -6,13 +6,19 @@ import PageLayout from "../component/PageLayout";
 import TextFilterInput from "../component/TextFilterInput";
 import {
   approveMapPlace,
+  approveMapRoleRequest,
   findLikelyDuplicateMapPlaces,
+  listMapRoleMembers,
+  listPendingMapRoleRequests,
   listPendingMapPlaces,
   mergeMapPlace,
   rejectMapPlace,
+  rejectMapRoleRequest,
   requestMapPlaceChanges,
   type MapPlace,
   type PendingMapPlace,
+  type MapRoleMember,
+  type MapRoleRequest,
 } from "./mapApi";
 import MapCanvas from "./MapCanvas";
 import ProposalActivityPanel from "./ProposalActivityPanel";
@@ -36,6 +42,14 @@ function canDecidePlaceReviews(viewer: Viewer | null): boolean {
         role === "TEMPVS_ADMIN" ||
         role === "MAP_ADMIN" ||
         role === "MAP_EDITOR",
+    ),
+  );
+}
+
+function canAdministerMapRoles(viewer: Viewer | null): boolean {
+  return Boolean(
+    viewer?.roles.some(
+      (role) => role === "TEMPVS_ADMIN" || role === "MAP_ADMIN",
     ),
   );
 }
@@ -67,6 +81,10 @@ export default function MapAdminPage() {
   );
   const mayDecide = useMemo(
     () => canDecidePlaceReviews(viewer ?? null),
+    [viewer],
+  );
+  const mayAdministerRoles = useMemo(
+    () => canAdministerMapRoles(viewer ?? null),
     [viewer],
   );
   const visibleProposals = useMemo(() => {
@@ -297,8 +315,150 @@ export default function MapAdminPage() {
           </>
         )}
       </section>
+      {mayAdministerRoles && <MapRoleAdminPanel />}
     </PageLayout>
   );
+}
+
+/** Role approvals are intentionally separate from place review. The role
+ * panel only renders for Map/global admins; reviewers and editors can never
+ * accidentally escalate membership through this page. */
+function MapRoleAdminPanel() {
+  const [requests, setRequests] = useState<MapRoleRequest[]>([]);
+  const [members, setMembers] = useState<MapRoleMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([listPendingMapRoleRequests(), listMapRoleMembers()])
+      .then(([requestPage, loadedMembers]) => {
+        if (!active) return;
+        setRequests(requestPage.items);
+        setMembers(loadedMembers);
+      })
+      .catch((caught: unknown) => {
+        if (active)
+          setError(
+            (caught as Error).message || "Unable to load Map role management.",
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const decide = async (
+    request: MapRoleRequest,
+    action: "approve" | "reject",
+  ) => {
+    setProcessingId(request.id);
+    setError("");
+    try {
+      if (action === "approve") await approveMapRoleRequest(request.id);
+      else await rejectMapRoleRequest(request.id);
+      setRequests((current) =>
+        current.filter((item) => item.id !== request.id),
+      );
+      if (action === "approve") {
+        const freshMembers = await listMapRoleMembers();
+        setMembers(freshMembers);
+      }
+    } catch (caught) {
+      setError(
+        (caught as Error).message || "Unable to update this Map role request.",
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  return (
+    <section className="club-panel mt-3" aria-label="Map role management">
+      <h2 className="h5">Map roles</h2>
+      <p className="text-muted small">
+        Map administrators review role requests and maintain Map contributor,
+        reviewer, and editor access. Map admin access itself is managed outside
+        this panel.
+      </p>
+      {error && <Alert variant="danger">{error}</Alert>}
+      {loading ? (
+        <Spinner animation="border" size="sm" />
+      ) : (
+        <>
+          <h3 className="h6">Pending requests</h3>
+          {requests.length === 0 ? (
+            <p className="text-muted small">No pending Map role requests.</p>
+          ) : (
+            <ul className="list-unstyled mb-3">
+              {requests.map((request) => (
+                <li
+                  key={request.id}
+                  className="border-top py-2 d-flex justify-content-between gap-3 flex-wrap"
+                >
+                  <div>
+                    <strong>{formatMapRole(request.role)}</strong>
+                    <span className="text-muted ms-2 small">
+                      {request.userId}
+                    </span>
+                    {request.note && (
+                      <p className="small text-muted mb-0">{request.note}</p>
+                    )}
+                  </div>
+                  <div className="d-flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="dark"
+                      disabled={processingId === request.id}
+                      onClick={() => void decide(request, "approve")}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      disabled={processingId === request.id}
+                      onClick={() => void decide(request, "reject")}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3 className="h6">Current members</h3>
+          {members.length === 0 ? (
+            <p className="text-muted small mb-0">No assigned Map roles.</p>
+          ) : (
+            <ul className="list-unstyled mb-0">
+              {members.map((member) => (
+                <li key={member.userId} className="border-top py-2 small">
+                  <strong>
+                    {member.name || member.email || member.userId}
+                  </strong>
+                  <span className="text-muted ms-2">
+                    {member.roles.map(formatMapRole).join(", ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function formatMapRole(role: string): string {
+  return role
+    .replace(/^MAP_/, "")
+    .toLocaleLowerCase()
+    .replace(/^./, (value) => value.toLocaleUpperCase());
 }
 
 /** A reviewer needs the proposed point and all submitted names before making
