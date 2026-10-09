@@ -13,12 +13,28 @@ import {
   type PendingMapPlace,
 } from "./mapApi";
 
-function canReviewPlaces(viewer: Viewer | null): boolean {
+function canViewPlaceReviews(viewer: Viewer | null): boolean {
   return Boolean(
-    viewer?.roles.some((role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR"),
+    viewer?.roles.some(
+      (role) =>
+        role === "TEMPVS_ADMIN" ||
+        role === "MAP_ADMIN" ||
+        role === "MAP_EDITOR" ||
+        role === "MAP_REVIEWER",
+    ),
   );
 }
 
+function canDecidePlaceReviews(viewer: Viewer | null): boolean {
+  return Boolean(
+    viewer?.roles.some(
+      (role) =>
+        role === "TEMPVS_ADMIN" ||
+        role === "MAP_ADMIN" ||
+        role === "MAP_EDITOR",
+    ),
+  );
+}
 /** Private review queue. Pending places are deliberately not visible in the
  * public map/search endpoint until this approval has happened. */
 export default function MapAdminPage() {
@@ -34,7 +50,14 @@ export default function MapAdminPage() {
     void getViewer().then(setViewer);
   }, []);
 
-  const mayReview = useMemo(() => canReviewPlaces(viewer ?? null), [viewer]);
+  const mayReview = useMemo(
+    () => canViewPlaceReviews(viewer ?? null),
+    [viewer],
+  );
+  const mayDecide = useMemo(
+    () => canDecidePlaceReviews(viewer ?? null),
+    [viewer],
+  );
 
   useEffect(() => {
     if (!mayReview) return;
@@ -66,7 +89,10 @@ export default function MapAdminPage() {
     }
   };
 
-  const review = async (proposal: PendingMapPlace, decision: "approve" | "reject") => {
+  const review = async (
+    proposal: PendingMapPlace,
+    decision: "approve" | "reject",
+  ) => {
     setReviewingId(proposal.id);
     setError("");
     try {
@@ -111,7 +137,7 @@ export default function MapAdminPage() {
         {viewer === undefined && <Spinner animation="border" size="sm" />}
         {viewer !== undefined && !mayReview && (
           <Alert className="mb-0" variant="warning">
-            Map editor access is required to review place proposals.
+            Map reviewer access is required to view place proposals.
           </Alert>
         )}
         {error && <Alert variant="danger">{error}</Alert>}
@@ -123,60 +149,68 @@ export default function MapAdminPage() {
           <>
             <ul className="list-unstyled mb-0">
               {proposals.map((proposal) => (
-              <li key={proposal.id} className="border-top py-3">
-                <div className="d-flex justify-content-between gap-3 flex-wrap">
-                  <div>
-                    <strong>{proposal.canonicalName}</strong>
-                    <span className="text-muted ms-2">
-                      {proposal.featureType} · {proposal.latitude.toFixed(4)}, {" "}
-                      {proposal.longitude.toFixed(4)}
-                    </span>
-                    {proposal.names?.filter((name) => !name.preferred).length ? (
-                      <p className="small text-muted mb-1">
-                        Also known as: {proposal.names
-                          .filter((name) => !name.preferred)
-                          .map((name) => name.value)
-                          .join(", ")}
-                      </p>
-                    ) : null}
-                    {proposal.description ? (
-                      <p className="mb-0">{proposal.description}</p>
-                    ) : null}
+                <li key={proposal.id} className="border-top py-3">
+                  <div className="d-flex justify-content-between gap-3 flex-wrap">
+                    <div>
+                      <strong>{proposal.canonicalName}</strong>
+                      <span className="text-muted ms-2">
+                        {proposal.featureType} · {proposal.latitude.toFixed(4)},{" "}
+                        {proposal.longitude.toFixed(4)}
+                      </span>
+                      {proposal.names?.filter((name) => !name.preferred)
+                        .length ? (
+                        <p className="small text-muted mb-1">
+                          Also known as:{" "}
+                          {proposal.names
+                            .filter((name) => !name.preferred)
+                            .map((name) => name.value)
+                            .join(", ")}
+                        </p>
+                      ) : null}
+                      {proposal.description ? (
+                        <p className="mb-0">{proposal.description}</p>
+                      ) : null}
+                    </div>
+                    {mayDecide && (
+                      <div className="d-flex gap-2 align-items-end flex-wrap">
+                        <Form.Control
+                          aria-label={`Approval note for ${proposal.canonicalName}`}
+                          value={notes[proposal.id] || ""}
+                          onChange={(event) =>
+                            setNotes((current) => ({
+                              ...current,
+                              [proposal.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Optional review note"
+                        />
+                        <Button
+                          variant="dark"
+                          disabled={reviewingId === proposal.id}
+                          onClick={() => void review(proposal, "approve")}
+                        >
+                          {reviewingId === proposal.id
+                            ? "Reviewing…"
+                            : "Approve"}
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          disabled={reviewingId === proposal.id}
+                          onClick={() => void review(proposal, "reject")}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <div className="d-flex gap-2 align-items-end flex-wrap">
-                    <Form.Control
-                      aria-label={`Approval note for ${proposal.canonicalName}`}
-                      value={notes[proposal.id] || ""}
-                      onChange={(event) =>
-                        setNotes((current) => ({
-                          ...current,
-                          [proposal.id]: event.target.value,
-                        }))
-                      }
-                      placeholder="Optional review note"
+                  {mayDecide && (
+                    <DuplicateMergeActions
+                      proposal={proposal}
+                      disabled={reviewingId === proposal.id}
+                      onMerge={(target) => void merge(proposal, target)}
                     />
-                    <Button
-                      variant="dark"
-                      disabled={reviewingId === proposal.id}
-                      onClick={() => void review(proposal, "approve")}
-                    >
-                      {reviewingId === proposal.id ? "Reviewing…" : "Approve"}
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      disabled={reviewingId === proposal.id}
-                      onClick={() => void review(proposal, "reject")}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-                <DuplicateMergeActions
-                  proposal={proposal}
-                  disabled={reviewingId === proposal.id}
-                  onMerge={(target) => void merge(proposal, target)}
-                />
-              </li>
+                  )}
+                </li>
               ))}
             </ul>
             {nextCursor && (
