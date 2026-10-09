@@ -58,6 +58,7 @@ export type MapEntityLocation = {
 export type MapEntityLocationPage = {
   items: MapEntityLocation[];
   nextCursor?: string;
+  counts?: Partial<Record<MapEntityLocation["entityType"], number>>;
 };
 
 /** A source's two distinct map meanings. These deliberately do not filter
@@ -142,10 +143,12 @@ export async function listMapPlaceChildren(
   cursor?: string,
 ): Promise<{ items: MapPlace[]; nextCursor?: string }> {
   const response = await fetch(
-    `/api/map/places/${encodeURIComponent(placeId)}/children?${new URLSearchParams({
-      limit: "50",
-      ...(cursor ? { cursor } : {}),
-    })}`,
+    `/api/map/places/${encodeURIComponent(placeId)}/children?${new URLSearchParams(
+      {
+        limit: "50",
+        ...(cursor ? { cursor } : {}),
+      },
+    )}`,
     { signal },
   );
   if (response.status === 404) return { items: [] };
@@ -185,12 +188,20 @@ export async function listMapPlaceEntities(
   const body = (await responseJson(response)) as {
     items?: unknown;
     nextCursor?: unknown;
+    counts?: unknown;
   } | null;
   const items = body?.items;
   return {
     items: Array.isArray(items) ? (items as MapEntityLocation[]) : [],
     ...(typeof body?.nextCursor === "string"
       ? { nextCursor: body.nextCursor }
+      : {}),
+    ...(body?.counts && typeof body.counts === "object"
+      ? {
+          counts: body.counts as Partial<
+            Record<MapEntityLocation["entityType"], number>
+          >,
+        }
       : {}),
   };
 }

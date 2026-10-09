@@ -32,6 +32,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [childCursor, setChildCursor] = useState<string | undefined>();
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [entityCursor, setEntityCursor] = useState<string | undefined>();
+  const [entityCounts, setEntityCounts] = useState<
+    Partial<Record<MapEntityLocation["entityType"], number>>
+  >({});
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [entityType, setEntityType] = useState<EntityTypeFilter>("ALL");
   const [showModernBorders, setShowModernBorders] = useState(false);
@@ -50,6 +53,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     setParentPlace(null);
     setEntities([]);
     setEntityCursor(undefined);
+    setEntityCounts({});
     setError("");
     setEntitiesLoading(true);
     void Promise.all([
@@ -67,6 +71,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         setChildCursor(nextChildren.nextCursor);
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
+        setEntityCounts(nextEntities.counts || {});
         if (nextPlace?.parentPlaceId) {
           void getMapPlace(nextPlace.parentPlaceId, controller.signal).then(
             (parent) => {
@@ -102,6 +107,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       );
       setEntities((current) => [...current, ...page.items]);
       setEntityCursor(page.nextCursor);
+      setEntityCounts(page.counts || {});
     } catch (caught) {
       setError((caught as Error).message || "Unable to load more content.");
     } finally {
@@ -255,7 +261,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               variant={entityType === type ? "dark" : "outline-dark"}
               onClick={() => setEntityType(type)}
             >
-              {type === "ALL" ? "All" : type[0] + type.slice(1).toLowerCase()}
+              {type === "ALL"
+                ? `All (${Object.values(entityCounts).reduce((total, count) => total + (count || 0), 0)})`
+                : `${type[0] + type.slice(1).toLowerCase()} (${entityCounts[type] || 0})`}
             </Button>
           ))}
         </ButtonGroup>
