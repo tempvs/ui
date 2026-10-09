@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Alert, Button, ButtonGroup, Form, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
@@ -7,6 +7,7 @@ import PlaceNamesList from "../component/PlaceNamesList";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import {
   getMapPlace,
+  listMapPlaceChildren,
   listMapPlaceEntities,
   type MapEntityLocation,
   type MapPlace,
@@ -27,6 +28,8 @@ const entityTypeFilters: EntityTypeFilter[] = [
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [parentPlace, setParentPlace] = useState<MapPlace | null>(null);
+  const [children, setChildren] = useState<MapPlace[]>([]);
+  const [childCursor, setChildCursor] = useState<string | undefined>();
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [entityCursor, setEntityCursor] = useState<string | undefined>();
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -51,14 +54,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     setEntitiesLoading(true);
     void Promise.all([
       getMapPlace(id, controller.signal),
+      listMapPlaceChildren(id, controller.signal),
       listMapPlaceEntities(
         id,
         entityType === "ALL" ? [] : [entityType],
         controller.signal,
       ),
     ])
-      .then(([nextPlace, nextEntities]) => {
+      .then(([nextPlace, nextChildren, nextEntities]) => {
         setPlace(nextPlace);
+        setChildren(nextChildren.items);
+        setChildCursor(nextChildren.nextCursor);
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
         if (nextPlace?.parentPlaceId) {
@@ -103,6 +109,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
   };
 
+  const loadMoreChildren = async () => {
+    if (!id || !childCursor) return;
+    try {
+      const page = await listMapPlaceChildren(id, undefined, childCursor);
+      setChildren((current) => [...current, ...page.items]);
+      setChildCursor(page.nextCursor);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load child places.");
+    }
+  };
+
   if (place === undefined)
     return (
       <PageLayout className="map-page" header={{ title: "Place" }}>
@@ -141,6 +158,30 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               {parentPlace.canonicalName}
             </Link>
           </p>
+        )}
+        {children.length > 0 && (
+          <div className="small mb-2">
+            Contains{" "}
+            {children.map((child, index) => (
+              <Fragment key={child.id}>
+                {index > 0 && ", "}
+                <Link to={`/map/place/${encodeURIComponent(child.id)}`}>
+                  {child.canonicalName}
+                </Link>
+              </Fragment>
+            ))}
+            {childCursor && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="p-0 ms-1 align-baseline"
+                onClick={() => void loadMoreChildren()}
+              >
+                Show more
+              </Button>
+            )}
+          </div>
         )}
         {place.description && <p className="mb-2">{place.description}</p>}
         <Form.Check

@@ -134,6 +134,34 @@ export async function getMapPlace(
   return (await responseJson(response)) as MapPlace;
 }
 
+/** Direct children are deliberately separate from radius discovery: hierarchy
+ * navigation never pretends a point has a geographic boundary. */
+export async function listMapPlaceChildren(
+  placeId: string,
+  signal?: AbortSignal,
+  cursor?: string,
+): Promise<{ items: MapPlace[]; nextCursor?: string }> {
+  const response = await fetch(
+    `/api/map/places/${encodeURIComponent(placeId)}/children?${new URLSearchParams({
+      limit: "50",
+      ...(cursor ? { cursor } : {}),
+    })}`,
+    { signal },
+  );
+  if (response.status === 404) return { items: [] };
+  if (!response.ok) throw new Error("Unable to load child places");
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
+  return {
+    items: Array.isArray(body?.items) ? (body?.items as MapPlace[]) : [],
+    ...(typeof body?.nextCursor === "string"
+      ? { nextCursor: body.nextCursor }
+      : {}),
+  };
+}
+
 /** Public assignments at an exact canonical place. This is intentionally
  * separate from radius discovery so a place page never includes neighbours. */
 export async function listMapPlaceEntities(
