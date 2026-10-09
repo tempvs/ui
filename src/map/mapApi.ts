@@ -51,6 +51,8 @@ export type MapEntityLocation = {
   sourcePeriod?: string;
   sourceClassification?: string;
   sourceType?: string;
+  sourceFrom?: number;
+  sourceTo?: number;
 };
 
 export type MapEntityLocationPage = {
@@ -65,6 +67,8 @@ export type MapSourceFilters = {
   period?: string;
   classifications?: string[];
   types?: string[];
+  from?: number;
+  to?: number;
 };
 
 export type MapPlaceProposal = {
@@ -324,6 +328,12 @@ export async function nearbyMapEntities(
         : {}),
       ...(sourceFilters.types?.length
         ? { sourceTypes: sourceFilters.types.join(",") }
+        : {}),
+      ...(sourceFilters.from !== undefined
+        ? { sourceFrom: String(sourceFilters.from) }
+        : {}),
+      ...(sourceFilters.to !== undefined
+        ? { sourceTo: String(sourceFilters.to) }
         : {}),
     })}`,
     { signal },

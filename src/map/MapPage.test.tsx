@@ -134,7 +134,7 @@ test("restores source discovery facets from a shareable map URL", async () => {
   render(
     <MemoryRouter
       initialEntries={[
-        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL",
+        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476",
       ]}
     >
       <MapPage />
@@ -154,6 +154,8 @@ test("restores source discovery facets from a shareable map URL", async () => {
         period: "ANTIQUITY",
         classifications: ["WEAPON"],
         types: ["ARCHAEOLOGICAL"],
+        from: -27,
+        to: 476,
       },
     ),
   );

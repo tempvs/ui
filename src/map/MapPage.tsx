@@ -66,6 +66,12 @@ export default function MapPage() {
     params.get("sourceClassification") || "",
   );
   const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
+  const [sourceFrom, setSourceFrom] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("sourceFrom")),
+  );
+  const [sourceTo, setSourceTo] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("sourceTo")),
+  );
   const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("nameFrom")),
   );
@@ -136,6 +142,12 @@ export default function MapPage() {
       ? { classifications: [sourceClassification] }
       : {}),
     ...(sourceType ? { types: [sourceType] } : {}),
+    ...(toAstronomicalYear(sourceFrom) !== undefined
+      ? { from: toAstronomicalYear(sourceFrom) }
+      : {}),
+    ...(toAstronomicalYear(sourceTo) !== undefined
+      ? { to: toAstronomicalYear(sourceTo) }
+      : {}),
   };
 
   // Match the profile picker: query after a short pause and discard every
@@ -267,8 +279,11 @@ export default function MapPage() {
     const lat = Number(activeLatitude);
     const lng = Number(activeLongitude);
     const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
-    if (!isValidHistoricalRange(nameFrom, nameTo)) {
-      setError("Name years must be chronological positive years.");
+    if (
+      !isValidHistoricalRange(nameFrom, nameTo) ||
+      !isValidHistoricalRange(sourceFrom, sourceTo)
+    ) {
+      setError("Years must be chronological positive years.");
       return;
     }
     if (!hasCoordinates && trimmed.length < 2) {
@@ -543,6 +558,17 @@ export default function MapPage() {
                   ))}
                 </Form.Select>
               </Form.Group>
+              <HistoricalRangeFilter
+                label="Source years"
+                enabled={false}
+                showToggle={false}
+                alwaysShowFields
+                from={sourceFrom}
+                to={sourceTo}
+                onEnabledChange={() => undefined}
+                onFromChange={setSourceFrom}
+                onToChange={setSourceTo}
+              />
               <Form.Group>
                 <Form.Label>Classification</Form.Label>
                 <Form.Select
@@ -839,6 +865,9 @@ function appendSourceFilters(
   if (filters.classifications?.length)
     parameters.set("sourceClassification", filters.classifications[0]);
   if (filters.types?.length) parameters.set("sourceType", filters.types[0]);
+  if (filters.from !== undefined)
+    parameters.set("sourceFrom", String(filters.from));
+  if (filters.to !== undefined) parameters.set("sourceTo", String(filters.to));
 }
 
 function humanizeFilterValue(value: string): string {
