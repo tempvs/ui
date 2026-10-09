@@ -3,6 +3,7 @@ import { Alert, Button, Form, Spinner } from "react-bootstrap";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import TextFilterInput from "../component/TextFilterInput";
 import {
   approveMapPlace,
   findLikelyDuplicateMapPlaces,
@@ -12,6 +13,7 @@ import {
   type MapPlace,
   type PendingMapPlace,
 } from "./mapApi";
+import MapCanvas from "./MapCanvas";
 
 function canViewPlaceReviews(viewer: Viewer | null): boolean {
   return Boolean(
@@ -51,6 +53,7 @@ export default function MapAdminPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -64,6 +67,19 @@ export default function MapAdminPage() {
     () => canDecidePlaceReviews(viewer ?? null),
     [viewer],
   );
+  const visibleProposals = useMemo(() => {
+    const normalized = filter.trim().toLocaleLowerCase();
+    if (!normalized) return proposals;
+    return proposals.filter((proposal) =>
+      [
+        proposal.canonicalName,
+        proposal.featureType,
+        proposal.createdByUserId,
+        proposal.description,
+        ...(proposal.names ?? []).map((name) => name.value),
+      ].some((value) => value?.toLocaleLowerCase().includes(normalized)),
+    );
+  }, [filter, proposals]);
 
   useEffect(() => {
     if (!mayReview) return;
@@ -140,6 +156,20 @@ export default function MapAdminPage() {
           Approve a proposed point only after checking that it is useful,
           accurately located, and not a duplicate of an approved place.
         </p>
+        {mayReview && proposals.length > 0 && (
+          <div className="d-flex align-items-center gap-2 mb-3">
+            <TextFilterInput
+              value={filter}
+              onChange={setFilter}
+              placeholder="Filter loaded proposals"
+              ariaLabel="Filter loaded place proposals"
+              className="map-admin-filter"
+            />
+            <small className="text-muted text-nowrap">
+              {visibleProposals.length} of {proposals.length} loaded
+            </small>
+          </div>
+        )}
         {viewer === undefined && <Spinner animation="border" size="sm" />}
         {viewer !== undefined && !mayReview && (
           <Alert className="mb-0" variant="warning">
@@ -158,7 +188,7 @@ export default function MapAdminPage() {
         {mayReview && proposals.length > 0 && (
           <>
             <ul className="list-unstyled mb-0">
-              {proposals.map((proposal) => (
+              {visibleProposals.map((proposal) => (
                 <li key={proposal.id} className="border-top py-3">
                   <div className="d-flex justify-content-between gap-3 flex-wrap">
                     <div>
@@ -191,6 +221,7 @@ export default function MapAdminPage() {
                       {proposal.description ? (
                         <p className="mb-0">{proposal.description}</p>
                       ) : null}
+                      <ProposalDetails proposal={proposal} />
                     </div>
                     {mayDecide && (
                       <div className="d-flex gap-2 align-items-end flex-wrap">
@@ -235,6 +266,11 @@ export default function MapAdminPage() {
                 </li>
               ))}
             </ul>
+            {visibleProposals.length === 0 && (
+              <p className="text-muted mb-0">
+                No loaded proposal matches this filter.
+              </p>
+            )}
             {nextCursor && (
               <Button
                 className="mt-3"
@@ -249,6 +285,57 @@ export default function MapAdminPage() {
         )}
       </section>
     </PageLayout>
+  );
+}
+
+/** A reviewer needs the proposed point and all submitted names before making
+ * a public, irreversible decision. This stays inside the private queue: a
+ * pending proposal is never linked into public map search. */
+function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
+  const [open, setOpen] = useState(false);
+  const aliases = proposal.names?.filter((name) => !name.preferred) ?? [];
+  return (
+    <details
+      className="map-admin-proposal-details mt-2"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>Review submitted details and point</summary>
+      {open && (
+        <div className="mt-2">
+          <dl className="row small mb-2">
+            <dt className="col-sm-3">Coordinates</dt>
+            <dd className="col-sm-9">
+              {proposal.latitude.toFixed(6)}, {proposal.longitude.toFixed(6)}
+            </dd>
+            <dt className="col-sm-3">Type</dt>
+            <dd className="col-sm-9">{proposal.featureType}</dd>
+            {aliases.length > 0 && (
+              <>
+                <dt className="col-sm-3">Other names</dt>
+                <dd className="col-sm-9 mb-0">
+                  {aliases.map((name) => name.value).join(", ")}
+                </dd>
+              </>
+            )}
+          </dl>
+          <div className="map-admin-proposal-map" aria-label={`Proposed point for ${proposal.canonicalName}`}>
+            <MapCanvas
+              places={[proposal]}
+              entities={[]}
+              focus={{
+                latitude: proposal.latitude,
+                longitude: proposal.longitude,
+              }}
+              showModernBorders={false}
+              selectedPlaceId={proposal.id}
+              onEntitySelect={() => undefined}
+              onMapError={() => undefined}
+            />
+          </div>
+        </div>
+      )}
+    </details>
   );
 }
 

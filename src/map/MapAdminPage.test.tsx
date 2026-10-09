@@ -20,6 +20,11 @@ jest.mock("./mapApi", () => ({
   rejectMapPlace: jest.fn(),
 }));
 
+jest.mock("./MapCanvas", () => ({
+  __esModule: true,
+  default: () => <div data-testid="proposal-map-preview" />,
+}));
+
 import { getViewer } from "../auth/viewerApi";
 import {
   approveMapPlace,
@@ -82,4 +87,34 @@ test("lets a map editor approve a proposal", async () => {
     expect(approveMock).toHaveBeenCalledWith("tempvs:proposal-1", undefined),
   );
   await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
+});
+
+test("filters loaded proposals and opens a private point preview", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "reviewer-1",
+    roles: ["MAP_REVIEWER"],
+  });
+  listPendingMock.mockResolvedValue({
+    items: [
+      proposal,
+      {
+        ...proposal,
+        id: "tempvs:proposal-2",
+        canonicalName: "Londinium",
+        featureType: "SETTLEMENT",
+      },
+    ],
+  });
+  render(<MapAdminPage />);
+
+  expect(await screen.findByText("Londinium")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: /filter loaded/i }), {
+    target: { value: "augusta" },
+  });
+  expect(screen.getByText("Augusta Raurica")).toBeInTheDocument();
+  expect(screen.queryByText("Londinium")).toBeNull();
+
+  fireEvent.click(screen.getByText(/review submitted details and point/i));
+  expect(await screen.findByTestId("proposal-map-preview")).toBeInTheDocument();
+  expect(screen.getByText("47.533000, 7.720000")).toBeInTheDocument();
 });

@@ -314,6 +314,29 @@
   gap: 0.35rem;
 }
 
+/* The private review queue reuses the public map renderer but keeps its
+ * point preview deliberately compact. Pending coordinates never leak into a
+ * public route or marker projection. */
+.map-admin-filter {
+  max-width: 22rem;
+}
+
+.map-admin-proposal-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #4c4030;
+  font-size: 0.875rem;
+  text-decoration: underline;
+}
+
+.map-admin-proposal-map .map-canvas-shell {
+  min-height: 15rem;
+}
+
+.map-admin-proposal-map .map-legend {
+  display: none;
+}
+
 @media (max-width: 575px) {
   .map-canvas-shell {
     min-height: 22rem;
