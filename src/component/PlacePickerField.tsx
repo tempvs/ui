@@ -91,6 +91,7 @@ export default function PlacePickerField({
     longitude: "",
   });
   const [showProposal, setShowProposal] = useState(false);
+  const [showPinMap, setShowPinMap] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<MapPlace[]>([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   useEffect(() => {
@@ -196,6 +197,7 @@ export default function PlacePickerField({
                 onClick={() => {
                   setPinnedCoordinate(null);
                   setCoordinateInput({ latitude: "", longitude: "" });
+                  setShowPinMap(false);
                   setShow(true);
                 }}
               >
@@ -234,6 +236,7 @@ export default function PlacePickerField({
           setShow(false);
           setPinnedCoordinate(null);
           setCoordinateInput({ latitude: "", longitude: "" });
+          setShowPinMap(false);
         }}
         centered
         size="lg"
@@ -242,7 +245,7 @@ export default function PlacePickerField({
           <Modal.Title>Select a place</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {value?.id && (
+          {value?.id && !showPinMap && (
             <div className="mb-4">
               <PlaceDetailsPanel
                 placeId={value.id}
@@ -304,137 +307,151 @@ export default function PlacePickerField({
                 </Button>
               ))}
           </div>
-          <div className="place-picker-drop-map mt-3">
-            <p className="small text-muted mb-2">
-              Or click the map to pin a shared place proposal. Proposed points
-              remain unavailable for selection until a geography editor reviews
-              them.
-            </p>
-            <MapCanvas
-              places={[]}
-              entities={[]}
-              pickedCoordinate={pinnedCoordinate}
-              showModernBorders={false}
-              onEntitySelect={() => undefined}
-              onCoordinatePick={(coordinate) => {
-                setCoordinateInput({
-                  latitude: String(coordinate.latitude),
-                  longitude: String(coordinate.longitude),
-                });
-              }}
-              onMapError={() => undefined}
-            />
-            <div className="d-flex gap-2 mt-2">
-              <Form.Control
-                aria-label="Pinned latitude"
-                aria-describedby={
-                  coordinateInputIsInvalid
-                    ? "pinned-coordinate-feedback"
-                    : undefined
-                }
-                inputMode="decimal"
-                placeholder="Latitude"
-                isInvalid={coordinateInputIsInvalid}
-                value={coordinateInput.latitude}
-                onChange={(event) =>
-                  setCoordinateInput((current) => ({
-                    ...current,
-                    latitude: event.target.value,
-                  }))
-                }
-              />
-              <Form.Control
-                aria-label="Pinned longitude"
-                aria-describedby={
-                  coordinateInputIsInvalid
-                    ? "pinned-coordinate-feedback"
-                    : undefined
-                }
-                inputMode="decimal"
-                placeholder="Longitude"
-                isInvalid={coordinateInputIsInvalid}
-                value={coordinateInput.longitude}
-                onChange={(event) =>
-                  setCoordinateInput((current) => ({
-                    ...current,
-                    longitude: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            {coordinateInputIsInvalid && (
-              <p
-                id="pinned-coordinate-feedback"
-                className="small text-danger mb-0 mt-1"
-                role="alert"
-              >
-                Enter both coordinates: latitude from -90 to 90 and longitude
-                from -180 to 180.
+          {value?.id && !showPinMap && (
+            <Button
+              type="button"
+              size="sm"
+              variant="link"
+              className="px-0 mt-3"
+              onClick={() => setShowPinMap(true)}
+            >
+              Propose a different place on the map
+            </Button>
+          )}
+          {(!value?.id || showPinMap) && (
+            <div className="place-picker-drop-map mt-3">
+              <p className="small text-muted mb-2">
+                Or click the map to pin a shared place proposal. Proposed points
+                remain unavailable for selection until a geography editor
+                reviews them.
               </p>
-            )}
-            <div className="d-flex align-items-center gap-2 mt-2">
-              <span className="small text-muted" aria-live="polite">
-                {pinnedCoordinate
-                  ? `${pinnedCoordinate.latitude.toFixed(5)}, ${pinnedCoordinate.longitude.toFixed(5)}`
-                  : "No point pinned"}
-              </span>
-              {hasCoordinateInput(coordinateInput) && (
+              <MapCanvas
+                places={[]}
+                entities={[]}
+                pickedCoordinate={pinnedCoordinate}
+                showModernBorders={false}
+                onEntitySelect={() => undefined}
+                onCoordinatePick={(coordinate) => {
+                  setCoordinateInput({
+                    latitude: String(coordinate.latitude),
+                    longitude: String(coordinate.longitude),
+                  });
+                }}
+                onMapError={() => undefined}
+              />
+              <div className="d-flex gap-2 mt-2">
+                <Form.Control
+                  aria-label="Pinned latitude"
+                  aria-describedby={
+                    coordinateInputIsInvalid
+                      ? "pinned-coordinate-feedback"
+                      : undefined
+                  }
+                  inputMode="decimal"
+                  placeholder="Latitude"
+                  isInvalid={coordinateInputIsInvalid}
+                  value={coordinateInput.latitude}
+                  onChange={(event) =>
+                    setCoordinateInput((current) => ({
+                      ...current,
+                      latitude: event.target.value,
+                    }))
+                  }
+                />
+                <Form.Control
+                  aria-label="Pinned longitude"
+                  aria-describedby={
+                    coordinateInputIsInvalid
+                      ? "pinned-coordinate-feedback"
+                      : undefined
+                  }
+                  inputMode="decimal"
+                  placeholder="Longitude"
+                  isInvalid={coordinateInputIsInvalid}
+                  value={coordinateInput.longitude}
+                  onChange={(event) =>
+                    setCoordinateInput((current) => ({
+                      ...current,
+                      longitude: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {coordinateInputIsInvalid && (
+                <p
+                  id="pinned-coordinate-feedback"
+                  className="small text-danger mb-0 mt-1"
+                  role="alert"
+                >
+                  Enter both coordinates: latitude from -90 to 90 and longitude
+                  from -180 to 180.
+                </p>
+              )}
+              <div className="d-flex align-items-center gap-2 mt-2">
+                <span className="small text-muted" aria-live="polite">
+                  {pinnedCoordinate
+                    ? `${pinnedCoordinate.latitude.toFixed(5)}, ${pinnedCoordinate.longitude.toFixed(5)}`
+                    : "No point pinned"}
+                </span>
+                {hasCoordinateInput(coordinateInput) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="link"
+                    className="p-0"
+                    onClick={() => {
+                      setPinnedCoordinate(null);
+                      setCoordinateInput({ latitude: "", longitude: "" });
+                    }}
+                  >
+                    Clear point
+                  </Button>
+                )}
                 <Button
                   type="button"
                   size="sm"
-                  variant="link"
-                  className="p-0"
+                  variant="outline-dark"
+                  disabled={!pinnedCoordinate}
                   onClick={() => {
-                    setPinnedCoordinate(null);
-                    setCoordinateInput({ latitude: "", longitude: "" });
+                    setShow(false);
+                    setShowProposal(true);
                   }}
                 >
-                  Clear point
+                  Propose pinned place
                 </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline-dark"
-                disabled={!pinnedCoordinate}
-                onClick={() => {
-                  setShow(false);
-                  setShowProposal(true);
-                }}
-              >
-                Propose pinned place
-              </Button>
-            </div>
-            {nearbyLoading && (
-              <div className="small text-muted mt-2" aria-live="polite">
-                Checking nearby approved places…
               </div>
-            )}
-            {!nearbyLoading && nearbyPlaces.length > 0 && (
-              <div className="mt-2">
-                <p className="small text-muted mb-1">
-                  Nearby approved places — select one if it is the right place:
-                </p>
-                <div className="place-picker-nearby-results">
-                  {nearbyPlaces.map((place) => (
-                    <Button
-                      key={place.id}
-                      type="button"
-                      variant="light"
-                      size="sm"
-                      className="text-start"
-                      onClick={() => select(place)}
-                    >
-                      <strong>{place.canonicalName}</strong>
-                      <span className="ms-2 text-muted">
-                        {place.featureType}
-                      </span>
-                    </Button>
-                  ))}
+              {nearbyLoading && (
+                <div className="small text-muted mt-2" aria-live="polite">
+                  Checking nearby approved places…
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              {!nearbyLoading && nearbyPlaces.length > 0 && (
+                <div className="mt-2">
+                  <p className="small text-muted mb-1">
+                    Nearby approved places — select one if it is the right
+                    place:
+                  </p>
+                  <div className="place-picker-nearby-results">
+                    {nearbyPlaces.map((place) => (
+                      <Button
+                        key={place.id}
+                        type="button"
+                        variant="light"
+                        size="sm"
+                        className="text-start"
+                        onClick={() => select(place)}
+                      >
+                        <strong>{place.canonicalName}</strong>
+                        <span className="ms-2 text-muted">
+                          {place.featureType}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </Modal.Body>
         {editable && value && (
           <Modal.Footer className="justify-content-between">
@@ -446,6 +463,7 @@ export default function PlacePickerField({
                 setShow(false);
                 setPinnedCoordinate(null);
                 setCoordinateInput({ latitude: "", longitude: "" });
+                setShowPinMap(false);
               }}
             >
               <ClearIcon className="me-1" />
@@ -457,6 +475,7 @@ export default function PlacePickerField({
                 setShow(false);
                 setPinnedCoordinate(null);
                 setCoordinateInput({ latitude: "", longitude: "" });
+                setShowPinMap(false);
               }}
             >
               Done
