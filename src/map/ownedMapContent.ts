@@ -1,5 +1,9 @@
 import { getProfileClubs, type Club } from "../club/clubApi";
-import { getSource, type LibrarySource } from "../library/libraryApi";
+import {
+  getSource,
+  getSourceImages,
+  type LibrarySource,
+} from "../library/libraryApi";
 import {
   getClubProfiles,
   getProfileAvatar,
@@ -210,8 +214,14 @@ async function sourceMarker(
   location: SourceLocation,
   resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker | null> {
-  const place = await resolvePlace(location.placeId);
+  const [place, images] = await Promise.all([
+    resolvePlace(location.placeId),
+    getSourceImages(source.id).catch(() => null),
+  ]);
   if (!place) return null;
+  const thumbnail = images?.ok
+    ? images.data?.find((image) => image.thumbnailUrl || image.url)
+    : null;
   return marker({
     entityType: "SOURCE",
     entityId: source.id,
@@ -221,6 +231,7 @@ async function sourceMarker(
     placeName: location.placeName || place.canonicalName,
     latitude: place.latitude,
     longitude: place.longitude,
+    thumbnailUrl: thumbnail?.thumbnailUrl || thumbnail?.url || null,
     path: `/library/source/${encodeURIComponent(source.id)}`,
   });
 }

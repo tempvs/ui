@@ -1,5 +1,5 @@
 import { getProfileClubs } from "../club/clubApi";
-import { getSource } from "../library/libraryApi";
+import { getSource, getSourceImages } from "../library/libraryApi";
 import {
   getClubProfiles,
   getProfileAvatar,
@@ -10,7 +10,10 @@ import { getMapPlace } from "./mapApi";
 import { loadOwnedMapContent } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({ getProfileClubs: jest.fn() }));
-jest.mock("../library/libraryApi", () => ({ getSource: jest.fn() }));
+jest.mock("../library/libraryApi", () => ({
+  getSource: jest.fn(),
+  getSourceImages: jest.fn(),
+}));
 jest.mock("../profile/profileApi", () => ({
   getClubProfiles: jest.fn(),
   getProfileAvatar: jest.fn(),
@@ -76,6 +79,17 @@ beforeEach(() => {
       discoveredAtPlaceName: "Roma",
     },
   });
+  jest.mocked(getSourceImages).mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: [
+      {
+        id: "source-image",
+        resourceId: "source",
+        thumbnailUrl: "https://images.test/source-thumb.jpg",
+      },
+    ],
+  });
   jest.mocked(getMapPlace).mockResolvedValue(place);
 });
 
@@ -96,6 +110,7 @@ test("composes profile, membership club, and club-stash source markers", async (
       expect.objectContaining({
         key: "SOURCE:source:DISCOVERED_AT",
         path: "/library/source/source",
+        thumbnailUrl: "https://images.test/source-thumb.jpg",
       }),
     ]),
   );

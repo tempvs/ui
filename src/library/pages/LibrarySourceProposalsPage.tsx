@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import Spinner from "../../component/Spinner";
 import { getErrorMessage } from "../../util/errors";
@@ -26,10 +26,13 @@ const PROPOSALS_PAGE_SIZE = 20;
 /** Source-local changeset history and review queue. */
 export default function LibrarySourceProposalsPage() {
   const { sourceId } = useParams();
+  const navigate = useNavigate();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changesets, setChangesets] = useState<SourceChangeset[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
-  const [publishedImages, setPublishedImages] = useState<LibrarySourceImage[]>([]);
+  const [publishedImages, setPublishedImages] = useState<LibrarySourceImage[]>(
+    [],
+  );
   const [stagedImagesByChangeset, setStagedImagesByChangeset] = useState<
     Record<string, LibrarySourceImage[]>
   >({});
@@ -57,7 +60,9 @@ export default function LibrarySourceProposalsPage() {
         throw new Error("Unable to load the source.");
       }
       if (!canEditSource(viewer) || !changesetsResult.ok) {
-        throw new Error("Library editor access is required to review changesets.");
+        throw new Error(
+          "Library editor access is required to review changesets.",
+        );
       }
       setSource(sourceResult.data);
       setViewerId(viewer?.userId || null);
@@ -68,7 +73,8 @@ export default function LibrarySourceProposalsPage() {
       setExpandedChangesetIds(new Set());
       const changesetsWithStagedImages = content.filter((changeset) =>
         changeset.imageOperations.some(
-          (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
+          (operation) =>
+            operation.kind === "ADD" || operation.kind === "REPLACE",
         ),
       );
       const [published, stagedEntries] = await Promise.all([
@@ -105,7 +111,15 @@ export default function LibrarySourceProposalsPage() {
         changeset.version,
       );
       if (!result.ok) throw new Error("Unable to approve the changeset.");
-      await load();
+      navigate(
+        changeset.kind === "DELETE"
+          ? source?.period
+            ? `/library/period/${source.period.toLowerCase()}`
+            : "/library"
+          : `/library/source/${sourceId}`,
+        { replace: true },
+      );
+      return;
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -156,12 +170,17 @@ export default function LibrarySourceProposalsPage() {
       const additional = result.data?.content || [];
       const stagedEntries = await Promise.all(
         additional
-          .filter((changeset) => changeset.imageOperations.some(
-            (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
-          ))
+          .filter((changeset) =>
+            changeset.imageOperations.some(
+              (operation) =>
+                operation.kind === "ADD" || operation.kind === "REPLACE",
+            ),
+          )
           .map(async (changeset) => {
-            const staged = await getSourceChangesetImages(sourceId, changeset.id)
-              .catch(() => null);
+            const staged = await getSourceChangesetImages(
+              sourceId,
+              changeset.id,
+            ).catch(() => null);
             return [changeset.id, staged?.data || []] as const;
           }),
       );
@@ -188,7 +207,10 @@ export default function LibrarySourceProposalsPage() {
             <LibraryPeriodBreadcrumb
               period={source.period}
               variant="source"
-              trailingItem={{ label: source.name, to: `/library/source/${source.id}` }}
+              trailingItem={{
+                label: source.name,
+                to: `/library/source/${source.id}`,
+              }}
             />
           ) : null
         }
@@ -198,33 +220,110 @@ export default function LibrarySourceProposalsPage() {
           <h1 className="h3 mb-1">Source changesets</h1>
           {source && <div className="text-muted">{source.name}</div>}
         </div>
-        {source && <Link className="btn btn-dark btn-sm" to={`/library/source/${source.id}/edit`}>Edit source</Link>}
+        {source && (
+          <Link
+            className="btn btn-dark btn-sm"
+            to={`/library/source/${source.id}/edit`}
+          >
+            Edit source
+          </Link>
+        )}
       </div>
-      {error && <div className="alert alert-danger" role="alert">{error}</div>}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
       {loading && <Spinner />}
-      {!loading && changesets.length === 0 && <div className="tempvs-plain-message text-muted">No changesets for this source.</div>}
-      {!loading && changesets.map((changeset) => {
-        const own = changeset.proposerId === viewerId;
-        const pending = changeset.status === "PENDING";
-        return <SourceChangesetProposalCard
-          key={changeset.id}
-          source={source!}
-          changeset={changeset}
-          showSource={false}
-          expanded={expandedChangesetIds.has(changeset.id)}
-          onToggle={() => toggleChangeset(changeset.id)}
-          imagePreviews={{
-            published: publishedImages,
-            staged: stagedImagesByChangeset[changeset.id] || [],
-          }}
-          actions={pending && !own ? <>
-            <Button size="sm" variant="outline-danger" disabled={busy !== null} onClick={() => setRejecting(changeset)}>Reject</Button>
-            <Button size="sm" variant="outline-success" disabled={busy !== null} onClick={() => void approve(changeset)}>Approve</Button>
-          </> : null}
-        />;
-      })}
-      {nextToken && <Button variant="outline-dark" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Loading…" : "Load more"}</Button>}
-      <Modal show={Boolean(rejecting)} onHide={() => !busy && setRejecting(null)} centered><Modal.Header closeButton><Modal.Title>Reject changeset</Modal.Title></Modal.Header><Modal.Body><Form.Control as="textarea" rows={4} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="A review comment is required" /></Modal.Body><Modal.Footer><Button variant="outline-secondary" disabled={Boolean(busy)} onClick={() => setRejecting(null)}>Cancel</Button><Button variant="danger" disabled={Boolean(busy) || !comment.trim()} onClick={() => void reject()}>Reject</Button></Modal.Footer></Modal>
+      {!loading && changesets.length === 0 && (
+        <div className="tempvs-plain-message text-muted">
+          No changesets for this source.
+        </div>
+      )}
+      {!loading &&
+        changesets.map((changeset) => {
+          const own = changeset.proposerId === viewerId;
+          const pending = changeset.status === "PENDING";
+          return (
+            <SourceChangesetProposalCard
+              key={changeset.id}
+              source={source!}
+              changeset={changeset}
+              showSource={false}
+              expanded={expandedChangesetIds.has(changeset.id)}
+              onToggle={() => toggleChangeset(changeset.id)}
+              imagePreviews={{
+                published: publishedImages,
+                staged: stagedImagesByChangeset[changeset.id] || [],
+              }}
+              actions={
+                pending && !own ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      disabled={busy !== null}
+                      onClick={() => setRejecting(changeset)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-success"
+                      disabled={busy !== null}
+                      onClick={() => void approve(changeset)}
+                    >
+                      Approve
+                    </Button>
+                  </>
+                ) : null
+              }
+            />
+          );
+        })}
+      {nextToken && (
+        <Button
+          variant="outline-dark"
+          disabled={loadingMore}
+          onClick={() => void loadMore()}
+        >
+          {loadingMore ? "Loading…" : "Load more"}
+        </Button>
+      )}
+      <Modal
+        show={Boolean(rejecting)}
+        onHide={() => !busy && setRejecting(null)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Reject changeset</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Control
+            as="textarea"
+            rows={4}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            placeholder="A review comment is required"
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            disabled={Boolean(busy)}
+            onClick={() => setRejecting(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            disabled={Boolean(busy) || !comment.trim()}
+            onClick={() => void reject()}
+          >
+            Reject
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
