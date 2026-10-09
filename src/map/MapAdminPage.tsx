@@ -35,6 +35,12 @@ function canDecidePlaceReviews(viewer: Viewer | null): boolean {
     ),
   );
 }
+
+function submittedLabel(value: string | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+}
 /** Private review queue. Pending places are deliberately not visible in the
  * public map/search endpoint until this approval has happened. */
 export default function MapAdminPage() {
@@ -140,7 +146,11 @@ export default function MapAdminPage() {
             Map reviewer access is required to view place proposals.
           </Alert>
         )}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && (
+          <Alert variant="danger" role="alert">
+            {error}
+          </Alert>
+        )}
         {mayReview && loading && <Spinner animation="border" size="sm" />}
         {mayReview && !loading && proposals.length === 0 && !error && (
           <p className="text-muted mb-0">There are no pending proposals.</p>
@@ -157,6 +167,17 @@ export default function MapAdminPage() {
                         {proposal.featureType} · {proposal.latitude.toFixed(4)},{" "}
                         {proposal.longitude.toFixed(4)}
                       </span>
+                      {(proposal.createdByUserId ||
+                        submittedLabel(proposal.createdAt)) && (
+                        <p className="small text-muted mb-1">
+                          {proposal.createdByUserId
+                            ? `Submitted by ${proposal.createdByUserId}`
+                            : "Submitted"}
+                          {submittedLabel(proposal.createdAt)
+                            ? ` on ${submittedLabel(proposal.createdAt)}`
+                            : ""}
+                        </p>
+                      )}
                       {proposal.names?.filter((name) => !name.preferred)
                         .length ? (
                         <p className="small text-muted mb-1">
@@ -183,6 +204,7 @@ export default function MapAdminPage() {
                             }))
                           }
                           placeholder="Optional review note"
+                          maxLength={2000}
                         />
                         <Button
                           variant="dark"

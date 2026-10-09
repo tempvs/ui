@@ -147,9 +147,7 @@ test("offers nearby approved places after a point is picked on the map", async (
   render(<PlacePickerField label="Location" editable onChange={jest.fn()} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
-  fireEvent.click(
-    screen.getByRole("button", { name: "Pick coordinates" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Pick coordinates" }));
 
   await waitFor(() => {
     expect(fetchMock).toHaveBeenCalledWith(
@@ -185,5 +183,47 @@ test("uses the same nearby lookup for manually entered coordinates", async () =>
     ),
   );
   expect(screen.getByText("41.90000, 12.50000")).toBeInTheDocument();
+  fetchMock.mockRestore();
+});
+
+test("keeps an invalid manual point out of the nearby lookup and explains why", () => {
+  const fetchMock = jest.spyOn(global, "fetch");
+  render(<PlacePickerField label="Location" editable onChange={jest.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
+  fireEvent.change(screen.getByLabelText("Pinned latitude"), {
+    target: { value: "91" },
+  });
+  fireEvent.change(screen.getByLabelText("Pinned longitude"), {
+    target: { value: "12.5" },
+  });
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "latitude from -90 to 90",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+  fetchMock.mockRestore();
+});
+
+test("lets an editor clear a manually entered map point", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    text: async () => JSON.stringify({ items: [] }),
+  } as Response);
+  render(<PlacePickerField label="Location" editable onChange={jest.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
+  fireEvent.change(screen.getByLabelText("Pinned latitude"), {
+    target: { value: "41.9" },
+  });
+  fireEvent.change(screen.getByLabelText("Pinned longitude"), {
+    target: { value: "12.5" },
+  });
+  await screen.findByText("41.90000, 12.50000");
+  fireEvent.click(screen.getByRole("button", { name: "Clear point" }));
+
+  expect(screen.getByLabelText("Pinned latitude")).toHaveValue("");
+  expect(screen.getByLabelText("Pinned longitude")).toHaveValue("");
+  expect(screen.getByText("No point pinned")).toBeInTheDocument();
   fetchMock.mockRestore();
 });

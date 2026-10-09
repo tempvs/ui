@@ -6,11 +6,7 @@ import InlineSaveStatus from "./InlineSaveStatus";
 import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
 import type { SaveStatus } from "./EditableFieldRow";
-import {
-  MapPlace,
-  nearbyMapPlaces,
-  searchMapPlaces,
-} from "../map/mapApi";
+import { MapPlace, nearbyMapPlaces, searchMapPlaces } from "../map/mapApi";
 import MapCanvas from "../map/MapCanvas";
 import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
@@ -33,6 +29,37 @@ const MarkerIcon = FaMapMarkerAlt as React.ComponentType<{
   className?: string;
 }>;
 const ClearIcon = FaTimes as React.ComponentType<{ className?: string }>;
+
+function isValidCoordinateInput({
+  latitude,
+  longitude,
+}: {
+  latitude: string;
+  longitude: string;
+}): boolean {
+  const parsedLatitude = Number(latitude);
+  const parsedLongitude = Number(longitude);
+  return (
+    latitude.trim() !== "" &&
+    longitude.trim() !== "" &&
+    Number.isFinite(parsedLatitude) &&
+    Number.isFinite(parsedLongitude) &&
+    parsedLatitude >= -90 &&
+    parsedLatitude <= 90 &&
+    parsedLongitude >= -180 &&
+    parsedLongitude <= 180
+  );
+}
+
+function hasCoordinateInput({
+  latitude,
+  longitude,
+}: {
+  latitude: string;
+  longitude: string;
+}): boolean {
+  return latitude.trim() !== "" || longitude.trim() !== "";
+}
 
 /**
  * Shared canonical-place selector. It never accepts an arbitrary text label:
@@ -99,23 +126,19 @@ export default function PlacePickerField({
 
   useEffect(() => {
     if (!show) return;
-    const latitude = Number(coordinateInput.latitude);
-    const longitude = Number(coordinateInput.longitude);
-    if (
-      !coordinateInput.latitude.trim() ||
-      !coordinateInput.longitude.trim() ||
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
+    if (!isValidCoordinateInput(coordinateInput)) {
       setPinnedCoordinate(null);
       return;
     }
-    setPinnedCoordinate({ latitude, longitude });
+    setPinnedCoordinate({
+      latitude: Number(coordinateInput.latitude),
+      longitude: Number(coordinateInput.longitude),
+    });
   }, [coordinateInput, show]);
+
+  const coordinateInputIsInvalid =
+    hasCoordinateInput(coordinateInput) &&
+    !isValidCoordinateInput(coordinateInput);
 
   useEffect(() => {
     if (!show || !pinnedCoordinate) {
@@ -304,8 +327,14 @@ export default function PlacePickerField({
             <div className="d-flex gap-2 mt-2">
               <Form.Control
                 aria-label="Pinned latitude"
+                aria-describedby={
+                  coordinateInputIsInvalid
+                    ? "pinned-coordinate-feedback"
+                    : undefined
+                }
                 inputMode="decimal"
                 placeholder="Latitude"
+                isInvalid={coordinateInputIsInvalid}
                 value={coordinateInput.latitude}
                 onChange={(event) =>
                   setCoordinateInput((current) => ({
@@ -316,8 +345,14 @@ export default function PlacePickerField({
               />
               <Form.Control
                 aria-label="Pinned longitude"
+                aria-describedby={
+                  coordinateInputIsInvalid
+                    ? "pinned-coordinate-feedback"
+                    : undefined
+                }
                 inputMode="decimal"
                 placeholder="Longitude"
+                isInvalid={coordinateInputIsInvalid}
                 value={coordinateInput.longitude}
                 onChange={(event) =>
                   setCoordinateInput((current) => ({
@@ -327,12 +362,36 @@ export default function PlacePickerField({
                 }
               />
             </div>
+            {coordinateInputIsInvalid && (
+              <p
+                id="pinned-coordinate-feedback"
+                className="small text-danger mb-0 mt-1"
+                role="alert"
+              >
+                Enter both coordinates: latitude from -90 to 90 and longitude
+                from -180 to 180.
+              </p>
+            )}
             <div className="d-flex align-items-center gap-2 mt-2">
-              <span className="small text-muted">
+              <span className="small text-muted" aria-live="polite">
                 {pinnedCoordinate
                   ? `${pinnedCoordinate.latitude.toFixed(5)}, ${pinnedCoordinate.longitude.toFixed(5)}`
                   : "No point pinned"}
               </span>
+              {hasCoordinateInput(coordinateInput) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="link"
+                  className="p-0"
+                  onClick={() => {
+                    setPinnedCoordinate(null);
+                    setCoordinateInput({ latitude: "", longitude: "" });
+                  }}
+                >
+                  Clear point
+                </Button>
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -347,7 +406,7 @@ export default function PlacePickerField({
               </Button>
             </div>
             {nearbyLoading && (
-              <div className="small text-muted mt-2">
+              <div className="small text-muted mt-2" aria-live="polite">
                 Checking nearby approved places…
               </div>
             )}
@@ -367,7 +426,9 @@ export default function PlacePickerField({
                       onClick={() => select(place)}
                     >
                       <strong>{place.canonicalName}</strong>
-                      <span className="ms-2 text-muted">{place.featureType}</span>
+                      <span className="ms-2 text-muted">
+                        {place.featureType}
+                      </span>
                     </Button>
                   ))}
                 </div>
@@ -380,7 +441,7 @@ export default function PlacePickerField({
             <Button
               variant="outline-danger"
               size="sm"
-                onClick={() => {
+              onClick={() => {
                 onChange(null);
                 setShow(false);
                 setPinnedCoordinate(null);
