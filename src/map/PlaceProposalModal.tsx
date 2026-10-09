@@ -8,6 +8,7 @@ import {
   type MapPlace,
   type MapPlaceProposalRecord,
 } from "./mapApi";
+import ProposalActivityPanel from "./ProposalActivityPanel";
 
 type PlaceProposalModalProps = {
   show: boolean;
@@ -222,9 +223,17 @@ export default function PlaceProposalModal({
                   maxLength={1000}
                 />
               </Form.Group>
+              {proposal && (
+                <ProposalActivityPanel
+                  proposalId={proposal.id}
+                  proposalName={proposal.canonicalName}
+                />
+              )}
               {duplicates.length > 0 && (
                 <Alert className="mt-3 mb-0" variant="warning">
-                  <strong>Possible existing place{duplicates.length > 1 ? "s" : ""}:</strong>{" "}
+                  <strong>
+                    Possible existing place{duplicates.length > 1 ? "s" : ""}:
+                  </strong>{" "}
                   {duplicates.map((place) => place.canonicalName).join(", ")}.{" "}
                   Search the map before submitting a duplicate.
                 </Alert>
