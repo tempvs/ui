@@ -110,7 +110,11 @@ export default function MapPage() {
         active = false;
       };
     }
-    void loadOwnedMapContent(viewer.userId)
+    void loadOwnedMapContent(viewer.userId, (content) => {
+      if (!active) return;
+      setOwnedMarkers(content.markers);
+      setOwnedConnections(content.connections);
+    })
       .then((content) => {
         if (!active) return;
         setOwnedMarkers(content.markers);

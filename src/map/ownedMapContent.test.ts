@@ -141,3 +141,36 @@ test("composes profile, membership club, and club-stash source markers", async (
   expect(getMapPlace).toHaveBeenCalledTimes(1);
   expect(getSourceImages).toHaveBeenCalledTimes(1);
 });
+
+test("publishes profile markers before optional club and source loading completes", async () => {
+  let releaseClubReads: (() => void) | undefined;
+  const waitForClubReads = new Promise<void>((resolve) => {
+    releaseClubReads = resolve;
+  });
+  jest.mocked(getProfileClubs).mockImplementation(async () => {
+    await waitForClubReads;
+    return [];
+  });
+  jest.mocked(getProfileStash).mockImplementation(async () => {
+    await waitForClubReads;
+    return { groups: [] };
+  });
+  let publishFirstProgress: (() => void) | undefined;
+  const firstProgress = new Promise<void>((resolve) => {
+    publishFirstProgress = resolve;
+  });
+  const progress = jest.fn(() => publishFirstProgress?.());
+  const contentPromise = loadOwnedMapContent("viewer", progress);
+
+  await firstProgress;
+
+  expect(progress).toHaveBeenCalledWith({
+    markers: expect.arrayContaining([
+      expect.objectContaining({ key: "PROFILE:personal:CURRENT_RESIDENCE" }),
+    ]),
+    connections: [],
+  });
+
+  releaseClubReads?.();
+  await contentPromise;
+});

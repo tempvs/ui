@@ -44,6 +44,13 @@ export type OwnedMapContent = {
   connections: OwnedMapConnection[];
 };
 
+/**
+ * A partial private overlay. MapPage uses these snapshots to make the map
+ * useful as soon as the viewer's own profiles resolve, rather than waiting
+ * for every optional club, stash, source and thumbnail request to settle.
+ */
+export type OwnedMapContentProgress = OwnedMapContent;
+
 type Located = {
   locationPlaceId?: string | null;
   location?: string | null;
@@ -58,6 +65,7 @@ type Located = {
  */
 export async function loadOwnedMapContent(
   userId: string,
+  onProgress?: (content: OwnedMapContentProgress) => void,
 ): Promise<OwnedMapContent> {
   const [personalResult, clubProfilesResult] = await Promise.allSettled([
     getUserProfileByUserId(userId),
@@ -76,10 +84,19 @@ export async function loadOwnedMapContent(
   const resolvePlace = placeResolver();
   const resolveSourceImage = sourceImageResolver();
 
-  const [profileMarkers, memberships, sourceUsage] = await Promise.all([
-    profileMapMarkers(profiles, resolvePlace),
-    clubsByProfile(profiles),
-    sourceIdsUsedByProfiles(profiles),
+  // Profiles need only their canonical place and avatar, whereas clubs and
+  // source locations require additional membership/stash reads. Publish the
+  // profile subset first so opening the Map does not wait on the slowest
+  // optional branch before framing the viewer's locations.
+  const profileMarkersPromise = profileMapMarkers(profiles, resolvePlace);
+  const membershipsPromise = clubsByProfile(profiles);
+  const sourceUsagePromise = sourceIdsUsedByProfiles(profiles);
+  const profileMarkers = await profileMarkersPromise;
+  onProgress?.({ markers: profileMarkers, connections: [] });
+
+  const [memberships, sourceUsage] = await Promise.all([
+    membershipsPromise,
+    sourceUsagePromise,
   ]);
   const clubs = uniqueById(
     Array.from(memberships.values()).flatMap((profileClubs) => profileClubs),
@@ -87,10 +104,20 @@ export async function loadOwnedMapContent(
   const sourceIds = Array.from(
     new Set(Array.from(sourceUsage.values()).flat()),
   );
-  const [clubMarkers, sourceMarkers] = await Promise.all([
-    clubMapMarkers(clubs, resolvePlace),
-    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage),
-  ]);
+  const clubMarkersPromise = clubMapMarkers(clubs, resolvePlace);
+  const sourceMarkersPromise = sourceMapMarkers(
+    sourceIds,
+    resolvePlace,
+    resolveSourceImage,
+  );
+  const clubMarkers = await clubMarkersPromise;
+  // Club locations usually resolve before all stash-linked sources. Fit those
+  // too; a final snapshot below extends the frame to every available point.
+  onProgress?.({
+    markers: [...profileMarkers, ...clubMarkers],
+    connections: [],
+  });
+  const sourceMarkers = await sourceMarkersPromise;
   const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
   return {
     markers,
