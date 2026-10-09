@@ -1471,6 +1471,21 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
               onLocationChange={this.handleLocationPlaceChange}
+              relatedMapProfile={
+                this.state.profileId
+                  ? {
+                      id: String(this.state.profileId),
+                      type: this.state.type,
+                      firstName: this.state.firstName,
+                      lastName: this.state.lastName,
+                      nickName: this.state.nickName,
+                      alias: this.state.alias,
+                      avatarUrl: this.state.avatarUrl,
+                      locationPlaceId: this.state.locationPlaceId,
+                      location: this.state.location,
+                    }
+                  : undefined
+              }
               rangeControl={
                 isClubProfile ? (
                   <EditableHistoricalRangeField

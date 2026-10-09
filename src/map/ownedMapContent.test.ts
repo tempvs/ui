@@ -1,4 +1,4 @@
-import { getProfileClubs } from "../club/clubApi";
+import { getParticipants, getProfileClubs } from "../club/clubApi";
 import { getSource, getSourceImages } from "../library/libraryApi";
 import {
   getClubProfiles,
@@ -7,9 +7,16 @@ import {
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import { getMapPlace } from "./mapApi";
-import { loadOwnedMapContent } from "./ownedMapContent";
+import {
+  loadClubRelatedMapContent,
+  loadOwnedMapContent,
+  loadProfileRelatedMapContent,
+} from "./ownedMapContent";
 
-jest.mock("../club/clubApi", () => ({ getProfileClubs: jest.fn() }));
+jest.mock("../club/clubApi", () => ({
+  getParticipants: jest.fn(),
+  getProfileClubs: jest.fn(),
+}));
 jest.mock("../library/libraryApi", () => ({
   getSource: jest.fn(),
   getSourceImages: jest.fn(),
@@ -62,6 +69,17 @@ beforeEach(() => {
       photoThumbnailUrl: "https://images.test/club-thumb.jpg",
     } as never,
   ]);
+  jest.mocked(getParticipants).mockResolvedValue({
+    content: [
+      {
+        id: "member",
+        nickName: "Member",
+        locationPlaceId: "rome",
+        location: "Roma",
+      },
+    ],
+    hasMore: false,
+  });
   jest.mocked(getProfileStash).mockResolvedValue({
     groups: [{ id: "stash-group" }],
   });
@@ -140,6 +158,64 @@ test("composes profile, membership club, and club-stash source markers", async (
   // duplicate map request for every marker.
   expect(getMapPlace).toHaveBeenCalledTimes(1);
   expect(getSourceImages).toHaveBeenCalledTimes(1);
+});
+
+test("composes a bounded relationship overlay for a public profile page", async () => {
+  const content = await loadProfileRelatedMapContent({
+    id: "personal",
+    firstName: "Antonius",
+    lastName: "Primvs",
+    locationPlaceId: "rome",
+    location: "Roma",
+  });
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ key: "PROFILE:personal:CURRENT_RESIDENCE" }),
+      expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
+      expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" }),
+    ]),
+  );
+  expect(content.connections).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: "PROFILE_CLUB",
+        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        toKey: "CLUB:club:CLUB_ASSOCIATION",
+      }),
+      expect.objectContaining({
+        kind: "PROFILE_SOURCE",
+        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        toKey: "SOURCE:source:DISCOVERED_AT",
+      }),
+    ]),
+  );
+});
+
+test("composes a bounded club-to-member overlay", async () => {
+  const content = await loadClubRelatedMapContent({
+    id: "club",
+    name: "Legio XXII",
+    locationPlaceId: "rome",
+    location: "Roma",
+    photoThumbnailUrl: "https://images.test/club-thumb.jpg",
+  } as never);
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
+      expect.objectContaining({ key: "PROFILE:member:CURRENT_RESIDENCE" }),
+    ]),
+  );
+  expect(content.connections).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: "PROFILE_CLUB",
+        fromKey: "PROFILE:member:CURRENT_RESIDENCE",
+        toKey: "CLUB:club:CLUB_ASSOCIATION",
+      }),
+    ]),
+  );
 });
 
 test("publishes profile markers before optional club and source loading completes", async () => {

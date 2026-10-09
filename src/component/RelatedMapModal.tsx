@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
 import MapCanvas, { type MapThumbnailMarker } from "../map/MapCanvas";
+import type { OwnedMapContent } from "../map/ownedMapContent";
 import {
   getMapPlace,
   nearbyMapEntities,
@@ -17,6 +18,9 @@ type RelatedMapModalProps = {
   displayName: string;
   /** A compact default comparison area. The full map can widen it later. */
   radiusKm?: number;
+  /** Page-scoped relation data (for example a profile's public clubs/sources).
+   * This intentionally never becomes part of the public nearby-map endpoint. */
+  loadRelatedMapContent?: () => Promise<OwnedMapContent>;
 };
 
 const GlobeIcon = FaGlobeAmericas as React.ComponentType<{
@@ -39,11 +43,16 @@ export default function RelatedMapModal({
   placeId,
   displayName,
   radiusKm = 25,
+  loadRelatedMapContent,
 }: RelatedMapModalProps) {
   const [show, setShow] = useState(false);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [relatedContent, setRelatedContent] = useState<OwnedMapContent>({
+    markers: [],
+    connections: [],
+  });
   const [error, setError] = useState("");
   const [radius, setRadius] = useState(radiusKm);
   const [types, setTypes] =
@@ -56,6 +65,7 @@ export default function RelatedMapModal({
     setPlace(undefined);
     setEntities([]);
     setThumbnails({});
+    setRelatedContent({ markers: [], connections: [] });
     setError("");
     void getMapPlace(placeId, controller.signal)
       .then((nextPlace) => {
@@ -71,6 +81,21 @@ export default function RelatedMapModal({
       });
     return () => controller.abort();
   }, [placeId, show]);
+
+  useEffect(() => {
+    if (!show || !loadRelatedMapContent) return undefined;
+    let active = true;
+    void loadRelatedMapContent()
+      .then((content) => {
+        if (active) setRelatedContent(content);
+      })
+      // The nearby map remains useful even if an optional page relationship
+      // read is unavailable, so avoid turning this into a blocking modal error.
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [loadRelatedMapContent, show]);
 
   useEffect(() => {
     if (!show || !place) return undefined;
@@ -143,17 +168,39 @@ export default function RelatedMapModal({
     );
   };
 
-  const thumbnailMarkers: MapThumbnailMarker[] = entities.map((entity) => ({
-    key: `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
-    entityType: entity.entityType,
-    entityId: entity.entityId,
-    label: entity.label,
-    placeId: entity.placeId,
-    placeName: entity.placeName,
-    latitude: entity.latitude,
-    longitude: entity.longitude,
-    thumbnailUrl: thumbnails[`${entity.entityType}:${entity.entityId}`],
-  }));
+  const relatedMarkerKeys = new Set(
+    relatedContent.markers.map((marker) => marker.key),
+  );
+  const thumbnailMarkers: MapThumbnailMarker[] = entities
+    .filter(
+      (entity) =>
+        !relatedMarkerKeys.has(
+          `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
+        ),
+    )
+    .map((entity) => ({
+      key: `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
+      entityType: entity.entityType,
+      entityId: entity.entityId,
+      label: entity.label,
+      placeId: entity.placeId,
+      placeName: entity.placeName,
+      latitude: entity.latitude,
+      longitude: entity.longitude,
+      thumbnailUrl: thumbnails[`${entity.entityType}:${entity.entityId}`],
+    }));
+  const fitPoints = [
+    ...(place
+      ? [
+          {
+            key: `PLACE:${place.id}`,
+            latitude: place.latitude,
+            longitude: place.longitude,
+          },
+        ]
+      : []),
+    ...relatedContent.markers,
+  ];
 
   return (
     <>
@@ -217,19 +264,26 @@ export default function RelatedMapModal({
               </div>
               <p className="small text-muted">
                 Public content within {radius} km of this location.
+                {relatedContent.markers.length
+                  ? ` This ${relatedContent.markers.length === 1 ? "related item is" : `${relatedContent.markers.length} related items are`} shown with connection lines.`
+                  : ""}
               </p>
               <div className="related-map-canvas">
                 <MapCanvas
                   places={[{ ...place, matchedName: displayName }]}
                   entities={entities}
                   thumbnailMarkers={thumbnailMarkers}
-                  focus={place}
+                  ownedMarkers={relatedContent.markers}
+                  ownedConnections={relatedContent.connections}
+                  focus={relatedContent.markers.length ? null : place}
+                  initialFitPoints={fitPoints}
                   selectedPlaceId={place.id}
                   showModernBorders={false}
                   onEntitySelect={() => undefined}
                   onThumbnailMarkerSelect={(marker) =>
                     navigate(entityPath(marker.entityType, marker.entityId))
                   }
+                  onOwnedMarkerSelect={(marker) => navigate(marker.path)}
                   onMapError={setError}
                 />
               </div>

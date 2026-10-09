@@ -4,7 +4,8 @@ import EditableSelectFieldRow from "../../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../../component/EditableTextFieldRow";
 import PlacePickerField from "../../component/PlacePickerField";
 import { SaveStatus } from "../../component/EditableFieldRow";
-import { MessageFormatter, ProfileField } from "../profileTypes";
+import { MessageFormatter, Profile, ProfileField } from "../profileTypes";
+import { loadProfileRelatedMapContent } from "../../map/ownedMapContent";
 
 type ProfileFieldsState = {
   firstName?: string | null;
@@ -31,6 +32,7 @@ type ProfileFieldsPanelProps = {
     place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => void;
   rangeControl?: React.ReactNode;
+  relatedMapProfile?: Profile;
 };
 
 export default function ProfileFieldsPanel({
@@ -44,6 +46,7 @@ export default function ProfileFieldsPanel({
   onFieldBlur,
   onLocationChange,
   rangeControl,
+  relatedMapProfile,
 }: ProfileFieldsPanelProps) {
   return (
     <>
@@ -124,6 +127,11 @@ export default function ProfileFieldsPanel({
         onChange={onLocationChange}
         status={state.fieldStatuses?.location}
         className="mb-2"
+        loadRelatedMapContent={
+          relatedMapProfile
+            ? () => loadProfileRelatedMapContent(relatedMapProfile)
+            : undefined
+        }
       />
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}

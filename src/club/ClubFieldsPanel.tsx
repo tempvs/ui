@@ -8,6 +8,7 @@ import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
+import { loadClubRelatedMapContent } from "../map/ownedMapContent";
 import { PERIODS, getPeriodLabel } from "../util/periods";
 import { Club, ClubDraft } from "./clubApi";
 
@@ -80,6 +81,7 @@ export default function ClubFieldsPanel({
         readOnlyLabel={club.location}
         onChange={onLocationChange}
         status={statuses.location}
+        loadRelatedMapContent={() => loadClubRelatedMapContent(club)}
       />
       <EditableTextFieldRow
         label="Contact email"

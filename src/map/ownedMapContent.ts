@@ -1,4 +1,4 @@
-import { getProfileClubs, type Club } from "../club/clubApi";
+import { getParticipants, getProfileClubs, type Club } from "../club/clubApi";
 import {
   getSource,
   getSourceImages,
@@ -43,6 +43,75 @@ export type OwnedMapContent = {
   markers: OwnedMapMarker[];
   connections: OwnedMapConnection[];
 };
+
+/**
+ * A deliberately bounded public-page overlay. It is assembled from the same
+ * public profile, club, collection and source reads already used by the page;
+ * it is not added to Map's public proximity projection, where relationship
+ * data would be queryable by anyone. The caller chooses when the relationship
+ * is appropriate to reveal (currently, the profile's own location globe).
+ */
+export async function loadProfileRelatedMapContent(
+  profile: Profile,
+): Promise<OwnedMapContent> {
+  const resolvePlace = placeResolver();
+  const resolveSourceImage = sourceImageResolver();
+  const [profileMarkers, memberships, sourceUsage] = await Promise.all([
+    profileMapMarkers([profile], resolvePlace),
+    clubsByProfile([profile]),
+    sourceIdsUsedByProfiles([profile]),
+  ]);
+  const clubs = uniqueById(
+    Array.from(memberships.values()).flatMap((items) => items),
+  );
+  const sourceIds = Array.from(
+    new Set(Array.from(sourceUsage.values()).flat()),
+  );
+  const [clubMarkers, sourceMarkers] = await Promise.all([
+    clubMapMarkers(clubs, resolvePlace),
+    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage),
+  ]);
+  const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
+  return {
+    markers,
+    connections: buildConnections(
+      markers,
+      undefined,
+      [profile],
+      memberships,
+      sourceUsage,
+    ),
+  };
+}
+
+/** A club-location counterpart to the profile overlay. The club API returns a
+ * cursor-paginated member list; the compact modal deliberately renders its
+ * first bounded page rather than turning a map click into an unbounded crawl. */
+export async function loadClubRelatedMapContent(
+  club: Club,
+): Promise<OwnedMapContent> {
+  const resolvePlace = placeResolver();
+  const [clubMarkers, participantPage] = await Promise.all([
+    clubMapMarkers([club], resolvePlace),
+    getParticipants(club.id).catch(() => ({ content: [] })),
+  ]);
+  const participants = participantPage.content;
+  const profileMarkers = await profileMapMarkers(participants, resolvePlace);
+  const markers = [...clubMarkers, ...profileMarkers];
+  const memberships = new Map(
+    participants.map((profile) => [profile.id, [club]]),
+  );
+  return {
+    markers,
+    connections: buildConnections(
+      markers,
+      undefined,
+      participants,
+      memberships,
+      new Map(),
+    ),
+  };
+}
 
 /**
  * A partial private overlay. MapPage uses these snapshots to make the map
