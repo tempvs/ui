@@ -1,10 +1,15 @@
-import React from 'react';
-import { Badge, Card } from 'react-bootstrap';
-import { useIntl } from 'react-intl';
-import { Link } from 'react-router-dom';
+import React from "react";
+import { Badge, Card } from "react-bootstrap";
+import { useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 
-import { getClassificationLabel, getTypeLabel, PeriodBadge } from '../libraryShared';
-import RefreshingImage from '../../image/RefreshingImage';
+import {
+  getClassificationLabel,
+  getTypeLabel,
+  PeriodBadge,
+} from "../libraryShared";
+import RefreshingImage from "../../image/RefreshingImage";
+import PlaceNamePopover from "../../component/PlaceNamePopover";
 
 type SourceCardSource = {
   id: string | number;
@@ -13,6 +18,10 @@ type SourceCardSource = {
   classification?: string | null;
   type?: string | null;
   period?: string | null;
+  discoveredAtPlaceId?: string | null;
+  discoveredAtPlaceName?: string | null;
+  heldAtPlaceId?: string | null;
+  heldAtPlaceName?: string | null;
 };
 
 type SourceCardImage = {
@@ -30,23 +39,34 @@ type SourceCardProps = {
   firstImage?: SourceCardImage | null;
 };
 
-export default function SourceCard({ source, showPeriodBadge = true, firstImage = null }: SourceCardProps) {
+export default function SourceCard({
+  source,
+  showPeriodBadge = true,
+  firstImage = null,
+}: SourceCardProps) {
   const intl = useIntl();
 
   return (
     <Card
       className="h-100 shadow-sm"
       style={{
-        borderColor: '#d6d0b8',
+        borderColor: "#d6d0b8",
       }}
     >
       <Card.Body className="source-card-body d-flex gap-3">
         {firstImage && (
-          <Link to={`/library/source/${source.id}`} className="source-card-image-link">
+          <Link
+            to={`/library/source/${source.id}`}
+            className="source-card-image-link"
+          >
             <RefreshingImage
-              image={{ ...firstImage, resourceType: firstImage.resourceType || 'source', resourceId: firstImage.resourceId || source.id }}
+              image={{
+                ...firstImage,
+                resourceType: firstImage.resourceType || "source",
+                resourceId: firstImage.resourceId || source.id,
+              }}
               variant="thumbnail"
-              alt={firstImage.fileName || source.name || 'Source image'}
+              alt={firstImage.fileName || source.name || "Source image"}
               className="source-card-image"
             />
           </Link>
@@ -64,12 +84,36 @@ export default function SourceCard({ source, showPeriodBadge = true, firstImage 
             {showPeriodBadge && <PeriodBadge period={source.period} />}
           </div>
           <Card.Text className="text-muted flex-grow-1">
-            {source.description || '-'}
+            {source.description || "-"}
           </Card.Text>
           <div className="d-flex gap-2 flex-wrap mb-3">
-            <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>
+            <Badge bg="secondary">
+              {getClassificationLabel(intl, source.classification)}
+            </Badge>
             <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
           </div>
+          {(source.discoveredAtPlaceId || source.heldAtPlaceId) && (
+            <div className="small text-muted d-flex flex-column gap-1">
+              {source.discoveredAtPlaceId && source.discoveredAtPlaceName && (
+                <span>
+                  Discovered at:{" "}
+                  <PlaceNamePopover
+                    placeId={source.discoveredAtPlaceId}
+                    displayName={source.discoveredAtPlaceName}
+                  />
+                </span>
+              )}
+              {source.heldAtPlaceId && source.heldAtPlaceName && (
+                <span>
+                  Held at:{" "}
+                  <PlaceNamePopover
+                    placeId={source.heldAtPlaceId}
+                    displayName={source.heldAtPlaceName}
+                  />
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Card.Body>
     </Card>
