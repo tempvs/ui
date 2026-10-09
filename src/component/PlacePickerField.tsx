@@ -7,6 +7,8 @@ import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
 import type { SaveStatus } from "./EditableFieldRow";
 import { MapPlace, searchMapPlaces } from "../map/mapApi";
+import MapCanvas from "../map/MapCanvas";
+import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
 
 type PlacePickerFieldProps = {
@@ -49,6 +51,11 @@ export default function PlacePickerField({
   const [results, setResults] = useState<MapPlace[]>([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [pinnedCoordinate, setPinnedCoordinate] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [showProposal, setShowProposal] = useState(false);
   useEffect(() => {
     if (!show || query.trim().length < 2) {
       setResults([]);
@@ -205,6 +212,41 @@ export default function PlacePickerField({
                 </Button>
               ))}
           </div>
+          <div className="place-picker-drop-map mt-3">
+            <p className="small text-muted mb-2">
+              Or click the map to pin a shared place proposal. Proposed points
+              remain unavailable for selection until a geography editor reviews
+              them.
+            </p>
+            <MapCanvas
+              places={[]}
+              entities={[]}
+              pickedCoordinate={pinnedCoordinate}
+              showModernBorders={false}
+              onEntitySelect={() => undefined}
+              onCoordinatePick={setPinnedCoordinate}
+              onMapError={() => undefined}
+            />
+            <div className="d-flex align-items-center gap-2 mt-2">
+              <span className="small text-muted">
+                {pinnedCoordinate
+                  ? `${pinnedCoordinate.latitude.toFixed(5)}, ${pinnedCoordinate.longitude.toFixed(5)}`
+                  : "No point pinned"}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline-dark"
+                disabled={!pinnedCoordinate}
+                onClick={() => {
+                  setShow(false);
+                  setShowProposal(true);
+                }}
+              >
+                Propose pinned place
+              </Button>
+            </div>
+          </div>
         </Modal.Body>
         {editable && value && (
           <Modal.Footer className="justify-content-between">
@@ -225,6 +267,16 @@ export default function PlacePickerField({
           </Modal.Footer>
         )}
       </Modal>
+      <PlaceProposalModal
+        show={showProposal}
+        initialLatitude={
+          pinnedCoordinate ? String(pinnedCoordinate.latitude) : ""
+        }
+        initialLongitude={
+          pinnedCoordinate ? String(pinnedCoordinate.longitude) : ""
+        }
+        onHide={() => setShowProposal(false)}
+      />
     </>
   );
 }

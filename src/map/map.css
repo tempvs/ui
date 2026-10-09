@@ -191,6 +191,17 @@
   font-size: 0.62rem;
 }
 
+.map-coordinate-pin {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #fffdf7;
+  border-radius: 50% 50% 50% 0;
+  background: #b13b2e;
+  box-shadow: 0 0.1rem 0.28rem rgb(38 29 17 / 48%);
+  transform: rotate(-45deg);
+}
+
 .map-place-name-list {
   margin: 0.35rem 0 0;
   padding-left: 1rem;
@@ -221,7 +232,15 @@
   min-height: 15rem;
 }
 
+.place-picker-drop-map .map-canvas-shell {
+  min-height: 15rem;
+}
+
 .place-picker-map .map-legend {
+  display: none;
+}
+
+.place-picker-drop-map .map-legend {
   display: none;
 }
 

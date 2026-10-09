@@ -19,8 +19,13 @@ type MapCanvasProps = {
   /** The one place deliberately chosen from map search. Its matched name is
    * rendered beside the pin instead of labelling every nearby result. */
   selectedPlaceId?: string | null;
+  pickedCoordinate?: { latitude: number; longitude: number } | null;
   onEntitySelect: (key: string) => void;
   onPlaceSelect?: (place: MapPlace) => void;
+  onCoordinatePick?: (coordinate: {
+    latitude: number;
+    longitude: number;
+  }) => void;
   onOwnedMarkerSelect?: (marker: OwnedMapMarker) => void;
   onMapError: (message: string) => void;
 };
@@ -50,18 +55,22 @@ export default function MapCanvas({
   showModernBorders,
   selectedEntityKey = null,
   selectedPlaceId = null,
+  pickedCoordinate = null,
   onEntitySelect,
   onPlaceSelect,
+  onCoordinatePick,
   onOwnedMarkerSelect,
   onMapError,
 }: MapCanvasProps) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
+  const coordinateMarker = useRef<maplibregl.Marker | null>(null);
   const ownedMarkerInstances = useRef<maplibregl.Marker[]>([]);
   const selectRef = useRef(onEntitySelect);
   const placeSelectRef = useRef(onPlaceSelect);
   const ownedMarkerSelectRef = useRef(onOwnedMarkerSelect);
+  const coordinatePickRef = useRef(onCoordinatePick);
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
@@ -70,8 +79,15 @@ export default function MapCanvas({
     selectRef.current = onEntitySelect;
     placeSelectRef.current = onPlaceSelect;
     ownedMarkerSelectRef.current = onOwnedMarkerSelect;
+    coordinatePickRef.current = onCoordinatePick;
     errorRef.current = onMapError;
-  }, [onEntitySelect, onMapError, onOwnedMarkerSelect, onPlaceSelect]);
+  }, [
+    onCoordinatePick,
+    onEntitySelect,
+    onMapError,
+    onOwnedMarkerSelect,
+    onPlaceSelect,
+  ]);
 
   useEffect(() => {
     placesRef.current = places;
@@ -100,6 +116,12 @@ export default function MapCanvas({
       const message = event.error?.message || "The map could not be displayed.";
       if (!/source .* is not loaded/i.test(message)) errorRef.current(message);
     });
+    next.on("click", (event) => {
+      coordinatePickRef.current?.({
+        latitude: event.lngLat.lat,
+        longitude: event.lngLat.lng,
+      });
+    });
     next.on("load", () => {
       addMarkerLayers(
         next,
@@ -116,6 +138,8 @@ export default function MapCanvas({
       setReady(false);
       selectedPlaceMarker.current?.remove();
       selectedPlaceMarker.current = null;
+      coordinateMarker.current?.remove();
+      coordinateMarker.current = null;
       ownedMarkerInstances.current.forEach((marker) => marker.remove());
       ownedMarkerInstances.current = [];
       next.remove();
@@ -226,6 +250,22 @@ export default function MapCanvas({
       marker.remove();
     };
   }, [places, ready, selectedPlaceId]);
+
+  useEffect(() => {
+    coordinateMarker.current?.remove();
+    coordinateMarker.current = null;
+    if (!ready || !map.current || !pickedCoordinate) return undefined;
+    const element = document.createElement("span");
+    element.className = "map-coordinate-pin";
+    element.setAttribute("aria-label", "Proposed place coordinates");
+    const marker = new maplibregl.Marker({ element, anchor: "bottom" })
+      .setLngLat([pickedCoordinate.longitude, pickedCoordinate.latitude])
+      .addTo(map.current);
+    coordinateMarker.current = marker;
+    return () => {
+      marker.remove();
+    };
+  }, [pickedCoordinate, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
