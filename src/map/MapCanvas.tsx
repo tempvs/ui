@@ -13,6 +13,10 @@ type MapCanvasProps = {
   /** Viewer-scoped markers assembled in the browser. They are kept out of
    * the public entity source because membership/ownership is private context. */
   ownedMarkers?: OwnedMapMarker[];
+  /** Image markers for a deliberately bounded public result set, such as the
+   * related-location modal. Keeping these separate from the clustered public
+   * source means broad Map-page searches remain inexpensive. */
+  thumbnailMarkers?: MapThumbnailMarker[];
   /** Viewer-scoped relationship edges between the private overlay markers. */
   ownedConnections?: OwnedMapConnection[];
   focus?: { latitude: number; longitude: number } | null;
@@ -37,7 +41,20 @@ type MapCanvasProps = {
     longitude: number;
   }) => void;
   onOwnedMarkerSelect?: (marker: OwnedMapMarker) => void;
+  onThumbnailMarkerSelect?: (marker: MapThumbnailMarker) => void;
   onMapError: (message: string) => void;
+};
+
+export type MapThumbnailMarker = {
+  key: string;
+  entityType: MapEntityLocation["entityType"];
+  entityId: string;
+  label: string;
+  placeId: string;
+  placeName: string;
+  latitude: number;
+  longitude: number;
+  thumbnailUrl?: string | null;
 };
 
 type MarkerProperties = {
@@ -61,6 +78,7 @@ export default function MapCanvas({
   places,
   entities,
   ownedMarkers = [],
+  thumbnailMarkers = [],
   ownedConnections = [],
   focus,
   initialFitPoints = [],
@@ -72,6 +90,7 @@ export default function MapCanvas({
   onPlaceSelect,
   onCoordinatePick,
   onOwnedMarkerSelect,
+  onThumbnailMarkerSelect,
   onMapError,
 }: MapCanvasProps) {
   const element = useRef<HTMLDivElement>(null);
@@ -83,6 +102,7 @@ export default function MapCanvas({
   const selectRef = useRef(onEntitySelect);
   const placeSelectRef = useRef(onPlaceSelect);
   const ownedMarkerSelectRef = useRef(onOwnedMarkerSelect);
+  const thumbnailMarkerSelectRef = useRef(onThumbnailMarkerSelect);
   const coordinatePickRef = useRef(onCoordinatePick);
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
@@ -92,6 +112,7 @@ export default function MapCanvas({
     selectRef.current = onEntitySelect;
     placeSelectRef.current = onPlaceSelect;
     ownedMarkerSelectRef.current = onOwnedMarkerSelect;
+    thumbnailMarkerSelectRef.current = onThumbnailMarkerSelect;
     coordinatePickRef.current = onCoordinatePick;
     errorRef.current = onMapError;
   }, [
@@ -99,6 +120,7 @@ export default function MapCanvas({
     onEntitySelect,
     onMapError,
     onOwnedMarkerSelect,
+    onThumbnailMarkerSelect,
     onPlaceSelect,
   ]);
 
@@ -217,6 +239,27 @@ export default function MapCanvas({
         ownedMarkerInstances.current = [];
     };
   }, [ownedMarkers, ready]);
+
+  useEffect(() => {
+    if (!ready || !map.current) return undefined;
+    const offsets = markerOffsets(thumbnailMarkers);
+    const instances = thumbnailMarkers.map((thumbnailMarker) => {
+      const markerElement = mapMarkerElement(thumbnailMarker, "thumbnail");
+      markerElement.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        thumbnailMarkerSelectRef.current?.(thumbnailMarker);
+      });
+      return new maplibregl.Marker({
+        element: markerElement,
+        anchor: "center",
+        offset: offsets.get(thumbnailMarker.key) || [0, 0],
+      })
+        .setLngLat([thumbnailMarker.longitude, thumbnailMarker.latitude])
+        .addTo(map.current as maplibregl.Map);
+    });
+    return () => instances.forEach((marker) => marker.remove());
+  }, [ready, thumbnailMarkers]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -371,9 +414,36 @@ export default function MapCanvas({
   );
 }
 
+function mapMarkerElement(
+  marker: Pick<
+    MapThumbnailMarker,
+    "entityType" | "label" | "placeName" | "thumbnailUrl"
+  >,
+  kind: "owned" | "thumbnail",
+): HTMLButtonElement {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = `map-${kind}-marker map-${kind}-marker-${marker.entityType.toLowerCase()}`;
+  element.setAttribute("aria-label", `Open ${marker.label}`);
+  element.title = `${marker.label} · ${marker.placeName}`;
+  if (marker.thumbnailUrl) {
+    const image = document.createElement("img");
+    image.src = marker.thumbnailUrl;
+    image.alt = "";
+    image.addEventListener("error", () => {
+      image.remove();
+      addMarkerFallback(element, marker);
+    });
+    element.append(image);
+  } else {
+    addMarkerFallback(element, marker);
+  }
+  return element;
+}
+
 function addMarkerFallback(
   element: HTMLButtonElement,
-  marker: OwnedMapMarker,
+  marker: Pick<MapThumbnailMarker, "entityType" | "label">,
 ): void {
   const fallback = document.createElement("span");
   fallback.className = "map-owned-marker-fallback";
@@ -387,9 +457,12 @@ function addMarkerFallback(
 /** Keep several owned records at the same place individually reachable while
  * leaving their actual coordinates untouched. */
 function markerOffsets(
-  markers: OwnedMapMarker[],
+  markers: Array<Pick<MapThumbnailMarker, "key" | "placeId">>,
 ): Map<string, [number, number]> {
-  const grouped = new Map<string, OwnedMapMarker[]>();
+  const grouped = new Map<
+    string,
+    Array<Pick<MapThumbnailMarker, "key" | "placeId">>
+  >();
   markers.forEach((marker) => {
     const samePlace = grouped.get(marker.placeId) || [];
     samePlace.push(marker);
@@ -504,14 +577,11 @@ function addMarkerLayers(
       "circle-stroke-color": "#fff",
     },
   });
-  map.addLayer({
-    id: "map-cluster-count",
-    type: "symbol",
-    source: "map-entities",
-    filter: ["has", "point_count"],
-    layout: { "text-field": "{point_count_abbreviated}", "text-size": 12 },
-    paint: { "text-color": "#fff" },
-  });
+  // Keep clusters as circles rather than a symbol/text layer. The deliberately
+  // self-contained Natural Earth style has no glyph endpoint, and MapLibre
+  // rejects `text-field` layers without one. A cluster remains clearly
+  // interactive (and expands on click) without making the map depend on a
+  // third-party font service.
   map.addLayer({
     id: "map-entity-points",
     type: "circle",
