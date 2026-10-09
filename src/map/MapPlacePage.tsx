@@ -26,6 +26,7 @@ const entityTypeFilters: EntityTypeFilter[] = [
  * place-assignment API rather than an imprecise radius lookup. */
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
+  const [parentPlace, setParentPlace] = useState<MapPlace | null>(null);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [entityCursor, setEntityCursor] = useState<string | undefined>();
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -43,6 +44,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
     const controller = new AbortController();
     setPlace(undefined);
+    setParentPlace(null);
     setEntities([]);
     setEntityCursor(undefined);
     setError("");
@@ -59,6 +61,16 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         setPlace(nextPlace);
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
+        if (nextPlace?.parentPlaceId) {
+          void getMapPlace(nextPlace.parentPlaceId, controller.signal).then(
+            (parent) => {
+              if (!controller.signal.aborted) setParentPlace(parent);
+            },
+            () => {
+              if (!controller.signal.aborted) setParentPlace(null);
+            },
+          );
+        }
       })
       .catch((caught: unknown) => {
         if (!controller.signal.aborted) {
@@ -122,6 +134,14 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
           {place.longitude.toFixed(4)}
         </p>
+        {parentPlace && (
+          <p className="small mb-2">
+            Part of{" "}
+            <Link to={`/map/place/${encodeURIComponent(parentPlace.id)}`}>
+              {parentPlace.canonicalName}
+            </Link>
+          </p>
+        )}
         {place.description && <p className="mb-2">{place.description}</p>}
         <Form.Check
           id="place-modern-borders"
