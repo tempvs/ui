@@ -10,7 +10,12 @@ import { MemoryRouter } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
 import MapPage from "./MapPage";
-import { nearbyMapEntities, nearbyMapPlaces, searchMapPlaces } from "./mapApi";
+import {
+  listMyMapPlaceProposals,
+  nearbyMapEntities,
+  nearbyMapPlaces,
+  searchMapPlaces,
+} from "./mapApi";
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
@@ -58,11 +63,13 @@ jest.mock("./mapApi", () => ({
   nearbyMapPlaces: jest.fn(),
   nearbyMapEntities: jest.fn(),
   getMapPlace: jest.fn(),
+  listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),
 }));
 
 const mockSearchMapPlaces = jest.mocked(searchMapPlaces);
 const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
 const mockNearbyMapEntities = jest.mocked(nearbyMapEntities);
+const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
 
 test("searches places while typing and labels the selected marker with the matched historical name", async () => {
@@ -168,6 +175,7 @@ test("lets a geography reviewer reach the proposal queue", async () => {
   });
   mockNearbyMapPlaces.mockResolvedValue([]);
   mockNearbyMapEntities.mockResolvedValue([]);
+  mockListMyMapPlaceProposals.mockResolvedValue([]);
 
   render(
     <MemoryRouter>

@@ -18,6 +18,7 @@ jest.mock("./mapApi", () => ({
   listPendingMapPlaces: jest.fn(),
   mergeMapPlace: jest.fn(),
   rejectMapPlace: jest.fn(),
+  requestMapPlaceChanges: jest.fn(),
 }));
 
 jest.mock("./MapCanvas", () => ({
@@ -30,6 +31,7 @@ import {
   approveMapPlace,
   findLikelyDuplicateMapPlaces,
   listPendingMapPlaces,
+  requestMapPlaceChanges,
 } from "./mapApi";
 import MapAdminPage from "./MapAdminPage";
 
@@ -42,11 +44,15 @@ const approveMock = approveMapPlace as jest.MockedFunction<
 >;
 const findLikelyDuplicatesMock =
   findLikelyDuplicateMapPlaces as jest.MockedFunction<
-    typeof findLikelyDuplicateMapPlaces
-  >;
+  typeof findLikelyDuplicateMapPlaces
+>;
+const requestChangesMock = requestMapPlaceChanges as jest.MockedFunction<
+  typeof requestMapPlaceChanges
+>;
 
 const proposal = {
   id: "tempvs:proposal-1",
+  status: "PENDING" as const,
   canonicalName: "Augusta Raurica",
   latitude: 47.533,
   longitude: 7.72,
@@ -117,4 +123,24 @@ test("filters loaded proposals and opens a private point preview", async () => {
   fireEvent.click(screen.getByText(/review submitted details and point/i));
   expect(await screen.findByTestId("proposal-map-preview")).toBeInTheDocument();
   expect(screen.getByText("47.533000, 7.720000")).toBeInTheDocument();
+});
+
+test("lets a map editor request changes and removes the proposal from review", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "editor-1",
+    roles: ["MAP_EDITOR"],
+  });
+  requestChangesMock.mockResolvedValue();
+  render(<MapAdminPage />);
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Request changes" }),
+  );
+  await waitFor(() =>
+    expect(requestChangesMock).toHaveBeenCalledWith(
+      "tempvs:proposal-1",
+      undefined,
+    ),
+  );
+  await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
 });

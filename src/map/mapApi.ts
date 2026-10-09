@@ -81,10 +81,20 @@ export type MapPlaceProposal = {
   aliases?: string[];
 };
 
+export type MapProposalStatus = "PENDING" | "CHANGES_REQUESTED";
+export type MapPlaceProposalRecord = MapPlace & {
+  status: MapProposalStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  createdByUserId?: string;
+  review?: { reviewerUserId: string; reviewedAt: string; note?: string };
+};
+
 /** A non-public point awaiting an editor's approval.  Keeping it separate
  * from MapPlace prevents a pending proposal from accidentally being rendered
  * in a public picker or on the map. */
-export type PendingMapPlace = MapPlace & {
+export type PendingMapPlace = MapPlaceProposalRecord & {
+  status: "PENDING";
   description?: string;
   names?: Array<{ value: string; preferred: boolean }>;
   createdAt?: string;
@@ -235,7 +245,7 @@ export async function findLikelyDuplicateMapPlaces(
  * an editor reviews it, so it never leaks into public place search. */
 export async function proposeMapPlace(
   proposal: MapPlaceProposal,
-): Promise<void> {
+): Promise<MapPlaceProposalRecord> {
   const response = await fetch("/api/map/places/proposals", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -243,6 +253,36 @@ export async function proposeMapPlace(
   });
   if (response.status === 401) throw new Error("Sign in to propose a place");
   if (!response.ok) throw new Error("Unable to submit this place proposal");
+  return (await responseJson(response)) as MapPlaceProposalRecord;
+}
+
+/** Private, author-scoped active proposals. Pending names and coordinates are
+ * never returned from public place endpoints. */
+export async function listMyMapPlaceProposals(): Promise<
+  MapPlaceProposalRecord[]
+> {
+  const response = await fetch("/api/map/proposals/mine?limit=20");
+  if (response.status === 401) throw new Error("Sign in to view proposals");
+  if (!response.ok) throw new Error("Unable to load your place proposals");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items)
+    ? (body?.items as MapPlaceProposalRecord[])
+    : [];
+}
+
+export async function amendMapPlaceProposal(
+  id: string,
+  proposal: MapPlaceProposal,
+): Promise<MapPlaceProposalRecord> {
+  const response = await fetch(`/api/map/proposals/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(proposal),
+  });
+  if (response.status === 409)
+    throw new Error("This proposal was already reviewed; refresh and try again.");
+  if (!response.ok) throw new Error("Unable to amend this place proposal");
+  return (await responseJson(response)) as MapPlaceProposalRecord;
 }
 
 export type PendingMapPlacePage = {
@@ -296,6 +336,23 @@ export async function rejectMapPlace(id: string, note?: string): Promise<void> {
     },
   );
   if (!response.ok) throw new Error("Unable to reject this place proposal");
+}
+
+/** Return a pending proposal to its author. This removes it from the reviewer
+ * queue until the author explicitly amends and resubmits it. */
+export async function requestMapPlaceChanges(
+  id: string,
+  note?: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/places/${encodeURIComponent(id)}/request-changes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note?.trim() ? { note: note.trim() } : {}),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to request changes to this place");
 }
 
 /** Retain a duplicate proposal for audit, linked to the approved canonical

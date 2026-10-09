@@ -10,11 +10,13 @@ import HistoricalRangeFilter, {
 } from "../component/HistoricalRangeFilter";
 import {
   getMapPlace,
+  listMyMapPlaceProposals,
   nearbyMapEntities,
   nearbyMapPlaces,
   searchMapPlaces,
   type MapEntityLocation,
   type MapPlace,
+  type MapPlaceProposalRecord,
   type MapSourceFilters,
   type SourceLocationRole,
 } from "./mapApi";
@@ -91,11 +93,36 @@ export default function MapPage() {
     OwnedMapConnection[]
   >([]);
   const [showProposalModal, setShowProposalModal] = useState(false);
+  const [ownProposals, setOwnProposals] = useState<MapPlaceProposalRecord[]>(
+    [],
+  );
+  const [editingProposal, setEditingProposal] =
+    useState<MapPlaceProposalRecord | null>(null);
   const suggestionRequest = useRef(0);
 
   useEffect(() => {
     void getViewer().then(setViewer);
   }, []);
+
+  // Active proposals are a private author view. They are deliberately fetched
+  // only after identity is known and never folded into public map results.
+  useEffect(() => {
+    if (!viewer) {
+      setOwnProposals([]);
+      return;
+    }
+    let active = true;
+    void listMyMapPlaceProposals()
+      .then((proposals) => {
+        if (active) setOwnProposals(proposals);
+      })
+      .catch(() => {
+        if (active) setOwnProposals([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [viewer]);
 
   // Opening the Map from the horizontal navigation should be useful even
   // before a search: show the signed-in person's profiles, their club
@@ -650,7 +677,10 @@ export default function MapPage() {
             <Button
               type="button"
               variant="outline-dark"
-              onClick={() => setShowProposalModal(true)}
+              onClick={() => {
+                setEditingProposal(null);
+                setShowProposalModal(true);
+              }}
             >
               Propose a place
             </Button>
@@ -671,6 +701,43 @@ export default function MapPage() {
           </Alert>
         )}
       </section>
+      {viewer && ownProposals.length > 0 && (
+        <section className="club-panel mt-3" aria-label="Your place proposals">
+          <h2 className="h5">Your place proposals</h2>
+          <ul className="list-unstyled mb-0">
+            {ownProposals.map((proposal) => (
+              <li
+                key={proposal.id}
+                className="border-top py-2 d-flex align-items-center justify-content-between gap-3"
+              >
+                <div>
+                  <strong>{proposal.canonicalName}</strong>
+                  <span className="text-muted ms-2">
+                    {proposal.status === "CHANGES_REQUESTED"
+                      ? "Changes requested"
+                      : "Pending review"}
+                  </span>
+                  {proposal.review?.note && (
+                    <p className="small text-muted mb-0">
+                      Reviewer: {proposal.review.note}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline-dark"
+                  onClick={() => {
+                    setEditingProposal(proposal);
+                    setShowProposalModal(true);
+                  }}
+                >
+                  Amend
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="club-panel mt-3" aria-label="Interactive map">
         <MapCanvas
           places={items}
@@ -783,7 +850,20 @@ export default function MapPage() {
         show={showProposalModal}
         initialLatitude={latitude}
         initialLongitude={longitude}
-        onHide={() => setShowProposalModal(false)}
+        proposal={editingProposal}
+        onSubmitted={(proposal) =>
+          setOwnProposals((current) => {
+            const existing = current.findIndex((item) => item.id === proposal.id);
+            if (existing < 0) return [proposal, ...current];
+            return current.map((item) =>
+              item.id === proposal.id ? proposal : item,
+            );
+          })
+        }
+        onHide={() => {
+          setShowProposalModal(false);
+          setEditingProposal(null);
+        }}
       />
     </PageLayout>
   );

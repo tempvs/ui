@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 
 import {
+  amendMapPlaceProposal,
   findLikelyDuplicateMapPlaces,
   proposeMapPlace,
   type MapPlace,
+  type MapPlaceProposalRecord,
 } from "./mapApi";
 
 type PlaceProposalModalProps = {
   show: boolean;
   initialLatitude?: string;
   initialLongitude?: string;
+  proposal?: MapPlaceProposalRecord | null;
+  onSubmitted?: (proposal: MapPlaceProposalRecord) => void;
   onHide: () => void;
 };
 
@@ -20,14 +24,22 @@ export default function PlaceProposalModal({
   show,
   initialLatitude = "",
   initialLongitude = "",
+  proposal = null,
+  onSubmitted,
   onHide,
 }: PlaceProposalModalProps) {
-  const [name, setName] = useState("");
-  const [featureType, setFeatureType] = useState("SETTLEMENT");
-  const [latitude, setLatitude] = useState(initialLatitude);
-  const [longitude, setLongitude] = useState(initialLongitude);
-  const [description, setDescription] = useState("");
-  const [aliases, setAliases] = useState("");
+  const [name, setName] = useState(proposal?.canonicalName ?? "");
+  const [featureType, setFeatureType] = useState(
+    proposal?.featureType ?? "SETTLEMENT",
+  );
+  const [latitude, setLatitude] = useState(
+    proposal ? String(proposal.latitude) : initialLatitude,
+  );
+  const [longitude, setLongitude] = useState(
+    proposal ? String(proposal.longitude) : initialLongitude,
+  );
+  const [description, setDescription] = useState(proposal?.description ?? "");
+  const [aliases, setAliases] = useState(placeAliases(proposal));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -35,12 +47,16 @@ export default function PlaceProposalModal({
 
   useEffect(() => {
     if (!show) return;
-    setLatitude(initialLatitude);
-    setLongitude(initialLongitude);
+    setName(proposal?.canonicalName ?? "");
+    setFeatureType(proposal?.featureType ?? "SETTLEMENT");
+    setLatitude(proposal ? String(proposal.latitude) : initialLatitude);
+    setLongitude(proposal ? String(proposal.longitude) : initialLongitude);
+    setDescription(proposal?.description ?? "");
+    setAliases(placeAliases(proposal));
     setError("");
     setSubmitted(false);
     setDuplicates([]);
-  }, [initialLatitude, initialLongitude, show]);
+  }, [initialLatitude, initialLongitude, proposal, show]);
 
   useEffect(() => {
     const parsedLatitude = Number(latitude);
@@ -104,7 +120,7 @@ export default function PlaceProposalModal({
     setSaving(true);
     setError("");
     try {
-      await proposeMapPlace({
+      const values = {
         canonicalName: name.trim(),
         featureType: featureType.trim(),
         latitude: parsedLatitude,
@@ -118,7 +134,11 @@ export default function PlaceProposalModal({
                 .filter(Boolean),
             }
           : {}),
-      });
+      };
+      const saved = proposal
+        ? await amendMapPlaceProposal(proposal.id, values)
+        : await proposeMapPlace(values);
+      onSubmitted?.(saved);
       setSubmitted(true);
     } catch (caught) {
       setError((caught as Error).message || "Unable to submit the proposal.");
@@ -130,14 +150,16 @@ export default function PlaceProposalModal({
   return (
     <Modal show={show} onHide={onHide} centered>
       <Modal.Header closeButton>
-        <Modal.Title>Propose a place</Modal.Title>
+        <Modal.Title>
+          {proposal ? "Amend place proposal" : "Propose a place"}
+        </Modal.Title>
       </Modal.Header>
       <Form onSubmit={submit}>
         <Modal.Body>
           {submitted ? (
             <Alert variant="success" className="mb-0">
-              Submitted for review. It will appear in public place search once
-              approved.
+              {proposal ? "Resubmitted for review." : "Submitted for review."}{" "}
+              It will appear in public place search once approved.
             </Alert>
           ) : (
             <>
@@ -221,11 +243,26 @@ export default function PlaceProposalModal({
           </Button>
           {!submitted && (
             <Button type="submit" variant="dark" disabled={saving}>
-              {saving ? "Submitting…" : "Submit for review"}
+              {saving
+                ? proposal
+                  ? "Saving…"
+                  : "Submitting…"
+                : proposal
+                  ? "Resubmit for review"
+                  : "Submit for review"}
             </Button>
           )}
         </Modal.Footer>
       </Form>
     </Modal>
+  );
+}
+
+function placeAliases(proposal: MapPlaceProposalRecord | null): string {
+  return (
+    proposal?.names
+      ?.filter((entry) => !entry.preferred)
+      .map((entry) => entry.value)
+      .join(", ") ?? ""
   );
 }

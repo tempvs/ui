@@ -10,6 +10,7 @@ import {
   listPendingMapPlaces,
   mergeMapPlace,
   rejectMapPlace,
+  requestMapPlaceChanges,
   type MapPlace,
   type PendingMapPlace,
 } from "./mapApi";
@@ -113,14 +114,16 @@ export default function MapAdminPage() {
 
   const review = async (
     proposal: PendingMapPlace,
-    decision: "approve" | "reject",
+    decision: "approve" | "reject" | "request changes",
   ) => {
     setReviewingId(proposal.id);
     setError("");
     try {
       if (decision === "approve")
         await approveMapPlace(proposal.id, notes[proposal.id]);
-      else await rejectMapPlace(proposal.id, notes[proposal.id]);
+      else if (decision === "reject")
+        await rejectMapPlace(proposal.id, notes[proposal.id]);
+      else await requestMapPlaceChanges(proposal.id, notes[proposal.id]);
       setProposals((current) =>
         current.filter((item) => item.id !== proposal.id),
       );
@@ -252,6 +255,15 @@ export default function MapAdminPage() {
                           onClick={() => void review(proposal, "reject")}
                         >
                           Reject
+                        </Button>
+                        <Button
+                          variant="outline-secondary"
+                          disabled={reviewingId === proposal.id}
+                          onClick={() =>
+                            void review(proposal, "request changes")
+                          }
+                        >
+                          Request changes
                         </Button>
                       </div>
                     )}
