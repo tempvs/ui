@@ -162,3 +162,28 @@ test("offers nearby approved places after a point is picked on the map", async (
   ).toBeInTheDocument();
   fetchMock.mockRestore();
 });
+
+test("uses the same nearby lookup for manually entered coordinates", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    text: async () => JSON.stringify({ items: [] }),
+  } as Response);
+  render(<PlacePickerField label="Location" editable onChange={jest.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
+  fireEvent.change(screen.getByLabelText("Pinned latitude"), {
+    target: { value: "41.9" },
+  });
+  fireEvent.change(screen.getByLabelText("Pinned longitude"), {
+    target: { value: "12.5" },
+  });
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/map/places/search?latitude=41.9&longitude=12.5&radiusKm=25&limit=50",
+      expect.anything(),
+    ),
+  );
+  expect(screen.getByText("41.90000, 12.50000")).toBeInTheDocument();
+  fetchMock.mockRestore();
+});

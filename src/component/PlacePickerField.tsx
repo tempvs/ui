@@ -59,6 +59,10 @@ export default function PlacePickerField({
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [coordinateInput, setCoordinateInput] = useState({
+    latitude: "",
+    longitude: "",
+  });
   const [showProposal, setShowProposal] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<MapPlace[]>([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
@@ -94,6 +98,26 @@ export default function PlacePickerField({
   }, [query, show]);
 
   useEffect(() => {
+    if (!show) return;
+    const latitude = Number(coordinateInput.latitude);
+    const longitude = Number(coordinateInput.longitude);
+    if (
+      !coordinateInput.latitude.trim() ||
+      !coordinateInput.longitude.trim() ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      setPinnedCoordinate(null);
+      return;
+    }
+    setPinnedCoordinate({ latitude, longitude });
+  }, [coordinateInput, show]);
+
+  useEffect(() => {
     if (!show || !pinnedCoordinate) {
       setNearbyPlaces([]);
       setNearbyLoading(false);
@@ -125,6 +149,7 @@ export default function PlacePickerField({
     setShow(false);
     setQuery("");
     setPinnedCoordinate(null);
+    setCoordinateInput({ latitude: "", longitude: "" });
   };
 
   return (
@@ -147,6 +172,7 @@ export default function PlacePickerField({
                 className="inline-editable-input inline-editable-readonly-input text-start w-100"
                 onClick={() => {
                   setPinnedCoordinate(null);
+                  setCoordinateInput({ latitude: "", longitude: "" });
                   setShow(true);
                 }}
               >
@@ -184,6 +210,7 @@ export default function PlacePickerField({
         onHide={() => {
           setShow(false);
           setPinnedCoordinate(null);
+          setCoordinateInput({ latitude: "", longitude: "" });
         }}
         centered
         size="lg"
@@ -266,9 +293,40 @@ export default function PlacePickerField({
               pickedCoordinate={pinnedCoordinate}
               showModernBorders={false}
               onEntitySelect={() => undefined}
-              onCoordinatePick={setPinnedCoordinate}
+              onCoordinatePick={(coordinate) => {
+                setCoordinateInput({
+                  latitude: String(coordinate.latitude),
+                  longitude: String(coordinate.longitude),
+                });
+              }}
               onMapError={() => undefined}
             />
+            <div className="d-flex gap-2 mt-2">
+              <Form.Control
+                aria-label="Pinned latitude"
+                inputMode="decimal"
+                placeholder="Latitude"
+                value={coordinateInput.latitude}
+                onChange={(event) =>
+                  setCoordinateInput((current) => ({
+                    ...current,
+                    latitude: event.target.value,
+                  }))
+                }
+              />
+              <Form.Control
+                aria-label="Pinned longitude"
+                inputMode="decimal"
+                placeholder="Longitude"
+                value={coordinateInput.longitude}
+                onChange={(event) =>
+                  setCoordinateInput((current) => ({
+                    ...current,
+                    longitude: event.target.value,
+                  }))
+                }
+              />
+            </div>
             <div className="d-flex align-items-center gap-2 mt-2">
               <span className="small text-muted">
                 {pinnedCoordinate
@@ -322,10 +380,11 @@ export default function PlacePickerField({
             <Button
               variant="outline-danger"
               size="sm"
-              onClick={() => {
+                onClick={() => {
                 onChange(null);
                 setShow(false);
                 setPinnedCoordinate(null);
+                setCoordinateInput({ latitude: "", longitude: "" });
               }}
             >
               <ClearIcon className="me-1" />
@@ -336,6 +395,7 @@ export default function PlacePickerField({
               onClick={() => {
                 setShow(false);
                 setPinnedCoordinate(null);
+                setCoordinateInput({ latitude: "", longitude: "" });
               }}
             >
               Done
@@ -354,6 +414,7 @@ export default function PlacePickerField({
         onHide={() => {
           setShowProposal(false);
           setPinnedCoordinate(null);
+          setCoordinateInput({ latitude: "", longitude: "" });
         }}
       />
     </>
