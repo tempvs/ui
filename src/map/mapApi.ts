@@ -89,6 +89,21 @@ export type MapPlaceProposalRecord = MapPlace & {
   createdByUserId?: string;
   review?: { reviewerUserId: string; reviewedAt: string; note?: string };
 };
+export type MapPlaceProposalActivity = {
+  id: string;
+  placeId: string;
+  kind:
+    | "SUBMITTED"
+    | "AMENDED"
+    | "CHANGES_REQUESTED"
+    | "APPROVED"
+    | "REJECTED"
+    | "MERGED"
+    | "COMMENTED";
+  actorUserId: string;
+  occurredAt: string;
+  note?: string;
+};
 
 /** A non-public point awaiting an editor's approval.  Keeping it separate
  * from MapPlace prevents a pending proposal from accidentally being rendered
@@ -280,9 +295,40 @@ export async function amendMapPlaceProposal(
     body: JSON.stringify(proposal),
   });
   if (response.status === 409)
-    throw new Error("This proposal was already reviewed; refresh and try again.");
+    throw new Error(
+      "This proposal was already reviewed; refresh and try again.",
+    );
   if (!response.ok) throw new Error("Unable to amend this place proposal");
   return (await responseJson(response)) as MapPlaceProposalRecord;
+}
+
+export async function listMapPlaceProposalActivity(
+  id: string,
+): Promise<MapPlaceProposalActivity[]> {
+  const response = await fetch(
+    `/api/map/proposals/${encodeURIComponent(id)}/activity?limit=50`,
+  );
+  if (!response.ok) throw new Error("Unable to load proposal discussion");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items)
+    ? (body?.items as MapPlaceProposalActivity[])
+    : [];
+}
+
+export async function commentOnMapPlaceProposal(
+  id: string,
+  comment: string,
+): Promise<MapPlaceProposalActivity> {
+  const response = await fetch(
+    `/api/map/proposals/${encodeURIComponent(id)}/comments`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment }),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to add this proposal comment");
+  return (await responseJson(response)) as MapPlaceProposalActivity;
 }
 
 export type PendingMapPlacePage = {

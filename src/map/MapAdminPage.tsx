@@ -6,12 +6,15 @@ import PageLayout from "../component/PageLayout";
 import TextFilterInput from "../component/TextFilterInput";
 import {
   approveMapPlace,
+  commentOnMapPlaceProposal,
   findLikelyDuplicateMapPlaces,
+  listMapPlaceProposalActivity,
   listPendingMapPlaces,
   mergeMapPlace,
   rejectMapPlace,
   requestMapPlaceChanges,
   type MapPlace,
+  type MapPlaceProposalActivity,
   type PendingMapPlace,
 } from "./mapApi";
 import MapCanvas from "./MapCanvas";
@@ -305,7 +308,48 @@ export default function MapAdminPage() {
  * pending proposal is never linked into public map search. */
 function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
   const [open, setOpen] = useState(false);
+  const [activity, setActivity] = useState<MapPlaceProposalActivity[]>([]);
+  const [activityError, setActivityError] = useState("");
+  const [comment, setComment] = useState("");
+  const [sendingComment, setSendingComment] = useState(false);
   const aliases = proposal.names?.filter((name) => !name.preferred) ?? [];
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setActivityError("");
+    void listMapPlaceProposalActivity(proposal.id)
+      .then((items) => {
+        if (active) setActivity(items);
+      })
+      .catch((caught: unknown) => {
+        if (active)
+          setActivityError(
+            (caught as Error).message || "Unable to load proposal discussion.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, proposal.id]);
+
+  const addComment = async () => {
+    const value = comment.trim();
+    if (!value) return;
+    setSendingComment(true);
+    setActivityError("");
+    try {
+      const saved = await commentOnMapPlaceProposal(proposal.id, value);
+      setActivity((current) => [...current, saved]);
+      setComment("");
+    } catch (caught) {
+      setActivityError(
+        (caught as Error).message || "Unable to add proposal comment.",
+      );
+    } finally {
+      setSendingComment(false);
+    }
+  };
   return (
     <details
       className="map-admin-proposal-details mt-2"
@@ -331,7 +375,10 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
               </>
             )}
           </dl>
-          <div className="map-admin-proposal-map" aria-label={`Proposed point for ${proposal.canonicalName}`}>
+          <div
+            className="map-admin-proposal-map"
+            aria-label={`Proposed point for ${proposal.canonicalName}`}
+          >
             <MapCanvas
               places={[proposal]}
               entities={[]}
@@ -345,10 +392,54 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
               onMapError={() => undefined}
             />
           </div>
+          <div className="mt-3" aria-label="Private proposal discussion">
+            <strong className="small">Review history</strong>
+            {activityError && (
+              <p className="small text-danger mb-1">{activityError}</p>
+            )}
+            <ul className="list-unstyled small mb-2">
+              {activity.map((entry) => (
+                <li key={entry.id} className="border-top py-1">
+                  <strong>{activityLabel(entry.kind)}</strong>
+                  <span className="text-muted"> by {entry.actorUserId}</span>
+                  {entry.note && <div>{entry.note}</div>}
+                </li>
+              ))}
+            </ul>
+            <div className="d-flex gap-2">
+              <Form.Control
+                aria-label={`Comment on ${proposal.canonicalName}`}
+                value={comment}
+                maxLength={2000}
+                placeholder="Private comment"
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline-dark"
+                disabled={!comment.trim() || sendingComment}
+                onClick={() => void addComment()}
+              >
+                Comment
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </details>
   );
+}
+
+function activityLabel(kind: MapPlaceProposalActivity["kind"]): string {
+  return {
+    SUBMITTED: "Submitted",
+    AMENDED: "Amended",
+    CHANGES_REQUESTED: "Changes requested",
+    APPROVED: "Approved",
+    REJECTED: "Rejected",
+    MERGED: "Merged",
+    COMMENTED: "Comment",
+  }[kind];
 }
 
 function DuplicateMergeActions({

@@ -14,7 +14,9 @@ jest.mock("../auth/viewerApi", () => ({
 
 jest.mock("./mapApi", () => ({
   approveMapPlace: jest.fn(),
+  commentOnMapPlaceProposal: jest.fn(),
   findLikelyDuplicateMapPlaces: jest.fn().mockResolvedValue([]),
+  listMapPlaceProposalActivity: jest.fn(),
   listPendingMapPlaces: jest.fn(),
   mergeMapPlace: jest.fn(),
   rejectMapPlace: jest.fn(),
@@ -29,7 +31,9 @@ jest.mock("./MapCanvas", () => ({
 import { getViewer } from "../auth/viewerApi";
 import {
   approveMapPlace,
+  commentOnMapPlaceProposal,
   findLikelyDuplicateMapPlaces,
+  listMapPlaceProposalActivity,
   listPendingMapPlaces,
   requestMapPlaceChanges,
 } from "./mapApi";
@@ -44,10 +48,16 @@ const approveMock = approveMapPlace as jest.MockedFunction<
 >;
 const findLikelyDuplicatesMock =
   findLikelyDuplicateMapPlaces as jest.MockedFunction<
-  typeof findLikelyDuplicateMapPlaces
->;
+    typeof findLikelyDuplicateMapPlaces
+  >;
 const requestChangesMock = requestMapPlaceChanges as jest.MockedFunction<
   typeof requestMapPlaceChanges
+>;
+const commentOnProposalMock = commentOnMapPlaceProposal as jest.MockedFunction<
+  typeof commentOnMapPlaceProposal
+>;
+const listActivityMock = listMapPlaceProposalActivity as jest.MockedFunction<
+  typeof listMapPlaceProposalActivity
 >;
 
 const proposal = {
@@ -65,6 +75,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   listPendingMock.mockResolvedValue({ items: [proposal] });
   findLikelyDuplicatesMock.mockResolvedValue([]);
+  listActivityMock.mockResolvedValue([]);
 });
 
 test("lets a map reviewer inspect but not decide proposals", async () => {
@@ -143,4 +154,35 @@ test("lets a map editor request changes and removes the proposal from review", a
     ),
   );
   await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
+});
+
+test("records a private reviewer comment in the proposal discussion", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "editor-1",
+    roles: ["MAP_EDITOR"],
+  });
+  commentOnProposalMock.mockResolvedValue({
+    id: "activity-1",
+    placeId: "tempvs:proposal-1",
+    kind: "COMMENTED",
+    actorUserId: "editor-1",
+    occurredAt: "2026-10-09T12:00:00.000Z",
+    note: "Please add a citation.",
+  });
+  render(<MapAdminPage />);
+  fireEvent.click(
+    await screen.findByText(/review submitted details and point/i),
+  );
+  const input = await screen.findByRole("textbox", {
+    name: "Comment on Augusta Raurica",
+  });
+  fireEvent.change(input, { target: { value: "Please add a citation." } });
+  fireEvent.click(screen.getByRole("button", { name: "Comment" }));
+  await waitFor(() =>
+    expect(commentOnProposalMock).toHaveBeenCalledWith(
+      "tempvs:proposal-1",
+      "Please add a citation.",
+    ),
+  );
+  expect(await screen.findByText("Please add a citation.")).toBeInTheDocument();
 });
