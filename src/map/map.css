@@ -244,6 +244,12 @@
   display: none;
 }
 
+.place-picker-nearby-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 @media (max-width: 575px) {
   .map-canvas-shell {
     min-height: 22rem;

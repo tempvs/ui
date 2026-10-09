@@ -46,8 +46,10 @@ test("opens the selected place with its map preview and historical names", async
 
   fireEvent.click(screen.getByRole("button", { name: "Castra Regina" }));
 
-  expect(await screen.findByTestId("place-preview-map")).toHaveTextContent(
-    "Castra Regina",
+  await waitFor(() =>
+    expect(screen.getAllByTestId("place-preview-map")[0]).toHaveTextContent(
+      "Castra Regina",
+    ),
   );
   expect(screen.getByText("Regensburg (canonical)")).toBeInTheDocument();
   expect(screen.getByText(/Castra Regina.*179.*500/)).toBeInTheDocument();

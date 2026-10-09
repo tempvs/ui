@@ -6,7 +6,11 @@ import InlineSaveStatus from "./InlineSaveStatus";
 import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
 import type { SaveStatus } from "./EditableFieldRow";
-import { MapPlace, searchMapPlaces } from "../map/mapApi";
+import {
+  MapPlace,
+  nearbyMapPlaces,
+  searchMapPlaces,
+} from "../map/mapApi";
 import MapCanvas from "../map/MapCanvas";
 import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
@@ -56,6 +60,8 @@ export default function PlacePickerField({
     longitude: number;
   } | null>(null);
   const [showProposal, setShowProposal] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState<MapPlace[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
   useEffect(() => {
     if (!show || query.trim().length < 2) {
       setResults([]);
@@ -87,6 +93,30 @@ export default function PlacePickerField({
     };
   }, [query, show]);
 
+  useEffect(() => {
+    if (!show || !pinnedCoordinate) {
+      setNearbyPlaces([]);
+      setNearbyLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setNearbyLoading(true);
+    void nearbyMapPlaces(
+      pinnedCoordinate.latitude,
+      pinnedCoordinate.longitude,
+      25,
+      controller.signal,
+    )
+      .then(setNearbyPlaces)
+      .catch(() => {
+        if (!controller.signal.aborted) setNearbyPlaces([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setNearbyLoading(false);
+      });
+    return () => controller.abort();
+  }, [pinnedCoordinate, show]);
+
   const select = (place: MapPlace) => {
     onChange({
       ...place,
@@ -94,6 +124,7 @@ export default function PlacePickerField({
     });
     setShow(false);
     setQuery("");
+    setPinnedCoordinate(null);
   };
 
   return (
@@ -114,7 +145,10 @@ export default function PlacePickerField({
               <button
                 type="button"
                 className="inline-editable-input inline-editable-readonly-input text-start w-100"
-                onClick={() => setShow(true)}
+                onClick={() => {
+                  setPinnedCoordinate(null);
+                  setShow(true);
+                }}
               >
                 {value?.canonicalName || readOnlyLabel || placeholder}
               </button>
@@ -145,7 +179,15 @@ export default function PlacePickerField({
           </div>
         </div>
       </div>
-      <Modal show={show} onHide={() => setShow(false)} centered size="lg">
+      <Modal
+        show={show}
+        onHide={() => {
+          setShow(false);
+          setPinnedCoordinate(null);
+        }}
+        centered
+        size="lg"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Select a place</Modal.Title>
         </Modal.Header>
@@ -246,6 +288,33 @@ export default function PlacePickerField({
                 Propose pinned place
               </Button>
             </div>
+            {nearbyLoading && (
+              <div className="small text-muted mt-2">
+                Checking nearby approved places…
+              </div>
+            )}
+            {!nearbyLoading && nearbyPlaces.length > 0 && (
+              <div className="mt-2">
+                <p className="small text-muted mb-1">
+                  Nearby approved places — select one if it is the right place:
+                </p>
+                <div className="place-picker-nearby-results">
+                  {nearbyPlaces.map((place) => (
+                    <Button
+                      key={place.id}
+                      type="button"
+                      variant="light"
+                      size="sm"
+                      className="text-start"
+                      onClick={() => select(place)}
+                    >
+                      <strong>{place.canonicalName}</strong>
+                      <span className="ms-2 text-muted">{place.featureType}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Modal.Body>
         {editable && value && (
@@ -256,12 +325,19 @@ export default function PlacePickerField({
               onClick={() => {
                 onChange(null);
                 setShow(false);
+                setPinnedCoordinate(null);
               }}
             >
               <ClearIcon className="me-1" />
               Clear location
             </Button>
-            <Button variant="secondary" onClick={() => setShow(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShow(false);
+                setPinnedCoordinate(null);
+              }}
+            >
               Done
             </Button>
           </Modal.Footer>
@@ -275,7 +351,10 @@ export default function PlacePickerField({
         initialLongitude={
           pinnedCoordinate ? String(pinnedCoordinate.longitude) : ""
         }
-        onHide={() => setShowProposal(false)}
+        onHide={() => {
+          setShowProposal(false);
+          setPinnedCoordinate(null);
+        }}
       />
     </>
   );
