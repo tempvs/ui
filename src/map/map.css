@@ -222,6 +222,20 @@
   color: #72562f;
 }
 
+.related-map-trigger {
+  color: #332c24;
+  line-height: 1;
+}
+
+.related-map-trigger:hover,
+.related-map-trigger:focus-visible {
+  color: #72562f;
+}
+
+.related-map-canvas .map-canvas-shell {
+  min-height: min(34rem, 62vh);
+}
+
 /* The shared picker is also a compact place viewer. It keeps the same map
  * implementation as the full map page at a modal-appropriate height. */
 .place-picker-selected {

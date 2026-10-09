@@ -5,6 +5,7 @@ import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
 import InlineSaveStatus from "./InlineSaveStatus";
 import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
+import RelatedMapModal from "./RelatedMapModal";
 import type { SaveStatus } from "./EditableFieldRow";
 import { MapPlace, nearbyMapPlaces, searchMapPlaces } from "../map/mapApi";
 import MapCanvas from "../map/MapCanvas";
@@ -186,10 +187,13 @@ export default function PlacePickerField({
           {label}
         </div>
         <div
-          className="small"
+          className="small d-flex align-items-center gap-1"
           style={{ width: "100%", maxWidth: fieldMaxWidth }}
         >
-          <div className="inline-editable-control inline-editable-readonly">
+          <div
+            className="inline-editable-control inline-editable-readonly"
+            style={{ minWidth: 0 }}
+          >
             {editable ? (
               <button
                 type="button"
@@ -204,10 +208,16 @@ export default function PlacePickerField({
                 {value?.canonicalName || readOnlyLabel || placeholder}
               </button>
             ) : value?.id ? (
-              <PlaceNamePopover
-                placeId={value.id}
-                displayName={value.canonicalName}
-              />
+              <span className="d-inline-flex align-items-baseline">
+                <PlaceNamePopover
+                  placeId={value.id}
+                  displayName={value.canonicalName}
+                />
+                <RelatedMapModal
+                  placeId={value.id}
+                  displayName={value.canonicalName}
+                />
+              </span>
             ) : (
               <div className="small text-start px-1 py-1">
                 {readOnlyLabel || "-"}
@@ -228,6 +238,12 @@ export default function PlacePickerField({
               </span>
             )}
           </div>
+          {editable && value?.id && (
+            <RelatedMapModal
+              placeId={value.id}
+              displayName={value.canonicalName}
+            />
+          )}
         </div>
       </div>
       <Modal
