@@ -2,7 +2,7 @@ export type Notification = {
   id: string;
   eventId: string;
   type: string;
-  category: 'PROFILE' | 'CLUB' | 'EVENT' | 'LIBRARY';
+  category: 'PROFILE' | 'CLUB' | 'EVENT' | 'LIBRARY' | 'MAP';
   createdAt: string;
   title: string;
   summary?: string;

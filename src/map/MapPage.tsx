@@ -396,11 +396,8 @@ export default function MapPage() {
     }
     const first = items[0];
     if (first) return { latitude: first.latitude, longitude: first.longitude };
-    const owned = ownedMarkers[0];
-    return owned
-      ? { latitude: owned.latitude, longitude: owned.longitude }
-      : null;
-  }, [entities, items, latitude, longitude, ownedMarkers, selectedEntityKey]);
+    return null;
+  }, [entities, items, latitude, longitude, selectedEntityKey]);
 
   return (
     <PageLayout className="map-page" header={{ title: "Map" }}>
@@ -677,6 +674,7 @@ export default function MapPage() {
           ownedMarkers={ownedMarkers}
           ownedConnections={ownedConnections}
           focus={focus}
+          initialFitPoints={ownedMarkers}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
           selectedPlaceId={selectedPlaceId}

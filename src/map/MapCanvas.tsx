@@ -16,6 +16,14 @@ type MapCanvasProps = {
   /** Viewer-scoped relationship edges between the private overlay markers. */
   ownedConnections?: OwnedMapConnection[];
   focus?: { latitude: number; longitude: number } | null;
+  /** Private viewer markers to frame when the map first opens without a
+   * public search. This keeps a member's distributed profiles/clubs/sources
+   * visible together instead of zooming to whichever request finished first. */
+  initialFitPoints?: Array<{
+    key: string;
+    latitude: number;
+    longitude: number;
+  }>;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
   /** The one place deliberately chosen from map search. Its matched name is
@@ -55,6 +63,7 @@ export default function MapCanvas({
   ownedMarkers = [],
   ownedConnections = [],
   focus,
+  initialFitPoints = [],
   showModernBorders,
   selectedEntityKey = null,
   selectedPlaceId = null,
@@ -70,6 +79,7 @@ export default function MapCanvas({
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
   const coordinateMarker = useRef<maplibregl.Marker | null>(null);
   const ownedMarkerInstances = useRef<maplibregl.Marker[]>([]);
+  const fittedPrivateMarkerSignature = useRef<string | null>(null);
   const selectRef = useRef(onEntitySelect);
   const placeSelectRef = useRef(onPlaceSelect);
   const ownedMarkerSelectRef = useRef(onOwnedMarkerSelect);
@@ -291,9 +301,44 @@ export default function MapCanvas({
     map.current.flyTo({
       center: [focus.longitude, focus.latitude],
       zoom: Math.max(map.current.getZoom(), 6),
+      duration: 750,
       essential: true,
     });
   }, [focus, ready]);
+
+  useEffect(() => {
+    if (!ready || !map.current || focus || !initialFitPoints.length) return;
+    const signature = initialFitPoints
+      .map(
+        (point) =>
+          `${point.key}:${point.latitude.toFixed(5)}:${point.longitude.toFixed(5)}`,
+      )
+      .sort()
+      .join("|");
+    if (fittedPrivateMarkerSignature.current === signature) return;
+    fittedPrivateMarkerSignature.current = signature;
+    if (initialFitPoints.length === 1) {
+      const point = initialFitPoints[0];
+      if (!point) return;
+      map.current.flyTo({
+        center: [point.longitude, point.latitude],
+        zoom: 6,
+        duration: 750,
+        essential: true,
+      });
+      return;
+    }
+    const bounds = new maplibregl.LngLatBounds();
+    initialFitPoints.forEach((point) =>
+      bounds.extend([point.longitude, point.latitude]),
+    );
+    map.current.fitBounds(bounds, {
+      padding: 64,
+      maxZoom: 7,
+      duration: 750,
+      essential: true,
+    });
+  }, [focus, initialFitPoints, ready]);
 
   return (
     <div className="map-canvas-shell" aria-label="Interactive world map">
