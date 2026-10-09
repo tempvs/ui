@@ -158,3 +158,22 @@ test("restores source discovery facets from a shareable map URL", async () => {
     ),
   );
 });
+
+test("lets a geography reviewer reach the proposal queue", async () => {
+  mockGetViewer.mockResolvedValue({
+    userId: "reviewer-1",
+    roles: ["MAP_REVIEWER"],
+  });
+  mockNearbyMapPlaces.mockResolvedValue([]);
+  mockNearbyMapEntities.mockResolvedValue([]);
+
+  render(
+    <MemoryRouter>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  expect(
+    await screen.findByRole("button", { name: "Review proposals" }),
+  ).toBeInTheDocument();
+});

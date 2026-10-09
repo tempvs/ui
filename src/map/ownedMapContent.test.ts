@@ -77,6 +77,8 @@ beforeEach(() => {
       name: "Roman find",
       discoveredAtPlaceId: "rome",
       discoveredAtPlaceName: "Roma",
+      heldAtPlaceId: "rome",
+      heldAtPlaceName: "Roma",
     },
   });
   jest.mocked(getSourceImages).mockResolvedValue({
@@ -137,4 +139,5 @@ test("composes profile, membership club, and club-stash source markers", async (
   // overlay must resolve that canonical place once instead of fanning out a
   // duplicate map request for every marker.
   expect(getMapPlace).toHaveBeenCalledTimes(1);
+  expect(getSourceImages).toHaveBeenCalledTimes(1);
 });

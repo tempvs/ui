@@ -2,7 +2,9 @@ import { getProfileClubs, type Club } from "../club/clubApi";
 import {
   getSource,
   getSourceImages,
+  type ApiResponse,
   type LibrarySource,
+  type LibrarySourceImage,
 } from "../library/libraryApi";
 import {
   getClubProfiles,
@@ -72,6 +74,7 @@ export async function loadOwnedMapContent(
     ].filter((profile): profile is Profile => Boolean(profile)),
   );
   const resolvePlace = placeResolver();
+  const resolveSourceImage = sourceImageResolver();
 
   const [profileMarkers, memberships, sourceUsage] = await Promise.all([
     profileMapMarkers(profiles, resolvePlace),
@@ -86,7 +89,7 @@ export async function loadOwnedMapContent(
   );
   const [clubMarkers, sourceMarkers] = await Promise.all([
     clubMapMarkers(clubs, resolvePlace),
-    sourceMapMarkers(sourceIds, resolvePlace),
+    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage),
   ]);
   const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
   return {
@@ -204,6 +207,7 @@ async function sourceIdsUsedByProfiles(
 async function sourceMapMarkers(
   sourceIds: string[],
   resolvePlace: PlaceResolver,
+  resolveSourceImage: SourceImageResolver,
 ): Promise<OwnedMapMarker[]> {
   const sources = await inBatches(sourceIds, 8, async (sourceId) => {
     const result = await getSource(sourceId);
@@ -220,7 +224,7 @@ async function sourceMapMarkers(
     sourceLocationsToResolve,
     8,
     async ({ source, location }) =>
-      sourceMarker(source, location, resolvePlace),
+      sourceMarker(source, location, resolvePlace, resolveSourceImage),
   );
   return markers
     .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
@@ -256,10 +260,11 @@ async function sourceMarker(
   source: LibrarySource,
   location: SourceLocation,
   resolvePlace: PlaceResolver,
+  resolveSourceImage: SourceImageResolver,
 ): Promise<OwnedMapMarker | null> {
   const [place, images] = await Promise.all([
     resolvePlace(location.placeId),
-    getSourceImages(source.id).catch(() => null),
+    resolveSourceImage(source.id),
   ]);
   if (!place) return null;
   const thumbnail = images?.ok
@@ -280,6 +285,9 @@ async function sourceMarker(
 }
 
 type PlaceResolver = (placeId: string) => Promise<MapPlace | null>;
+type SourceImageResolver = (
+  sourceId: string,
+) => Promise<ApiResponse<LibrarySourceImage[]> | null>;
 
 function placeResolver(): PlaceResolver {
   const reads = new Map<string, Promise<MapPlace | null>>();
@@ -288,6 +296,23 @@ function placeResolver(): PlaceResolver {
     if (existing) return existing;
     const read = getMapPlace(placeId).catch(() => null);
     reads.set(placeId, read);
+    return read;
+  };
+}
+
+/** A source may be rendered twice when it has both a discovery and holding
+ * location. Read its image list once for the whole private overlay, rather
+ * than doubling image-service requests merely to create two markers. */
+function sourceImageResolver(): SourceImageResolver {
+  const reads = new Map<
+    string,
+    Promise<ApiResponse<LibrarySourceImage[]> | null>
+  >();
+  return (sourceId) => {
+    const existing = reads.get(sourceId);
+    if (existing) return existing;
+    const read = getSourceImages(sourceId).catch(() => null);
+    reads.set(sourceId, read);
     return read;
   };
 }

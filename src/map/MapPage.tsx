@@ -124,7 +124,11 @@ export default function MapPage() {
   }, [viewer]);
 
   const canReviewPlaces = viewer?.roles.some(
-    (role) => role === "TEMPVS_ADMIN" || role === "MAP_EDITOR",
+    (role) =>
+      role === "TEMPVS_ADMIN" ||
+      role === "MAP_ADMIN" ||
+      role === "MAP_EDITOR" ||
+      role === "MAP_REVIEWER",
   );
   const sourceFilters: MapSourceFilters = {
     ...(sourcePeriod ? { period: sourcePeriod } : {}),
