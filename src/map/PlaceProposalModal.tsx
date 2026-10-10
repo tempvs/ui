@@ -19,6 +19,23 @@ type PlaceProposalModalProps = {
   onHide: () => void;
 };
 
+/** A small canonical vocabulary makes common shared-place proposals
+ * interoperable (notably a source's HELD_AT museum/archive). The input stays
+ * extensible because historical geography has valid feature types outside this
+ * first vocabulary and reviewers remain the publication gate. */
+const RECOMMENDED_FEATURE_TYPES = [
+  "SETTLEMENT",
+  "HISTORIC_SETTLEMENT",
+  "SITE",
+  "MUSEUM",
+  "ARCHIVE",
+  "REPOSITORY",
+  "COLLECTION",
+  "REGION",
+  "COUNTRY",
+  "CONTINENT",
+] as const;
+
 /** A small, deliberate point-only proposal form. Place geometry is not yet
  * user-editable; every proposal is reviewed before becoming searchable. */
 export default function PlaceProposalModal({
@@ -188,10 +205,20 @@ export default function PlaceProposalModal({
                 <Form.Control
                   value={featureType}
                   onChange={(event) => setFeatureType(event.target.value)}
+                  list="map-place-feature-types"
                   placeholder="Settlement, museum, historic site…"
                   maxLength={80}
                   required
                 />
+                <datalist id="map-place-feature-types">
+                  {RECOMMENDED_FEATURE_TYPES.map((type) => (
+                    <option key={type} value={type} />
+                  ))}
+                </datalist>
+                <Form.Text className="text-muted">
+                  Choose a common type or enter a more precise one; every
+                  proposed shared place is reviewed before publication.
+                </Form.Text>
               </Form.Group>
               <div className="d-flex gap-2">
                 <Form.Group className="mb-2 flex-fill">
