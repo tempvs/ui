@@ -1,8 +1,12 @@
 export type MapPlaceName = {
   value: string;
+  language?: string;
   preferred: boolean;
   validFrom?: number;
   validTo?: number;
+  confidence?:
+    "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
+  provenance?: Array<{ dataset: string; externalId: string; license: string }>;
 };
 
 export type MapHistoricalNameRange = {
@@ -21,11 +25,7 @@ export type MapPlace = {
   longitude: number;
   featureType: string;
   confidence?:
-    | "IMPORTED"
-    | "CURATED"
-    | "USER_CONTRIBUTED"
-    | "UNVERIFIED"
-    | "DISPUTED";
+    "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
   description?: string;
   parentPlaceId?: string;
   periods?: string[];
