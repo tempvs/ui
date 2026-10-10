@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
@@ -9,6 +10,7 @@ import {
   approveMapPlace,
   approveMapRoleRequest,
   findLikelyDuplicateMapPlaces,
+  nearbyMapPlaces,
   listMapRoleMembers,
   listPendingMapRoleRequests,
   listPendingMapPlaces,
@@ -250,7 +252,7 @@ export default function MapAdminPage() {
                     {mayDecide && (
                       <div className="d-flex gap-2 align-items-end flex-wrap">
                         <Form.Control
-                          aria-label={`Approval note for ${proposal.canonicalName}`}
+                          aria-label={`Review rationale for ${proposal.canonicalName}`}
                           value={notes[proposal.id] || ""}
                           onChange={(event) =>
                             setNotes((current) => ({
@@ -258,7 +260,7 @@ export default function MapAdminPage() {
                               [proposal.id]: event.target.value,
                             }))
                           }
-                          placeholder="Optional review note"
+                          placeholder="Optional for approval; required for other decisions"
                           maxLength={2000}
                         />
                         <Button
@@ -272,14 +274,30 @@ export default function MapAdminPage() {
                         </Button>
                         <Button
                           variant="outline-danger"
-                          disabled={reviewingId === proposal.id}
+                          disabled={
+                            reviewingId === proposal.id ||
+                            !notes[proposal.id]?.trim()
+                          }
+                          title={
+                            notes[proposal.id]?.trim()
+                              ? undefined
+                              : "Add a review rationale before rejecting"
+                          }
                           onClick={() => void review(proposal, "reject")}
                         >
                           Reject
                         </Button>
                         <Button
                           variant="outline-secondary"
-                          disabled={reviewingId === proposal.id}
+                          disabled={
+                            reviewingId === proposal.id ||
+                            !notes[proposal.id]?.trim()
+                          }
+                          title={
+                            notes[proposal.id]?.trim()
+                              ? undefined
+                              : "Add a review rationale before requesting changes"
+                          }
                           onClick={() =>
                             void review(proposal, "request changes")
                           }
@@ -292,7 +310,10 @@ export default function MapAdminPage() {
                   {mayDecide && (
                     <DuplicateMergeActions
                       proposal={proposal}
-                      disabled={reviewingId === proposal.id}
+                      disabled={
+                        reviewingId === proposal.id ||
+                        !notes[proposal.id]?.trim()
+                      }
                       onMerge={(target) => void merge(proposal, target)}
                     />
                   )}
@@ -594,7 +615,37 @@ function formatMapRole(role: string): string {
  * pending proposal is never linked into public map search. */
 function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
   const [open, setOpen] = useState(false);
+  const [nearby, setNearby] = useState<MapPlace[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
   const aliases = proposal.names?.filter((name) => !name.preferred) ?? [];
+
+  useEffect(() => {
+    if (!open) {
+      setNearby([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setNearbyLoading(true);
+    void nearbyMapPlaces(
+      proposal.latitude,
+      proposal.longitude,
+      25,
+      controller.signal,
+    )
+      .then((items) => {
+        if (!controller.signal.aborted) setNearby(items);
+      })
+      // The proposal remains reviewable when the optional comparison lookup
+      // is unavailable; never turn this private panel into a public fallback.
+      .catch(() => {
+        if (!controller.signal.aborted) setNearby([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setNearbyLoading(false);
+      });
+    return () => controller.abort();
+  }, [open, proposal.latitude, proposal.longitude]);
+
   return (
     <details
       className="map-admin-proposal-details mt-2"
@@ -625,7 +676,7 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
             aria-label={`Proposed point for ${proposal.canonicalName}`}
           >
             <MapCanvas
-              places={[proposal]}
+              places={[proposal, ...nearby]}
               entities={[]}
               focus={{
                 latitude: proposal.latitude,
@@ -637,6 +688,33 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
               onMapError={() => undefined}
             />
           </div>
+          <div className="small mt-2">
+            <strong>Nearby approved places</strong>
+            {nearbyLoading ? (
+              <span className="text-muted ms-2">Loadingâ€¦</span>
+            ) : nearby.length ? (
+              <ul className="mb-0 mt-1">
+                {nearby.map((place) => (
+                  <li key={place.id}>
+                    <Link to={`/map/place/${encodeURIComponent(place.id)}`}>
+                      {place.canonicalName}
+                    </Link>{" "}
+                    <span className="text-muted">
+                      {formatDistanceKilometres(
+                        proposal.latitude,
+                        proposal.longitude,
+                        place.latitude,
+                        place.longitude,
+                      )}{" "}
+                      km away
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-muted ms-2">None within 25 km.</span>
+            )}
+          </div>
           <ProposalActivityPanel
             proposalId={proposal.id}
             proposalName={proposal.canonicalName}
@@ -645,6 +723,36 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
       )}
     </details>
   );
+}
+
+function formatDistanceKilometres(
+  firstLatitude: number,
+  firstLongitude: number,
+  secondLatitude: number,
+  secondLongitude: number,
+): string {
+  const radians = Math.PI / 180;
+  const latitudeDelta = (secondLatitude - firstLatitude) * radians;
+  const longitudeDelta = (secondLongitude - firstLongitude) * radians;
+  const value =
+    6371.0088 *
+    2 *
+    Math.atan2(
+      Math.sqrt(
+        Math.sin(latitudeDelta / 2) ** 2 +
+          Math.cos(firstLatitude * radians) *
+            Math.cos(secondLatitude * radians) *
+            Math.sin(longitudeDelta / 2) ** 2,
+      ),
+      Math.sqrt(
+        1 -
+          (Math.sin(latitudeDelta / 2) ** 2 +
+            Math.cos(firstLatitude * radians) *
+              Math.cos(secondLatitude * radians) *
+              Math.sin(longitudeDelta / 2) ** 2),
+      ),
+    );
+  return value < 10 ? value.toFixed(1) : Math.round(value).toString();
 }
 
 function DuplicateMergeActions({
@@ -683,6 +791,7 @@ function DuplicateMergeActions({
           size="sm"
           variant="outline-secondary"
           disabled={disabled}
+          title={disabled ? "Add a review rationale before merging" : undefined}
           onClick={() => onMerge(target)}
         >
           Merge into {target.canonicalName}

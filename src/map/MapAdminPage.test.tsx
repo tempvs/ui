@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 jest.mock("../component/PageLayout", () => ({
   __esModule: true,
@@ -22,6 +23,7 @@ jest.mock("./mapApi", () => ({
   listPendingMapRoleRequests: jest.fn(),
   listPendingMapPlaces: jest.fn(),
   mergeMapPlace: jest.fn(),
+  nearbyMapPlaces: jest.fn(),
   rejectMapPlace: jest.fn(),
   rejectMapRoleRequest: jest.fn(),
   removeMapMemberRole: jest.fn(),
@@ -42,6 +44,7 @@ import {
   listMapRoleMembers,
   listPendingMapRoleRequests,
   listPendingMapPlaces,
+  nearbyMapPlaces,
   requestMapPlaceChanges,
   removeMapMemberRole,
 } from "./mapApi";
@@ -76,6 +79,9 @@ const listRoleMembersMock = listMapRoleMembers as jest.MockedFunction<
 const removeMapMemberRoleMock = removeMapMemberRole as jest.MockedFunction<
   typeof removeMapMemberRole
 >;
+const nearbyMapPlacesMock = nearbyMapPlaces as jest.MockedFunction<
+  typeof nearbyMapPlaces
+>;
 
 const proposal = {
   id: "tempvs:proposal-1",
@@ -95,14 +101,23 @@ beforeEach(() => {
   listActivityMock.mockResolvedValue([]);
   listRoleRequestsMock.mockResolvedValue({ items: [] });
   listRoleMembersMock.mockResolvedValue([]);
+  nearbyMapPlacesMock.mockResolvedValue([]);
 });
+
+function renderAdmin() {
+  return render(
+    <MemoryRouter>
+      <MapAdminPage />
+    </MemoryRouter>,
+  );
+}
 
 test("lets a map reviewer inspect but not decide proposals", async () => {
   getViewerMock.mockResolvedValue({
     userId: "reviewer-1",
     roles: ["MAP_REVIEWER"],
   });
-  render(<MapAdminPage />);
+  renderAdmin();
 
   expect(await screen.findByText("Augusta Raurica")).toBeInTheDocument();
   expect(screen.getByText(/Submitted by author-1/)).toBeInTheDocument();
@@ -116,7 +131,7 @@ test("lets a map editor approve a proposal", async () => {
     roles: ["MAP_EDITOR"],
   });
   approveMock.mockResolvedValue();
-  render(<MapAdminPage />);
+  renderAdmin();
 
   fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
   await waitFor(() =>
@@ -141,7 +156,16 @@ test("filters loaded proposals and opens a private point preview", async () => {
       },
     ],
   });
-  render(<MapAdminPage />);
+  nearbyMapPlacesMock.mockResolvedValue([
+    {
+      id: "seed:basel",
+      canonicalName: "Basel, Switzerland",
+      latitude: 47.5596,
+      longitude: 7.5886,
+      featureType: "SETTLEMENT",
+    },
+  ]);
+  renderAdmin();
 
   expect(await screen.findByText("Londinium")).toBeInTheDocument();
   fireEvent.change(screen.getByRole("searchbox", { name: /filter loaded/i }), {
@@ -153,6 +177,13 @@ test("filters loaded proposals and opens a private point preview", async () => {
   fireEvent.click(screen.getByText(/review submitted details and point/i));
   expect(await screen.findByTestId("proposal-map-preview")).toBeInTheDocument();
   expect(screen.getByText("47.533000, 7.720000")).toBeInTheDocument();
+  expect(await screen.findByText("Basel, Switzerland")).toBeInTheDocument();
+  expect(nearbyMapPlacesMock).toHaveBeenCalledWith(
+    47.533,
+    7.72,
+    25,
+    expect.any(AbortSignal),
+  );
 });
 
 test("lets a map editor request changes and removes the proposal from review", async () => {
@@ -161,15 +192,24 @@ test("lets a map editor request changes and removes the proposal from review", a
     roles: ["MAP_EDITOR"],
   });
   requestChangesMock.mockResolvedValue();
-  render(<MapAdminPage />);
+  renderAdmin();
 
-  fireEvent.click(
+  expect(
     await screen.findByRole("button", { name: "Request changes" }),
+  ).toBeDisabled();
+  fireEvent.change(
+    await screen.findByRole("textbox", {
+      name: "Review rationale for Augusta Raurica",
+    }),
+    { target: { value: "Please add a citation." } },
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Request changes" }),
   );
   await waitFor(() =>
     expect(requestChangesMock).toHaveBeenCalledWith(
       "tempvs:proposal-1",
-      undefined,
+      "Please add a citation.",
     ),
   );
   await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
@@ -188,7 +228,7 @@ test("records a private reviewer comment in the proposal discussion", async () =
     occurredAt: "2026-10-09T12:00:00.000Z",
     note: "Please add a citation.",
   });
-  render(<MapAdminPage />);
+  renderAdmin();
   fireEvent.click(
     await screen.findByText(/review submitted details and point/i),
   );
@@ -246,7 +286,7 @@ test("paginates Map role requests and confirms operational-role removal", async 
     },
   ]);
   removeMapMemberRoleMock.mockResolvedValue();
-  render(<MapAdminPage />);
+  renderAdmin();
 
   fireEvent.click(
     await screen.findByRole("button", { name: "Load more requests" }),
