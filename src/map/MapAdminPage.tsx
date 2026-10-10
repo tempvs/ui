@@ -3,6 +3,7 @@ import { Alert, Button, Form, Spinner } from "react-bootstrap";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import ConfirmationModal from "../component/ConfirmationModal";
 import TextFilterInput from "../component/TextFilterInput";
 import {
   approveMapPlace,
@@ -334,6 +335,10 @@ function MapRoleAdminPanel() {
   const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [removingRole, setRemovingRole] = useState<string | null>(null);
+  const [roleToRemove, setRoleToRemove] = useState<{
+    member: MapRoleMember;
+    role: Exclude<MapRoleMember["roles"][number], "MAP_ADMIN">;
+  } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -426,6 +431,7 @@ function MapRoleAdminPanel() {
       setError((caught as Error).message || "Unable to remove this Map role.");
     } finally {
       setRemovingRole(null);
+      setRoleToRemove(null);
     }
   };
 
@@ -531,7 +537,7 @@ function MapRoleAdminPanel() {
                             size="sm"
                             variant="outline-danger"
                             disabled={removingRole === key}
-                            onClick={() => void removeRole(member, role)}
+                            onClick={() => setRoleToRemove({ member, role })}
                           >
                             {removingRole === key
                               ? "Removing…"
@@ -546,6 +552,32 @@ function MapRoleAdminPanel() {
           )}
         </>
       )}
+      <ConfirmationModal
+        show={roleToRemove !== null}
+        title="Remove Map role"
+        message={
+          roleToRemove ? (
+            <>
+              Remove <strong>{formatMapRole(roleToRemove.role)}</strong> from{" "}
+              <strong>
+                {roleToRemove.member.name ||
+                  roleToRemove.member.email ||
+                  roleToRemove.member.userId}
+              </strong>
+              ?
+            </>
+          ) : null
+        }
+        confirmLabel="Remove role"
+        busy={roleToRemove ? removingRole !== null : false}
+        onHide={() => {
+          if (!removingRole) setRoleToRemove(null);
+        }}
+        onConfirm={() => {
+          if (roleToRemove)
+            void removeRole(roleToRemove.member, roleToRemove.role);
+        }}
+      />
     </section>
   );
 }
