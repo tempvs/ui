@@ -40,6 +40,8 @@ export default function PlaceProposalModal({
     proposal ? String(proposal.longitude) : initialLongitude,
   );
   const [description, setDescription] = useState(proposal?.description ?? "");
+  const [note, setNote] = useState(proposal?.proposalNote ?? "");
+  const [citationUrl, setCitationUrl] = useState(proposal?.citationUrl ?? "");
   const [aliases, setAliases] = useState(placeAliases(proposal));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -53,6 +55,8 @@ export default function PlaceProposalModal({
     setLatitude(proposal ? String(proposal.latitude) : initialLatitude);
     setLongitude(proposal ? String(proposal.longitude) : initialLongitude);
     setDescription(proposal?.description ?? "");
+    setNote(proposal?.proposalNote ?? "");
+    setCitationUrl(proposal?.citationUrl ?? "");
     setAliases(placeAliases(proposal));
     setError("");
     setSubmitted(false);
@@ -101,8 +105,8 @@ export default function PlaceProposalModal({
     event.preventDefault();
     const parsedLatitude = Number(latitude);
     const parsedLongitude = Number(longitude);
-    if (!name.trim() || !featureType.trim()) {
-      setError("Name and type are required.");
+    if (!name.trim() || !featureType.trim() || note.trim().length < 8) {
+      setError("Name, type, and an 8-character proposal note are required.");
       return;
     }
     if (
@@ -124,9 +128,11 @@ export default function PlaceProposalModal({
       const values = {
         canonicalName: name.trim(),
         featureType: featureType.trim(),
+        note: note.trim(),
         latitude: parsedLatitude,
         longitude: parsedLongitude,
         ...(description.trim() ? { description: description.trim() } : {}),
+        citationUrl: citationUrl.trim(),
         ...(aliases.trim()
           ? {
               aliases: aliases
@@ -221,6 +227,29 @@ export default function PlaceProposalModal({
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   maxLength={1000}
+                />
+              </Form.Group>
+              <Form.Group className="mt-2">
+                <Form.Label>Why is this a distinct place?</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Explain the source, significance, or why this is not a duplicate."
+                  minLength={8}
+                  maxLength={2000}
+                  required
+                />
+              </Form.Group>
+              <Form.Group className="mt-2">
+                <Form.Label>Evidence URL (optional)</Form.Label>
+                <Form.Control
+                  type="url"
+                  value={citationUrl}
+                  onChange={(event) => setCitationUrl(event.target.value)}
+                  placeholder="https://…"
+                  maxLength={2048}
                 />
               </Form.Group>
               {proposal && (

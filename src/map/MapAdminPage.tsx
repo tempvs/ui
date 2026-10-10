@@ -247,6 +247,22 @@ export default function MapAdminPage() {
                       {proposal.description ? (
                         <p className="mb-0">{proposal.description}</p>
                       ) : null}
+                      {proposal.proposalNote ? (
+                        <p className="small mb-0 mt-1">
+                          <strong>Why:</strong> {proposal.proposalNote}
+                        </p>
+                      ) : null}
+                      {proposal.citationUrl ? (
+                        <p className="small mb-0 mt-1">
+                          <a
+                            href={proposal.citationUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Submitted evidence
+                          </a>
+                        </p>
+                      ) : null}
                       <ProposalDetails proposal={proposal} />
                     </div>
                     {mayDecide && (
@@ -670,6 +686,26 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
                 </dd>
               </>
             )}
+            {proposal.proposalNote ? (
+              <>
+                <dt className="col-sm-3">Rationale</dt>
+                <dd className="col-sm-9">{proposal.proposalNote}</dd>
+              </>
+            ) : null}
+            {proposal.citationUrl ? (
+              <>
+                <dt className="col-sm-3">Evidence</dt>
+                <dd className="col-sm-9">
+                  <a
+                    href={proposal.citationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open submitted evidence
+                  </a>
+                </dd>
+              </>
+            ) : null}
           </dl>
           <div
             className="map-admin-proposal-map"

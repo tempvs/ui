@@ -27,6 +27,8 @@ export type MapPlace = {
   confidence?:
     "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
   description?: string;
+  proposalNote?: string;
+  citationUrl?: string;
   parentPlaceId?: string;
   parentRelation?: {
     parentPlaceId: string;
@@ -106,7 +108,9 @@ export type MapPlaceProposal = {
   latitude: number;
   longitude: number;
   featureType: string;
+  note: string;
   description?: string;
+  citationUrl?: string;
   aliases?: string[];
 };
 
