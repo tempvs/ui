@@ -718,6 +718,7 @@ export default function LibrarySourceEditPage() {
               <PlacePickerField
                 label="Discovered at"
                 editable
+                historicalRange={toMapRange(draft.from, draft.to)}
                 value={
                   draft.discoveredAtPlaceId
                     ? {
@@ -734,6 +735,7 @@ export default function LibrarySourceEditPage() {
               <PlacePickerField
                 label="Held at"
                 editable
+                historicalRange={toMapRange(draft.from, draft.to)}
                 value={
                   draft.heldAtPlaceId
                     ? {
@@ -959,4 +961,18 @@ export default function LibrarySourceEditPage() {
       />
     </PageLayout>
   );
+}
+
+function toMapRange(from: HistoricalYearInput, to: HistoricalYearInput) {
+  const astronomical = (value: HistoricalYearInput) => {
+    if (!/^[1-9][0-9]*$/.test(value.year)) return undefined;
+    const year = Number(value.year);
+    return value.era === "BC" ? 1 - year : year;
+  };
+  const fromYear = astronomical(from);
+  const toYear = astronomical(to);
+  return {
+    ...(fromYear !== undefined ? { from: fromYear } : {}),
+    ...(toYear !== undefined ? { to: toYear } : {}),
+  };
 }

@@ -7,7 +7,12 @@ import PlaceDetailsPanel from "./PlaceDetailsPanel";
 import PlaceNamePopover from "./PlaceNamePopover";
 import RelatedMapModal from "./RelatedMapModal";
 import type { SaveStatus } from "./EditableFieldRow";
-import { MapPlace, nearbyMapPlaces, searchMapPlaces } from "../map/mapApi";
+import {
+  type MapHistoricalNameRange,
+  MapPlace,
+  nearbyMapPlaces,
+  searchMapPlaces,
+} from "../map/mapApi";
 import MapCanvas from "../map/MapCanvas";
 import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
@@ -26,6 +31,9 @@ type PlacePickerFieldProps = {
   className?: string;
   labelWidth?: string;
   fieldMaxWidth?: string;
+  /** Entity years converted to the Map API's astronomical transport format.
+   * User profiles omit this and therefore keep the canonical/current label. */
+  historicalRange?: MapHistoricalNameRange;
   /** Optional bounded relationship overlay for this page's location globe. */
   loadRelatedMapContent?: () => Promise<OwnedMapContent>;
   relatedMapScope?: SharedMapScope;
@@ -82,6 +90,7 @@ export default function PlacePickerField({
   className = "mb-2",
   labelWidth = "7rem",
   fieldMaxWidth = "16rem",
+  historicalRange,
   loadRelatedMapContent,
   relatedMapScope,
 }: PlacePickerFieldProps) {
@@ -113,12 +122,12 @@ export default function PlacePickerField({
     const timer = window.setTimeout(() => {
       setLoading(true);
       setFailed(false);
-      searchMapPlaces(query, controller.signal)
+      searchMapPlaces(query, controller.signal, historicalRange)
         .then((places) =>
           setResults(
             places.map((place) => ({
               ...place,
-              matchedName: matchingPlaceName(place, query),
+              matchedName: matchingPlaceName(place, query, historicalRange),
             })),
           ),
         )
@@ -131,7 +140,7 @@ export default function PlacePickerField({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, show]);
+  }, [historicalRange?.from, historicalRange?.to, query, show]);
 
   useEffect(() => {
     if (!show) return;
@@ -176,7 +185,8 @@ export default function PlacePickerField({
   const select = (place: MapPlace) => {
     onChange({
       ...place,
-      matchedName: place.matchedName || matchingPlaceName(place, query),
+      matchedName:
+        place.matchedName || matchingPlaceName(place, query, historicalRange),
     });
     setShow(false);
     setQuery("");

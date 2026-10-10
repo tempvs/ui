@@ -134,6 +134,7 @@ export default function EventFieldsPanel({
         }
         readOnlyLabel={event.venuePlaceName}
         onChange={(place) => onVenueChange?.(place)}
+        historicalRange={toMapRange(event.from, event.to)}
         status={statuses.venue}
       />
       <PlacePickerField
@@ -149,6 +150,7 @@ export default function EventFieldsPanel({
         }
         readOnlyLabel={event.historicalSitePlaceName}
         onChange={(place) => onHistoricalSiteChange?.(place)}
+        historicalRange={toMapRange(event.from, event.to)}
         status={statuses.historicalSite}
       />
       <EditableTextFieldRow
@@ -260,4 +262,16 @@ export default function EventFieldsPanel({
         )}
     </section>
   );
+}
+
+function toMapRange(
+  from?: { year: number; era: "BC" | "AD" } | null,
+  to?: { year: number; era: "BC" | "AD" } | null,
+) {
+  const astronomical = (value: typeof from) =>
+    !value ? undefined : value.era === "BC" ? 1 - value.year : value.year;
+  return {
+    ...(astronomical(from) !== undefined ? { from: astronomical(from) } : {}),
+    ...(astronomical(to) !== undefined ? { to: astronomical(to) } : {}),
+  };
 }

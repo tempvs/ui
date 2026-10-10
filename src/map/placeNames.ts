@@ -1,20 +1,46 @@
-import type { MapPlace } from "./mapApi";
+import type { MapHistoricalNameRange, MapPlace } from "./mapApi";
 
-export function matchingPlaceName(place: MapPlace, query: string): string {
+/** Pick the historical name that best fits a caller's requested time range.
+ * An explicitly searched alias still wins, while an empty search uses a
+ * preferred matching-period name before falling back to the canonical label. */
+export function matchingPlaceName(
+  place: MapPlace,
+  query: string,
+  range: MapHistoricalNameRange = {},
+): string {
   const normalizedQuery = normalizePlaceName(query);
-  if (!normalizedQuery) return place.canonicalName;
   const names = place.names?.length
     ? place.names
     : [{ value: place.canonicalName, preferred: true }];
+  const namesInRange = names.filter((name) => nameOverlapsRange(name, range));
+  const candidates = namesInRange.length ? namesInRange : names;
+  if (!normalizedQuery)
+    return (
+      candidates.find((name) => name.preferred)?.value ||
+      candidates[0]?.value ||
+      place.canonicalName
+    );
   return (
-    names.find((name) =>
+    candidates.find((name) =>
       normalizePlaceName(name.value).startsWith(normalizedQuery),
     )?.value ||
-    names.find((name) =>
+    candidates.find((name) =>
       normalizePlaceName(name.value).includes(normalizedQuery),
     )?.value ||
+    candidates.find((name) => name.preferred)?.value ||
     place.canonicalName
   );
+}
+
+function nameOverlapsRange(
+  name: { validFrom?: number; validTo?: number },
+  range: MapHistoricalNameRange,
+): boolean {
+  const nameFrom = name.validFrom ?? Number.NEGATIVE_INFINITY;
+  const nameTo = name.validTo ?? Number.POSITIVE_INFINITY;
+  const requestedFrom = range.from ?? Number.NEGATIVE_INFINITY;
+  const requestedTo = range.to ?? Number.POSITIVE_INFINITY;
+  return nameFrom <= requestedTo && nameTo >= requestedFrom;
 }
 
 export function normalizePlaceName(value: string): string {
