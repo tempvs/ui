@@ -169,6 +169,7 @@ test("restores source and event discovery facets from a map URL", async () => {
         from: -27,
         to: 476,
       },
+      undefined,
     ),
   );
 });

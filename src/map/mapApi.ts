@@ -599,6 +599,7 @@ export async function nearbyMapEntities(
   sourceRoles: SourceLocationRole[] = [],
   sourceFilters: MapSourceFilters = {},
   eventFilters: MapEventFilters = {},
+  parentPlaceId?: string,
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -632,6 +633,7 @@ export async function nearbyMapEntities(
       ...(eventFilters.to !== undefined
         ? { eventTo: String(eventFilters.to) }
         : {}),
+      ...(parentPlaceId ? { parentPlaceId } : {}),
     })}`,
     { signal },
   );

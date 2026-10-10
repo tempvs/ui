@@ -53,6 +53,9 @@ export default function MapPage() {
   const [showModernBorders, setShowModernBorders] = useState(
     params.get("borders") === "modern",
   );
+  const [includeDescendants, setIncludeDescendants] = useState(
+    params.get("descendants") === "true",
+  );
   const [items, setItems] = useState<MapPlace[]>([]);
   const [suggestions, setSuggestions] = useState<MapPlace[] | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -279,6 +282,7 @@ export default function MapPage() {
     appendEventFilters(next, eventFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
+    if (includeDescendants) next.set("descendants", "true");
     setParams(next, { replace: true });
     setLoading(true);
     try {
@@ -295,6 +299,7 @@ export default function MapPage() {
               sourceRoles,
               sourceFilters,
               eventFilters,
+              includeDescendants ? selected.id : undefined,
             )
           : Promise.resolve([]),
       ]);
@@ -368,6 +373,7 @@ export default function MapPage() {
     appendEventFilters(next, eventFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
+    if (includeDescendants) next.set("descendants", "true");
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
@@ -402,6 +408,7 @@ export default function MapPage() {
                 sourceRoles,
                 sourceFilters,
                 eventFilters,
+                includeDescendants && linkedPlace ? linkedPlace.id : undefined,
               )
             : Promise.resolve([]),
         ]);
@@ -598,6 +605,14 @@ export default function MapPage() {
               aria-label="Filter nearby content"
             />
           </Form.Group>
+          {selectedPlaceId && (
+            <Form.Check
+              id="map-include-descendants"
+              label="Include child places"
+              checked={includeDescendants}
+              onChange={(event) => setIncludeDescendants(event.target.checked)}
+            />
+          )}
           <Form.Group>
             <Form.Label>Latitude</Form.Label>
             <Form.Control
