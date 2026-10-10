@@ -31,6 +31,9 @@ const entityTypeFilters: EntityTypeFilter[] = [
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [ancestors, setAncestors] = useState<MapPlace[]>([]);
+  const [otherContainmentParents, setOtherContainmentParents] = useState<
+    Record<string, MapPlace>
+  >({});
   const [children, setChildren] = useState<MapPlace[]>([]);
   const [childCursor, setChildCursor] = useState<string | undefined>();
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
@@ -58,6 +61,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     const controller = new AbortController();
     setPlace(undefined);
     setAncestors([]);
+    setOtherContainmentParents({});
     setEntities([]);
     setEntityCursor(undefined);
     setEntityCounts({});
@@ -89,6 +93,27 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               if (!controller.signal.aborted) setAncestors([]);
             },
           );
+          const relatedIds = Array.from(
+            new Set(
+              nextPlace.containmentRelations?.map(
+                (relation) => relation.parentPlaceId,
+              ) || [],
+            ),
+          );
+          if (relatedIds.length) {
+            void Promise.all(
+              relatedIds.map((placeId) => getMapPlace(placeId, controller.signal)),
+            ).then((relatedPlaces) => {
+              if (controller.signal.aborted) return;
+              setOtherContainmentParents(
+                Object.fromEntries(
+                  relatedPlaces
+                    .filter((value): value is MapPlace => Boolean(value))
+                    .map((value) => [value.id, value]),
+                ),
+              );
+            });
+          }
         }
       })
       .catch((caught: unknown) => {
@@ -244,6 +269,36 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               : ""}
           </p>
         )}
+        {place.containmentRelations?.length ? (
+          <div className="small text-muted mb-2">
+            <span className="fw-semibold">Other historical containment</span>
+            {place.containmentRelations.map((relation, index) => (
+              <span
+                key={`${relation.parentPlaceId}-${index}`}
+                className="d-block ms-2"
+                title={
+                  relation.provenance?.length
+                    ? relation.provenance
+                        .map(
+                          (source) =>
+                            `${source.dataset} (${source.externalId}) — ${source.license}`,
+                        )
+                        .join("; ")
+                    : undefined
+                }
+              >
+                <Link to={`/map/place/${encodeURIComponent(relation.parentPlaceId)}`}>
+                  {otherContainmentParents[relation.parentPlaceId]
+                    ?.canonicalName || relation.parentPlaceId}
+                </Link>
+                {formatPlaceNameRange(relation.validFrom, relation.validTo)}
+                {relation.confidence
+                  ? ` · ${relation.confidence.replaceAll("_", " ").toLowerCase()}`
+                  : ""}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <p className="mb-2">
           <Link
             to={`/map?placeId=${encodeURIComponent(place.id)}&descendants=true`}

@@ -43,6 +43,25 @@ export type MapPlace = {
       license: string;
     }>;
   };
+  /** Supplemental historical or contested containment evidence. It is kept
+   * separate from the single primary hierarchy parent used for navigation. */
+  containmentRelations?: Array<{
+    parentPlaceId: string;
+    relationship: "CONTAINED_IN";
+    validFrom?: number;
+    validTo?: number;
+    confidence?:
+      | "IMPORTED"
+      | "CURATED"
+      | "USER_CONTRIBUTED"
+      | "UNVERIFIED"
+      | "DISPUTED";
+    provenance?: Array<{
+      dataset: string;
+      externalId: string;
+      license: string;
+    }>;
+  }>;
   periods?: string[];
   selectionReasons?: string[];
   provenance?: Array<{
