@@ -4,7 +4,10 @@ import { FaGlobeAmericas } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
-import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
+import {
+  isValidHistoricalRange,
+  type HistoricalYearInput,
+} from "../component/HistoricalRangeFilter";
 import MapCanvas, { type MapThumbnailMarker } from "../map/MapCanvas";
 import MapEntityFilterControls from "../map/MapEntityFilterControls";
 import type { OwnedMapContent } from "../map/ownedMapContent";
@@ -151,9 +154,16 @@ export default function RelatedMapModal({
     }),
     [eventFrom, eventPeriod, eventTo],
   );
+  const hasInvalidFilterRange =
+    !isValidHistoricalRange(sourceFrom, sourceTo) ||
+    !isValidHistoricalRange(eventFrom, eventTo);
 
   useEffect(() => {
     if (!show || !place) return undefined;
+    if (hasInvalidFilterRange) {
+      setEntities([]);
+      return undefined;
+    }
     if (!types.length) {
       setEntities([]);
       return undefined;
@@ -178,7 +188,16 @@ export default function RelatedMapModal({
           setError((caught as Error).message || "Unable to load related map.");
       });
     return () => controller.abort();
-  }, [eventFilters, place, radius, show, sourceFilters, sourceRoles, types]);
+  }, [
+    eventFilters,
+    hasInvalidFilterRange,
+    place,
+    radius,
+    show,
+    sourceFilters,
+    sourceRoles,
+    types,
+  ]);
 
   useEffect(() => {
     if (!show || !entities.length) {
@@ -276,6 +295,11 @@ export default function RelatedMapModal({
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
+          {place && hasInvalidFilterRange && (
+            <Alert variant="warning">
+              Years must be chronological positive years.
+            </Alert>
+          )}
           {place === null && !error && (
             <Alert variant="warning">This place is no longer available.</Alert>
           )}
@@ -359,13 +383,15 @@ export default function RelatedMapModal({
               onClick={() => {
                 setShow(false);
                 navigate(
-                  `/map?${new URLSearchParams({
-                    placeId: place.id,
-                    q: displayName,
-                    lat: String(place.latitude),
-                    lng: String(place.longitude),
-                    radiusKm: String(radius),
-                  }).toString()}`,
+                  `/map?${fullMapParameters(
+                    place,
+                    displayName,
+                    radius,
+                    types,
+                    sourceRoles,
+                    sourceFilters,
+                    eventFilters,
+                  ).toString()}`,
                 );
               }}
             >
@@ -398,4 +424,38 @@ function toAstronomicalYear(value: HistoricalYearInput): number | undefined {
   if (!value.year || !/^[1-9][0-9]*$/.test(value.year)) return undefined;
   const year = Number(value.year);
   return value.era === "BC" ? 1 - year : year;
+}
+
+function fullMapParameters(
+  place: MapPlace,
+  displayName: string,
+  radius: number,
+  types: MapEntityLocation["entityType"][],
+  sourceRoles: SourceLocationRole[],
+  sourceFilters: MapSourceFilters,
+  eventFilters: MapEventFilters,
+): URLSearchParams {
+  return new URLSearchParams({
+    placeId: place.id,
+    q: displayName,
+    lat: String(place.latitude),
+    lng: String(place.longitude),
+    radiusKm: String(radius),
+    types: types.length === 0 ? "none" : types.length === entityTypes.length ? "all" : types.join(","),
+    sourceRoles: sourceRoles.length ? sourceRoles.join(",") : "all",
+    ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
+    ...(sourceFilters.classifications?.length
+      ? { sourceClassification: sourceFilters.classifications[0] }
+      : {}),
+    ...(sourceFilters.types?.length ? { sourceType: sourceFilters.types[0] } : {}),
+    ...(sourceFilters.from !== undefined
+      ? { sourceFrom: String(sourceFilters.from) }
+      : {}),
+    ...(sourceFilters.to !== undefined ? { sourceTo: String(sourceFilters.to) } : {}),
+    ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
+    ...(eventFilters.from !== undefined
+      ? { eventFrom: String(eventFilters.from) }
+      : {}),
+    ...(eventFilters.to !== undefined ? { eventTo: String(eventFilters.to) } : {}),
+  });
 }

@@ -59,7 +59,9 @@ export default function MapPage() {
   const [suggestionsFailed, setSuggestionsFailed] = useState(false);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [types, setTypes] =
-    useState<MapEntityLocation["entityType"][]>(entityTypes);
+    useState<MapEntityLocation["entityType"][]>(() =>
+      parseEntityTypes(params.get("types")),
+    );
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
     parseSourceRoles(params.get("sourceRoles")),
   );
@@ -267,6 +269,7 @@ export default function MapPage() {
       radiusKm: radius,
     });
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
+    appendEntityTypes(next, types);
     appendSourceRoles(next, sourceRoles);
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
@@ -349,10 +352,14 @@ export default function MapPage() {
     }
     const next = new URLSearchParams();
     if (linkedPlace) next.set("placeId", linkedPlace.id);
-    if (linkedPlace?.canonicalName || trimmed)
-      next.set("q", linkedPlace?.canonicalName || trimmed);
+    // Keep the requested historical label in the URL. Replacing it with the
+    // canonical/modern name makes a refreshed map silently lose the period
+    // context the person deliberately selected.
+    if (trimmed || linkedPlace?.canonicalName)
+      next.set("q", trimmed || linkedPlace?.canonicalName || "");
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
+    appendEntityTypes(next, types);
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
     appendNameRange(next, nameFrom, nameTo);
@@ -755,6 +762,7 @@ export default function MapPage() {
                   sourceRoles,
                   sourceFilters,
                   eventFilters,
+                  types,
                 )}
               >
                 Show nearby
@@ -858,6 +866,7 @@ function nearPlacePath(
   sourceRoles: SourceLocationRole[],
   sourceFilters: MapSourceFilters,
   eventFilters: MapEventFilters,
+  types: MapEntityLocation["entityType"][],
 ): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
@@ -867,11 +876,40 @@ function nearPlacePath(
     radiusKm: radius || "25",
   });
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
+  appendEntityTypes(parameters, types);
   appendSourceRoles(parameters, sourceRoles);
   appendSourceFilters(parameters, sourceFilters);
   appendEventFilters(parameters, eventFilters);
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
+}
+
+function parseEntityTypes(
+  value: string | null,
+): MapEntityLocation["entityType"][] {
+  if (value === "none") return [];
+  if (value === null || value === "all") return entityTypes;
+  return value
+    .split(",")
+    .filter(
+      (type): type is MapEntityLocation["entityType"] =>
+        entityTypes.includes(type as MapEntityLocation["entityType"]),
+    )
+    .filter((type, index, all) => all.indexOf(type) === index);
+}
+
+function appendEntityTypes(
+  parameters: URLSearchParams,
+  types: MapEntityLocation["entityType"][],
+): void {
+  parameters.set(
+    "types",
+    types.length === 0
+      ? "none"
+      : types.length === entityTypes.length
+        ? "all"
+        : types.join(","),
+  );
 }
 
 function parseSourceRoles(value: string | null): SourceLocationRole[] {

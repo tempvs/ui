@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 jest.mock("../map/MapCanvas", () => ({
   __esModule: true,
@@ -103,5 +103,53 @@ test("renders bounded nearby entities with their batched thumbnails", async () =
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     ),
   );
+  fetchMock.mockRestore();
+});
+
+test("opens the full map with the compact map's selected public layers", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
+    const url = String(input);
+    if (url.includes("/api/map/places/seed%3Arome")) {
+      return Promise.resolve({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: "seed:rome",
+            canonicalName: "Rome, Italy",
+            latitude: 41.8933,
+            longitude: 12.4829,
+            featureType: "SETTLEMENT",
+          }),
+      } as Response);
+    }
+    if (url.includes("/api/map/entities?")) {
+      return Promise.resolve({ ok: true, text: async () => JSON.stringify({ items: [] }) } as Response);
+    }
+    return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+  });
+
+  function SearchLocation() {
+    return <output data-testid="map-location">{useLocation().search}</output>;
+  }
+
+  render(
+    <MemoryRouter>
+      <RelatedMapModal placeId="seed:rome" displayName="Roma" />
+      <SearchLocation />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Open related map for Roma" }));
+  await screen.findByRole("button", { name: "Open in Map" });
+  fireEvent.click(screen.getByLabelText("Profile"));
+  fireEvent.click(screen.getByLabelText("Club"));
+  fireEvent.click(screen.getByLabelText("Source"));
+  fireEvent.click(screen.getByRole("button", { name: "Open in Map" }));
+
+  expect(screen.getByTestId("map-location")).toHaveTextContent(
+    "placeId=seed%3Arome",
+  );
+  expect(screen.getByTestId("map-location")).toHaveTextContent("types=EVENT");
+  expect(screen.getByTestId("map-location")).toHaveTextContent("sourceRoles=all");
   fetchMock.mockRestore();
 });

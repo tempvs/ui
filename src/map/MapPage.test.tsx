@@ -141,7 +141,7 @@ test("restores source and event discovery facets from a map URL", async () => {
   render(
     <MemoryRouter
       initialEntries={[
-        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476&eventPeriod=ANTIQUITY&eventFrom=-27&eventTo=476",
+        "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE,EVENT&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476&eventPeriod=ANTIQUITY&eventFrom=-27&eventTo=476",
       ]}
     >
       <MapPage />
@@ -153,7 +153,7 @@ test("restores source and event discovery facets from a map URL", async () => {
       41.9,
       12.5,
       25,
-      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      ["PROFILE", "EVENT"],
       "",
       undefined,
       ["DISCOVERED_AT"],
