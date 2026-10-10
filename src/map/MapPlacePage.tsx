@@ -211,6 +211,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
           {place.longitude.toFixed(4)}
         </p>
+        {place.confidence && (
+          <p className="small text-muted mb-2">
+            Confidence: {place.confidence.replaceAll("_", " ").toLowerCase()}
+          </p>
+        )}
         <p className="mb-2">
           <Link
             to={`/map?placeId=${encodeURIComponent(place.id)}&descendants=true`}

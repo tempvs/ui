@@ -20,6 +20,12 @@ export type MapPlace = {
   latitude: number;
   longitude: number;
   featureType: string;
+  confidence?:
+    | "IMPORTED"
+    | "CURATED"
+    | "USER_CONTRIBUTED"
+    | "UNVERIFIED"
+    | "DISPUTED";
   description?: string;
   parentPlaceId?: string;
   periods?: string[];
