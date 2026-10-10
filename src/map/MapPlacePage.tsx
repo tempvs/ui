@@ -29,7 +29,7 @@ const entityTypeFilters: EntityTypeFilter[] = [
  * place-assignment API rather than an imprecise radius lookup. */
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
-  const [parentPlace, setParentPlace] = useState<MapPlace | null>(null);
+  const [ancestors, setAncestors] = useState<MapPlace[]>([]);
   const [children, setChildren] = useState<MapPlace[]>([]);
   const [childCursor, setChildCursor] = useState<string | undefined>();
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
@@ -53,7 +53,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
     const controller = new AbortController();
     setPlace(undefined);
-    setParentPlace(null);
+    setAncestors([]);
     setEntities([]);
     setEntityCursor(undefined);
     setEntityCounts({});
@@ -75,13 +75,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
         setEntityCounts(nextEntities.counts || {});
-        if (nextPlace?.parentPlaceId) {
-          void getMapPlace(nextPlace.parentPlaceId, controller.signal).then(
-            (parent) => {
-              if (!controller.signal.aborted) setParentPlace(parent);
+        if (nextPlace) {
+          void loadPlaceAncestors(nextPlace, controller.signal).then(
+            (nextAncestors) => {
+              if (!controller.signal.aborted) setAncestors(nextAncestors);
             },
             () => {
-              if (!controller.signal.aborted) setParentPlace(null);
+              if (!controller.signal.aborted) setAncestors([]);
             },
           );
         }
@@ -180,25 +180,35 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   return (
     <PageLayout className="map-page" header={{ title: place.canonicalName }}>
       <section className="club-panel" aria-label="Place details">
-        <Link
-          className="small"
-          to={`/map?placeId=${encodeURIComponent(place.id)}`}
-        >
-          Back to map discovery
-        </Link>
+        <nav aria-label="Place hierarchy" className="small mb-2">
+          <Link to="/map">Map</Link>
+          {ancestors.map((ancestor) => (
+            <Fragment key={ancestor.id}>
+              <span className="mx-1 text-muted" aria-hidden="true">
+                /
+              </span>
+              <Link to={`/map/place/${encodeURIComponent(ancestor.id)}`}>
+                {ancestor.canonicalName}
+              </Link>
+            </Fragment>
+          ))}
+          <span className="mx-1 text-muted" aria-hidden="true">
+            /
+          </span>
+          <span aria-current="page">{place.canonicalName}</span>
+        </nav>
         <h1 className="mt-2">{place.canonicalName}</h1>
         <p className="text-muted mb-2">
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
           {place.longitude.toFixed(4)}
         </p>
-        {parentPlace && (
-          <p className="small mb-2">
-            Part of{" "}
-            <Link to={`/map/place/${encodeURIComponent(parentPlace.id)}`}>
-              {parentPlace.canonicalName}
-            </Link>
-          </p>
-        )}
+        <p className="mb-2">
+          <Link
+            to={`/map?placeId=${encodeURIComponent(place.id)}&descendants=true`}
+          >
+            Explore this place and child places on the map
+          </Link>
+        </p>
         {children.length > 0 && (
           <div className="small mb-2">
             Contains{" "}
@@ -346,6 +356,28 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       </section>
     </PageLayout>
   );
+}
+
+/** Resolve a bounded primary hierarchy for breadcrumb navigation. The map
+ * service already rejects cyclic imports; this client guard also prevents a
+ * malformed response from creating an endless chain in a public page. */
+export async function loadPlaceAncestors(
+  place: MapPlace,
+  signal?: AbortSignal,
+): Promise<MapPlace[]> {
+  const ancestors: MapPlace[] = [];
+  const seen = new Set([place.id]);
+  let parentId = place.parentPlaceId;
+
+  while (parentId && ancestors.length < 16 && !seen.has(parentId)) {
+    seen.add(parentId);
+    const parent = await getMapPlace(parentId, signal);
+    if (!parent) break;
+    ancestors.push(parent);
+    parentId = parent.parentPlaceId;
+  }
+
+  return ancestors.reverse();
 }
 
 function entityPath(entity: MapEntityLocation): string {
