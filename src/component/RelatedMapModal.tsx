@@ -1,16 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { FaGlobeAmericas } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
+import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import MapCanvas, { type MapThumbnailMarker } from "../map/MapCanvas";
+import MapEntityFilterControls from "../map/MapEntityFilterControls";
 import type { OwnedMapContent } from "../map/ownedMapContent";
 import {
   getMapPlace,
   nearbyMapEntities,
   type MapEntityLocation,
   type MapPlace,
+  type MapSourceFilters,
+  type SourceLocationRole,
 } from "../map/mapApi";
 
 type RelatedMapModalProps = {
@@ -57,6 +61,18 @@ export default function RelatedMapModal({
   const [radius, setRadius] = useState(radiusKm);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
+  const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>([]);
+  const [sourcePeriod, setSourcePeriod] = useState("");
+  const [sourceClassification, setSourceClassification] = useState("");
+  const [sourceType, setSourceType] = useState("");
+  const [sourceFrom, setSourceFrom] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [sourceTo, setSourceTo] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -97,6 +113,23 @@ export default function RelatedMapModal({
     };
   }, [loadRelatedMapContent, show]);
 
+  const sourceFilters: MapSourceFilters = useMemo(
+    () => ({
+      ...(sourcePeriod ? { period: sourcePeriod } : {}),
+      ...(sourceClassification
+        ? { classifications: [sourceClassification] }
+        : {}),
+      ...(sourceType ? { types: [sourceType] } : {}),
+      ...(toAstronomicalYear(sourceFrom) !== undefined
+        ? { from: toAstronomicalYear(sourceFrom) }
+        : {}),
+      ...(toAstronomicalYear(sourceTo) !== undefined
+        ? { to: toAstronomicalYear(sourceTo) }
+        : {}),
+    }),
+    [sourceClassification, sourceFrom, sourcePeriod, sourceTo, sourceType],
+  );
+
   useEffect(() => {
     if (!show || !place) return undefined;
     if (!types.length) {
@@ -111,6 +144,8 @@ export default function RelatedMapModal({
       types,
       undefined,
       controller.signal,
+      sourceRoles,
+      sourceFilters,
     )
       .then((nearby) => {
         if (!controller.signal.aborted) setEntities(nearby);
@@ -120,7 +155,7 @@ export default function RelatedMapModal({
           setError((caught as Error).message || "Unable to load related map.");
       });
     return () => controller.abort();
-  }, [place, radius, show, types]);
+  }, [place, radius, show, sourceFilters, sourceRoles, types]);
 
   useEffect(() => {
     if (!show || !entities.length) {
@@ -159,14 +194,6 @@ export default function RelatedMapModal({
       active = false;
     };
   }, [entities, show]);
-
-  const toggleType = (type: MapEntityLocation["entityType"]) => {
-    setTypes((current) =>
-      current.includes(type)
-        ? current.filter((entry) => entry !== type)
-        : [...current, type],
-    );
-  };
 
   const relatedMarkerKeys = new Set(
     relatedContent.markers.map((marker) => marker.key),
@@ -247,19 +274,25 @@ export default function RelatedMapModal({
                     ))}
                   </Form.Select>
                 </Form.Group>
-                <div>
-                  <span className="small d-block mb-1">Show</span>
-                  {entityTypes.map((type) => (
-                    <Form.Check
-                      inline
-                      key={type}
-                      id={`related-map-${place.id}-${type}`}
-                      type="checkbox"
-                      label={type[0] + type.slice(1).toLowerCase()}
-                      checked={types.includes(type)}
-                      onChange={() => toggleType(type)}
-                    />
-                  ))}
+                <div className="related-map-filter-controls">
+                  <MapEntityFilterControls
+                    idPrefix={`related-map-${place.id}`}
+                    compact
+                    entityTypes={types}
+                    onEntityTypesChange={setTypes}
+                    sourceRoles={sourceRoles}
+                    onSourceRolesChange={setSourceRoles}
+                    sourcePeriod={sourcePeriod}
+                    onSourcePeriodChange={setSourcePeriod}
+                    sourceClassification={sourceClassification}
+                    onSourceClassificationChange={setSourceClassification}
+                    sourceType={sourceType}
+                    onSourceTypeChange={setSourceType}
+                    sourceFrom={sourceFrom}
+                    onSourceFromChange={setSourceFrom}
+                    sourceTo={sourceTo}
+                    onSourceToChange={setSourceTo}
+                  />
                 </div>
               </div>
               <p className="small text-muted">
@@ -309,4 +342,10 @@ function entityPath(
     case "SOURCE":
       return `/library/source/${entityId}`;
   }
+}
+
+function toAstronomicalYear(value: HistoricalYearInput): number | undefined {
+  if (!value.year || !/^[1-9][0-9]*$/.test(value.year)) return undefined;
+  const year = Number(value.year);
+  return value.era === "BC" ? 1 - year : year;
 }

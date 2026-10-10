@@ -5,7 +5,6 @@ import { getViewer, type Viewer } from "../auth/viewerApi";
 import { fetchProfileById } from "../profile/profileApi";
 import type { Profile } from "../profile/profileTypes";
 import PageLayout from "../component/PageLayout";
-import { CLASSIFICATIONS, PERIODS, TYPES } from "../library/libraryShared";
 import HistoricalRangeFilter, {
   isValidHistoricalRange,
   type HistoricalYearInput,
@@ -23,6 +22,7 @@ import {
   type SourceLocationRole,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
+import MapEntityFilterControls from "./MapEntityFilterControls";
 import {
   loadOwnedMapContent,
   loadProfileRelatedMapContent,
@@ -589,112 +589,23 @@ export default function MapPage({ profileId }: MapPageProps) {
             compact
             className="mb-0"
           />
-          <Form.Group>
-            <Form.Label>Show</Form.Label>
-            <div className="d-flex gap-2 flex-wrap">
-              {entityTypes.map((type) => (
-                <Form.Check
-                  inline
-                  key={type}
-                  id={`map-type-${type}`}
-                  label={type[0] + type.slice(1).toLowerCase()}
-                  checked={types.includes(type)}
-                  onChange={() =>
-                    setTypes((current) =>
-                      current.includes(type)
-                        ? current.filter((value) => value !== type)
-                        : [...current, type],
-                    )
-                  }
-                />
-              ))}
-            </div>
-          </Form.Group>
-          {types.includes("SOURCE") && (
-            <>
-              <Form.Group>
-                <Form.Label>Source place</Form.Label>
-                <div className="d-flex gap-2 flex-wrap">
-                  {(
-                    [
-                      ["DISCOVERED_AT", "Discovered at"],
-                      ["HELD_AT", "Held at"],
-                    ] as const
-                  ).map(([role, label]) => (
-                    <Form.Check
-                      inline
-                      key={role}
-                      id={`map-source-role-${role}`}
-                      label={label}
-                      checked={sourceRoles.includes(role)}
-                      onChange={() =>
-                        setSourceRoles((current) =>
-                          current.includes(role)
-                            ? current.filter((value) => value !== role)
-                            : [...current, role],
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Source period</Form.Label>
-                <Form.Select
-                  value={sourcePeriod}
-                  onChange={(event) => setSourcePeriod(event.target.value)}
-                >
-                  <option value="">All periods</option>
-                  {PERIODS.map((period) => (
-                    <option key={period} value={period}>
-                      {humanizeFilterValue(period)}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <HistoricalRangeFilter
-                label="Source years"
-                enabled={false}
-                showToggle={false}
-                alwaysShowFields
-                from={sourceFrom}
-                to={sourceTo}
-                onEnabledChange={() => undefined}
-                onFromChange={setSourceFrom}
-                onToChange={setSourceTo}
-              />
-              <Form.Group>
-                <Form.Label>Classification</Form.Label>
-                <Form.Select
-                  value={sourceClassification}
-                  onChange={(event) =>
-                    setSourceClassification(event.target.value)
-                  }
-                >
-                  <option value="">All classifications</option>
-                  {CLASSIFICATIONS.map((classification) => (
-                    <option key={classification} value={classification}>
-                      {humanizeFilterValue(classification)}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Source type</Form.Label>
-                <Form.Select
-                  value={sourceType}
-                  onChange={(event) => setSourceType(event.target.value)}
-                >
-                  <option value="">All types</option>
-                  {TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {humanizeFilterValue(type)}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </>
-          )}
+          <MapEntityFilterControls
+            idPrefix="map"
+            entityTypes={types}
+            onEntityTypesChange={setTypes}
+            sourceRoles={sourceRoles}
+            onSourceRolesChange={setSourceRoles}
+            sourcePeriod={sourcePeriod}
+            onSourcePeriodChange={setSourcePeriod}
+            sourceClassification={sourceClassification}
+            onSourceClassificationChange={setSourceClassification}
+            sourceType={sourceType}
+            onSourceTypeChange={setSourceType}
+            sourceFrom={sourceFrom}
+            onSourceFromChange={setSourceFrom}
+            sourceTo={sourceTo}
+            onSourceToChange={setSourceTo}
+          />
           <Form.Check
             id="map-modern-borders"
             label="Modern borders"
@@ -1032,14 +943,6 @@ function appendSourceFilters(
   if (filters.from !== undefined)
     parameters.set("sourceFrom", String(filters.from));
   if (filters.to !== undefined) parameters.set("sourceTo", String(filters.to));
-}
-
-function humanizeFilterValue(value: string): string {
-  return value
-    .toLocaleLowerCase()
-    .split("_")
-    .map((part) => part.slice(0, 1).toLocaleUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function parseHistoricalYear(value: string | null): HistoricalYearInput {
