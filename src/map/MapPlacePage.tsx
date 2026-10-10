@@ -14,6 +14,7 @@ import {
   type MapEntityLocation,
   type MapPlace,
 } from "./mapApi";
+import { formatPlaceNameRange } from "./placeNames";
 
 type MapPlacePageProps = { id?: string };
 type EntityTypeFilter = MapEntityLocation["entityType"] | "ALL";
@@ -68,9 +69,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       listMapPlaceEntities(
         id,
         entityType === "ALL" ? [] : [entityType],
-        entityType === "SOURCE" && sourceRole !== "ALL"
-          ? [sourceRole]
-          : [],
+        entityType === "SOURCE" && sourceRole !== "ALL" ? [sourceRole] : [],
         controller.signal,
       ),
     ])
@@ -123,7 +122,12 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             items.flatMap((item) => {
               const url = item.image?.thumbnailUrl || item.image?.url;
               return url
-                ? [[`${item.resourceType.toUpperCase()}:${item.resourceId}`, url]]
+                ? [
+                    [
+                      `${item.resourceType.toUpperCase()}:${item.resourceId}`,
+                      url,
+                    ],
+                  ]
                 : [];
             }),
           ),
@@ -142,9 +146,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       const page = await listMapPlaceEntities(
         id,
         entityType === "ALL" ? [] : [entityType],
-        entityType === "SOURCE" && sourceRole !== "ALL"
-          ? [sourceRole]
-          : [],
+        entityType === "SOURCE" && sourceRole !== "ALL" ? [sourceRole] : [],
         undefined,
         entityCursor,
       );
@@ -214,6 +216,32 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         {place.confidence && (
           <p className="small text-muted mb-2">
             Confidence: {place.confidence.replaceAll("_", " ").toLowerCase()}
+          </p>
+        )}
+        {place.parentRelation && (
+          <p
+            className="small text-muted mb-2"
+            title={
+              place.parentRelation.provenance?.length
+                ? place.parentRelation.provenance
+                    .map(
+                      (source) =>
+                        `${source.dataset} (${source.externalId}) — ${source.license}`,
+                    )
+                    .join("; ")
+                : undefined
+            }
+          >
+            Parent relationship
+            {formatPlaceNameRange(
+              place.parentRelation.validFrom,
+              place.parentRelation.validTo,
+            )}
+            {place.parentRelation.confidence
+              ? ` · ${place.parentRelation.confidence
+                  .replaceAll("_", " ")
+                  .toLowerCase()}`
+              : ""}
           </p>
         )}
         <p className="mb-2">
@@ -339,10 +367,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             value={sourceRole}
             onChange={(event) =>
               setSourceRole(
-                event.target.value as
-                  | "ALL"
-                  | "DISCOVERED_AT"
-                  | "HELD_AT",
+                event.target.value as "ALL" | "DISCOVERED_AT" | "HELD_AT",
               )
             }
           >

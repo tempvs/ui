@@ -28,6 +28,19 @@ export type MapPlace = {
     "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
   description?: string;
   parentPlaceId?: string;
+  parentRelation?: {
+    parentPlaceId: string;
+    relationship: "CONTAINED_IN";
+    validFrom?: number;
+    validTo?: number;
+    confidence?:
+      "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
+    provenance?: Array<{
+      dataset: string;
+      externalId: string;
+      license: string;
+    }>;
+  };
   periods?: string[];
   selectionReasons?: string[];
   provenance?: Array<{
