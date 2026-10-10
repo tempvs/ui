@@ -328,6 +328,10 @@ function MapRoleAdminPanel() {
   const [requests, setRequests] = useState<MapRoleRequest[]>([]);
   const [members, setMembers] = useState<MapRoleMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nextRequestCursor, setNextRequestCursor] = useState<
+    string | undefined
+  >();
+  const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [removingRole, setRemovingRole] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -338,6 +342,7 @@ function MapRoleAdminPanel() {
       .then(([requestPage, loadedMembers]) => {
         if (!active) return;
         setRequests(requestPage.items);
+        setNextRequestCursor(requestPage.nextCursor);
         setMembers(loadedMembers);
       })
       .catch((caught: unknown) => {
@@ -376,6 +381,23 @@ function MapRoleAdminPanel() {
       );
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const loadMoreRequests = async () => {
+    if (!nextRequestCursor) return;
+    setLoadingMoreRequests(true);
+    setError("");
+    try {
+      const page = await listPendingMapRoleRequests(nextRequestCursor);
+      setRequests((current) => [...current, ...page.items]);
+      setNextRequestCursor(page.nextCursor);
+    } catch (caught) {
+      setError(
+        (caught as Error).message || "Unable to load more Map role requests.",
+      );
+    } finally {
+      setLoadingMoreRequests(false);
     }
   };
 
@@ -424,42 +446,54 @@ function MapRoleAdminPanel() {
           {requests.length === 0 ? (
             <p className="text-muted small">No pending Map role requests.</p>
           ) : (
-            <ul className="list-unstyled mb-3">
-              {requests.map((request) => (
-                <li
-                  key={request.id}
-                  className="border-top py-2 d-flex justify-content-between gap-3 flex-wrap"
+            <>
+              <ul className="list-unstyled mb-2">
+                {requests.map((request) => (
+                  <li
+                    key={request.id}
+                    className="border-top py-2 d-flex justify-content-between gap-3 flex-wrap"
+                  >
+                    <div>
+                      <strong>{formatMapRole(request.role)}</strong>
+                      <span className="text-muted ms-2 small">
+                        {request.userId}
+                      </span>
+                      {request.note && (
+                        <p className="small text-muted mb-0">{request.note}</p>
+                      )}
+                    </div>
+                    <div className="d-flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="dark"
+                        disabled={processingId === request.id}
+                        onClick={() => void decide(request, "approve")}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        disabled={processingId === request.id}
+                        onClick={() => void decide(request, "reject")}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {nextRequestCursor && (
+                <Button
+                  size="sm"
+                  variant="outline-dark"
+                  disabled={loadingMoreRequests}
+                  onClick={() => void loadMoreRequests()}
                 >
-                  <div>
-                    <strong>{formatMapRole(request.role)}</strong>
-                    <span className="text-muted ms-2 small">
-                      {request.userId}
-                    </span>
-                    {request.note && (
-                      <p className="small text-muted mb-0">{request.note}</p>
-                    )}
-                  </div>
-                  <div className="d-flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="dark"
-                      disabled={processingId === request.id}
-                      onClick={() => void decide(request, "approve")}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline-danger"
-                      disabled={processingId === request.id}
-                      onClick={() => void decide(request, "reject")}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  {loadingMoreRequests ? "Loading…" : "Load more requests"}
+                </Button>
+              )}
+            </>
           )}
           <h3 className="h6">Current members</h3>
           {members.length === 0 ? (
