@@ -54,6 +54,9 @@ export type MapEntityLocation = {
   sourceType?: string;
   sourceFrom?: number;
   sourceTo?: number;
+  eventPeriods?: string[];
+  eventFrom?: number;
+  eventTo?: number;
 };
 
 export type MapEntityLocationPage = {
@@ -69,6 +72,11 @@ export type MapSourceFilters = {
   period?: string;
   classifications?: string[];
   types?: string[];
+  from?: number;
+  to?: number;
+};
+export type MapEventFilters = {
+  period?: string;
   from?: number;
   to?: number;
 };
@@ -589,6 +597,7 @@ export async function nearbyMapEntities(
   signal?: AbortSignal,
   sourceRoles: SourceLocationRole[] = [],
   sourceFilters: MapSourceFilters = {},
+  eventFilters: MapEventFilters = {},
 ): Promise<MapEntityLocation[]> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -611,6 +620,13 @@ export async function nearbyMapEntities(
         : {}),
       ...(sourceFilters.to !== undefined
         ? { sourceTo: String(sourceFilters.to) }
+        : {}),
+      ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
+      ...(eventFilters.from !== undefined
+        ? { eventFrom: String(eventFilters.from) }
+        : {}),
+      ...(eventFilters.to !== undefined
+        ? { eventTo: String(eventFilters.to) }
         : {}),
     })}`,
     { signal },

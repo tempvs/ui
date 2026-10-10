@@ -26,6 +26,12 @@ type Props = {
   onSourceFromChange: (value: HistoricalYearInput) => void;
   sourceTo: HistoricalYearInput;
   onSourceToChange: (value: HistoricalYearInput) => void;
+  eventPeriod: string;
+  onEventPeriodChange: (value: string) => void;
+  eventFrom: HistoricalYearInput;
+  onEventFromChange: (value: HistoricalYearInput) => void;
+  eventTo: HistoricalYearInput;
+  onEventToChange: (value: HistoricalYearInput) => void;
   compact?: boolean;
 };
 
@@ -55,6 +61,12 @@ export default function MapEntityFilterControls({
   onSourceFromChange,
   sourceTo,
   onSourceToChange,
+  eventPeriod,
+  onEventPeriodChange,
+  eventFrom,
+  onEventFromChange,
+  eventTo,
+  onEventToChange,
   compact = false,
 }: Props) {
   const groupClass = compact ? "mb-2" : undefined;
@@ -170,6 +182,38 @@ export default function MapEntityFilterControls({
               ))}
             </Form.Select>
           </Form.Group>
+        </>
+      )}
+      {entityTypes.includes("EVENT") && (
+        <>
+          <Form.Group className={groupClass}>
+            <Form.Label>Event period</Form.Label>
+            <Form.Select
+              size={compact ? "sm" : undefined}
+              value={eventPeriod}
+              onChange={(event) => onEventPeriodChange(event.target.value)}
+            >
+              <option value="">All periods</option>
+              {PERIODS.map((period) => (
+                <option key={period} value={period}>
+                  {readable(period)}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <HistoricalRangeFilter
+            label="Event years"
+            enabled={false}
+            showToggle={false}
+            alwaysShowFields
+            from={eventFrom}
+            to={eventTo}
+            onEnabledChange={() => undefined}
+            onFromChange={onEventFromChange}
+            onToChange={onEventToChange}
+            className={groupClass}
+            compact={compact}
+          />
         </>
       )}
     </>

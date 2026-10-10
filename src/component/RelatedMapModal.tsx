@@ -12,6 +12,7 @@ import {
   getMapPlace,
   nearbyMapEntities,
   type MapEntityLocation,
+  type MapEventFilters,
   type MapPlace,
   type MapSourceFilters,
   type SourceLocationRole,
@@ -73,6 +74,15 @@ export default function RelatedMapModal({
     year: "",
     era: "AD",
   });
+  const [eventPeriod, setEventPeriod] = useState("");
+  const [eventFrom, setEventFrom] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
+  const [eventTo, setEventTo] = useState<HistoricalYearInput>({
+    year: "",
+    era: "AD",
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -129,6 +139,18 @@ export default function RelatedMapModal({
     }),
     [sourceClassification, sourceFrom, sourcePeriod, sourceTo, sourceType],
   );
+  const eventFilters: MapEventFilters = useMemo(
+    () => ({
+      ...(eventPeriod ? { period: eventPeriod } : {}),
+      ...(toAstronomicalYear(eventFrom) !== undefined
+        ? { from: toAstronomicalYear(eventFrom) }
+        : {}),
+      ...(toAstronomicalYear(eventTo) !== undefined
+        ? { to: toAstronomicalYear(eventTo) }
+        : {}),
+    }),
+    [eventFrom, eventPeriod, eventTo],
+  );
 
   useEffect(() => {
     if (!show || !place) return undefined;
@@ -146,6 +168,7 @@ export default function RelatedMapModal({
       controller.signal,
       sourceRoles,
       sourceFilters,
+      eventFilters,
     )
       .then((nearby) => {
         if (!controller.signal.aborted) setEntities(nearby);
@@ -155,7 +178,7 @@ export default function RelatedMapModal({
           setError((caught as Error).message || "Unable to load related map.");
       });
     return () => controller.abort();
-  }, [place, radius, show, sourceFilters, sourceRoles, types]);
+  }, [eventFilters, place, radius, show, sourceFilters, sourceRoles, types]);
 
   useEffect(() => {
     if (!show || !entities.length) {
@@ -292,6 +315,12 @@ export default function RelatedMapModal({
                     onSourceFromChange={setSourceFrom}
                     sourceTo={sourceTo}
                     onSourceToChange={setSourceTo}
+                    eventPeriod={eventPeriod}
+                    onEventPeriodChange={setEventPeriod}
+                    eventFrom={eventFrom}
+                    onEventFromChange={setEventFrom}
+                    eventTo={eventTo}
+                    onEventToChange={setEventTo}
                   />
                 </div>
               </div>
@@ -323,6 +352,27 @@ export default function RelatedMapModal({
             </>
           )}
         </Modal.Body>
+        {place && (
+          <Modal.Footer>
+            <Button
+              variant="outline-dark"
+              onClick={() => {
+                setShow(false);
+                navigate(
+                  `/map?${new URLSearchParams({
+                    placeId: place.id,
+                    q: displayName,
+                    lat: String(place.latitude),
+                    lng: String(place.longitude),
+                    radiusKm: String(radius),
+                  }).toString()}`,
+                );
+              }}
+            >
+              Open in Map
+            </Button>
+          </Modal.Footer>
+        )}
       </Modal>
     </>
   );

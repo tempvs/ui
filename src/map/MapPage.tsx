@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
-import { fetchProfileById } from "../profile/profileApi";
-import type { Profile } from "../profile/profileTypes";
 import PageLayout from "../component/PageLayout";
 import HistoricalRangeFilter, {
   isValidHistoricalRange,
@@ -16,6 +14,7 @@ import {
   nearbyMapPlaces,
   searchMapPlaces,
   type MapEntityLocation,
+  type MapEventFilters,
   type MapPlace,
   type MapPlaceProposalRecord,
   type MapSourceFilters,
@@ -25,7 +24,6 @@ import MapCanvas, { entityKey } from "./MapCanvas";
 import MapEntityFilterControls from "./MapEntityFilterControls";
 import {
   loadOwnedMapContent,
-  loadProfileRelatedMapContent,
   type OwnedMapConnection,
   type OwnedMapMarker,
 } from "./ownedMapContent";
@@ -44,13 +42,7 @@ const entityTypes: MapEntityLocation["entityType"][] = [
  * Public, keyboard-accessible discovery fallback. It persists its query in
  * the URL so a searched place can be shared before the tile-backed map lands.
  */
-type MapPageProps = {
-  /** A stable public profile-map route. It must never load the visitor's
-   * private account map alongside the shared profile's relationships. */
-  profileId?: string;
-};
-
-export default function MapPage({ profileId }: MapPageProps) {
+export default function MapPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [query, setQuery] = useState(params.get("q") || "");
@@ -84,6 +76,13 @@ export default function MapPage({ profileId }: MapPageProps) {
   const [sourceTo, setSourceTo] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("sourceTo")),
   );
+  const [eventPeriod, setEventPeriod] = useState(params.get("eventPeriod") || "");
+  const [eventFrom, setEventFrom] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("eventFrom")),
+  );
+  const [eventTo, setEventTo] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("eventTo")),
+  );
   const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("nameFrom")),
   );
@@ -98,8 +97,6 @@ export default function MapPage({ profileId }: MapPageProps) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
-  const [sharedProfile, setSharedProfile] = useState<Profile | null>(null);
-  const [sharedProfileLoading, setSharedProfileLoading] = useState(Boolean(profileId));
   const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
@@ -116,38 +113,6 @@ export default function MapPage({ profileId }: MapPageProps) {
   useEffect(() => {
     void getViewer().then(setViewer);
   }, []);
-
-  useEffect(() => {
-    if (!profileId) {
-      setSharedProfile(null);
-      setSharedProfileLoading(false);
-      return undefined;
-    }
-    let active = true;
-    setError("");
-    setSharedProfile(null);
-    setSharedProfileLoading(true);
-    fetchProfileById(profileId, {
-      onSuccess: (profile) => {
-        if (!active) return;
-        setSharedProfile(profile);
-        setSharedProfileLoading(false);
-      },
-      onMissing: () => {
-        if (!active) return;
-        setError("This profile is no longer available.");
-        setSharedProfileLoading(false);
-      },
-      onError: () => {
-        if (!active) return;
-        setError("Unable to load this profile map.");
-        setSharedProfileLoading(false);
-      },
-    });
-    return () => {
-      active = false;
-    };
-  }, [profileId]);
 
   // Active proposals are a private author view. They are deliberately fetched
   // only after identity is known and never folded into public map results.
@@ -175,33 +140,20 @@ export default function MapPage({ profileId }: MapPageProps) {
   // overlay assembled in the browser, not a new public discovery endpoint.
   useEffect(() => {
     let active = true;
-    if (profileId && !sharedProfile) {
+    if (!viewer) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
       return () => {
         active = false;
       };
     }
-    if (!profileId && !viewer) {
-      setOwnedMarkers([]);
-      setOwnedConnections([]);
-      return () => {
-        active = false;
-      };
-    }
-    const load = sharedProfile
-      ? loadProfileRelatedMapContent(sharedProfile)
-      : loadOwnedMapContent(viewer!.userId, (content) => {
-          if (!active) return;
-          setOwnedMarkers(content.markers);
-          setOwnedConnections(content.connections);
-        });
-    // A relation overlay is optional. Treat an unexpectedly unavailable
-    // loader exactly like a failed optional relation read instead of letting
-    // the public map itself crash.
-    void Promise.resolve(load)
+    void loadOwnedMapContent(viewer.userId, (content) => {
+      if (!active) return;
+      setOwnedMarkers(content.markers);
+      setOwnedConnections(content.connections);
+    })
       .then((content) => {
-        if (!active || !content) return;
+        if (!active) return;
         setOwnedMarkers(content.markers);
         setOwnedConnections(content.connections);
       })
@@ -216,12 +168,7 @@ export default function MapPage({ profileId }: MapPageProps) {
     return () => {
       active = false;
     };
-  }, [profileId, sharedProfile, viewer]);
-
-  const sharedProfileLabel = sharedProfile
-    ? profileDisplayName(sharedProfile)
-    : "Profile";
-  const mapTitle = profileId ? `${sharedProfileLabel}'s map` : "Map";
+  }, [viewer]);
 
   const canReviewPlaces = viewer?.roles.some(
     (role) =>
@@ -241,6 +188,15 @@ export default function MapPage({ profileId }: MapPageProps) {
       : {}),
     ...(toAstronomicalYear(sourceTo) !== undefined
       ? { to: toAstronomicalYear(sourceTo) }
+      : {}),
+  };
+  const eventFilters: MapEventFilters = {
+    ...(eventPeriod ? { period: eventPeriod } : {}),
+    ...(toAstronomicalYear(eventFrom) !== undefined
+      ? { from: toAstronomicalYear(eventFrom) }
+      : {}),
+    ...(toAstronomicalYear(eventTo) !== undefined
+      ? { to: toAstronomicalYear(eventTo) }
       : {}),
   };
 
@@ -313,6 +269,7 @@ export default function MapPage({ profileId }: MapPageProps) {
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
     appendSourceFilters(next, sourceFilters);
+    appendEventFilters(next, eventFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     setParams(next, { replace: true });
@@ -330,6 +287,7 @@ export default function MapPage({ profileId }: MapPageProps) {
               undefined,
               sourceRoles,
               sourceFilters,
+              eventFilters,
             )
           : Promise.resolve([]),
       ]);
@@ -376,6 +334,7 @@ export default function MapPage({ profileId }: MapPageProps) {
     if (
       !isValidHistoricalRange(nameFrom, nameTo) ||
       !isValidHistoricalRange(sourceFrom, sourceTo)
+      || !isValidHistoricalRange(eventFrom, eventTo)
     ) {
       setError("Years must be chronological positive years.");
       return;
@@ -395,6 +354,7 @@ export default function MapPage({ profileId }: MapPageProps) {
     if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
     appendSourceFilters(next, sourceFilters);
+    appendEventFilters(next, eventFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (hasCoordinates) {
@@ -430,6 +390,7 @@ export default function MapPage({ profileId }: MapPageProps) {
                 undefined,
                 sourceRoles,
                 sourceFilters,
+                eventFilters,
               )
             : Promise.resolve([]),
         ]);
@@ -494,12 +455,9 @@ export default function MapPage({ profileId }: MapPageProps) {
   }, [entities, items, latitude, longitude, selectedEntityKey]);
 
   return (
-    <PageLayout className="map-page" header={{ title: mapTitle }}>
+    <PageLayout className="map-page" header={{ title: "Map" }}>
       <section className="club-panel" aria-label="Map place search">
-        <h1>{profileId ? `Map of ${sharedProfileLabel}` : "Place discovery"}</h1>
-        {profileId && sharedProfileLoading && (
-          <p className="text-muted" role="status">Loading profile mapâ€¦</p>
-        )}
+        <h1>Place discovery</h1>
         <p className="text-muted">
           Search approved places by name, or browse a bounded radius around
           coordinates.
@@ -605,6 +563,12 @@ export default function MapPage({ profileId }: MapPageProps) {
             onSourceFromChange={setSourceFrom}
             sourceTo={sourceTo}
             onSourceToChange={setSourceTo}
+            eventPeriod={eventPeriod}
+            onEventPeriodChange={setEventPeriod}
+            eventFrom={eventFrom}
+            onEventFromChange={setEventFrom}
+            eventTo={eventTo}
+            onEventToChange={setEventTo}
           />
           <Form.Check
             id="map-modern-borders"
@@ -790,6 +754,7 @@ export default function MapPage({ profileId }: MapPageProps) {
                   showModernBorders,
                   sourceRoles,
                   sourceFilters,
+                  eventFilters,
                 )}
               >
                 Show nearby
@@ -892,6 +857,7 @@ function nearPlacePath(
   showModernBorders: boolean,
   sourceRoles: SourceLocationRole[],
   sourceFilters: MapSourceFilters,
+  eventFilters: MapEventFilters,
 ): string {
   const parameters = new URLSearchParams({
     placeId: place.id,
@@ -903,6 +869,7 @@ function nearPlacePath(
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
   appendSourceRoles(parameters, sourceRoles);
   appendSourceFilters(parameters, sourceFilters);
+  appendEventFilters(parameters, eventFilters);
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
 }
@@ -943,6 +910,15 @@ function appendSourceFilters(
   if (filters.from !== undefined)
     parameters.set("sourceFrom", String(filters.from));
   if (filters.to !== undefined) parameters.set("sourceTo", String(filters.to));
+}
+
+function appendEventFilters(
+  parameters: URLSearchParams,
+  filters: MapEventFilters,
+): void {
+  if (filters.period) parameters.set("eventPeriod", filters.period);
+  if (filters.from !== undefined) parameters.set("eventFrom", String(filters.from));
+  if (filters.to !== undefined) parameters.set("eventTo", String(filters.to));
 }
 
 function parseHistoricalYear(value: string | null): HistoricalYearInput {
@@ -1008,13 +984,4 @@ function formatDistance(distance: number): string {
   return distance < 1
     ? `${Math.round(distance * 1000)} m away`
     : `${distance.toFixed(distance < 10 ? 1 : 0)} km away`;
-}
-
-function profileDisplayName(profile: Profile): string {
-  return (
-    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
-    profile.nickName ||
-    profile.alias ||
-    "Profile"
-  );
 }

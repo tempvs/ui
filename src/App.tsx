@@ -78,11 +78,6 @@ function MapPlacePageWithParam() {
   return <MapPlacePage key={`map-place:${placeId || ""}`} id={placeId} />;
 }
 
-function ProfileMapPageWithParam() {
-  const { id } = useParams();
-  return <MapPage profileId={id} />;
-}
-
 /** Keeps the horizontal navigation mounted while React Router swaps page content. */
 function AppShell() {
   const [headerMount, setHeaderMount] = React.useState<HTMLDivElement | null>(
@@ -161,7 +156,6 @@ function App() {
             <Route path="/events" element={<EventsPage />} />
             <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
             <Route path="/events/:eventId" element={<EventPage />} />
-            <Route path="/map/profile/:id" element={<ProfileMapPageWithParam />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/map/admin" element={<MapAdminPage />} />
             <Route path="/map/place/:placeId" element={<MapPlacePageWithParam />} />

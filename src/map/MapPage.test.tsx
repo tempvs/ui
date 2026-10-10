@@ -9,7 +9,6 @@ import {
 import { MemoryRouter } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
-import { fetchProfileById } from "../profile/profileApi";
 import MapPage from "./MapPage";
 import {
   listMyMapPlaceProposals,
@@ -20,21 +19,6 @@ import {
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
-}));
-
-jest.mock("../profile/profileApi", () => ({
-  fetchProfileById: jest.fn(),
-}));
-
-jest.mock("./ownedMapContent", () => ({
-  loadOwnedMapContent: jest.fn().mockResolvedValue({
-    markers: [],
-    connections: [],
-  }),
-  loadProfileRelatedMapContent: jest.fn().mockResolvedValue({
-    markers: [],
-    connections: [],
-  }),
 }));
 
 jest.mock("./MapCanvas", () => {
@@ -87,28 +71,6 @@ const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
 const mockNearbyMapEntities = jest.mocked(nearbyMapEntities);
 const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
-const mockFetchProfileById = jest.mocked(fetchProfileById);
-
-test("renders a stable, read-only shareable profile-map route", async () => {
-  mockGetViewer.mockResolvedValue(null);
-  mockFetchProfileById.mockImplementation((_id, handlers) => {
-    handlers.onSuccess({
-      id: "profile-1",
-      firstName: "Lucius",
-      lastName: "Aelius",
-      locationPlaceId: "seed:rome",
-      location: "Rome, Italy",
-    });
-  });
-
-  render(
-    <MemoryRouter>
-      <MapPage profileId="profile-1" />
-    </MemoryRouter>,
-  );
-
-  expect(await screen.findByRole("heading", { name: "Map of Lucius Aelius" })).toBeInTheDocument();
-});
 
 test("searches places while typing and labels the selected marker with the matched historical name", async () => {
   jest.useFakeTimers();
@@ -171,7 +133,7 @@ test("searches places while typing and labels the selected marker with the match
   jest.useRealTimers();
 });
 
-test("restores source discovery facets from a shareable map URL", async () => {
+test("restores source and event discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
   mockNearbyMapEntities.mockResolvedValue([]);
@@ -179,7 +141,7 @@ test("restores source discovery facets from a shareable map URL", async () => {
   render(
     <MemoryRouter
       initialEntries={[
-        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476",
+        "/map?lat=41.9&lng=12.5&radiusKm=25&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476&eventPeriod=ANTIQUITY&eventFrom=-27&eventTo=476",
       ]}
     >
       <MapPage />
@@ -199,6 +161,11 @@ test("restores source discovery facets from a shareable map URL", async () => {
         period: "ANTIQUITY",
         classifications: ["WEAPON"],
         types: ["ARCHAEOLOGICAL"],
+        from: -27,
+        to: 476,
+      },
+      {
+        period: "ANTIQUITY",
         from: -27,
         to: 476,
       },
