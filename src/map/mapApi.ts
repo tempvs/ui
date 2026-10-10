@@ -229,6 +229,7 @@ export async function listMapPlaceChildren(
 export async function listMapPlaceEntities(
   placeId: string,
   types: MapEntityLocation["entityType"][] = [],
+  roles: MapEntityLocation["locationRole"][] = [],
   signal?: AbortSignal,
   cursor?: string,
 ): Promise<MapEntityLocationPage> {
@@ -237,6 +238,7 @@ export async function listMapPlaceEntities(
       {
         limit: "100",
         ...(types.length ? { types: types.join(",") } : {}),
+        ...(roles.length ? { roles: roles.join(",") } : {}),
         ...(cursor ? { cursor } : {}),
       },
     )}`,

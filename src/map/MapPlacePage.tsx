@@ -40,6 +40,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [entityType, setEntityType] = useState<EntityTypeFilter>("ALL");
+  const [sourceRole, setSourceRole] = useState<
+    "ALL" | "DISCOVERED_AT" | "HELD_AT"
+  >("ALL");
   const [showModernBorders, setShowModernBorders] = useState(false);
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
     null,
@@ -65,6 +68,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       listMapPlaceEntities(
         id,
         entityType === "ALL" ? [] : [entityType],
+        entityType === "SOURCE" && sourceRole !== "ALL"
+          ? [sourceRole]
+          : [],
         controller.signal,
       ),
     ])
@@ -96,7 +102,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         if (!controller.signal.aborted) setEntitiesLoading(false);
       });
     return () => controller.abort();
-  }, [entityType, id]);
+  }, [entityType, id, sourceRole]);
 
   useEffect(() => {
     if (!entities.length) {
@@ -136,6 +142,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       const page = await listMapPlaceEntities(
         id,
         entityType === "ALL" ? [] : [entityType],
+        entityType === "SOURCE" && sourceRole !== "ALL"
+          ? [sourceRole]
+          : [],
         undefined,
         entityCursor,
       );
@@ -317,6 +326,26 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             </Button>
           ))}
         </ButtonGroup>
+        {entityType === "SOURCE" && (
+          <Form.Select
+            aria-label="Source role"
+            size="sm"
+            className="mb-2"
+            value={sourceRole}
+            onChange={(event) =>
+              setSourceRole(
+                event.target.value as
+                  | "ALL"
+                  | "DISCOVERED_AT"
+                  | "HELD_AT",
+              )
+            }
+          >
+            <option value="ALL">All source locations</option>
+            <option value="DISCOVERED_AT">Discovered here</option>
+            <option value="HELD_AT">Held here</option>
+          </Form.Select>
+        )}
         {entities.length === 0 ? (
           <p className="text-muted mb-0">
             {entitiesLoading
