@@ -49,6 +49,7 @@ export type MapThumbnailMarker = {
   key: string;
   entityType: MapEntityLocation["entityType"];
   entityId: string;
+  locationRole: MapEntityLocation["locationRole"];
   label: string;
   placeId: string;
   placeName: string;

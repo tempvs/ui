@@ -4,7 +4,9 @@ import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
 import PlaceNamesList from "../component/PlaceNamesList";
+import { getImageThumbnails } from "../image/imageApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
+import { entityThumbnailMarkers } from "./entityThumbnailMarkers";
 import {
   getMapPlace,
   listMapPlaceChildren,
@@ -36,6 +38,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     Partial<Record<MapEntityLocation["entityType"], number>>
   >({});
   const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [entityType, setEntityType] = useState<EntityTypeFilter>("ALL");
   const [showModernBorders, setShowModernBorders] = useState(false);
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
@@ -94,6 +97,37 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       });
     return () => controller.abort();
   }, [entityType, id]);
+
+  useEffect(() => {
+    if (!entities.length) {
+      setThumbnails({});
+      return undefined;
+    }
+    let active = true;
+    void getImageThumbnails(
+      entities.map((entity) => ({
+        resourceType: entity.entityType.toLowerCase(),
+        resourceId: entity.entityId,
+      })),
+    )
+      .then((items) => {
+        if (!active) return;
+        setThumbnails(
+          Object.fromEntries(
+            items.flatMap((item) => {
+              const url = item.image?.thumbnailUrl || item.image?.url;
+              return url
+                ? [[`${item.resourceType.toUpperCase()}:${item.resourceId}`, url]]
+                : [];
+            }),
+          ),
+        );
+      })
+      .catch(() => active && setThumbnails({}));
+    return () => {
+      active = false;
+    };
+  }, [entities]);
 
   const loadMoreEntities = async () => {
     if (!id || !entityCursor || entitiesLoading) return;
@@ -238,11 +272,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         <MapCanvas
           places={[place]}
           entities={entities}
+          thumbnailMarkers={entityThumbnailMarkers(entities, thumbnails)}
           focus={{ latitude: place.latitude, longitude: place.longitude }}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
           selectedPlaceId={place.id}
           onEntitySelect={setSelectedEntityKey}
+          onThumbnailMarkerSelect={(marker) =>
+            setSelectedEntityKey(
+              `${marker.entityType}:${marker.entityId}:${marker.locationRole}`,
+            )
+          }
           onMapError={(message) => setError(message)}
         />
         {error && <p className="small text-muted mt-2 mb-0">{error}</p>}

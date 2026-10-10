@@ -8,8 +8,9 @@ import {
   isValidHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
-import MapCanvas, { type MapThumbnailMarker } from "../map/MapCanvas";
+import MapCanvas from "../map/MapCanvas";
 import MapEntityFilterControls from "../map/MapEntityFilterControls";
+import { entityThumbnailMarkers } from "../map/entityThumbnailMarkers";
 import type { OwnedMapContent } from "../map/ownedMapContent";
 import {
   getMapPlace,
@@ -244,24 +245,11 @@ export default function RelatedMapModal({
   const relatedMarkerKeys = new Set(
     relatedContent.markers.map((marker) => marker.key),
   );
-  const thumbnailMarkers: MapThumbnailMarker[] = entities
-    .filter(
-      (entity) =>
-        !relatedMarkerKeys.has(
-          `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
-        ),
-    )
-    .map((entity) => ({
-      key: `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
-      entityType: entity.entityType,
-      entityId: entity.entityId,
-      label: entity.label,
-      placeId: entity.placeId,
-      placeName: entity.placeName,
-      latitude: entity.latitude,
-      longitude: entity.longitude,
-      thumbnailUrl: thumbnails[`${entity.entityType}:${entity.entityId}`],
-    }));
+  const thumbnailMarkers = entityThumbnailMarkers(
+    entities,
+    thumbnails,
+    relatedMarkerKeys,
+  );
   const fitPoints = [
     ...(place
       ? [
