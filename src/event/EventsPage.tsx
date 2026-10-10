@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
 import HistoricalRangeFilter, {
@@ -33,6 +33,9 @@ export default function EventsPage() {
   });
   const [to, setTo] = useState<HistoricalYearInput>({ year: "", era: "AD" });
   const [venue, setVenue] = useState<MapPlace | null>(null);
+  const [placeRole, setPlaceRole] = useState<"VENUE" | "HISTORICAL_SITE">(
+    "VENUE",
+  );
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -100,9 +103,13 @@ export default function EventsPage() {
       `${event.name} ${event.description || ""}`
         .toLocaleLowerCase()
         .includes(normalized);
-    const venueMatch = !venue || event.venuePlaceId === venue.id;
-    if (!textMatch || !venueMatch || !rangeEnabled)
-      return textMatch && venueMatch;
+    const placeMatch =
+      !venue ||
+      (placeRole === "VENUE"
+        ? event.venuePlaceId === venue.id
+        : event.historicalSitePlaceId === venue.id);
+    if (!textMatch || !placeMatch || !rangeEnabled)
+      return textMatch && placeMatch;
     if (!event.from && !event.to) return true;
     const lower = from.year
       ? ordinal({ year: Number(from.year), era: from.era })
@@ -173,7 +180,7 @@ export default function EventsPage() {
               inlineToggle
             />
             <PlacePickerField
-              label="Venue"
+              label={placeRole === "VENUE" ? "Venue" : "Historical site"}
               value={venue}
               editable
               onChange={setVenue}
@@ -181,6 +188,21 @@ export default function EventsPage() {
               fieldMaxWidth="15rem"
               className="mb-0"
             />
+            <Form.Select
+              aria-label="Event location role"
+              size="sm"
+              value={placeRole}
+              onChange={(event) => {
+                setPlaceRole(
+                  event.target.value as "VENUE" | "HISTORICAL_SITE",
+                );
+                setVenue(null);
+              }}
+              style={{ width: "9rem" }}
+            >
+              <option value="VENUE">Venue</option>
+              <option value="HISTORICAL_SITE">Historical site</option>
+            </Form.Select>
           </div>
           <div className="event-card-grid">
             {visible.map((event) => (
