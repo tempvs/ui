@@ -380,6 +380,18 @@ export async function listMapRoleMembers(): Promise<MapRoleMember[]> {
   return Array.isArray(body) ? (body as MapRoleMember[]) : [];
 }
 
+/** MAP_ADMIN remains provisioned outside the Map application. */
+export async function removeMapMemberRole(
+  userId: string,
+  role: Exclude<MapRole, "MAP_ADMIN">,
+): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/roles/members/${encodeURIComponent(userId)}/roles/${encodeURIComponent(role)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) throw new Error("Unable to remove this Map role");
+}
+
 /** Private, author-scoped active proposals. Pending names and coordinates are
  * never returned from public place endpoints. */
 export async function listMyMapPlaceProposals(): Promise<

@@ -14,6 +14,7 @@ import {
   mergeMapPlace,
   rejectMapPlace,
   rejectMapRoleRequest,
+  removeMapMemberRole,
   requestMapPlaceChanges,
   type MapPlace,
   type PendingMapPlace,
@@ -328,6 +329,7 @@ function MapRoleAdminPanel() {
   const [members, setMembers] = useState<MapRoleMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [removingRole, setRemovingRole] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -374,6 +376,34 @@ function MapRoleAdminPanel() {
       );
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const removeRole = async (
+    member: MapRoleMember,
+    role: Exclude<MapRoleMember["roles"][number], "MAP_ADMIN">,
+  ) => {
+    const key = `${member.userId}:${role}`;
+    setRemovingRole(key);
+    setError("");
+    try {
+      await removeMapMemberRole(member.userId, role);
+      setMembers((current) =>
+        current
+          .map((item) =>
+            item.userId === member.userId
+              ? {
+                  ...item,
+                  roles: item.roles.filter((assigned) => assigned !== role),
+                }
+              : item,
+          )
+          .filter((item) => item.roles.length > 0),
+      );
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to remove this Map role.");
+    } finally {
+      setRemovingRole(null);
     }
   };
 
@@ -437,13 +467,45 @@ function MapRoleAdminPanel() {
           ) : (
             <ul className="list-unstyled mb-0">
               {members.map((member) => (
-                <li key={member.userId} className="border-top py-2 small">
-                  <strong>
-                    {member.name || member.email || member.userId}
-                  </strong>
-                  <span className="text-muted ms-2">
-                    {member.roles.map(formatMapRole).join(", ")}
-                  </span>
+                <li
+                  key={member.userId}
+                  className="border-top py-2 small d-flex justify-content-between gap-3 flex-wrap"
+                >
+                  <div>
+                    <strong>
+                      {member.name || member.email || member.userId}
+                    </strong>
+                    <span className="text-muted ms-2">
+                      {member.roles.map(formatMapRole).join(", ")}
+                    </span>
+                  </div>
+                  <div className="d-flex gap-1 flex-wrap">
+                    {member.roles
+                      .filter(
+                        (
+                          role,
+                        ): role is Exclude<
+                          MapRoleMember["roles"][number],
+                          "MAP_ADMIN"
+                        > => role !== "MAP_ADMIN",
+                      )
+                      .map((role) => {
+                        const key = `${member.userId}:${role}`;
+                        return (
+                          <Button
+                            key={role}
+                            size="sm"
+                            variant="outline-danger"
+                            disabled={removingRole === key}
+                            onClick={() => void removeRole(member, role)}
+                          >
+                            {removingRole === key
+                              ? "Removing…"
+                              : `Remove ${formatMapRole(role)}`}
+                          </Button>
+                        );
+                      })}
+                  </div>
                 </li>
               ))}
             </ul>
