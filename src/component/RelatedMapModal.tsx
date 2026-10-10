@@ -4,22 +4,18 @@ import { FaGlobeAmericas } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
-import {
-  isValidHistoricalRange,
-  type HistoricalYearInput,
-} from "../component/HistoricalRangeFilter";
 import MapCanvas from "../map/MapCanvas";
-import MapEntityFilterControls from "../map/MapEntityFilterControls";
 import { entityThumbnailMarkers } from "../map/entityThumbnailMarkers";
 import type { OwnedMapContent } from "../map/ownedMapContent";
+import {
+  appendSharedMapScope,
+  type SharedMapScope,
+} from "../map/sharedMapScope";
 import {
   getMapPlace,
   nearbyMapEntities,
   type MapEntityLocation,
-  type MapEventFilters,
   type MapPlace,
-  type MapSourceFilters,
-  type SourceLocationRole,
 } from "../map/mapApi";
 
 type RelatedMapModalProps = {
@@ -30,6 +26,8 @@ type RelatedMapModalProps = {
   /** Page-scoped relation data (for example a profile's public clubs/sources).
    * This intentionally never becomes part of the public nearby-map endpoint. */
   loadRelatedMapContent?: () => Promise<OwnedMapContent>;
+  /** Makes the full-map URL reproduce this public page's relationship slice. */
+  scope?: SharedMapScope;
 };
 
 const GlobeIcon = FaGlobeAmericas as React.ComponentType<{
@@ -41,7 +39,6 @@ const entityTypes: MapEntityLocation["entityType"][] = [
   "EVENT",
   "SOURCE",
 ];
-const radiusOptions = [5, 25, 50, 100, 200];
 
 /**
  * Shared entry point from location fields. A place remains the focus, while
@@ -53,6 +50,7 @@ export default function RelatedMapModal({
   displayName,
   radiusKm = 25,
   loadRelatedMapContent,
+  scope,
 }: RelatedMapModalProps) {
   const [show, setShow] = useState(false);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
@@ -63,35 +61,11 @@ export default function RelatedMapModal({
     connections: [],
   });
   const [error, setError] = useState("");
-  const [radius, setRadius] = useState(radiusKm);
-  const [contentQuery, setContentQuery] = useState("");
-  const [includeDescendants, setIncludeDescendants] = useState(false);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
-  const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>([]);
-  const [sourcePeriod, setSourcePeriod] = useState("");
-  const [sourceClassification, setSourceClassification] = useState("");
-  const [sourceType, setSourceType] = useState("");
-  const [sourceFrom, setSourceFrom] = useState<HistoricalYearInput>({
-    year: "",
-    era: "AD",
-  });
-  const [sourceTo, setSourceTo] = useState<HistoricalYearInput>({
-    year: "",
-    era: "AD",
-  });
-  const [eventPeriod, setEventPeriod] = useState("");
-  const [eventRoles, setEventRoles] = useState<
-    Array<"VENUE" | "HISTORICAL_SITE">
-  >([]);
-  const [eventFrom, setEventFrom] = useState<HistoricalYearInput>({
-    year: "",
-    era: "AD",
-  });
-  const [eventTo, setEventTo] = useState<HistoricalYearInput>({
-    year: "",
-    era: "AD",
-  });
+  const [showNearby, setShowNearby] = useState(true);
+  const [showRelated, setShowRelated] = useState(true);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -132,46 +106,9 @@ export default function RelatedMapModal({
     };
   }, [loadRelatedMapContent, show]);
 
-  const sourceFilters: MapSourceFilters = useMemo(
-    () => ({
-      ...(sourcePeriod ? { period: sourcePeriod } : {}),
-      ...(sourceClassification
-        ? { classifications: [sourceClassification] }
-        : {}),
-      ...(sourceType ? { types: [sourceType] } : {}),
-      ...(toAstronomicalYear(sourceFrom) !== undefined
-        ? { from: toAstronomicalYear(sourceFrom) }
-        : {}),
-      ...(toAstronomicalYear(sourceTo) !== undefined
-        ? { to: toAstronomicalYear(sourceTo) }
-        : {}),
-    }),
-    [sourceClassification, sourceFrom, sourcePeriod, sourceTo, sourceType],
-  );
-  const eventFilters: MapEventFilters = useMemo(
-    () => ({
-      ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
-      ...(eventPeriod ? { period: eventPeriod } : {}),
-      ...(toAstronomicalYear(eventFrom) !== undefined
-        ? { from: toAstronomicalYear(eventFrom) }
-        : {}),
-      ...(toAstronomicalYear(eventTo) !== undefined
-        ? { to: toAstronomicalYear(eventTo) }
-        : {}),
-    }),
-    [eventFrom, eventPeriod, eventRoles, eventTo],
-  );
-  const hasInvalidFilterRange =
-    !isValidHistoricalRange(sourceFrom, sourceTo) ||
-    !isValidHistoricalRange(eventFrom, eventTo);
-
   useEffect(() => {
     if (!show || !place) return undefined;
-    if (hasInvalidFilterRange) {
-      setEntities([]);
-      return undefined;
-    }
-    if (!types.length) {
+    if (!showNearby || !types.length) {
       setEntities([]);
       return undefined;
     }
@@ -179,14 +116,10 @@ export default function RelatedMapModal({
     void nearbyMapEntities(
       place.latitude,
       place.longitude,
-      radius,
+      radiusKm,
       types,
-      contentQuery,
+      "",
       controller.signal,
-      sourceRoles,
-      sourceFilters,
-      eventFilters,
-      includeDescendants ? place.id : undefined,
     )
       .then((nearby) => {
         if (!controller.signal.aborted) setEntities(nearby);
@@ -197,16 +130,11 @@ export default function RelatedMapModal({
       });
     return () => controller.abort();
   }, [
-    eventFilters,
-    hasInvalidFilterRange,
-    includeDescendants,
     place,
-    radius,
+    radiusKm,
     show,
-    sourceFilters,
-    sourceRoles,
+    showNearby,
     types,
-    contentQuery,
   ]);
 
   useEffect(() => {
@@ -247,8 +175,15 @@ export default function RelatedMapModal({
     };
   }, [entities, show]);
 
+  const visibleRelatedContent = useMemo<OwnedMapContent>(
+    () =>
+      showRelated
+        ? relatedContent
+        : { markers: [], connections: [] },
+    [relatedContent, showRelated],
+  );
   const relatedMarkerKeys = new Set(
-    relatedContent.markers.map((marker) => marker.key),
+    visibleRelatedContent.markers.map((marker) => marker.key),
   );
   const thumbnailMarkers = entityThumbnailMarkers(
     entities,
@@ -265,7 +200,7 @@ export default function RelatedMapModal({
           },
         ]
       : []),
-    ...relatedContent.markers,
+    ...visibleRelatedContent.markers,
   ];
 
   return (
@@ -292,85 +227,47 @@ export default function RelatedMapModal({
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
-          {place && hasInvalidFilterRange && (
-            <Alert variant="warning">
-              Years must be chronological positive years.
-            </Alert>
-          )}
           {place === null && !error && (
             <Alert variant="warning">This place is no longer available.</Alert>
           )}
           {place && (
             <>
-              <div className="d-flex align-items-end gap-3 flex-wrap mb-2">
-                <Form.Group>
-                  <Form.Label className="small mb-1">Radius</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    aria-label="Related-map radius"
-                    value={radius}
-                    onChange={(event) => setRadius(Number(event.target.value))}
-                  >
-                    {radiusOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {value} km
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group>
-                  <Form.Label className="small mb-1">Content</Form.Label>
-                  <Form.Control
-                    size="sm"
-                    value={contentQuery}
-                    onChange={(event) => setContentQuery(event.target.value)}
-                    placeholder="Name or place"
-                    aria-label="Filter related-map content"
-                  />
-                </Form.Group>
+              <div className="d-flex align-items-center gap-3 flex-wrap mb-2">
+                <span className="small fw-semibold">Layers</span>
                 <Form.Check
-                  id={`related-map-descendants-${place.id}`}
-                  className="mb-1"
-                  label="Include child places"
-                  checked={includeDescendants}
-                  onChange={(event) =>
-                    setIncludeDescendants(event.target.checked)
-                  }
+                  id={`related-map-nearby-${place.id}`}
+                  label={`Nearby public content (${radiusKm} km)`}
+                  checked={showNearby}
+                  onChange={(event) => setShowNearby(event.target.checked)}
                 />
-                <div className="related-map-filter-controls">
-                  <MapEntityFilterControls
-                    idPrefix={`related-map-${place.id}`}
-                    compact
-                    entityTypes={types}
-                    onEntityTypesChange={setTypes}
-                    sourceRoles={sourceRoles}
-                    onSourceRolesChange={setSourceRoles}
-                    sourcePeriod={sourcePeriod}
-                    onSourcePeriodChange={setSourcePeriod}
-                    sourceClassification={sourceClassification}
-                    onSourceClassificationChange={setSourceClassification}
-                    sourceType={sourceType}
-                    onSourceTypeChange={setSourceType}
-                    sourceFrom={sourceFrom}
-                    onSourceFromChange={setSourceFrom}
-                    sourceTo={sourceTo}
-                    onSourceToChange={setSourceTo}
-                    eventPeriod={eventPeriod}
-                    onEventPeriodChange={setEventPeriod}
-                    eventFrom={eventFrom}
-                    onEventFromChange={setEventFrom}
-                    eventTo={eventTo}
-                    onEventToChange={setEventTo}
-                    eventRoles={eventRoles}
-                    onEventRolesChange={setEventRoles}
+                {loadRelatedMapContent && (
+                  <Form.Check
+                    id={`related-map-scope-${place.id}`}
+                    label="This page's related content"
+                    checked={showRelated}
+                    onChange={(event) => setShowRelated(event.target.checked)}
                   />
-                </div>
+                )}
+                {entityTypes.map((type) => (
+                  <Form.Check
+                    key={type}
+                    id={`related-map-type-${place.id}-${type}`}
+                    label={`${type[0]}${type.slice(1).toLowerCase()}s`}
+                    checked={types.includes(type)}
+                    onChange={(event) =>
+                      setTypes((current) =>
+                        event.target.checked
+                          ? [...current, type]
+                          : current.filter((value) => value !== type),
+                      )
+                    }
+                  />
+                ))}
               </div>
               <p className="small text-muted">
-                Public content within {radius} km of this location
-                {includeDescendants ? " and its child places" : ""}.
-                {relatedContent.markers.length
-                  ? ` This ${relatedContent.markers.length === 1 ? "related item is" : `${relatedContent.markers.length} related items are`} shown with connection lines.`
+                {showNearby ? `Public content within ${radiusKm} km of this location.` : "Nearby public content is hidden."}
+                {visibleRelatedContent.markers.length
+                  ? ` This ${visibleRelatedContent.markers.length === 1 ? "related item is" : `${visibleRelatedContent.markers.length} related items are`} shown with connection lines.`
                   : ""}
               </p>
               <div className="related-map-canvas">
@@ -378,9 +275,9 @@ export default function RelatedMapModal({
                   places={[{ ...place, matchedName: displayName }]}
                   entities={entities}
                   thumbnailMarkers={thumbnailMarkers}
-                  ownedMarkers={relatedContent.markers}
-                  ownedConnections={relatedContent.connections}
-                  focus={relatedContent.markers.length ? null : place}
+                  ownedMarkers={visibleRelatedContent.markers}
+                  ownedConnections={visibleRelatedContent.connections}
+                  focus={visibleRelatedContent.markers.length ? null : place}
                   initialFitPoints={fitPoints}
                   selectedPlaceId={place.id}
                   showModernBorders={false}
@@ -400,23 +297,32 @@ export default function RelatedMapModal({
             <Button
               variant="outline-dark"
               onClick={() => {
+                const path = `/map?${appendSharedMapScope(
+                  fullMapParameters(place, displayName, radiusKm, types),
+                  scope,
+                ).toString()}`;
                 setShow(false);
-                navigate(
-                  `/map?${fullMapParameters(
-                    place,
-                    displayName,
-                    radius,
-                    types,
-                    sourceRoles,
-                    sourceFilters,
-                    eventFilters,
-                    contentQuery,
-                    includeDescendants,
-                  ).toString()}`,
-                );
+                navigate(path);
               }}
             >
               Open in Map
+            </Button>
+            <Button
+              variant="outline-dark"
+              onClick={() => {
+                const path = `/map?${appendSharedMapScope(
+                  fullMapParameters(place, displayName, radiusKm, types),
+                  scope,
+                ).toString()}`;
+                void navigator.clipboard?.writeText(`${window.location.origin}${path}`)
+                  .then(() => {
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 2500);
+                  })
+                  .catch(() => setCopied(false));
+              }}
+            >
+              {copied ? "Copied" : "Copy map link"}
             </Button>
           </Modal.Footer>
         )}
@@ -441,22 +347,11 @@ function entityPath(
   }
 }
 
-function toAstronomicalYear(value: HistoricalYearInput): number | undefined {
-  if (!value.year || !/^[1-9][0-9]*$/.test(value.year)) return undefined;
-  const year = Number(value.year);
-  return value.era === "BC" ? 1 - year : year;
-}
-
 function fullMapParameters(
   place: MapPlace,
   displayName: string,
   radius: number,
   types: MapEntityLocation["entityType"][],
-  sourceRoles: SourceLocationRole[],
-  sourceFilters: MapSourceFilters,
-  eventFilters: MapEventFilters,
-  contentQuery: string,
-  includeDescendants: boolean,
 ): URLSearchParams {
   return new URLSearchParams({
     placeId: place.id,
@@ -465,25 +360,5 @@ function fullMapParameters(
     lng: String(place.longitude),
     radiusKm: String(radius),
     types: types.length === 0 ? "none" : types.length === entityTypes.length ? "all" : types.join(","),
-    sourceRoles: sourceRoles.length ? sourceRoles.join(",") : "all",
-    ...(contentQuery.trim() ? { content: contentQuery.trim() } : {}),
-    ...(includeDescendants ? { descendants: "true" } : {}),
-    ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
-    ...(sourceFilters.classifications?.length
-      ? { sourceClassification: sourceFilters.classifications[0] }
-      : {}),
-    ...(sourceFilters.types?.length ? { sourceType: sourceFilters.types[0] } : {}),
-    ...(sourceFilters.from !== undefined
-      ? { sourceFrom: String(sourceFilters.from) }
-      : {}),
-    ...(sourceFilters.to !== undefined ? { sourceTo: String(sourceFilters.to) } : {}),
-    ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
-    ...(eventFilters.locationRoles?.length
-      ? { eventRoles: eventFilters.locationRoles.join(",") }
-      : {}),
-    ...(eventFilters.from !== undefined
-      ? { eventFrom: String(eventFilters.from) }
-      : {}),
-    ...(eventFilters.to !== undefined ? { eventTo: String(eventFilters.to) } : {}),
   });
 }

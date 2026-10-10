@@ -1,4 +1,9 @@
-import { getParticipants, getProfileClubs, type Club } from "../club/clubApi";
+import {
+  getClub,
+  getParticipants,
+  getProfileClubs,
+  type Club,
+} from "../club/clubApi";
 import {
   getSource,
   getSourceImages,
@@ -10,10 +15,12 @@ import {
   getClubProfiles,
   getProfileAvatar,
   getUserProfileByUserId,
+  fetchProfileById,
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import type { Profile } from "../profile/profileTypes";
 import { getMapPlace, type MapPlace } from "./mapApi";
+import type { SharedMapScope } from "./sharedMapScope";
 
 export type OwnedMapMarker = {
   key: string;
@@ -111,6 +118,45 @@ export async function loadClubRelatedMapContent(
       new Map(),
     ),
   };
+}
+
+/** A source page has no private relationship expansion: its public slice is
+ * simply every approved location carried by that source (discovery and/or
+ * holding). Keeping this as an overlay makes it use the same marker code as
+ * the profile and club share links. */
+export async function loadSourceRelatedMapContent(
+  source: LibrarySource,
+): Promise<OwnedMapContent> {
+  const resolvePlace = placeResolver();
+  const markers = await sourceMapMarkers(
+    [source.id],
+    resolvePlace,
+    sourceImageResolver(),
+  );
+  return { markers, connections: [] };
+}
+
+/** Resolve a URL-addressable public page slice. Do not substitute the viewer
+ * here: a copied URL must show the same resource graph to every recipient. */
+export async function loadSharedMapScope(
+  scope: SharedMapScope,
+): Promise<OwnedMapContent> {
+  switch (scope.type) {
+    case "PROFILE": {
+      const profile = await profileById(scope.id);
+      return profile ? loadProfileRelatedMapContent(profile) : emptyMapContent();
+    }
+    case "CLUB": {
+      const club = await getClub(scope.id).catch(() => null);
+      return club ? loadClubRelatedMapContent(club) : emptyMapContent();
+    }
+    case "SOURCE": {
+      const result = await getSource(scope.id).catch(() => null);
+      return result?.ok && result.data
+        ? loadSourceRelatedMapContent(result.data)
+        : emptyMapContent();
+    }
+  }
 }
 
 /**
@@ -493,6 +539,20 @@ function profileLabel(profile: Profile): string {
     .filter((value): value is string => Boolean(value?.trim()))
     .join(" ");
   return profile.nickName?.trim() || fullName || "Unnamed profile";
+}
+
+function emptyMapContent(): OwnedMapContent {
+  return { markers: [], connections: [] };
+}
+
+function profileById(id: string): Promise<Profile | null> {
+  return new Promise((resolve) => {
+    fetchProfileById(id, {
+      onSuccess: resolve,
+      onMissing: () => resolve(null),
+      onError: () => resolve(null),
+    });
+  });
 }
 
 function uniqueById<T extends { id: string | number }>(values: T[]): T[] {

@@ -82,6 +82,7 @@ export default function ClubFieldsPanel({
         onChange={onLocationChange}
         status={statuses.location}
         loadRelatedMapContent={() => loadClubRelatedMapContent(club)}
+        relatedMapScope={{ type: "CLUB", id: String(club.id) }}
       />
       <EditableTextFieldRow
         label="Contact email"

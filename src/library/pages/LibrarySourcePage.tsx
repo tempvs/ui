@@ -786,6 +786,7 @@ export default function LibrarySourcePage() {
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
+                relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
               <PlacePickerField
                 label="Held at"
@@ -801,6 +802,7 @@ export default function LibrarySourcePage() {
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
+                relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
             </div>
           </div>

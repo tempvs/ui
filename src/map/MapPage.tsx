@@ -23,10 +23,12 @@ import {
 import MapCanvas, { entityKey } from "./MapCanvas";
 import MapEntityFilterControls from "./MapEntityFilterControls";
 import {
+  loadSharedMapScope,
   loadOwnedMapContent,
   type OwnedMapConnection,
   type OwnedMapMarker,
 } from "./ownedMapContent";
+import { parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
 import MapRoleRequestModal from "./MapRoleRequestModal";
 import { matchingPlaceName } from "./placeNames";
@@ -117,6 +119,7 @@ export default function MapPage() {
     useState<MapPlaceProposalRecord | null>(null);
   const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
   const suggestionRequest = useRef(0);
+  const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -142,12 +145,33 @@ export default function MapPage() {
     };
   }, [viewer]);
 
-  // Opening the Map from the horizontal navigation should be useful even
-  // before a search: show the signed-in person's profiles, their club
-  // memberships, and sources used by their club profiles. This is a private
-  // overlay assembled in the browser, not a new public discovery endpoint.
+  // A URL scope is a public page graph and wins over the recipient's private
+  // "my map" overlay. Without this branch, opening a club/profile share URL
+  // would silently replace the page-specific markers with the viewer's data.
   useEffect(() => {
     let active = true;
+    if (sharedScope) {
+      setOwnedMarkers([]);
+      setOwnedConnections([]);
+      void loadSharedMapScope(sharedScope)
+        .then((content) => {
+          if (!active) return;
+          setOwnedMarkers(content.markers);
+          setOwnedConnections(content.connections);
+        })
+        .catch(() => {
+          if (active) {
+            setOwnedMarkers([]);
+            setOwnedConnections([]);
+          }
+        });
+      return () => {
+        active = false;
+      };
+    }
+    // Opening the Map from horizontal navigation should be useful even before
+    // a search: show the signed-in person's own graph. This is deliberately
+    // separate from public, URL-addressable page slices above.
     if (!viewer) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
@@ -176,7 +200,7 @@ export default function MapPage() {
     return () => {
       active = false;
     };
-  }, [viewer]);
+  }, [sharedScope, viewer]);
 
   const canReviewPlaces = viewer?.roles.some(
     (role) =>

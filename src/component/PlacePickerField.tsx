@@ -12,6 +12,7 @@ import MapCanvas from "../map/MapCanvas";
 import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
 import type { OwnedMapContent } from "../map/ownedMapContent";
+import type { SharedMapScope } from "../map/sharedMapScope";
 
 type PlacePickerFieldProps = {
   label: React.ReactNode;
@@ -27,6 +28,7 @@ type PlacePickerFieldProps = {
   fieldMaxWidth?: string;
   /** Optional bounded relationship overlay for this page's location globe. */
   loadRelatedMapContent?: () => Promise<OwnedMapContent>;
+  relatedMapScope?: SharedMapScope;
 };
 
 const MarkerIcon = FaMapMarkerAlt as React.ComponentType<{
@@ -81,6 +83,7 @@ export default function PlacePickerField({
   labelWidth = "7rem",
   fieldMaxWidth = "16rem",
   loadRelatedMapContent,
+  relatedMapScope,
 }: PlacePickerFieldProps) {
   const [show, setShow] = useState(false);
   const [query, setQuery] = useState("");
@@ -221,6 +224,7 @@ export default function PlacePickerField({
                   placeId={value.id}
                   displayName={value.canonicalName}
                   loadRelatedMapContent={loadRelatedMapContent}
+                  scope={relatedMapScope}
                 />
               </span>
             ) : (
@@ -248,6 +252,7 @@ export default function PlacePickerField({
               placeId={value.id}
               displayName={value.canonicalName}
               loadRelatedMapContent={loadRelatedMapContent}
+              scope={relatedMapScope}
             />
           )}
         </div>

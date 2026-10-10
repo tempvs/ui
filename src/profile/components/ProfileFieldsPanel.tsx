@@ -132,6 +132,11 @@ export default function ProfileFieldsPanel({
             ? () => loadProfileRelatedMapContent(relatedMapProfile)
             : undefined
         }
+        relatedMapScope={
+          relatedMapProfile
+            ? { type: "PROFILE", id: String(relatedMapProfile.id) }
+            : undefined
+        }
       />
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}

@@ -94,31 +94,17 @@ test("renders bounded nearby entities with their batched thumbnails", async () =
     expect.objectContaining({ signal: expect.any(AbortSignal) }),
   );
 
-  fireEvent.change(screen.getByLabelText("Related-map radius"), {
-    target: { value: "100" },
-  });
+  expect(screen.getByLabelText("Nearby public content (25 km)")).toBeChecked();
+  fireEvent.click(screen.getByLabelText("Nearby public content (25 km)"));
   await waitFor(() =>
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("radiusKm=100"),
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    ),
-  );
-  fireEvent.change(screen.getByLabelText("Filter related-map content"), {
-    target: { value: "legion" },
-  });
-  fireEvent.click(screen.getByLabelText("Include child places"));
-  await waitFor(() =>
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "search=legion&parentPlaceId=seed%3Arome",
-      ),
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    expect(screen.getByTestId("related-map-canvas")).not.toHaveTextContent(
+      "A profile",
     ),
   );
   fetchMock.mockRestore();
 });
 
-test("opens the full map with the compact map's selected public layers", async () => {
+test("opens a stable profile slice instead of the recipient's my-map overlay", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
     const url = String(input);
     if (url.includes("/api/map/places/seed%3Arome")) {
@@ -146,28 +132,27 @@ test("opens the full map with the compact map's selected public layers", async (
 
   render(
     <MemoryRouter>
-      <RelatedMapModal placeId="seed:rome" displayName="Roma" />
+      <RelatedMapModal
+        placeId="seed:rome"
+        displayName="Roma"
+        scope={{ type: "PROFILE", id: "profile-1" }}
+      />
       <SearchLocation />
     </MemoryRouter>,
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Open related map for Roma" }));
   await screen.findByRole("button", { name: "Open in Map" });
-  fireEvent.click(screen.getByLabelText("Profile"));
-  fireEvent.click(screen.getByLabelText("Club"));
-  fireEvent.click(screen.getByLabelText("Source"));
-  fireEvent.change(screen.getByLabelText("Filter related-map content"), {
-    target: { value: "legion" },
-  });
-  fireEvent.click(screen.getByLabelText("Include child places"));
+  fireEvent.click(screen.getByLabelText("Profiles"));
+  fireEvent.click(screen.getByLabelText("Clubs"));
+  fireEvent.click(screen.getByLabelText("Sources"));
   fireEvent.click(screen.getByRole("button", { name: "Open in Map" }));
 
   expect(screen.getByTestId("map-location")).toHaveTextContent(
     "placeId=seed%3Arome",
   );
   expect(screen.getByTestId("map-location")).toHaveTextContent("types=EVENT");
-  expect(screen.getByTestId("map-location")).toHaveTextContent("sourceRoles=all");
-  expect(screen.getByTestId("map-location")).toHaveTextContent("content=legion");
-  expect(screen.getByTestId("map-location")).toHaveTextContent("descendants=true");
+  expect(screen.getByTestId("map-location")).toHaveTextContent("scope=PROFILE");
+  expect(screen.getByTestId("map-location")).toHaveTextContent("scopeId=profile-1");
   fetchMock.mockRestore();
 });
