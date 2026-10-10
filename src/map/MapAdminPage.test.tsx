@@ -14,12 +14,17 @@ jest.mock("../auth/viewerApi", () => ({
 
 jest.mock("./mapApi", () => ({
   approveMapPlace: jest.fn(),
+  approveMapRoleRequest: jest.fn(),
   commentOnMapPlaceProposal: jest.fn(),
   findLikelyDuplicateMapPlaces: jest.fn().mockResolvedValue([]),
   listMapPlaceProposalActivity: jest.fn(),
+  listMapRoleMembers: jest.fn(),
+  listPendingMapRoleRequests: jest.fn(),
   listPendingMapPlaces: jest.fn(),
   mergeMapPlace: jest.fn(),
   rejectMapPlace: jest.fn(),
+  rejectMapRoleRequest: jest.fn(),
+  removeMapMemberRole: jest.fn(),
   requestMapPlaceChanges: jest.fn(),
 }));
 
@@ -34,8 +39,11 @@ import {
   commentOnMapPlaceProposal,
   findLikelyDuplicateMapPlaces,
   listMapPlaceProposalActivity,
+  listMapRoleMembers,
+  listPendingMapRoleRequests,
   listPendingMapPlaces,
   requestMapPlaceChanges,
+  removeMapMemberRole,
 } from "./mapApi";
 import MapAdminPage from "./MapAdminPage";
 
@@ -59,6 +67,15 @@ const commentOnProposalMock = commentOnMapPlaceProposal as jest.MockedFunction<
 const listActivityMock = listMapPlaceProposalActivity as jest.MockedFunction<
   typeof listMapPlaceProposalActivity
 >;
+const listRoleRequestsMock = listPendingMapRoleRequests as jest.MockedFunction<
+  typeof listPendingMapRoleRequests
+>;
+const listRoleMembersMock = listMapRoleMembers as jest.MockedFunction<
+  typeof listMapRoleMembers
+>;
+const removeMapMemberRoleMock = removeMapMemberRole as jest.MockedFunction<
+  typeof removeMapMemberRole
+>;
 
 const proposal = {
   id: "tempvs:proposal-1",
@@ -76,6 +93,8 @@ beforeEach(() => {
   listPendingMock.mockResolvedValue({ items: [proposal] });
   findLikelyDuplicatesMock.mockResolvedValue([]);
   listActivityMock.mockResolvedValue([]);
+  listRoleRequestsMock.mockResolvedValue({ items: [] });
+  listRoleMembersMock.mockResolvedValue([]);
 });
 
 test("lets a map reviewer inspect but not decide proposals", async () => {
@@ -185,4 +204,65 @@ test("records a private reviewer comment in the proposal discussion", async () =
     ),
   );
   expect(await screen.findByText("Please add a citation.")).toBeInTheDocument();
+});
+
+test("paginates Map role requests and confirms operational-role removal", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "map-admin-1",
+    roles: ["MAP_ADMIN"],
+  });
+  listRoleRequestsMock
+    .mockResolvedValueOnce({
+      items: [
+        {
+          id: "role-request-1",
+          userId: "user-1",
+          role: "MAP_REVIEWER",
+          status: "PENDING",
+          createdAt: "2026-10-10T12:00:00.000Z",
+          updatedAt: "2026-10-10T12:00:00.000Z",
+        },
+      ],
+      nextCursor: "next-page",
+    })
+    .mockResolvedValueOnce({
+      items: [
+        {
+          id: "role-request-2",
+          userId: "user-2",
+          role: "MAP_EDITOR",
+          status: "PENDING",
+          createdAt: "2026-10-10T12:01:00.000Z",
+          updatedAt: "2026-10-10T12:01:00.000Z",
+        },
+      ],
+    });
+  listRoleMembersMock.mockResolvedValue([
+    {
+      userId: "member-1",
+      email: "member@example.test",
+      name: "Map Member",
+      roles: ["MAP_CONTRIBUTOR"],
+    },
+  ]);
+  removeMapMemberRoleMock.mockResolvedValue();
+  render(<MapAdminPage />);
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Load more requests" }),
+  );
+  await waitFor(() =>
+    expect(listRoleRequestsMock).toHaveBeenLastCalledWith("next-page"),
+  );
+  expect(await screen.findByText("user-2")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Remove Contributor" }));
+  expect(await screen.findByText("Remove Map role")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Remove role" }));
+  await waitFor(() =>
+    expect(removeMapMemberRoleMock).toHaveBeenCalledWith(
+      "member-1",
+      "MAP_CONTRIBUTOR",
+    ),
+  );
 });
