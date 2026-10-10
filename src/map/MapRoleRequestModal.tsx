@@ -3,6 +3,7 @@ import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
 import {
   listMyMapRoleRequests,
   requestMapRole,
+  withdrawMapRoleRequest,
   type MapRoleRequest,
 } from "./mapApi";
 
@@ -40,6 +41,7 @@ export default function MapRoleRequestModal({
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -65,6 +67,24 @@ export default function MapRoleRequestModal({
       setError((caught as Error).message || "Unable to request this role.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const withdraw = async (request: MapRoleRequest) => {
+    setWithdrawingId(request.id);
+    setError("");
+    try {
+      const withdrawn = await withdrawMapRoleRequest(request.id);
+      setRequests((current) =>
+        current.map((item) => (item.id === withdrawn.id ? withdrawn : item)),
+      );
+    } catch (caught) {
+      setError(
+        (caught as Error).message ||
+          "Unable to withdraw this Map role request.",
+      );
+    } finally {
+      setWithdrawingId(null);
     }
   };
 
@@ -111,13 +131,28 @@ export default function MapRoleRequestModal({
         ) : (
           <ul className="list-unstyled mb-0">
             {requests.map((request) => (
-              <li key={request.id} className="border-top py-2 small">
-                <strong>{formatRole(request.role)}</strong>
-                <span className="text-muted ms-2">
-                  {formatStatus(request.status)}
-                </span>
-                {request.decisionNote && (
-                  <div className="text-muted">{request.decisionNote}</div>
+              <li
+                key={request.id}
+                className="border-top py-2 small d-flex justify-content-between align-items-start gap-2"
+              >
+                <div>
+                  <strong>{formatRole(request.role)}</strong>
+                  <span className="text-muted ms-2">
+                    {formatStatus(request.status)}
+                  </span>
+                  {request.decisionNote && (
+                    <div className="text-muted">{request.decisionNote}</div>
+                  )}
+                </div>
+                {request.status === "PENDING" && (
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    disabled={withdrawingId === request.id}
+                    onClick={() => void withdraw(request)}
+                  >
+                    {withdrawingId === request.id ? "Withdrawing…" : "Withdraw"}
+                  </Button>
                 )}
               </li>
             ))}

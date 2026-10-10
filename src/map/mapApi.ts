@@ -111,7 +111,7 @@ export type MapRoleRequest = {
   id: string;
   userId: string;
   role: Exclude<MapRole, "MAP_ADMIN">;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
   createdAt: string;
   updatedAt: string;
   note?: string;
@@ -321,6 +321,19 @@ export async function listMyMapRoleRequests(): Promise<MapRoleRequest[]> {
   if (!response.ok) throw new Error("Unable to load Map role requests");
   const body = (await responseJson(response)) as { items?: unknown } | null;
   return Array.isArray(body?.items) ? (body?.items as MapRoleRequest[]) : [];
+}
+
+export async function withdrawMapRoleRequest(
+  id: string,
+): Promise<MapRoleRequest> {
+  const response = await fetch(
+    `/api/map/roles/requests/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+  if (response.status === 409)
+    throw new Error("This Map role request is already closed.");
+  if (!response.ok) throw new Error("Unable to withdraw this Map role request");
+  return (await responseJson(response)) as MapRoleRequest;
 }
 
 export async function listPendingMapRoleRequests(
