@@ -64,6 +64,8 @@ export default function RelatedMapModal({
   });
   const [error, setError] = useState("");
   const [radius, setRadius] = useState(radiusKm);
+  const [contentQuery, setContentQuery] = useState("");
+  const [includeDescendants, setIncludeDescendants] = useState(false);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(entityTypes);
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>([]);
@@ -179,11 +181,12 @@ export default function RelatedMapModal({
       place.longitude,
       radius,
       types,
-      undefined,
+      contentQuery,
       controller.signal,
       sourceRoles,
       sourceFilters,
       eventFilters,
+      includeDescendants ? place.id : undefined,
     )
       .then((nearby) => {
         if (!controller.signal.aborted) setEntities(nearby);
@@ -196,12 +199,14 @@ export default function RelatedMapModal({
   }, [
     eventFilters,
     hasInvalidFilterRange,
+    includeDescendants,
     place,
     radius,
     show,
     sourceFilters,
     sourceRoles,
     types,
+    contentQuery,
   ]);
 
   useEffect(() => {
@@ -313,6 +318,25 @@ export default function RelatedMapModal({
                     ))}
                   </Form.Select>
                 </Form.Group>
+                <Form.Group>
+                  <Form.Label className="small mb-1">Content</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={contentQuery}
+                    onChange={(event) => setContentQuery(event.target.value)}
+                    placeholder="Name or place"
+                    aria-label="Filter related-map content"
+                  />
+                </Form.Group>
+                <Form.Check
+                  id={`related-map-descendants-${place.id}`}
+                  className="mb-1"
+                  label="Include child places"
+                  checked={includeDescendants}
+                  onChange={(event) =>
+                    setIncludeDescendants(event.target.checked)
+                  }
+                />
                 <div className="related-map-filter-controls">
                   <MapEntityFilterControls
                     idPrefix={`related-map-${place.id}`}
@@ -343,7 +367,8 @@ export default function RelatedMapModal({
                 </div>
               </div>
               <p className="small text-muted">
-                Public content within {radius} km of this location.
+                Public content within {radius} km of this location
+                {includeDescendants ? " and its child places" : ""}.
                 {relatedContent.markers.length
                   ? ` This ${relatedContent.markers.length === 1 ? "related item is" : `${relatedContent.markers.length} related items are`} shown with connection lines.`
                   : ""}
@@ -385,6 +410,8 @@ export default function RelatedMapModal({
                     sourceRoles,
                     sourceFilters,
                     eventFilters,
+                    contentQuery,
+                    includeDescendants,
                   ).toString()}`,
                 );
               }}
@@ -428,6 +455,8 @@ function fullMapParameters(
   sourceRoles: SourceLocationRole[],
   sourceFilters: MapSourceFilters,
   eventFilters: MapEventFilters,
+  contentQuery: string,
+  includeDescendants: boolean,
 ): URLSearchParams {
   return new URLSearchParams({
     placeId: place.id,
@@ -437,6 +466,8 @@ function fullMapParameters(
     radiusKm: String(radius),
     types: types.length === 0 ? "none" : types.length === entityTypes.length ? "all" : types.join(","),
     sourceRoles: sourceRoles.length ? sourceRoles.join(",") : "all",
+    ...(contentQuery.trim() ? { content: contentQuery.trim() } : {}),
+    ...(includeDescendants ? { descendants: "true" } : {}),
     ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
     ...(sourceFilters.classifications?.length
       ? { sourceClassification: sourceFilters.classifications[0] }

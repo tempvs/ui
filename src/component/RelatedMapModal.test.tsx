@@ -103,6 +103,18 @@ test("renders bounded nearby entities with their batched thumbnails", async () =
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     ),
   );
+  fireEvent.change(screen.getByLabelText("Filter related-map content"), {
+    target: { value: "legion" },
+  });
+  fireEvent.click(screen.getByLabelText("Include child places"));
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "search=legion&parentPlaceId=seed%3Arome",
+      ),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ),
+  );
   fetchMock.mockRestore();
 });
 
@@ -144,6 +156,10 @@ test("opens the full map with the compact map's selected public layers", async (
   fireEvent.click(screen.getByLabelText("Profile"));
   fireEvent.click(screen.getByLabelText("Club"));
   fireEvent.click(screen.getByLabelText("Source"));
+  fireEvent.change(screen.getByLabelText("Filter related-map content"), {
+    target: { value: "legion" },
+  });
+  fireEvent.click(screen.getByLabelText("Include child places"));
   fireEvent.click(screen.getByRole("button", { name: "Open in Map" }));
 
   expect(screen.getByTestId("map-location")).toHaveTextContent(
@@ -151,5 +167,7 @@ test("opens the full map with the compact map's selected public layers", async (
   );
   expect(screen.getByTestId("map-location")).toHaveTextContent("types=EVENT");
   expect(screen.getByTestId("map-location")).toHaveTextContent("sourceRoles=all");
+  expect(screen.getByTestId("map-location")).toHaveTextContent("content=legion");
+  expect(screen.getByTestId("map-location")).toHaveTextContent("descendants=true");
   fetchMock.mockRestore();
 });
