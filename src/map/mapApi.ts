@@ -76,6 +76,7 @@ export type MapSourceFilters = {
   to?: number;
 };
 export type MapEventFilters = {
+  locationRoles?: Array<"VENUE" | "HISTORICAL_SITE">;
   period?: string;
   from?: number;
   to?: number;
@@ -622,6 +623,9 @@ export async function nearbyMapEntities(
         ? { sourceTo: String(sourceFilters.to) }
         : {}),
       ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
+      ...(eventFilters.locationRoles?.length
+        ? { eventRoles: eventFilters.locationRoles.join(",") }
+        : {}),
       ...(eventFilters.from !== undefined
         ? { eventFrom: String(eventFilters.from) }
         : {}),

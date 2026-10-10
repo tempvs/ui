@@ -32,6 +32,8 @@ type Props = {
   onEventFromChange: (value: HistoricalYearInput) => void;
   eventTo: HistoricalYearInput;
   onEventToChange: (value: HistoricalYearInput) => void;
+  eventRoles: Array<"VENUE" | "HISTORICAL_SITE">;
+  onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
   compact?: boolean;
 };
 
@@ -67,6 +69,8 @@ export default function MapEntityFilterControls({
   onEventFromChange,
   eventTo,
   onEventToChange,
+  eventRoles,
+  onEventRolesChange,
   compact = false,
 }: Props) {
   const groupClass = compact ? "mb-2" : undefined;
@@ -81,6 +85,12 @@ export default function MapEntityFilterControls({
       sourceRoles.includes(role)
         ? sourceRoles.filter((value) => value !== role)
         : [...sourceRoles, role],
+    );
+  const toggleEventRole = (role: "VENUE" | "HISTORICAL_SITE") =>
+    onEventRolesChange(
+      eventRoles.includes(role)
+        ? eventRoles.filter((value) => value !== role)
+        : [...eventRoles, role],
     );
 
   return (
@@ -186,6 +196,26 @@ export default function MapEntityFilterControls({
       )}
       {entityTypes.includes("EVENT") && (
         <>
+          <Form.Group className={groupClass}>
+            <Form.Label>Event place</Form.Label>
+            <div className="d-flex gap-2 flex-wrap">
+              {(
+                [
+                  ["VENUE", "Venue"],
+                  ["HISTORICAL_SITE", "Historical site"],
+                ] as const
+              ).map(([role, label]) => (
+                <Form.Check
+                  inline
+                  key={role}
+                  id={`${idPrefix}-event-role-${role}`}
+                  label={label}
+                  checked={eventRoles.includes(role)}
+                  onChange={() => toggleEventRole(role)}
+                />
+              ))}
+            </div>
+          </Form.Group>
           <Form.Group className={groupClass}>
             <Form.Label>Event period</Form.Label>
             <Form.Select

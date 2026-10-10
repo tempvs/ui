@@ -79,6 +79,9 @@ export default function MapPage() {
     parseHistoricalYear(params.get("sourceTo")),
   );
   const [eventPeriod, setEventPeriod] = useState(params.get("eventPeriod") || "");
+  const [eventRoles, setEventRoles] = useState<
+    Array<"VENUE" | "HISTORICAL_SITE">
+  >(() => parseEventRoles(params.get("eventRoles")));
   const [eventFrom, setEventFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("eventFrom")),
   );
@@ -193,6 +196,7 @@ export default function MapPage() {
       : {}),
   };
   const eventFilters: MapEventFilters = {
+    ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
     ...(eventPeriod ? { period: eventPeriod } : {}),
     ...(toAstronomicalYear(eventFrom) !== undefined
       ? { from: toAstronomicalYear(eventFrom) }
@@ -576,6 +580,8 @@ export default function MapPage() {
             onEventFromChange={setEventFrom}
             eventTo={eventTo}
             onEventToChange={setEventTo}
+            eventRoles={eventRoles}
+            onEventRolesChange={setEventRoles}
           />
           <Form.Check
             id="map-modern-borders"
@@ -954,9 +960,24 @@ function appendEventFilters(
   parameters: URLSearchParams,
   filters: MapEventFilters,
 ): void {
+  if (filters.locationRoles?.length)
+    parameters.set("eventRoles", filters.locationRoles.join(","));
   if (filters.period) parameters.set("eventPeriod", filters.period);
   if (filters.from !== undefined) parameters.set("eventFrom", String(filters.from));
   if (filters.to !== undefined) parameters.set("eventTo", String(filters.to));
+}
+
+function parseEventRoles(
+  value: string | null,
+): Array<"VENUE" | "HISTORICAL_SITE"> {
+  if (value === null || value === "all") return [];
+  return value
+    .split(",")
+    .filter(
+      (role): role is "VENUE" | "HISTORICAL_SITE" =>
+        role === "VENUE" || role === "HISTORICAL_SITE",
+    )
+    .filter((role, index, all) => all.indexOf(role) === index);
 }
 
 function parseHistoricalYear(value: string | null): HistoricalYearInput {

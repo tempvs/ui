@@ -78,6 +78,9 @@ export default function RelatedMapModal({
     era: "AD",
   });
   const [eventPeriod, setEventPeriod] = useState("");
+  const [eventRoles, setEventRoles] = useState<
+    Array<"VENUE" | "HISTORICAL_SITE">
+  >([]);
   const [eventFrom, setEventFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -144,6 +147,7 @@ export default function RelatedMapModal({
   );
   const eventFilters: MapEventFilters = useMemo(
     () => ({
+      ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
       ...(eventPeriod ? { period: eventPeriod } : {}),
       ...(toAstronomicalYear(eventFrom) !== undefined
         ? { from: toAstronomicalYear(eventFrom) }
@@ -152,7 +156,7 @@ export default function RelatedMapModal({
         ? { to: toAstronomicalYear(eventTo) }
         : {}),
     }),
-    [eventFrom, eventPeriod, eventTo],
+    [eventFrom, eventPeriod, eventRoles, eventTo],
   );
   const hasInvalidFilterRange =
     !isValidHistoricalRange(sourceFrom, sourceTo) ||
@@ -345,6 +349,8 @@ export default function RelatedMapModal({
                     onEventFromChange={setEventFrom}
                     eventTo={eventTo}
                     onEventToChange={setEventTo}
+                    eventRoles={eventRoles}
+                    onEventRolesChange={setEventRoles}
                   />
                 </div>
               </div>
@@ -453,6 +459,9 @@ function fullMapParameters(
       : {}),
     ...(sourceFilters.to !== undefined ? { sourceTo: String(sourceFilters.to) } : {}),
     ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
+    ...(eventFilters.locationRoles?.length
+      ? { eventRoles: eventFilters.locationRoles.join(",") }
+      : {}),
     ...(eventFilters.from !== undefined
       ? { eventFrom: String(eventFilters.from) }
       : {}),
