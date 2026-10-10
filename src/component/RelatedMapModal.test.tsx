@@ -94,8 +94,8 @@ test("renders bounded nearby entities with their batched thumbnails", async () =
     expect.objectContaining({ signal: expect.any(AbortSignal) }),
   );
 
-  expect(screen.getByLabelText("Nearby public content (25 km)")).toBeChecked();
-  fireEvent.click(screen.getByLabelText("Nearby public content (25 km)"));
+  expect(screen.getByLabelText("Nearby public content")).toBeChecked();
+  fireEvent.click(screen.getByLabelText("Nearby public content"));
   await waitFor(() =>
     expect(screen.getByTestId("related-map-canvas")).not.toHaveTextContent(
       "A profile",
@@ -143,15 +143,16 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
 
   fireEvent.click(screen.getByRole("button", { name: "Open related map for Roma" }));
   await screen.findByRole("button", { name: "Open in Map" });
-  fireEvent.click(screen.getByLabelText("Profiles"));
-  fireEvent.click(screen.getByLabelText("Clubs"));
-  fireEvent.click(screen.getByLabelText("Sources"));
+  expect(screen.queryByLabelText("Profiles")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Clubs")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Events")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Sources")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open in Map" }));
 
   expect(screen.getByTestId("map-location")).toHaveTextContent(
     "placeId=seed%3Arome",
   );
-  expect(screen.getByTestId("map-location")).toHaveTextContent("types=EVENT");
+  expect(screen.getByTestId("map-location")).not.toHaveTextContent("types=");
   expect(screen.getByTestId("map-location")).toHaveTextContent("scope=PROFILE");
   expect(screen.getByTestId("map-location")).toHaveTextContent("scopeId=profile-1");
   fetchMock.mockRestore();

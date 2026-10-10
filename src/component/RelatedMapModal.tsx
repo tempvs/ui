@@ -33,12 +33,6 @@ type RelatedMapModalProps = {
 const GlobeIcon = FaGlobeAmericas as React.ComponentType<{
   className?: string;
 }>;
-const entityTypes: MapEntityLocation["entityType"][] = [
-  "PROFILE",
-  "CLUB",
-  "EVENT",
-  "SOURCE",
-];
 
 /**
  * Shared entry point from location fields. A place remains the focus, while
@@ -61,8 +55,6 @@ export default function RelatedMapModal({
     connections: [],
   });
   const [error, setError] = useState("");
-  const [types, setTypes] =
-    useState<MapEntityLocation["entityType"][]>(entityTypes);
   const [showNearby, setShowNearby] = useState(true);
   const [showRelated, setShowRelated] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -108,7 +100,7 @@ export default function RelatedMapModal({
 
   useEffect(() => {
     if (!show || !place) return undefined;
-    if (!showNearby || !types.length) {
+    if (!showNearby) {
       setEntities([]);
       return undefined;
     }
@@ -117,7 +109,7 @@ export default function RelatedMapModal({
       place.latitude,
       place.longitude,
       radiusKm,
-      types,
+      [],
       "",
       controller.signal,
     )
@@ -134,7 +126,6 @@ export default function RelatedMapModal({
     radiusKm,
     show,
     showNearby,
-    types,
   ]);
 
   useEffect(() => {
@@ -233,10 +224,9 @@ export default function RelatedMapModal({
           {place && (
             <>
               <div className="d-flex align-items-center gap-3 flex-wrap mb-2">
-                <span className="small fw-semibold">Layers</span>
                 <Form.Check
                   id={`related-map-nearby-${place.id}`}
-                  label={`Nearby public content (${radiusKm} km)`}
+                  label="Nearby public content"
                   checked={showNearby}
                   onChange={(event) => setShowNearby(event.target.checked)}
                 />
@@ -248,21 +238,6 @@ export default function RelatedMapModal({
                     onChange={(event) => setShowRelated(event.target.checked)}
                   />
                 )}
-                {entityTypes.map((type) => (
-                  <Form.Check
-                    key={type}
-                    id={`related-map-type-${place.id}-${type}`}
-                    label={`${type[0]}${type.slice(1).toLowerCase()}s`}
-                    checked={types.includes(type)}
-                    onChange={(event) =>
-                      setTypes((current) =>
-                        event.target.checked
-                          ? [...current, type]
-                          : current.filter((value) => value !== type),
-                      )
-                    }
-                  />
-                ))}
               </div>
               <p className="small text-muted">
                 {showNearby ? `Public content within ${radiusKm} km of this location.` : "Nearby public content is hidden."}
@@ -298,7 +273,7 @@ export default function RelatedMapModal({
               variant="outline-dark"
               onClick={() => {
                 const path = `/map?${appendSharedMapScope(
-                  fullMapParameters(place, displayName, radiusKm, types),
+                  fullMapParameters(place, displayName, radiusKm),
                   scope,
                 ).toString()}`;
                 setShow(false);
@@ -311,7 +286,7 @@ export default function RelatedMapModal({
               variant="outline-dark"
               onClick={() => {
                 const path = `/map?${appendSharedMapScope(
-                  fullMapParameters(place, displayName, radiusKm, types),
+                  fullMapParameters(place, displayName, radiusKm),
                   scope,
                 ).toString()}`;
                 void navigator.clipboard?.writeText(`${window.location.origin}${path}`)
@@ -351,7 +326,6 @@ function fullMapParameters(
   place: MapPlace,
   displayName: string,
   radius: number,
-  types: MapEntityLocation["entityType"][],
 ): URLSearchParams {
   return new URLSearchParams({
     placeId: place.id,
@@ -359,6 +333,5 @@ function fullMapParameters(
     lat: String(place.latitude),
     lng: String(place.longitude),
     radiusKm: String(radius),
-    types: types.length === 0 ? "none" : types.length === entityTypes.length ? "all" : types.join(","),
   });
 }
