@@ -257,6 +257,8 @@ export default function EventPage() {
           to: current.to || null,
           venuePlaceId: current.venuePlaceId || null,
           venuePlaceName: current.venuePlaceName || null,
+          historicalSitePlaceId: current.historicalSitePlaceId || null,
+          historicalSitePlaceName: current.historicalSitePlaceName || null,
           schedule: current.schedule,
         },
         current.version,
@@ -284,6 +286,16 @@ export default function EventPage() {
       venuePlaceName: place?.matchedName || place?.canonicalName || null,
     });
     void saveField("venue");
+  };
+  const updateHistoricalSite = (place: MapPlace | null) => {
+    const current = eventRef.current;
+    if (!current) return;
+    replaceItem({
+      ...current,
+      historicalSitePlaceId: place?.id || null,
+      historicalSitePlaceName: place?.matchedName || place?.canonicalName || null,
+    });
+    void saveField("historicalSite");
   };
   const updateRange = (from: HistoricalYearInput, to: HistoricalYearInput) => {
     const current = eventRef.current;
@@ -389,6 +401,7 @@ export default function EventPage() {
               onRangeChange={updateRange}
               onRangeBlur={() => void saveField("periods")}
               onVenueChange={updateVenue}
+              onHistoricalSiteChange={updateHistoricalSite}
             />
             <PostPanel
               targetType="EVENT"

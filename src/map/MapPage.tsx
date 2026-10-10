@@ -904,6 +904,7 @@ function locationRoleLabel(entity: MapEntityLocation): string {
     CURRENT_RESIDENCE: "Residence",
     CLUB_ASSOCIATION: "Associated place",
     VENUE: "Venue",
+    HISTORICAL_SITE: "Historical site",
     DISCOVERED_AT: "Discovered at",
     HELD_AT: "Held at",
   }[entity.locationRole];

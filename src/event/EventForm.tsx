@@ -63,6 +63,17 @@ export default function EventForm({
         }
       : null,
   );
+  const [historicalSite, setHistoricalSite] = useState<Pick<
+    MapPlace,
+    "id" | "canonicalName" | "matchedName"
+  > | null>(
+    initial?.historicalSitePlaceId
+      ? {
+          id: initial.historicalSitePlaceId,
+          canonicalName: initial.historicalSitePlaceName || "",
+        }
+      : null,
+  );
   const [startsAt, setStartsAt] = useState(
     localInput(initial?.schedule.startsAt),
   );
@@ -115,6 +126,9 @@ export default function EventForm({
       periods,
       venuePlaceId: venue?.id || null,
       venuePlaceName: venue?.matchedName || venue?.canonicalName || null,
+      historicalSitePlaceId: historicalSite?.id || null,
+      historicalSitePlaceName:
+        historicalSite?.matchedName || historicalSite?.canonicalName || null,
       schedule,
     });
   };
@@ -179,6 +193,13 @@ export default function EventForm({
         value={venue}
         readOnlyLabel={initial?.venuePlaceName}
         onChange={setVenue}
+      />
+      <PlacePickerField
+        label="Historical site"
+        editable
+        value={historicalSite}
+        readOnlyLabel={initial?.historicalSitePlaceName}
+        onChange={setHistoricalSite}
       />
       <Form.Group className="mb-3">
         <Form.Label>Schedule</Form.Label>

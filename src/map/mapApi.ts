@@ -41,6 +41,7 @@ export type MapEntityLocation = {
     | "CURRENT_RESIDENCE"
     | "CLUB_ASSOCIATION"
     | "VENUE"
+    | "HISTORICAL_SITE"
     | "DISCOVERED_AT"
     | "HELD_AT";
   label: string;

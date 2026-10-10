@@ -23,7 +23,8 @@ export type EventField =
   | "frequency"
   | "interval"
   | "count"
-  | "venue";
+  | "venue"
+  | "historicalSite";
 
 type Props = {
   event: TempvsEvent;
@@ -34,6 +35,7 @@ type Props = {
   onRangeChange?: (from: HistoricalYearInput, to: HistoricalYearInput) => void;
   onRangeBlur?: () => void;
   onVenueChange?: (place: MapPlace | null) => void;
+  onHistoricalSiteChange?: (place: MapPlace | null) => void;
 };
 
 function localDateTimeInput(iso: string) {
@@ -56,6 +58,7 @@ export default function EventFieldsPanel({
   onRangeChange,
   onRangeBlur,
   onVenueChange,
+  onHistoricalSiteChange,
 }: Props) {
   const recurrence = event.schedule.recurrence;
   return (
@@ -132,6 +135,21 @@ export default function EventFieldsPanel({
         readOnlyLabel={event.venuePlaceName}
         onChange={(place) => onVenueChange?.(place)}
         status={statuses.venue}
+      />
+      <PlacePickerField
+        label="Historical site"
+        editable={editable}
+        value={
+          event.historicalSitePlaceId
+            ? {
+                id: event.historicalSitePlaceId,
+                canonicalName: event.historicalSitePlaceName || "",
+              }
+            : null
+        }
+        readOnlyLabel={event.historicalSitePlaceName}
+        onChange={(place) => onHistoricalSiteChange?.(place)}
+        status={statuses.historicalSite}
       />
       <EditableTextFieldRow
         label="Status"

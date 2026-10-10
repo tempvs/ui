@@ -63,6 +63,8 @@ export type TempvsEvent = {
   to?: { year: number; era: "BC" | "AD" } | null;
   venuePlaceId?: string | null;
   venuePlaceName?: string | null;
+  historicalSitePlaceId?: string | null;
+  historicalSitePlaceName?: string | null;
   schedule: EventSchedule;
   image: null | {
     id: string;
@@ -88,6 +90,8 @@ export type EventDraft = Pick<
   | "to"
   | "venuePlaceId"
   | "venuePlaceName"
+  | "historicalSitePlaceId"
+  | "historicalSitePlaceName"
   | "schedule"
 >;
 
