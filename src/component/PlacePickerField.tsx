@@ -94,6 +94,10 @@ export default function PlacePickerField({
   loadRelatedMapContent,
   relatedMapScope,
 }: PlacePickerFieldProps) {
+  // Callers commonly construct this value inline. Depend on its scalar values
+  // so the debounced lookup only restarts when a year actually changes.
+  const historicalFrom = historicalRange?.from;
+  const historicalTo = historicalRange?.to;
   const [show, setShow] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MapPlace[]>([]);
@@ -119,15 +123,23 @@ export default function PlacePickerField({
       return undefined;
     }
     const controller = new AbortController();
+    const searchHistoricalRange =
+      historicalFrom === undefined && historicalTo === undefined
+        ? undefined
+        : { from: historicalFrom, to: historicalTo };
     const timer = window.setTimeout(() => {
       setLoading(true);
       setFailed(false);
-      searchMapPlaces(query, controller.signal, historicalRange)
+      searchMapPlaces(query, controller.signal, searchHistoricalRange)
         .then((places) =>
           setResults(
             places.map((place) => ({
               ...place,
-              matchedName: matchingPlaceName(place, query, historicalRange),
+              matchedName: matchingPlaceName(
+                place,
+                query,
+                searchHistoricalRange,
+              ),
             })),
           ),
         )
@@ -140,7 +152,7 @@ export default function PlacePickerField({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [historicalRange?.from, historicalRange?.to, query, show]);
+  }, [historicalFrom, historicalTo, query, show]);
 
   useEffect(() => {
     if (!show) return;
