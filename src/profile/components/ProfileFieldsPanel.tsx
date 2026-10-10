@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 import EditableSelectFieldRow from "../../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../../component/EditableTextFieldRow";
@@ -133,6 +134,17 @@ export default function ProfileFieldsPanel({
             : undefined
         }
       />
+      {relatedMapProfile?.locationPlaceId && (
+        <div className="text-end mb-2">
+          <Link
+            className="small"
+            to={`/map/profile/${encodeURIComponent(relatedMapProfile.id)}`}
+            title="Open a shareable map of this profile's public relationships"
+          >
+            Open shareable map
+          </Link>
+        </div>
+      )}
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}
         editable={editable}

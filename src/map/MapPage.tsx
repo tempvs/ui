@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
+import { fetchProfileById } from "../profile/profileApi";
+import type { Profile } from "../profile/profileTypes";
 import PageLayout from "../component/PageLayout";
 import { CLASSIFICATIONS, PERIODS, TYPES } from "../library/libraryShared";
 import HistoricalRangeFilter, {
@@ -23,6 +25,7 @@ import {
 import MapCanvas, { entityKey } from "./MapCanvas";
 import {
   loadOwnedMapContent,
+  loadProfileRelatedMapContent,
   type OwnedMapConnection,
   type OwnedMapMarker,
 } from "./ownedMapContent";
@@ -41,7 +44,13 @@ const entityTypes: MapEntityLocation["entityType"][] = [
  * Public, keyboard-accessible discovery fallback. It persists its query in
  * the URL so a searched place can be shared before the tile-backed map lands.
  */
-export default function MapPage() {
+type MapPageProps = {
+  /** A stable public profile-map route. It must never load the visitor's
+   * private account map alongside the shared profile's relationships. */
+  profileId?: string;
+};
+
+export default function MapPage({ profileId }: MapPageProps) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [query, setQuery] = useState(params.get("q") || "");
@@ -89,6 +98,8 @@ export default function MapPage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [sharedProfile, setSharedProfile] = useState<Profile | null>(null);
+  const [sharedProfileLoading, setSharedProfileLoading] = useState(Boolean(profileId));
   const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
@@ -105,6 +116,38 @@ export default function MapPage() {
   useEffect(() => {
     void getViewer().then(setViewer);
   }, []);
+
+  useEffect(() => {
+    if (!profileId) {
+      setSharedProfile(null);
+      setSharedProfileLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setError("");
+    setSharedProfile(null);
+    setSharedProfileLoading(true);
+    fetchProfileById(profileId, {
+      onSuccess: (profile) => {
+        if (!active) return;
+        setSharedProfile(profile);
+        setSharedProfileLoading(false);
+      },
+      onMissing: () => {
+        if (!active) return;
+        setError("This profile is no longer available.");
+        setSharedProfileLoading(false);
+      },
+      onError: () => {
+        if (!active) return;
+        setError("Unable to load this profile map.");
+        setSharedProfileLoading(false);
+      },
+    });
+    return () => {
+      active = false;
+    };
+  }, [profileId]);
 
   // Active proposals are a private author view. They are deliberately fetched
   // only after identity is known and never folded into public map results.
@@ -132,20 +175,33 @@ export default function MapPage() {
   // overlay assembled in the browser, not a new public discovery endpoint.
   useEffect(() => {
     let active = true;
-    if (!viewer) {
+    if (profileId && !sharedProfile) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
       return () => {
         active = false;
       };
     }
-    void loadOwnedMapContent(viewer.userId, (content) => {
-      if (!active) return;
-      setOwnedMarkers(content.markers);
-      setOwnedConnections(content.connections);
-    })
+    if (!profileId && !viewer) {
+      setOwnedMarkers([]);
+      setOwnedConnections([]);
+      return () => {
+        active = false;
+      };
+    }
+    const load = sharedProfile
+      ? loadProfileRelatedMapContent(sharedProfile)
+      : loadOwnedMapContent(viewer!.userId, (content) => {
+          if (!active) return;
+          setOwnedMarkers(content.markers);
+          setOwnedConnections(content.connections);
+        });
+    // A relation overlay is optional. Treat an unexpectedly unavailable
+    // loader exactly like a failed optional relation read instead of letting
+    // the public map itself crash.
+    void Promise.resolve(load)
       .then((content) => {
-        if (!active) return;
+        if (!active || !content) return;
         setOwnedMarkers(content.markers);
         setOwnedConnections(content.connections);
       })
@@ -160,7 +216,12 @@ export default function MapPage() {
     return () => {
       active = false;
     };
-  }, [viewer]);
+  }, [profileId, sharedProfile, viewer]);
+
+  const sharedProfileLabel = sharedProfile
+    ? profileDisplayName(sharedProfile)
+    : "Profile";
+  const mapTitle = profileId ? `${sharedProfileLabel}'s map` : "Map";
 
   const canReviewPlaces = viewer?.roles.some(
     (role) =>
@@ -433,9 +494,12 @@ export default function MapPage() {
   }, [entities, items, latitude, longitude, selectedEntityKey]);
 
   return (
-    <PageLayout className="map-page" header={{ title: "Map" }}>
+    <PageLayout className="map-page" header={{ title: mapTitle }}>
       <section className="club-panel" aria-label="Map place search">
-        <h1>Place discovery</h1>
+        <h1>{profileId ? `Map of ${sharedProfileLabel}` : "Place discovery"}</h1>
+        {profileId && sharedProfileLoading && (
+          <p className="text-muted" role="status">Loading profile mapâ€¦</p>
+        )}
         <p className="text-muted">
           Search approved places by name, or browse a bounded radius around
           coordinates.
@@ -1041,4 +1105,13 @@ function formatDistance(distance: number): string {
   return distance < 1
     ? `${Math.round(distance * 1000)} m away`
     : `${distance.toFixed(distance < 10 ? 1 : 0)} km away`;
+}
+
+function profileDisplayName(profile: Profile): string {
+  return (
+    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+    profile.nickName ||
+    profile.alias ||
+    "Profile"
+  );
 }
