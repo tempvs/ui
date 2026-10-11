@@ -104,20 +104,24 @@ export default function EventPage() {
         item.adminProfileIds.includes(String(profile.id)),
     ),
   );
+  const restrictedVenueEventId =
+    item?.venueVisibility === "PARTICIPANTS" ? item.id : null;
   useEffect(() => {
-    if (!item || item.venueVisibility !== "PARTICIPANTS") return;
+    if (!restrictedVenueEventId) return;
     let active = true;
-    void getRestrictedEventVenue(item.id)
+    void getRestrictedEventVenue(restrictedVenueEventId)
       .then((venue) => {
         if (!active) return;
-        replaceItem({ ...item, ...venue });
+        const current = eventRef.current;
+        if (current?.id === restrictedVenueEventId)
+          replaceItem({ ...current, ...venue });
       })
       // Public visitors intentionally cannot discover a restricted venue.
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [item?.id, item?.venueVisibility]);
+  }, [restrictedVenueEventId]);
   const occurrence = item?.upcomingOccurrences?.[0];
   const applicantProfiles = useMemo(
     () => ownedProfiles.filter((profile) => profile.type === "CLUB"),
