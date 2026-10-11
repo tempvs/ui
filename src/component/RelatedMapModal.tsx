@@ -285,9 +285,13 @@ export default function RelatedMapModal({
             <Button
               variant="outline-dark"
               onClick={() => {
-                const path = `/map?${appendSharedMapScope(
-                  fullMapParameters(place, displayName, radiusKm),
-                  scope,
+                // Stored content must never inherit this page's relationship
+                // scope. Copy a bounded public viewport that can safely be
+                // pasted into a post or chat composer instead.
+                const path = `/map?${fullMapParameters(
+                  place,
+                  displayName,
+                  radiusKm,
                 ).toString()}`;
                 void navigator.clipboard?.writeText(`${window.location.origin}${path}`)
                   .then(() => {
@@ -297,7 +301,7 @@ export default function RelatedMapModal({
                   .catch(() => setCopied(false));
               }}
             >
-              {copied ? "Copied" : "Copy map link"}
+              {copied ? "Copied" : "Copy public map link"}
             </Button>
           </Modal.Footer>
         )}
