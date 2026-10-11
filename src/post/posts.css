@@ -1,19 +1,135 @@
-.post-panel { background: #fff; border: 1px solid #ddd8d0; border-radius: .65rem; padding: 1.5rem; margin-bottom: 1.25rem; text-align: left; }
-.post-panel h2 { font-size: 1.4rem; }
-.post-composer { resize: none; }
-.post-composer-wrap, .post-edit-wrap { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
-.post-composer-actions { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
-.post-author-select { display: flex; align-items: center; gap: .4rem; margin: 0; color: #584732; font-size: .86rem; white-space: nowrap; min-width: 0; }
-.post-author-select .profile-picker { width: min(14rem, calc(100vw - 10rem)); }
-.post-author-select .profile-picker-toggle.btn { min-height: 2rem; padding: .2rem .5rem; font-size: .86rem; }
-.post-author-select .profile-picker-label { max-width: 14rem; }
-.post-edit-controls { display: flex; gap: .4rem; }
-.post-entry { background: #fff; border: 1px solid rgba(107, 89, 61, .22); border-radius: .65rem; padding: 1rem; position: relative; overflow-wrap: anywhere; text-align: left; }
-.post-entry-header { min-height: 2rem; padding-right: 4.25rem; }
-.post-author { display: inline-flex; align-items: center; gap: .45rem; color: #584732; font-size: 1.05rem; font-weight: 600; text-decoration: none; }
-.post-author .profile-thumbnail-link-image { width: 3rem; height: 3rem; flex: 0 0 3rem; border-radius: 50%; object-fit: cover; }
-.post-author-unavailable { color: #6c757d; font-size: .86rem; }
-.post-entry-controls { position: absolute; top: 1rem; right: .75rem; display: flex; gap: .35rem; }
-.post-entry-content { font-size: 1.05rem; line-height: 1.55; margin-top: .65rem; white-space: pre-wrap; text-align: left; }
-.post-entry-meta { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
-.post-edited { color: #6c757d; font-size: .75rem; }
+.post-panel {
+  background: #fff;
+  border: 1px solid #ddd8d0;
+  border-radius: 0.65rem;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+.post-panel h2 {
+  font-size: 1.4rem;
+}
+.post-composer {
+  resize: none;
+}
+.post-composer-wrap,
+.post-edit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.post-composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.post-author-select {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: #584732;
+  font-size: 0.86rem;
+  white-space: nowrap;
+  min-width: 0;
+}
+.post-author-select .profile-picker {
+  width: min(14rem, calc(100vw - 10rem));
+}
+.post-author-select .profile-picker-toggle.btn {
+  min-height: 2rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.86rem;
+}
+.post-author-select .profile-picker-label {
+  max-width: 14rem;
+}
+.post-edit-controls {
+  display: flex;
+  gap: 0.4rem;
+}
+.post-entry {
+  background: #fff;
+  border: 1px solid rgba(107, 89, 61, 0.22);
+  border-radius: 0.65rem;
+  padding: 1rem;
+  position: relative;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.post-entry-header {
+  min-height: 2rem;
+  padding-right: 4.25rem;
+}
+.post-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #584732;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.post-author .profile-thumbnail-link-image {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.post-author-unavailable {
+  color: #6c757d;
+  font-size: 0.86rem;
+}
+.post-entry-controls {
+  position: absolute;
+  top: 1rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.35rem;
+}
+.post-entry-content {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin-top: 0.65rem;
+  white-space: pre-wrap;
+  text-align: left;
+}
+.post-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.post-edited {
+  color: #6c757d;
+  font-size: 0.75rem;
+}
+.post-map-reference-input {
+  max-width: 34rem;
+}
+.map-reference-attachment {
+  border: 1px solid rgba(107, 89, 61, 0.2);
+  border-radius: 0.45rem;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  background: #fcfaf6;
+}
+.map-reference-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.65rem;
+}
+.map-reference-canvas {
+  height: 11rem;
+  border-top: 1px solid rgba(107, 89, 61, 0.16);
+  border-bottom: 1px solid rgba(107, 89, 61, 0.16);
+}
+.map-reference-attachment > a {
+  display: inline-block;
+  padding: 0.4rem 0.65rem;
+}
