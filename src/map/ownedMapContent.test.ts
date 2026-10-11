@@ -6,11 +6,13 @@ import {
   getUserProfileByUserId,
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
+import { getEvent } from "../event/eventApi";
 import { getMapPlace } from "./mapApi";
 import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
   loadProfileRelatedMapContent,
+  loadSharedMapScope,
 } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({
@@ -30,6 +32,7 @@ jest.mock("../profile/stashApi", () => ({
   getGroupItems: jest.fn(),
   getProfileStash: jest.fn(),
 }));
+jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
 jest.mock("./mapApi", () => ({ getMapPlace: jest.fn() }));
 
 const place = {
@@ -111,6 +114,19 @@ beforeEach(() => {
     ],
   });
   jest.mocked(getMapPlace).mockResolvedValue(place);
+  jest.mocked(getEvent).mockResolvedValue({
+    id: "event",
+    name: "Roman festival",
+    venuePlaceId: "rome",
+    venuePlaceName: "Roma",
+    historicalSitePlaceId: "rome",
+    historicalSitePlaceName: "Roma",
+    image: {
+      id: "event-image",
+      url: "https://images.test/event.jpg",
+      description: null,
+    },
+  } as never);
 });
 
 test("composes profile, membership club, and club-stash source markers", async () => {
@@ -216,6 +232,22 @@ test("composes a bounded club-to-member overlay", async () => {
       }),
     ]),
   );
+});
+
+test("resolves an event share scope to its public venue and historical-site pins", async () => {
+  const content = await loadSharedMapScope({ type: "EVENT", id: "event" });
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        key: "EVENT:event:VENUE",
+        path: "/events/event",
+        thumbnailUrl: "https://images.test/event.jpg",
+      }),
+      expect.objectContaining({ key: "EVENT:event:HISTORICAL_SITE" }),
+    ]),
+  );
+  expect(content.connections).toEqual([]);
 });
 
 test("publishes profile markers before optional club and source loading completes", async () => {
