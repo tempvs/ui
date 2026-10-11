@@ -65,6 +65,25 @@ export default function ProposalActivityPanel({
             <strong>{activityLabel(entry.kind)}</strong>
             <span className="text-muted"> by {entry.actorUserId}</span>
             {entry.note && <div>{entry.note}</div>}
+            {entry.revision && (
+              <div className="text-muted">
+                Revision {entry.revision.version}:{" "}
+                {entry.revision.canonicalName}
+                {" · "}
+                {entry.revision.latitude.toFixed(6)},{" "}
+                {entry.revision.longitude.toFixed(6)}
+                {entry.revision.names.filter((name) => !name.preferred).length >
+                  0 && (
+                  <>
+                    {" · aliases: "}
+                    {entry.revision.names
+                      .filter((name) => !name.preferred)
+                      .map((name) => name.value)
+                      .join(", ")}
+                  </>
+                )}
+              </div>
+            )}
           </li>
         ))}
       </ul>

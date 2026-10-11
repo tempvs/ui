@@ -51,11 +51,7 @@ export type MapPlace = {
     validFrom?: number;
     validTo?: number;
     confidence?:
-      | "IMPORTED"
-      | "CURATED"
-      | "USER_CONTRIBUTED"
-      | "UNVERIFIED"
-      | "DISPUTED";
+      "IMPORTED" | "CURATED" | "USER_CONTRIBUTED" | "UNVERIFIED" | "DISPUTED";
     provenance?: Array<{
       dataset: string;
       externalId: string;
@@ -155,6 +151,17 @@ export type MapPlaceProposalActivity = {
   actorUserId: string;
   occurredAt: string;
   note?: string;
+  revision?: {
+    version: number;
+    canonicalName: string;
+    names: Array<{ value: string; preferred: boolean }>;
+    latitude: number;
+    longitude: number;
+    featureType: string;
+    description?: string;
+    proposalNote?: string;
+    citationUrl?: string;
+  };
 };
 
 export type MapRole =
