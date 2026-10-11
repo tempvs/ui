@@ -1,3 +1,5 @@
+import type { PublicMapReference } from "../map/MapReferenceAttachment";
+
 export type WallEntityType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
 export type WallReason =
   | "OWN_PROFILE"
@@ -28,6 +30,7 @@ export type WallActivity = {
   edited?: boolean;
   changes?: Record<string, { before: string | null; after: string | null }>;
   reasons?: WallReason[];
+  mapReference?: PublicMapReference;
 };
 
 export type WallPage = {

@@ -8,6 +8,7 @@ import IconActionButton from '../component/IconActionButton';
 import RefreshingImage from '../image/RefreshingImage';
 import type { ImageReference } from '../image/RefreshingImage';
 import { WallActivity } from './wallApi';
+import MapReferenceAttachment from '../map/MapReferenceAttachment';
 
 const CloseIcon = FaTimes as React.ComponentType<{ 'aria-hidden'?: boolean }>;
 const reasonLabels: Record<string, string> = {
@@ -29,6 +30,7 @@ export default function ActivityCard({ activity, thumbnail, onDismiss }: { activ
         <IconActionButton title="Dismiss update" onClick={() => onDismiss(activity)} size="1.8rem" fontSize="0.68rem"><CloseIcon aria-hidden /></IconActionButton>
       </div>
       {activity.summary && <p className="wall-activity-summary">{activity.summary}</p>}
+      {activity.mapReference && <MapReferenceAttachment reference={activity.mapReference} />}
       {activity.changes && <dl className="wall-changes">{Object.entries(activity.changes).map(([field, change]) => <React.Fragment key={field}><dt>{field}</dt><dd>{change.before || '—'} → {change.after || '—'}</dd></React.Fragment>)}</dl>}
       <div className="wall-activity-meta">
         <time dateTime={activity.occurredAt}>{new Date(activity.occurredAt).toLocaleString()}</time>

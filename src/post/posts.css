@@ -110,26 +110,3 @@
 .post-map-reference-input {
   max-width: 34rem;
 }
-.map-reference-attachment {
-  border: 1px solid rgba(107, 89, 61, 0.2);
-  border-radius: 0.45rem;
-  margin-top: 0.8rem;
-  overflow: hidden;
-  background: #fcfaf6;
-}
-.map-reference-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.45rem 0.65rem;
-}
-.map-reference-canvas {
-  height: 11rem;
-  border-top: 1px solid rgba(107, 89, 61, 0.16);
-  border-bottom: 1px solid rgba(107, 89, 61, 0.16);
-}
-.map-reference-attachment > a {
-  display: inline-block;
-  padding: 0.4rem 0.65rem;
-}

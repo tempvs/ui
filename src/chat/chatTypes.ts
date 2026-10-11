@@ -10,12 +10,13 @@ export type ChatMessage = {
   senderName: string;
   text: string;
   createdAt: string;
+  mapReference?: PublicMapReference;
 };
 
 export type ChatConversationSummary = {
   id: string;
   title?: string;
-  type: 'DIRECT' | 'GROUP';
+  type: "DIRECT" | "GROUP";
   displayName: string;
   previewText: string;
   updatedAt: string;
@@ -44,4 +45,6 @@ export type CreateChatConversationPayload = {
 export type SendChatMessagePayload = {
   senderProfileId: string;
   text: string;
+  mapReference?: PublicMapReference;
 };
+import type { PublicMapReference } from "../map/MapReferenceAttachment";

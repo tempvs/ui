@@ -6,16 +6,25 @@ import {
   ChatParticipant,
   CreateChatConversationPayload,
   SendChatMessagePayload,
-} from './chatTypes';
+} from "./chatTypes";
+import type { PublicMapReference } from "../map/MapReferenceAttachment";
 
 type RequestOptions = RequestInit & { headers?: HeadersInit };
-type ApiErrorPayload = { code?: unknown; message?: unknown; requestId?: unknown };
+type ApiErrorPayload = {
+  code?: unknown;
+  message?: unknown;
+  requestId?: unknown;
+};
 
-async function requestJson<T>(url: string, parse: (value: unknown) => T, options: RequestOptions = {}) {
+async function requestJson<T>(
+  url: string,
+  parse: (value: unknown) => T,
+  options: RequestOptions = {},
+) {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers || {}),
     },
   });
@@ -25,7 +34,11 @@ async function requestJson<T>(url: string, parse: (value: unknown) => T, options
     try {
       data = JSON.parse(text) as unknown;
     } catch {
-      throw requestError(response.status, undefined, 'The chat service returned invalid JSON');
+      throw requestError(
+        response.status,
+        undefined,
+        "The chat service returned invalid JSON",
+      );
     }
   }
   if (!response.ok) {
@@ -33,18 +46,27 @@ async function requestJson<T>(url: string, parse: (value: unknown) => T, options
     throw requestError(
       response.status,
       payload,
-      typeof payload?.message === 'string' ? payload.message : `Request failed with status ${response.status}`,
+      typeof payload?.message === "string"
+        ? payload.message
+        : `Request failed with status ${response.status}`,
     );
   }
   try {
     return parse(data);
   } catch {
-    throw requestError(response.status, undefined, 'The chat service returned an invalid response');
+    throw requestError(
+      response.status,
+      undefined,
+      "The chat service returned an invalid response",
+    );
   }
 }
 
 function requestError(status: number, data: unknown, message: string) {
-  const error = new Error(message) as Error & { status?: number; data?: unknown };
+  const error = new Error(message) as Error & {
+    status?: number;
+    data?: unknown;
+  };
   error.status = status;
   error.data = data;
   return error;
@@ -61,9 +83,16 @@ export function activeProfileNotFoundId(error: unknown): string | null {
   return match[1];
 }
 
-export function listConversations(profileId: string, nextToken?: string, limit = 20) {
-  const query = new URLSearchParams({ profileId: String(profileId), limit: String(limit) });
-  if (nextToken) query.set('nextToken', nextToken);
+export function listConversations(
+  profileId: string,
+  nextToken?: string,
+  limit = 20,
+) {
+  const query = new URLSearchParams({
+    profileId: String(profileId),
+    limit: String(limit),
+  });
+  if (nextToken) query.set("nextToken", nextToken);
   return requestJson(`/api/chat/conversations?${query}`, pageValue);
 }
 
@@ -73,18 +102,24 @@ export function getConversation(
   nextToken?: string,
   limit = 40,
 ) {
-  const query = new URLSearchParams({ profileId: String(profileId), limit: String(limit) });
-  if (nextToken) query.set('nextToken', nextToken);
+  const query = new URLSearchParams({
+    profileId: String(profileId),
+    limit: String(limit),
+  });
+  if (nextToken) query.set("nextToken", nextToken);
   return requestJson(
     `/api/chat/conversations/${encodeURIComponent(conversationId)}?${query}`,
     conversationDetailsValue,
   );
 }
 
-export function createConversation(payload: CreateChatConversationPayload, idempotencyKey: string) {
-  return requestJson('/api/chat/conversations', conversationDetailsValue, {
-    method: 'POST',
-    headers: { 'Idempotency-Key': idempotencyKey },
+export function createConversation(
+  payload: CreateChatConversationPayload,
+  idempotencyKey: string,
+) {
+  return requestJson("/api/chat/conversations", conversationDetailsValue, {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(payload),
   });
 }
@@ -98,8 +133,8 @@ export function sendMessage(
     `/api/chat/conversations/${encodeURIComponent(conversationId)}/messages`,
     conversationDetailsValue,
     {
-      method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(payload),
     },
   );
@@ -107,7 +142,8 @@ export function sendMessage(
 
 function pageValue(value: unknown): ChatConversationPage {
   const page = requiredObject(value);
-  if (!Array.isArray(page.content) || typeof page.hasMore !== 'boolean') throw new Error();
+  if (!Array.isArray(page.content) || typeof page.hasMore !== "boolean")
+    throw new Error();
   const nextToken = optionalString(page.nextToken);
   return {
     content: page.content.map(conversationSummaryValue),
@@ -119,7 +155,11 @@ function pageValue(value: unknown): ChatConversationPage {
 function conversationDetailsValue(value: unknown): ChatConversationDetails {
   const object = requiredObject(value);
   const summary = conversationSummaryValue(object);
-  if (!Array.isArray(object.messages) || typeof object.hasMoreMessages !== 'boolean') throw new Error();
+  if (
+    !Array.isArray(object.messages) ||
+    typeof object.hasMoreMessages !== "boolean"
+  )
+    throw new Error();
   const nextToken = optionalString(object.nextToken);
   return {
     ...summary,
@@ -132,13 +172,14 @@ function conversationDetailsValue(value: unknown): ChatConversationDetails {
 function conversationSummaryValue(value: unknown): ChatConversationSummary {
   const object = requiredObject(value);
   if (
-    typeof object.id !== 'string' ||
-    (object.type !== 'DIRECT' && object.type !== 'GROUP') ||
-    typeof object.displayName !== 'string' ||
-    typeof object.previewText !== 'string' ||
-    typeof object.updatedAt !== 'string' ||
+    typeof object.id !== "string" ||
+    (object.type !== "DIRECT" && object.type !== "GROUP") ||
+    typeof object.displayName !== "string" ||
+    typeof object.previewText !== "string" ||
+    typeof object.updatedAt !== "string" ||
     !Array.isArray(object.participants)
-  ) throw new Error();
+  )
+    throw new Error();
   const title = optionalString(object.title);
   return {
     id: object.id,
@@ -153,7 +194,11 @@ function conversationSummaryValue(value: unknown): ChatConversationSummary {
 
 function participantValue(value: unknown): ChatParticipant {
   const object = requiredObject(value);
-  if (!profileIdValue(object.profileId) || typeof object.name !== 'string' || typeof object.type !== 'string') {
+  if (
+    !profileIdValue(object.profileId) ||
+    typeof object.name !== "string" ||
+    typeof object.type !== "string"
+  ) {
     throw new Error();
   }
   return { profileId: object.profileId, name: object.name, type: object.type };
@@ -162,24 +207,61 @@ function participantValue(value: unknown): ChatParticipant {
 function messageValue(value: unknown): ChatMessage {
   const object = requiredObject(value);
   if (
-    typeof object.id !== 'string' ||
+    typeof object.id !== "string" ||
     !profileIdValue(object.senderProfileId) ||
-    typeof object.senderName !== 'string' ||
-    typeof object.text !== 'string' ||
-    typeof object.createdAt !== 'string'
-  ) throw new Error();
+    typeof object.senderName !== "string" ||
+    typeof object.text !== "string" ||
+    typeof object.createdAt !== "string"
+  )
+    throw new Error();
+  const mapReference =
+    object.mapReference === undefined
+      ? undefined
+      : mapReferenceValue(object.mapReference);
   return {
     id: object.id,
     senderProfileId: object.senderProfileId,
     senderName: object.senderName,
     text: object.text,
     createdAt: object.createdAt,
+    ...(mapReference ? { mapReference } : {}),
+  };
+}
+
+function mapReferenceValue(value: unknown): PublicMapReference {
+  const object = requiredObject(value);
+  const entityTypes = object.entityTypes;
+  if (
+    typeof object.latitude !== "number" ||
+    typeof object.longitude !== "number" ||
+    typeof object.radiusKm !== "number" ||
+    !Array.isArray(entityTypes) ||
+    entityTypes.length === 0 ||
+    !entityTypes.every(
+      (type) =>
+        type === "PROFILE" ||
+        type === "CLUB" ||
+        type === "EVENT" ||
+        type === "SOURCE",
+    )
+  )
+    throw new Error();
+  const optional = (field: string): string | undefined =>
+    typeof object[field] === "string" ? (object[field] as string) : undefined;
+  return {
+    ...(optional("placeId") ? { placeId: optional("placeId") } : {}),
+    ...(optional("placeName") ? { placeName: optional("placeName") } : {}),
+    latitude: object.latitude,
+    longitude: object.longitude,
+    radiusKm: object.radiusKm,
+    entityTypes: entityTypes as PublicMapReference["entityTypes"],
+    ...(optional("query") ? { query: optional("query") } : {}),
   };
 }
 
 function objectValue(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
     : null;
 }
 
@@ -190,9 +272,11 @@ function requiredObject(value: unknown): Record<string, unknown> {
 }
 
 function optionalString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === "string" ? value : undefined;
 }
 
 function profileIdValue(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
+  return (
+    typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value)
+  );
 }
