@@ -63,6 +63,7 @@ export type TempvsEvent = {
   to?: { year: number; era: "BC" | "AD" } | null;
   venuePlaceId?: string | null;
   venuePlaceName?: string | null;
+  venueVisibility?: "PUBLIC" | "PARTICIPANTS";
   historicalSitePlaceId?: string | null;
   historicalSitePlaceName?: string | null;
   schedule: EventSchedule;
@@ -90,6 +91,7 @@ export type EventDraft = Pick<
   | "to"
   | "venuePlaceId"
   | "venuePlaceName"
+  | "venueVisibility"
   | "historicalSitePlaceId"
   | "historicalSitePlaceName"
   | "schedule"
@@ -128,6 +130,13 @@ export function listEvents(signal?: AbortSignal) {
 
 export function getEvent(eventId: string, signal?: AbortSignal) {
   return request<TempvsEvent>(`/${encodeURIComponent(eventId)}`, { signal });
+}
+
+export function getRestrictedEventVenue(eventId: string) {
+  return request<{
+    venuePlaceId: string | null;
+    venuePlaceName: string | null;
+  }>(`/${encodeURIComponent(eventId)}/venue`);
 }
 
 export function createEvent(draft: EventDraft) {

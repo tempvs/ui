@@ -74,6 +74,9 @@ export default function EventForm({
         }
       : null,
   );
+  const [venueVisibility, setVenueVisibility] = useState<"PUBLIC" | "PARTICIPANTS">(
+    initial?.venueVisibility || "PUBLIC",
+  );
   const [startsAt, setStartsAt] = useState(
     localInput(initial?.schedule.startsAt),
   );
@@ -126,6 +129,7 @@ export default function EventForm({
       periods,
       venuePlaceId: venue?.id || null,
       venuePlaceName: venue?.matchedName || venue?.canonicalName || null,
+      venueVisibility,
       historicalSitePlaceId: historicalSite?.id || null,
       historicalSitePlaceName:
         historicalSite?.matchedName || historicalSite?.canonicalName || null,
@@ -194,6 +198,18 @@ export default function EventForm({
         readOnlyLabel={initial?.venuePlaceName}
         onChange={setVenue}
       />
+      <Form.Group className="mb-3">
+        <Form.Label>Venue visibility</Form.Label>
+        <Form.Select
+          value={venueVisibility}
+          onChange={(event) =>
+            setVenueVisibility(event.target.value as "PUBLIC" | "PARTICIPANTS")
+          }
+        >
+          <option value="PUBLIC">Public</option>
+          <option value="PARTICIPANTS">Participants only</option>
+        </Form.Select>
+      </Form.Group>
       <PlacePickerField
         label="Historical site"
         editable

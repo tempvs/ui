@@ -25,6 +25,7 @@ import {
   EventApplication,
   followEvent,
   getEvent,
+  getRestrictedEventVenue,
   getEventApplication,
   getEventFollowState,
   TempvsEvent,
@@ -103,6 +104,20 @@ export default function EventPage() {
         item.adminProfileIds.includes(String(profile.id)),
     ),
   );
+  useEffect(() => {
+    if (!item || item.venueVisibility !== "PARTICIPANTS") return;
+    let active = true;
+    void getRestrictedEventVenue(item.id)
+      .then((venue) => {
+        if (!active) return;
+        replaceItem({ ...item, ...venue });
+      })
+      // Public visitors intentionally cannot discover a restricted venue.
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [item?.id, item?.venueVisibility]);
   const occurrence = item?.upcomingOccurrences?.[0];
   const applicantProfiles = useMemo(
     () => ownedProfiles.filter((profile) => profile.type === "CLUB"),
@@ -257,6 +272,7 @@ export default function EventPage() {
           to: current.to || null,
           venuePlaceId: current.venuePlaceId || null,
           venuePlaceName: current.venuePlaceName || null,
+          venueVisibility: current.venueVisibility || "PUBLIC",
           historicalSitePlaceId: current.historicalSitePlaceId || null,
           historicalSitePlaceName: current.historicalSitePlaceName || null,
           schedule: current.schedule,

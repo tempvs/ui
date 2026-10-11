@@ -25,6 +25,7 @@ export type EventField =
   | "interval"
   | "count"
   | "venue"
+  | "venueVisibility"
   | "historicalSite";
 
 type Props = {
@@ -139,6 +140,21 @@ export default function EventFieldsPanel({
         status={statuses.venue}
         loadRelatedMapContent={() => loadEventRelatedMapContent(event)}
         relatedMapScope={{ type: "EVENT", id: event.id }}
+      />
+      <EditableSelectFieldRow
+        label="Venue visibility"
+        editable={editable}
+        value={event.venueVisibility || "PUBLIC"}
+        readOnlyValue={
+          event.venueVisibility === "PARTICIPANTS" ? "Participants only" : "Public"
+        }
+        options={[
+          { value: "PUBLIC", label: "Public" },
+          { value: "PARTICIPANTS", label: "Participants only" },
+        ]}
+        onChange={(input) => onChange("venueVisibility", input.target.value)}
+        onBlur={() => onBlur("venueVisibility")}
+        status={statuses.venueVisibility}
       />
       <PlacePickerField
         label="Historical site"
