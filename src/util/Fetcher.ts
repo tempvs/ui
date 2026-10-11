@@ -1,3 +1,5 @@
+import { showAppNotice } from "../component/AppNotice";
+
 type FetchAction = (data?: unknown) => unknown;
 type FetchActions = Record<number | string, FetchAction | undefined> & {
   default?: FetchAction;
@@ -30,7 +32,11 @@ export const doFetch = (
   actions: FetchActions = {},
   headers: HeadersInit = {}
 ): void => {
-  const defaultAction = () => alert('Something went wrong!'); // TODO: add i18n
+  const defaultAction = () =>
+    showAppNotice({
+      message: "Something went wrong. Please try again.",
+      tone: "error",
+    });
 
   const responseHandler = async (response: Response) => {
     const handler = actions[response.status] || actions.default || defaultAction;

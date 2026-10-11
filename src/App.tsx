@@ -12,6 +12,7 @@ import {
 
 import "./App.css";
 import { PageShellContext } from "./component/PageHeader";
+import AppNotice from "./component/AppNotice";
 import Header from "./header/Header";
 import ProfilePage from "./profile/ProfilePage";
 import StashPage from "./profile/StashPage";
@@ -86,6 +87,7 @@ function AppShell() {
   return (
     <>
       <Header />
+      <AppNotice />
       <div
         ref={setHeaderMount}
         className="app-shell-header-slot px-4 px-xl-5"

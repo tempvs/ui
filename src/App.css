@@ -79,6 +79,45 @@ html {
   text-align: center;
 }
 
+.app-notice {
+  position: fixed;
+  z-index: 1200;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(30rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #9d4137;
+  background: #fff7f3;
+  box-shadow: 0 0.35rem 1.15rem rgba(45, 34, 27, 0.17);
+  color: #642d28;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.app-notice--success {
+  border-color: #4c7e47;
+  background: #f4fbf1;
+  color: #2f5d2c;
+}
+
+.app-notice--info {
+  border-color: #8d7245;
+  background: #fffdf6;
+  color: #55442b;
+}
+
+.app-notice-dismiss {
+  min-width: 1.4rem;
+  padding: 0 !important;
+  color: currentcolor !important;
+  font-size: 1.3rem;
+  line-height: 1;
+  text-decoration: none !important;
+}
+
 .home-shell {
   padding-top: 2.5rem;
 }
