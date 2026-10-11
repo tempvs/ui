@@ -18,16 +18,22 @@ import {
   fetchProfileById,
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
+import { getEvent, type TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
 import { getMapPlace, type MapPlace } from "./mapApi";
 import type { SharedMapScope } from "./sharedMapScope";
 
 export type OwnedMapMarker = {
   key: string;
-  entityType: "PROFILE" | "CLUB" | "SOURCE";
+  entityType: "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
   entityId: string;
   locationRole:
-    "CURRENT_RESIDENCE" | "CLUB_ASSOCIATION" | "DISCOVERED_AT" | "HELD_AT";
+    | "CURRENT_RESIDENCE"
+    | "CLUB_ASSOCIATION"
+    | "VENUE"
+    | "HISTORICAL_SITE"
+    | "DISCOVERED_AT"
+    | "HELD_AT";
   label: string;
   placeId: string;
   placeName: string;
@@ -136,6 +142,56 @@ export async function loadSourceRelatedMapContent(
   return { markers, connections: [] };
 }
 
+/** Events are shareable public map scopes too. Their venue and historical-site
+ * pins deliberately travel with the URL instead of becoming the recipient's
+ * private map overlay. */
+export async function loadEventRelatedMapContent(
+  event: TempvsEvent,
+): Promise<OwnedMapContent> {
+  const resolvePlace = placeResolver();
+  const locations: Array<{
+    placeId: string;
+    placeName: string | null | undefined;
+    locationRole: "VENUE" | "HISTORICAL_SITE";
+  }> = [];
+  if (event.venuePlaceId) {
+    locations.push({
+      placeId: event.venuePlaceId,
+      placeName: event.venuePlaceName,
+      locationRole: "VENUE",
+    });
+  }
+  if (event.historicalSitePlaceId) {
+    locations.push({
+      placeId: event.historicalSitePlaceId,
+      placeName: event.historicalSitePlaceName,
+      locationRole: "HISTORICAL_SITE",
+    });
+  }
+  const markers = await Promise.all(
+    locations.map(async (location) => {
+      const place = await resolvePlace(location.placeId);
+      if (!place) return null;
+      return marker({
+        entityType: "EVENT",
+        entityId: event.id,
+        locationRole: location.locationRole,
+        label: event.name,
+        placeId: location.placeId,
+        placeName: location.placeName || place.canonicalName,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        thumbnailUrl: event.image?.thumbnailUrl || event.image?.url || null,
+        path: `/events/${encodeURIComponent(event.id)}`,
+      });
+    }),
+  );
+  return {
+    markers: markers.filter((value): value is OwnedMapMarker => Boolean(value)),
+    connections: [],
+  };
+}
+
 /** Resolve a URL-addressable public page slice. Do not substitute the viewer
  * here: a copied URL must show the same resource graph to every recipient. */
 export async function loadSharedMapScope(
@@ -149,6 +205,10 @@ export async function loadSharedMapScope(
     case "CLUB": {
       const club = await getClub(scope.id).catch(() => null);
       return club ? loadClubRelatedMapContent(club) : emptyMapContent();
+    }
+    case "EVENT": {
+      const event = await getEvent(scope.id).catch(() => null);
+      return event ? loadEventRelatedMapContent(event) : emptyMapContent();
     }
     case "SOURCE": {
       const result = await getSource(scope.id).catch(() => null);

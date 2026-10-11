@@ -28,7 +28,7 @@ import {
   type OwnedMapConnection,
   type OwnedMapMarker,
 } from "./ownedMapContent";
-import { parseSharedMapScope } from "./sharedMapScope";
+import { appendSharedMapScope, parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
 import MapRoleRequestModal from "./MapRoleRequestModal";
 import { matchingPlaceName } from "./placeNames";
@@ -398,6 +398,12 @@ export default function MapPage() {
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (includeDescendants) next.set("descendants", "true");
+    // A shared page graph is part of the address, not a viewer preference.
+    // This invocation is the initial URL hydration (rather than an explicit
+    // new search), so retain it while loading the focal place. Otherwise a
+    // pasted link briefly loads its graph and then silently replaces it with
+    // the recipient's private map (or nothing when they are signed out).
+    if (!event) appendSharedMapScope(next, sharedScope || undefined);
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));

@@ -10,6 +10,7 @@ import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
+import { loadEventRelatedMapContent } from "../map/ownedMapContent";
 import { TempvsEvent } from "./eventApi";
 
 export type EventField =
@@ -136,6 +137,8 @@ export default function EventFieldsPanel({
         onChange={(place) => onVenueChange?.(place)}
         historicalRange={toMapRange(event.from, event.to)}
         status={statuses.venue}
+        loadRelatedMapContent={() => loadEventRelatedMapContent(event)}
+        relatedMapScope={{ type: "EVENT", id: event.id }}
       />
       <PlacePickerField
         label="Historical site"
@@ -152,6 +155,8 @@ export default function EventFieldsPanel({
         onChange={(place) => onHistoricalSiteChange?.(place)}
         historicalRange={toMapRange(event.from, event.to)}
         status={statuses.historicalSite}
+        loadRelatedMapContent={() => loadEventRelatedMapContent(event)}
+        relatedMapScope={{ type: "EVENT", id: event.id }}
       />
       <EditableTextFieldRow
         label="Status"

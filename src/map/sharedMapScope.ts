@@ -4,7 +4,7 @@
  * the recipient's private "my map" overlay.
  */
 export type SharedMapScope = {
-  type: "PROFILE" | "CLUB" | "SOURCE";
+  type: "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
   id: string;
 };
 
@@ -23,7 +23,13 @@ export function parseSharedMapScope(
 ): SharedMapScope | null {
   const type = parameters.get("scope");
   const id = parameters.get("scopeId")?.trim();
-  if (!id || (type !== "PROFILE" && type !== "CLUB" && type !== "SOURCE"))
+  if (
+    !id ||
+    (type !== "PROFILE" &&
+      type !== "CLUB" &&
+      type !== "EVENT" &&
+      type !== "SOURCE")
+  )
     return null;
   return { type, id };
 }

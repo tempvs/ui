@@ -6,16 +6,18 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
 import MapPage from "./MapPage";
 import {
+  getMapPlace,
   listMyMapPlaceProposals,
   nearbyMapEntities,
   nearbyMapPlaces,
   searchMapPlaces,
 } from "./mapApi";
+import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
@@ -66,11 +68,47 @@ jest.mock("./mapApi", () => ({
   listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),
 }));
 
+jest.mock("./ownedMapContent", () => ({
+  loadSharedMapScope: jest.fn().mockResolvedValue({
+    markers: [],
+    connections: [],
+  }),
+  loadOwnedMapContent: jest.fn().mockResolvedValue({
+    markers: [],
+    connections: [],
+  }),
+}));
+
 const mockSearchMapPlaces = jest.mocked(searchMapPlaces);
 const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
 const mockNearbyMapEntities = jest.mocked(nearbyMapEntities);
 const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
+const mockGetMapPlace = jest.mocked(getMapPlace);
+const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
+const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="map-location">{location.search}</output>;
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockGetViewer.mockResolvedValue(null);
+  mockGetMapPlace.mockResolvedValue({
+    id: "seed:rome",
+    canonicalName: "Rome",
+    latitude: 41.9,
+    longitude: 12.5,
+    featureType: "SETTLEMENT",
+  });
+  mockNearbyMapPlaces.mockResolvedValue([]);
+  mockNearbyMapEntities.mockResolvedValue([]);
+  mockListMyMapPlaceProposals.mockResolvedValue([]);
+  mockLoadSharedMapScope.mockResolvedValue({ markers: [], connections: [] });
+  mockLoadOwnedMapContent.mockResolvedValue({ markers: [], connections: [] });
+});
 
 test("searches places while typing and labels the selected marker with the matched historical name", async () => {
   jest.useFakeTimers();
@@ -192,4 +230,30 @@ test("lets a geography reviewer reach the proposal queue", async () => {
   expect(
     await screen.findByRole("button", { name: "Review proposals" }),
   ).toBeInTheDocument();
+});
+
+test("retains a shared public graph while hydrating a copied map URL", async () => {
+  render(
+    <MemoryRouter
+      initialEntries={[
+        "/map?placeId=seed%3Arome&q=Roma&lat=41.9&lng=12.5&radiusKm=25&scope=PROFILE&scopeId=profile-1",
+      ]}
+    >
+      <MapPage />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() =>
+    expect(mockLoadSharedMapScope).toHaveBeenCalledWith({
+      type: "PROFILE",
+      id: "profile-1",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("map-location")).toHaveTextContent(
+      "scope=PROFILE&scopeId=profile-1",
+    ),
+  );
+  expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();
 });
