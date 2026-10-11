@@ -6,6 +6,8 @@ import PlacePickerField from "../../component/PlacePickerField";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import { MessageFormatter, Profile, ProfileField } from "../profileTypes";
 import { loadProfileRelatedMapContent } from "../../map/ownedMapContent";
+import ClubLocationInheritanceButton from "./ClubLocationInheritanceButton";
+import type { Club } from "../../club/clubApi";
 
 type ProfileFieldsState = {
   firstName?: string | null;
@@ -33,6 +35,7 @@ type ProfileFieldsPanelProps = {
   ) => void;
   rangeControl?: React.ReactNode;
   relatedMapProfile?: Profile;
+  onInheritClubLocation?: (club: Club) => void;
 };
 
 export default function ProfileFieldsPanel({
@@ -47,6 +50,7 @@ export default function ProfileFieldsPanel({
   onLocationChange,
   rangeControl,
   relatedMapProfile,
+  onInheritClubLocation,
 }: ProfileFieldsPanelProps) {
   return (
     <>
@@ -138,6 +142,14 @@ export default function ProfileFieldsPanel({
             : undefined
         }
       />
+      {type === "CLUB" && editable && relatedMapProfile?.id && onInheritClubLocation && (
+        <div className="mb-2">
+          <ClubLocationInheritanceButton
+            profileId={String(relatedMapProfile.id)}
+            onSelect={onInheritClubLocation}
+          />
+        </div>
+      )}
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}
         editable={editable}

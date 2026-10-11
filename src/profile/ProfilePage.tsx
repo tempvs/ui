@@ -23,6 +23,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
+import type { Club } from "../club/clubApi";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
 import PostPanel from "../post/PostPanel";
@@ -508,6 +509,17 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       () => {
         if (this.isEditableProfile()) this.saveField("location");
       },
+    );
+  };
+
+  handleInheritedClubLocation = (club: Club) => {
+    this.handleLocationPlaceChange(
+      club.locationPlaceId
+        ? {
+            id: club.locationPlaceId,
+            canonicalName: club.location || "",
+          }
+        : null,
     );
   };
 
@@ -1471,6 +1483,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
               onLocationChange={this.handleLocationPlaceChange}
+              onInheritClubLocation={this.handleInheritedClubLocation}
               relatedMapProfile={
                 this.state.profileId
                   ? {
