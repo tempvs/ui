@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 jest.mock("../map/MapCanvas", () => ({
   __esModule: true,
@@ -225,5 +226,41 @@ test("lets an editor clear a manually entered map point", async () => {
   expect(screen.getByLabelText("Pinned latitude")).toHaveValue("");
   expect(screen.getByLabelText("Pinned longitude")).toHaveValue("");
   expect(screen.getByText("No point pinned")).toBeInTheDocument();
+  fetchMock.mockRestore();
+});
+
+test("does not clear a canonical place when saving a private pin fails", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    text: async () => JSON.stringify({ items: [] }),
+  } as Response);
+  const onChange = jest.fn();
+  const onPrivatePinChange = jest.fn().mockResolvedValue(false);
+  render(
+    <MemoryRouter>
+      <PlacePickerField
+        label="Location"
+        editable
+        value={{ id: "seed:rome", canonicalName: "Rome" }}
+        onChange={onChange}
+        onPrivatePinChange={onPrivatePinChange}
+      />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Rome" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Propose a different place on the map" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Pick coordinates" }));
+  fireEvent.click(screen.getByRole("button", { name: "Use as private pin" }));
+
+  await waitFor(() =>
+    expect(onPrivatePinChange).toHaveBeenCalledWith({
+      latitude: 41.9,
+      longitude: 12.5,
+    }),
+  );
+  expect(onChange).not.toHaveBeenCalled();
   fetchMock.mockRestore();
 });
