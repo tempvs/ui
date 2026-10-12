@@ -89,6 +89,11 @@ export type ProfilePageProps = {
 };
 
 export type ProfilePageState = PersistedProfile & {
+  privatePin: {
+    latitude: number;
+    longitude: number;
+    label?: string | null;
+  } | null;
   avatarVisible: boolean;
   avatarLoaded: boolean;
   avatarImage?: string | null;

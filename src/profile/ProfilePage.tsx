@@ -31,6 +31,7 @@ import {
   createClubProfile,
   createUserProfile,
   deleteAvatar,
+  deletePrivateProfilePin,
   deleteProfile,
   fetchAvatar,
   fetchClubProfiles,
@@ -38,11 +39,13 @@ import {
   fetchProfileById,
   followProfile,
   getFollowState,
+  getPrivateProfilePin,
   getFollowingProfiles,
   fetchUserProfileByUserId,
   unfollowProfile,
   updateAvatarDescription,
   updateProfile,
+  savePrivateProfilePin,
   uploadAvatar,
 } from "./profileApi";
 
@@ -133,6 +136,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       lastName: "",
       nickName: "",
       profileEmail: "",
+      privatePin: null,
       locationPlaceId: null,
       location: "",
       alias: "",
@@ -182,6 +186,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       this.setState(result, () => {
         if (result.currentUserId) {
           this.fetchCurrentOwnedProfiles(result.currentUserId);
+          if (this.state.profileId && this.state.userId === result.currentUserId) {
+            this.loadPrivatePin(this.state.profileId, this.state.userId);
+          }
 
           // `/profile` is the signed-in user's own profile.  Do not request it
           // until the session has been resolved, otherwise an anonymous visitor
@@ -519,6 +526,39 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         if (this.isEditableProfile()) this.saveField("location");
       },
     );
+  };
+
+  loadPrivatePin = (profileId: string, ownerUserId?: string | null) => {
+    if (!this.state.currentUserId || this.state.currentUserId !== ownerUserId) {
+      this.setState({ privatePin: null });
+      return;
+    }
+    void getPrivateProfilePin(profileId)
+      .then((privatePin) => {
+        if (this.state.profileId === profileId) this.setState({ privatePin });
+      })
+      .catch(() => {
+        if (this.state.profileId === profileId) this.setState({ privatePin: null });
+      });
+  };
+
+  handlePrivatePinChange = async (
+    privatePin: { latitude: number; longitude: number; label?: string | null } | null,
+  ) => {
+    if (!this.state.profileId || !this.isEditableProfile()) return;
+    const profileId = this.state.profileId;
+    try {
+      if (privatePin) {
+        const saved = await savePrivateProfilePin(profileId, privatePin);
+        if (this.state.profileId === profileId) this.setState({ privatePin: saved });
+      } else {
+        await deletePrivateProfilePin(profileId);
+        if (this.state.profileId === profileId) this.setState({ privatePin: null });
+      }
+    } catch {
+      // Keep the last confirmed private pin visible. The picker remains open
+      // for the editor to retry without exposing coordinates to other viewers.
+    }
   };
 
   handleInheritedClubLocation = (club: Club) => {
@@ -972,6 +1012,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       () => {
         this.fetchFollowingProfiles(profile.id);
         this.refreshFollowState();
+        this.loadPrivatePin(profile.id, profile.userId);
       },
     );
 
@@ -1520,6 +1561,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onInputChange={this.handleInputChange}
               onFieldBlur={this.handleFieldBlur}
               onLocationChange={this.handleLocationPlaceChange}
+              privatePin={this.state.privatePin}
+              onPrivatePinChange={
+                isEditable ? this.handlePrivatePinChange : undefined
+              }
               onInheritClubLocation={this.handleInheritedClubLocation}
               onInheritClubYears={this.handleInheritedClubYears}
               relatedMapProfile={

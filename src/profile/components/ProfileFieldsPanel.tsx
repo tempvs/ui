@@ -4,7 +4,9 @@ import { Overlay, Popover } from "react-bootstrap";
 import EditableSelectFieldRow from "../../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../../component/EditableTextFieldRow";
 import { formatHistoricalRange } from "../../component/HistoricalRangeFilter";
-import PlacePickerField from "../../component/PlacePickerField";
+import PlacePickerField, {
+  type PrivateLocationPin,
+} from "../../component/PlacePickerField";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import { MessageFormatter, Profile, ProfileField } from "../profileTypes";
 import { loadProfileRelatedMapContent } from "../../map/ownedMapContent";
@@ -35,6 +37,8 @@ type ProfileFieldsPanelProps = {
   onLocationChange: (
     place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => void;
+  privatePin?: PrivateLocationPin | null;
+  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
   rangeControl?: React.ReactNode;
   relatedMapProfile?: Profile;
   onInheritClubLocation?: (club: Club) => void;
@@ -51,6 +55,8 @@ export default function ProfileFieldsPanel({
   onInputChange,
   onFieldBlur,
   onLocationChange,
+  privatePin,
+  onPrivatePinChange,
   rangeControl,
   relatedMapProfile,
   onInheritClubLocation,
@@ -151,6 +157,8 @@ export default function ProfileFieldsPanel({
         }
         readOnlyLabel={state.location}
         onChange={onLocationChange}
+        privatePin={privatePin}
+        onPrivatePinChange={onPrivatePinChange}
         status={state.fieldStatuses?.location}
         className="mb-2"
         loadRelatedMapContent={
