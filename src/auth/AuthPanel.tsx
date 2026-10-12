@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { FaGoogle } from "react-icons/fa";
+import { FaGoogle, FaHourglassHalf } from "react-icons/fa";
 
 const GoogleIcon = FaGoogle as React.ComponentType;
+const PendingIcon = FaHourglassHalf as React.ComponentType<{ className?: string; "aria-label"?: string }>;
 
 type AuthResponse = { error?: string };
 type AuthAction = "register" | "login";
@@ -36,6 +37,7 @@ export default function AuthPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<AuthAction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [registrationRequested, setRegistrationRequested] = useState(false);
   const returnTo = currentReturnTo();
@@ -52,6 +54,7 @@ export default function AuthPanel() {
   const submit = async (action: AuthAction) => {
     if (!formRef.current?.reportValidity()) return;
     setBusy(true);
+    setPendingAction(action);
     setError(null);
     try {
       if (action === "register") {
@@ -65,6 +68,7 @@ export default function AuthPanel() {
       setError(requestError instanceof Error ? requestError.message : "Authentication could not be completed.");
     } finally {
       setBusy(false);
+      setPendingAction(null);
     }
   };
 
@@ -80,10 +84,10 @@ export default function AuthPanel() {
         ? "Your email is confirmed. Sign in to create your profile."
         : "Use your email and password to create an account or sign in."}
     </p>
-    {error && <div className="auth-error-popover" role="alert">{error}</div>}
-    <Form.Group className="auth-form-group" controlId="auth-email">
+    <Form.Group className={`auth-form-group${error ? " auth-form-group--has-error" : ""}`} controlId="auth-email">
       <Form.Label className="auth-form-label">Email</Form.Label>
       <Form.Control className="auth-form-input" type="email" autoComplete="email" required disabled={busy} value={email} onChange={event => setEmail(event.target.value)} />
+      {error && <div className="auth-error-popover" role="alert">{error}</div>}
     </Form.Group>
     <Form.Group className="auth-form-group" controlId="auth-password">
       <Form.Label className="auth-form-label">Password</Form.Label>
@@ -91,13 +95,13 @@ export default function AuthPanel() {
     </Form.Group>
     <div className="d-grid">
       <Button className="auth-submit-button" type="button" disabled={busy} onClick={() => void submit("register")}>
-        {busy ? "Please wait..." : "Register"}
+        {pendingAction === "register" ? <PendingIcon className="auth-pending-hourglass" aria-label="Registering" /> : "Register"}
       </Button>
     </div>
     <div className="auth-divider"><span>Or</span></div>
     <div className="d-grid">
       <Button className="auth-secondary-button" type="button" disabled={busy} onClick={() => void submit("login")}>
-        Sign in
+        {pendingAction === "login" ? <PendingIcon className="auth-pending-hourglass" aria-label="Signing in" /> : "Sign in"}
       </Button>
     </div>
     <div className="auth-divider"><span>Or</span></div>

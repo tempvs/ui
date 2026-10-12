@@ -311,6 +311,10 @@
   padding: 0;
 }
 
+.auth-form-group--has-error {
+  position: relative;
+}
+
 .auth-form-label {
   display: block;
   margin-bottom: 0.32rem;
@@ -343,8 +347,8 @@
 .auth-error-popover {
   position: absolute;
   z-index: 3;
-  right: 0;
-  bottom: calc(100% + 0.55rem);
+  top: calc(100% + 0.45rem);
+  left: 0;
   max-width: min(100%, 24rem);
   padding: 0.55rem 0.7rem;
   border: 1px solid rgba(156, 66, 57, 0.28);
@@ -358,12 +362,12 @@
 
 .auth-error-popover::after {
   position: absolute;
-  right: 1rem;
-  bottom: -0.38rem;
+  top: -0.38rem;
+  left: 1rem;
   width: 0.68rem;
   height: 0.68rem;
-  border-right: 1px solid rgba(156, 66, 57, 0.28);
-  border-bottom: 1px solid rgba(156, 66, 57, 0.28);
+  border-top: 1px solid rgba(156, 66, 57, 0.28);
+  border-left: 1px solid rgba(156, 66, 57, 0.28);
   background: #fffaf5;
   content: "";
   transform: rotate(45deg);
@@ -383,6 +387,18 @@
 }
 
 .auth-submit-button {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: #b48a43;
+  --bs-btn-border-color: rgba(156, 127, 68, 0.3);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #9e7837;
+  --bs-btn-hover-border-color: rgba(136, 110, 58, 0.34);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #9e7837;
+  --bs-btn-active-border-color: rgba(136, 110, 58, 0.34);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: #b48a43;
+  --bs-btn-disabled-border-color: rgba(156, 127, 68, 0.3);
   width: 100%;
   border: 1px solid rgba(156, 127, 68, 0.3);
   background: #b48a43;
@@ -398,6 +414,18 @@
 }
 
 .auth-secondary-button {
+  --bs-btn-color: #5a503d;
+  --bs-btn-bg: rgba(255, 251, 243, 0.84);
+  --bs-btn-border-color: rgba(149, 129, 84, 0.18);
+  --bs-btn-hover-color: #1f2623;
+  --bs-btn-hover-bg: #fff;
+  --bs-btn-hover-border-color: rgba(176, 146, 82, 0.24);
+  --bs-btn-active-color: #1f2623;
+  --bs-btn-active-bg: #fff;
+  --bs-btn-active-border-color: rgba(176, 146, 82, 0.24);
+  --bs-btn-disabled-color: #5a503d;
+  --bs-btn-disabled-bg: rgba(255, 251, 243, 0.84);
+  --bs-btn-disabled-border-color: rgba(149, 129, 84, 0.18);
   border: 1px solid rgba(149, 129, 84, 0.18);
   color: #5a503d;
   background: rgba(255, 251, 243, 0.84);
@@ -444,8 +472,29 @@
 }
 
 .auth-oauth-button {
+  --bs-btn-color: #5a503d;
+  --bs-btn-bg: rgba(255, 251, 243, 0.84);
+  --bs-btn-border-color: rgba(149, 129, 84, 0.18);
+  --bs-btn-hover-color: #1f2623;
+  --bs-btn-hover-bg: #fff;
+  --bs-btn-hover-border-color: rgba(176, 146, 82, 0.24);
+  --bs-btn-active-color: #1f2623;
+  --bs-btn-active-bg: #fff;
+  --bs-btn-active-border-color: rgba(176, 146, 82, 0.24);
+  --bs-btn-disabled-color: #5a503d;
+  --bs-btn-disabled-bg: rgba(255, 251, 243, 0.84);
+  --bs-btn-disabled-border-color: rgba(149, 129, 84, 0.18);
   border: 1px solid rgba(149, 129, 84, 0.18);
   background: rgba(255, 251, 243, 0.84);
+}
+
+.auth-pending-hourglass {
+  animation: auth-hourglass-turn 0.95s linear infinite;
+}
+
+@keyframes auth-hourglass-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(180deg); }
 }
 
 .auth-logout-dialog {

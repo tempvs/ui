@@ -32,6 +32,7 @@ test('shows a failed registration as a fixed overlay rather than an in-flow mess
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveClass('auth-error-popover');
     expect(alert).toHaveTextContent(/already exists/i);
+    expect(screen.getByLabelText(/email/i).closest('.auth-form-group')).toContainElement(alert);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/auth/register', expect.anything()));
   } finally {
     fetchMock.mockRestore();
