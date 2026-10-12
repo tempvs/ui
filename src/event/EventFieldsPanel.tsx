@@ -8,7 +8,9 @@ import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import InlineEditableText from "../component/InlineEditableText";
 import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
-import PlacePickerField from "../component/PlacePickerField";
+import PlacePickerField, {
+  type PrivateLocationPin,
+} from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import { loadEventRelatedMapContent } from "../map/ownedMapContent";
 import { TempvsEvent } from "./eventApi";
@@ -37,6 +39,8 @@ type Props = {
   onRangeChange?: (from: HistoricalYearInput, to: HistoricalYearInput) => void;
   onRangeBlur?: () => void;
   onVenueChange?: (place: MapPlace | null) => void;
+  privatePin?: PrivateLocationPin | null;
+  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
   onHistoricalSiteChange?: (place: MapPlace | null) => void;
 };
 
@@ -60,6 +64,8 @@ export default function EventFieldsPanel({
   onRangeChange,
   onRangeBlur,
   onVenueChange,
+  privatePin,
+  onPrivatePinChange,
   onHistoricalSiteChange,
 }: Props) {
   const recurrence = event.schedule.recurrence;
@@ -136,6 +142,8 @@ export default function EventFieldsPanel({
         }
         readOnlyLabel={event.venuePlaceName}
         onChange={(place) => onVenueChange?.(place)}
+        privatePin={privatePin}
+        onPrivatePinChange={onPrivatePinChange}
         historicalRange={toMapRange(event.from, event.to)}
         status={statuses.venue}
         loadRelatedMapContent={() => loadEventRelatedMapContent(event)}

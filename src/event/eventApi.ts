@@ -139,6 +139,28 @@ export function getRestrictedEventVenue(eventId: string) {
   }>(`/${encodeURIComponent(eventId)}/venue`);
 }
 
+export type PrivateEventPin = {
+  latitude: number;
+  longitude: number;
+  label?: string | null;
+};
+export function getEventPrivatePin(eventId: string) {
+  return request<PrivateEventPin | null>(
+    `/${encodeURIComponent(eventId)}/private-pin`,
+  );
+}
+export function saveEventPrivatePin(eventId: string, pin: PrivateEventPin) {
+  return request<PrivateEventPin>(`/${encodeURIComponent(eventId)}/private-pin`, {
+    method: "PUT",
+    body: JSON.stringify(pin),
+  });
+}
+export function deleteEventPrivatePin(eventId: string) {
+  return request<void>(`/${encodeURIComponent(eventId)}/private-pin`, {
+    method: "DELETE",
+  });
+}
+
 export function createEvent(draft: EventDraft) {
   return request<TempvsEvent>("", {
     method: "POST",

@@ -23,20 +23,28 @@ import ProfileList from "../profile/components/ProfileList";
 import PostPanel from "../post/PostPanel";
 import {
   EventApplication,
+  deleteEventPrivatePin,
   followEvent,
   getEvent,
+  getEventPrivatePin,
   getRestrictedEventVenue,
   getEventApplication,
   getEventFollowState,
   TempvsEvent,
   unfollowEvent,
   updateEvent,
+  saveEventPrivatePin,
 } from "./eventApi";
 import "./events.css";
 
 export default function EventPage() {
   const { eventId = "" } = useParams();
   const [item, setItem] = useState<TempvsEvent | null>(null);
+  const [privatePin, setPrivatePin] = useState<{
+    latitude: number;
+    longitude: number;
+    label?: string | null;
+  } | null>(null);
   const [owner, setOwner] = useState<Profile | null>(null);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [busy, setBusy] = useState(false);
@@ -106,6 +114,25 @@ export default function EventPage() {
   );
   const restrictedVenueEventId =
     item?.venueVisibility === "PARTICIPANTS" ? item.id : null;
+  useEffect(() => {
+    let active = true;
+    if (!item || !canManage) {
+      setPrivatePin(null);
+      return () => {
+        active = false;
+      };
+    }
+    void getEventPrivatePin(item.id)
+      .then((pin) => {
+        if (active) setPrivatePin(pin);
+      })
+      .catch(() => {
+        if (active) setPrivatePin(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [item?.id, canManage]);
   useEffect(() => {
     if (!restrictedVenueEventId) return;
     let active = true;
@@ -421,6 +448,23 @@ export default function EventPage() {
               onRangeChange={updateRange}
               onRangeBlur={() => void saveField("periods")}
               onVenueChange={updateVenue}
+              privatePin={privatePin}
+              onPrivatePinChange={
+                canManage
+                  ? async (pin) => {
+                      if (!item) return;
+                      try {
+                        if (pin) setPrivatePin(await saveEventPrivatePin(item.id, pin));
+                        else {
+                          await deleteEventPrivatePin(item.id);
+                          setPrivatePin(null);
+                        }
+                      } catch {
+                        // Preserve the last confirmed private location.
+                      }
+                    }
+                  : undefined
+              }
               onHistoricalSiteChange={updateHistoricalSite}
             />
             <PostPanel
