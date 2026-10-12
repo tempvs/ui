@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button, Modal, Spinner } from "react-bootstrap";
 import { FaArrowLeft, FaUsers } from "react-icons/fa";
 import { getProfileClubs, type Club } from "../../club/clubApi";
@@ -7,16 +7,30 @@ const LeftArrowIcon = FaArrowLeft as React.ComponentType;
 const ClubsIcon = FaUsers as React.ComponentType;
 
 /**
- * Selects an actual club membership before applying its location to a club
- * profile.  It deliberately has no fallback to the first club: a profile can
- * belong to several clubs and location inheritance must be an explicit choice.
+ * Selects an actual club membership before inheriting an attribute for a club
+ * profile. It deliberately has no fallback to the first club: a profile can
+ * belong to several clubs and inheritance must be an explicit choice.
  */
 export default function ClubLocationInheritanceButton({
   profileId,
   onSelect,
+  canInherit = (club) => Boolean(club.locationPlaceId),
+  actionLabel = "Inherit club location",
+  availableTitle = "Use the location of a club this profile belongs to",
+  unavailableTitle = "None of this profile's clubs has a location yet",
+  dialogTitle = "Choose a club location",
+  dialogDescription = "This club profile belongs to more than one club. Choose the club whose location it should use.",
+  renderDetail = (club) => club.location,
 }: {
   profileId: string;
   onSelect: (club: Club) => void;
+  canInherit?: (club: Club) => boolean;
+  actionLabel?: string;
+  availableTitle?: string;
+  unavailableTitle?: string;
+  dialogTitle?: string;
+  dialogDescription?: ReactNode;
+  renderDetail?: (club: Club) => ReactNode;
 }) {
   const [clubs, setClubs] = useState<Club[] | undefined>();
   const [show, setShow] = useState(false);
@@ -41,7 +55,7 @@ export default function ClubLocationInheritanceButton({
     setShow(false);
     onSelect(club);
   };
-  const available = clubs.filter((club) => Boolean(club.locationPlaceId));
+  const available = clubs.filter(canInherit);
 
   return (
     <>
@@ -51,12 +65,8 @@ export default function ClubLocationInheritanceButton({
         variant="link"
         className="club-location-inheritance-button"
         disabled={!available.length}
-        aria-label="Inherit club location"
-        title={
-          available.length
-            ? "Use the location of a club this profile belongs to"
-            : "None of this profile's clubs has a location yet"
-        }
+        aria-label={actionLabel}
+        title={available.length ? availableTitle : unavailableTitle}
         onClick={() => {
           if (available.length === 1) choose(available[0]);
           else if (available.length > 1) setShow(true);
@@ -69,13 +79,10 @@ export default function ClubLocationInheritanceButton({
       </Button>
       <Modal show={show} onHide={() => setShow(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Choose a club location</Modal.Title>
+          <Modal.Title>{dialogTitle}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="text-muted small">
-            This club profile belongs to more than one club. Choose the club
-            whose location it should use.
-          </p>
+          <p className="text-muted small">{dialogDescription}</p>
           <div className="d-grid gap-2">
             {available.map((club) => (
               <Button
@@ -85,9 +92,11 @@ export default function ClubLocationInheritanceButton({
                 onClick={() => choose(club)}
               >
                 <strong>{club.name}</strong>
-                <span className="d-block small text-muted">
-                  {club.location}
-                </span>
+                {renderDetail(club) && (
+                  <span className="d-block small text-muted">
+                    {renderDetail(club)}
+                  </span>
+                )}
               </Button>
             ))}
           </div>

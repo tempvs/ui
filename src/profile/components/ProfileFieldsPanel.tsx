@@ -3,6 +3,7 @@ import { Overlay, Popover } from "react-bootstrap";
 
 import EditableSelectFieldRow from "../../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../../component/EditableTextFieldRow";
+import { formatHistoricalRange } from "../../component/HistoricalRangeFilter";
 import PlacePickerField from "../../component/PlacePickerField";
 import { SaveStatus } from "../../component/EditableFieldRow";
 import { MessageFormatter, Profile, ProfileField } from "../profileTypes";
@@ -37,6 +38,7 @@ type ProfileFieldsPanelProps = {
   rangeControl?: React.ReactNode;
   relatedMapProfile?: Profile;
   onInheritClubLocation?: (club: Club) => void;
+  onInheritClubYears?: (club: Club) => void;
 };
 
 export default function ProfileFieldsPanel({
@@ -52,6 +54,7 @@ export default function ProfileFieldsPanel({
   rangeControl,
   relatedMapProfile,
   onInheritClubLocation,
+  onInheritClubYears,
 }: ProfileFieldsPanelProps) {
   const isClubProfile = type === "CLUB";
   const aliasAnchorRef = useRef<HTMLDivElement>(null);
@@ -238,7 +241,24 @@ export default function ProfileFieldsPanel({
               errorTitle={t("profile.status.saveFailed", "Save failed")}
             />
           </div>
-          <div className="profile-years-field">{rangeControl}</div>
+          <div className="profile-years-field d-flex align-items-center gap-1">
+            {rangeControl}
+            {editable && relatedMapProfile?.id && onInheritClubYears && (
+              <ClubLocationInheritanceButton
+                profileId={String(relatedMapProfile.id)}
+                onSelect={onInheritClubYears}
+                canInherit={(club) => Boolean(club.from || club.to)}
+                actionLabel="Inherit club years"
+                availableTitle="Use the year range of a club this profile belongs to"
+                unavailableTitle="None of this profile's clubs has a year range yet"
+                dialogTitle="Choose a club year range"
+                dialogDescription="This club profile belongs to more than one club with a year range. Choose the club whose years it should use."
+                renderDetail={(club) =>
+                  formatHistoricalRange(club.from || null, club.to || null)
+                }
+              />
+            )}
+          </div>
         </div>
       )}
     </>

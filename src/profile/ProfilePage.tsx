@@ -531,6 +531,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     );
   };
 
+  handleInheritedClubYears = (club: Club) => {
+    this.setState(
+      {
+        fromYear: club.from ? String(club.from.year) : "",
+        fromEra: club.from?.era || "AD",
+        toYear: club.to ? String(club.to.year) : "",
+        toEra: club.to?.era || "AD",
+      },
+      () => this.saveField("fromYear"),
+    );
+  };
+
   handleFieldBlur = (fieldName: ProfileField) => {
     if (!this.isEditableProfile()) {
       return;
@@ -1503,6 +1515,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onFieldBlur={this.handleFieldBlur}
               onLocationChange={this.handleLocationPlaceChange}
               onInheritClubLocation={this.handleInheritedClubLocation}
+              onInheritClubYears={this.handleInheritedClubYears}
               relatedMapProfile={
                 this.state.profileId
                   ? {

@@ -58,3 +58,29 @@ test("asks the owner to choose when several clubs have locations", async () => {
   fireEvent.click(screen.getByRole("button", { name: /Second club/ }));
   expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "2" }));
 });
+
+test("can select a club range with the same inheritance flow", async () => {
+  const onSelect = jest.fn();
+  getClubs.mockResolvedValue([
+    { ...club("1", "First club"), from: null, to: null },
+    {
+      ...club("2", "Second club"),
+      from: { year: 52, era: "BC" },
+      to: { year: 14, era: "AD" },
+    },
+  ] as never);
+  render(
+    <ClubLocationInheritanceButton
+      profileId="profile-1"
+      onSelect={onSelect}
+      canInherit={(item) => Boolean(item.from || item.to)}
+      actionLabel="Inherit club years"
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inherit club years" }),
+  );
+  expect(onSelect).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "2", from: { year: 52, era: "BC" } }),
+  );
+});
