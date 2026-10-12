@@ -1,4 +1,8 @@
-import { getParticipants, getProfileClubs } from "../club/clubApi";
+import {
+  getClubImages,
+  getParticipants,
+  getProfileClubs,
+} from "../club/clubApi";
 import { getSource, getSourceImages } from "../library/libraryApi";
 import {
   getClubProfiles,
@@ -16,6 +20,7 @@ import {
 } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({
+  getClubImages: jest.fn(),
   getParticipants: jest.fn(),
   getProfileClubs: jest.fn(),
 }));
@@ -72,6 +77,7 @@ beforeEach(() => {
       photoThumbnailUrl: "https://images.test/club-thumb.jpg",
     } as never,
   ]);
+  jest.mocked(getClubImages).mockResolvedValue([]);
   jest.mocked(getParticipants).mockResolvedValue({
     content: [
       {
@@ -174,6 +180,41 @@ test("composes profile, membership club, and club-stash source markers", async (
   // duplicate map request for every marker.
   expect(getMapPlace).toHaveBeenCalledTimes(1);
   expect(getSourceImages).toHaveBeenCalledTimes(1);
+  expect(
+    content.markers.filter((marker) => marker.entityId === "source"),
+  ).toHaveLength(1);
+});
+
+test("loads the club avatar when the club catalogue row has an image id but no signed URL", async () => {
+  jest.mocked(getProfileClubs).mockResolvedValue([
+    {
+      id: "club",
+      name: "Legio XXII",
+      locationPlaceId: "rome",
+      location: "Roma",
+      photoImageId: "club-avatar",
+    } as never,
+  ]);
+  jest
+    .mocked(getClubImages)
+    .mockResolvedValue([
+      {
+        id: "club-avatar",
+        thumbnailUrl: "https://images.test/club-avatar.jpg",
+        status: "READY",
+      },
+    ]);
+
+  const content = await loadOwnedMapContent("viewer");
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        key: "CLUB:club:CLUB_ASSOCIATION",
+        thumbnailUrl: "https://images.test/club-avatar.jpg",
+      }),
+    ]),
+  );
 });
 
 test("composes a bounded relationship overlay for a public profile page", async () => {

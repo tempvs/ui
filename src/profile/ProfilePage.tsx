@@ -1603,7 +1603,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                     to={`/stash/${this.state.alias || this.state.profileId}`}
                     className="btn btn-outline-secondary profile-stash-button"
                   >
-                    {this.t("profile.stash.button", "Stash")}
+                    {this.t("profile.stash.button", "Owned items")}
                   </Link>
                 </div>
               </div>

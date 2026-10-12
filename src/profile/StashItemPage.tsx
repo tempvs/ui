@@ -594,7 +594,11 @@ function StashItemPage({ intl }: StashItemPageProps) {
   }, [handleSearchSources, item, sourceSearch.query, sourceLinkModalVisible]);
 
   if (!loaded) {
-    return <PageLayout header={{ title: "ITEM" }}><Spinner /></PageLayout>;
+    return (
+      <PageLayout header={{ title: "ITEM" }}>
+        <Spinner />
+      </PageLayout>
+    );
   }
 
   if (!profile || !item) {
@@ -609,43 +613,45 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const ownerLabel = buildProfileLabel(ownerUserProfile);
 
   return (
-    <PageLayout header={{
-      title: "ITEM",
-      rightContent:
-              <SectionBreadcrumb
-                items={[
-                  ownerUserProfile
-                    ? {
-                        label: ownerLabel,
-                        to: `/profile/${ownerUserProfile.alias || ownerUserProfile.id}`,
-                      }
-                    : null,
-                  {
-                    label: clubLabel,
-                    to: `/profile/${profile.alias || profile.id}`,
-                  },
-                  {
-                    label: "Stash",
-                    to: `/stash/${profile.alias || profile.id}`,
-                  },
-                  item.itemGroup?.name
-                    ? {
-                        label: item.itemGroup.name,
-                        to: `/stash/${profile.alias || profile.id}?group=${item.itemGroup.id}`,
-                      }
-                    : null,
-                  {
-                    label: truncateLabel(
-                      item.name || t("profile.stash.itemName", "Item"),
-                    ),
-                    to: `/stash/${profile.alias || profile.id}/items/${item.id}`,
-                  },
-                ]}
-              />,
-      backgroundColor: "#f8f4ea",
-      borderColor: "#d8c7a1",
-    }}>
-
+    <PageLayout
+      header={{
+        title: "ITEM",
+        rightContent: (
+          <SectionBreadcrumb
+            items={[
+              ownerUserProfile
+                ? {
+                    label: ownerLabel,
+                    to: `/profile/${ownerUserProfile.alias || ownerUserProfile.id}`,
+                  }
+                : null,
+              {
+                label: clubLabel,
+                to: `/profile/${profile.alias || profile.id}`,
+              },
+              {
+                label: "Stash",
+                to: `/stash/${profile.alias || profile.id}`,
+              },
+              item.itemGroup?.name
+                ? {
+                    label: item.itemGroup.name,
+                    to: `/stash/${profile.alias || profile.id}?group=${item.itemGroup.id}`,
+                  }
+                : null,
+              {
+                label: truncateLabel(
+                  item.name || t("profile.stash.itemName", "Item"),
+                ),
+                to: `/stash/${profile.alias || profile.id}/items/${item.id}`,
+              },
+            ]}
+          />
+        ),
+        backgroundColor: "#f8f4ea",
+        borderColor: "#d8c7a1",
+      }}
+    >
       <div className="stash-item-page-shell">
         <div className="stash-item-page-hero">
           <div className="stash-item-page-main-image-shell">

@@ -1,21 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { injectIntl, IntlShape } from 'react-intl';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { injectIntl, IntlShape } from "react-intl";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import PageLayout from '../component/PageLayout';
-import { PageColumn, PageColumns } from '../component/PageColumns';
-import SectionBreadcrumb from '../component/SectionBreadcrumb';
-import Spinner from '../component/Spinner';
-import { getPeriodLabel as getSharedPeriodLabel } from '../util/periods';
-import StashOverview from './StashOverview';
-import { buildClubProfileLabel, buildProfileLabel } from './profileLabels';
+import PageLayout from "../component/PageLayout";
+import { PageColumn, PageColumns } from "../component/PageColumns";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
+import Spinner from "../component/Spinner";
+import { getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
+import StashOverview from "./StashOverview";
+import { buildClubProfileLabel, buildProfileLabel } from "./profileLabels";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
   fetchProfileById,
-} from './profileApi';
-import { Id, Profile } from './profileTypes';
+} from "./profileApi";
+import { Id, Profile } from "./profileTypes";
 
 function buildCanonicalProfilePath(profile: Profile | null) {
   return `/profile/${profile?.alias || profile?.id}`;
@@ -31,23 +31,32 @@ function StashPage({ intl }: StashPageProps) {
   const [searchParams] = useSearchParams();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(null);
+  const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(
+    null,
+  );
   const [clubProfiles, setClubProfiles] = useState<Profile[]>([]);
   const [currentUserId, setCurrentUserId] = useState<Id | null>(null);
-  const [activeGroup, setActiveGroup] = useState<{ id: Id; name?: string | null } | null>(null);
+  const [activeGroup, setActiveGroup] = useState<{
+    id: Id;
+    name?: string | null;
+  } | null>(null);
 
-  const t = useCallback((
-    messageId: string,
-    defaultMessage: string,
-    values?: Record<string, string | number | boolean | Date>
-  ) => (
-    intl.formatMessage({ id: messageId, defaultMessage }, values)
-  ), [intl]);
+  const t = useCallback(
+    (
+      messageId: string,
+      defaultMessage: string,
+      values?: Record<string, string | number | boolean | Date>,
+    ) => intl.formatMessage({ id: messageId, defaultMessage }, values),
+    [intl],
+  );
 
-  const getPeriodLabel = useCallback((period?: string | null) => getSharedPeriodLabel(intl, period), [intl]);
+  const getPeriodLabel = useCallback(
+    (period?: string | null) => getSharedPeriodLabel(intl, period),
+    [intl],
+  );
 
   useEffect(() => {
-    fetchCurrentUserInfo(result => {
+    fetchCurrentUserInfo((result) => {
       setCurrentUserId(result.currentUserId || null);
     });
   }, []);
@@ -55,17 +64,19 @@ function StashPage({ intl }: StashPageProps) {
   useEffect(() => {
     setLoaded(false);
     fetchProfileById(id, {
-      onSuccess: nextProfile => {
+      onSuccess: (nextProfile) => {
         setProfile(nextProfile || null);
         setLoaded(true);
 
         if (nextProfile?.userId) {
           fetchOwnerUserProfile(nextProfile.userId, {
-            onSuccess: ownerProfile => setOwnerUserProfile(ownerProfile || null),
+            onSuccess: (ownerProfile) =>
+              setOwnerUserProfile(ownerProfile || null),
             onError: () => setOwnerUserProfile(null),
           });
           fetchClubProfiles(nextProfile.userId, {
-            onSuccess: profiles => setClubProfiles(Array.isArray(profiles) ? profiles : []),
+            onSuccess: (profiles) =>
+              setClubProfiles(Array.isArray(profiles) ? profiles : []),
             onError: () => setClubProfiles([]),
           });
         } else {
@@ -83,78 +94,113 @@ function StashPage({ intl }: StashPageProps) {
   }, [id]);
 
   const siblingClubProfiles = useMemo(
-    () => clubProfiles.filter(clubProfile => clubProfile.id !== profile?.id),
-    [clubProfiles, profile?.id]
+    () => clubProfiles.filter((clubProfile) => clubProfile.id !== profile?.id),
+    [clubProfiles, profile?.id],
   );
-  const requestedGroupId = searchParams.get('group');
-  const isEditable = profile?.type === 'CLUB' && currentUserId != null && currentUserId === profile?.userId;
+  const requestedGroupId = searchParams.get("group");
+  const isEditable =
+    profile?.type === "CLUB" &&
+    currentUserId != null &&
+    currentUserId === profile?.userId;
   const ownerLabel = buildProfileLabel(ownerUserProfile);
   const clubLabel = buildClubProfileLabel(profile, getPeriodLabel);
-  const handleActiveGroupChange = useCallback((group: { id: Id; name?: string | null } | null) => {
-    setActiveGroup(previousState => {
-      if (previousState?.id === group?.id && previousState?.name === group?.name) {
-        return previousState;
-      }
+  const handleActiveGroupChange = useCallback(
+    (group: { id: Id; name?: string | null } | null) => {
+      setActiveGroup((previousState) => {
+        if (
+          previousState?.id === group?.id &&
+          previousState?.name === group?.name
+        ) {
+          return previousState;
+        }
 
-      return group;
-    });
-  }, []);
+        return group;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!profile || !activeGroup) {
       return;
     }
 
-    const currentGroupId = searchParams.get('group');
+    const currentGroupId = searchParams.get("group");
     const nextGroupId = String(activeGroup.id);
 
     if (currentGroupId === nextGroupId) {
       return;
     }
 
-    navigate(`/stash/${profile.alias || profile.id}?group=${nextGroupId}`, { replace: true });
+    navigate(`/stash/${profile.alias || profile.id}?group=${nextGroupId}`, {
+      replace: true,
+    });
   }, [activeGroup, navigate, profile, searchParams]);
 
   if (!loaded) {
-    return <PageLayout header={{ title: "STASH" }}><Spinner /></PageLayout>;
-  }
-
-  if (!profile || profile.type !== 'CLUB') {
     return (
       <PageLayout header={{ title: "STASH" }}>
-        {t('profile.stash.notFound', 'Club stash not found.')}
+        <Spinner />
+      </PageLayout>
+    );
+  }
+
+  if (!profile || profile.type !== "CLUB") {
+    return (
+      <PageLayout header={{ title: "STASH" }}>
+        {t("profile.stash.notFound", "Club stash not found.")}
       </PageLayout>
     );
   }
 
   return (
-    <PageLayout header={{
-      title: "STASH",
-      rightContent: (
-              <SectionBreadcrumb
-                items={[
-                  ownerUserProfile ? { label: ownerLabel, to: buildCanonicalProfilePath(ownerUserProfile) } : null,
-                  {
-                    label: clubLabel,
-                    to: buildCanonicalProfilePath(profile),
-                    switcher: {
-                      id: 'stash-club-profile-switcher',
-                      emptyLabel: t('profile.clubProfiles.noneOther', 'No other club profiles'),
-                      items: siblingClubProfiles.map(clubProfile => ({
-                        key: clubProfile.id,
-                        label: buildClubProfileLabel(clubProfile, getPeriodLabel),
-                        to: `/stash/${clubProfile.alias || clubProfile.id}`,
-                      })),
-                    },
-                  },
-                  { label: 'Stash', to: `/stash/${profile.alias || profile.id}` },
-                  activeGroup ? { label: activeGroup.name || t('profile.stash.groupName', 'Collection'), to: `/stash/${profile.alias || profile.id}?group=${activeGroup.id}` } : null,
-                ]}
-              />
-            ),
-      backgroundColor: "#f8f4ea",
-      borderColor: "#d8c7a1",
-    }}>
+    <PageLayout
+      header={{
+        title: "STASH",
+        rightContent: (
+          <SectionBreadcrumb
+            items={[
+              ownerUserProfile
+                ? {
+                    label: ownerLabel,
+                    to: buildCanonicalProfilePath(ownerUserProfile),
+                  }
+                : null,
+              {
+                label: clubLabel,
+                to: buildCanonicalProfilePath(profile),
+                switcher: {
+                  id: "stash-club-profile-switcher",
+                  emptyLabel: t(
+                    "profile.clubProfiles.noneOther",
+                    "No other club profiles",
+                  ),
+                  items: siblingClubProfiles.map((clubProfile) => ({
+                    key: clubProfile.id,
+                    label: buildClubProfileLabel(clubProfile, getPeriodLabel),
+                    to: `/stash/${clubProfile.alias || clubProfile.id}`,
+                  })),
+                },
+              },
+              {
+                label: "Owned items",
+                to: `/stash/${profile.alias || profile.id}`,
+              },
+              activeGroup
+                ? {
+                    label:
+                      activeGroup.name ||
+                      t("profile.stash.groupName", "Collection"),
+                    to: `/stash/${profile.alias || profile.id}?group=${activeGroup.id}`,
+                  }
+                : null,
+            ]}
+          />
+        ),
+        backgroundColor: "#f8f4ea",
+        borderColor: "#d8c7a1",
+      }}
+    >
       <PageColumns>
         <PageColumn>
           <StashOverview
@@ -172,7 +218,11 @@ function StashPage({ intl }: StashPageProps) {
             getPeriodLabel={getPeriodLabel}
             embedded={false}
             initialGroupId={requestedGroupId}
-            onActiveGroupChange={group => handleActiveGroupChange(group ? { id: group.id, name: group.name } : null)}
+            onActiveGroupChange={(group) =>
+              handleActiveGroupChange(
+                group ? { id: group.id, name: group.name } : null,
+              )
+            }
           />
         </PageColumn>
       </PageColumns>

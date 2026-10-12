@@ -1,16 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Col, OverlayTrigger, Row } from 'react-bootstrap';
-import { FormattedMessage } from 'react-intl';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { Button, Col, OverlayTrigger, Row } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
+import { Link } from "react-router-dom";
 
-import HoverPopover from '../../component/HoverPopover';
-import Spinner from '../../component/Spinner';
-import { getErrorMessage } from '../../util/errors';
-import PeriodTile from '../PeriodTile';
-import { getLibraryViewer, getWelcome, LibraryViewer, LibraryWelcome, updateRoleRequest } from '../libraryApi';
-import LibrarySectionHeader from '../components/LibrarySectionHeader';
-import { PERIODS } from '../libraryShared';
-import { canAccessLibraryAdministration, getPrimaryRoleMeta } from '../libraryRoles';
+import HoverPopover from "../../component/HoverPopover";
+import Spinner from "../../component/Spinner";
+import { getErrorMessage } from "../../util/errors";
+import PeriodTile from "../PeriodTile";
+import {
+  getLibraryViewer,
+  getWelcome,
+  LibraryViewer,
+  LibraryWelcome,
+  updateRoleRequest,
+} from "../libraryApi";
+import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import { PERIODS } from "../libraryShared";
+import {
+  canAccessLibraryAdministration,
+  getPrimaryRoleMeta,
+} from "../libraryRoles";
 
 export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
@@ -28,7 +37,7 @@ export default function LibraryLandingPage() {
       const viewer = await getLibraryViewer();
       const result = await getWelcome();
       if (!result.ok) {
-        throw new Error('Unable to load the library welcome panel.');
+        throw new Error("Unable to load the library welcome panel.");
       }
 
       setWelcome(result.data);
@@ -46,12 +55,15 @@ export default function LibraryLandingPage() {
 
   const handleRoleAction = async (role: string, pending: boolean) => {
     setError(null);
-    const method = pending ? 'DELETE' : 'POST';
+    const method = pending ? "DELETE" : "POST";
 
     try {
-      const [result, viewer] = await Promise.all([updateRoleRequest(role, method), getLibraryViewer()]);
+      const [result, viewer] = await Promise.all([
+        updateRoleRequest(role, method),
+        getLibraryViewer(),
+      ]);
       if (!result.ok) {
-        throw new Error('Unable to update the role request.');
+        throw new Error("Unable to update the role request.");
       }
 
       setWelcome(result.data);
@@ -62,10 +74,25 @@ export default function LibraryLandingPage() {
   };
 
   const periods = useMemo(
-    () => PERIODS.map(period => period.toLowerCase()),
-    []
+    () => PERIODS.map((period) => period.toLowerCase()),
+    [],
   );
   const roleMeta = getPrimaryRoleMeta(userInfo);
+  // Keep the entry-point action visible for an authenticated regular member
+  // even while a stale/public welcome response is being refreshed. The write
+  // API remains authoritative and only accepts the next eligible role.
+  const roleRequests = welcome?.roleRequests?.length
+    ? welcome.roleRequests
+    : userInfo && !roleMeta
+      ? [
+          {
+            role: "ROLE_CONTRIBUTOR",
+            label: "Request Contributor access",
+            description: "Create sources and upload supporting images.",
+            pending: false,
+          },
+        ]
+      : [];
 
   const accessContent = loading ? (
     <div className="py-1">
@@ -75,29 +102,39 @@ export default function LibraryLandingPage() {
     <div className="d-flex align-items-center justify-content-center gap-2 flex-wrap">
       {roleMeta && (
         <OverlayTrigger
-          trigger={['hover', 'focus']}
+          trigger={["hover", "focus"]}
           placement="bottom"
           overlay={<HoverPopover text="" default={roleMeta.description} />}
         >
-          <span className="fw-semibold" style={{ fontSize: '0.95rem', cursor: 'default' }}>
+          <span
+            className="fw-semibold"
+            style={{ fontSize: "0.95rem", cursor: "default" }}
+          >
             {roleMeta.label}
           </span>
         </OverlayTrigger>
       )}
-      {(welcome?.adminPanelAvailable || canAccessLibraryAdministration(userInfo)) && (
+      {(welcome?.adminPanelAvailable ||
+        canAccessLibraryAdministration(userInfo)) && (
         <Link to="/library/admin" className="btn btn-dark btn-sm">
           Open Library administration
         </Link>
       )}
-      {welcome?.roleRequests?.map(request => (
+      {roleRequests.map((request) => (
         <OverlayTrigger
           key={request.role}
-          trigger={['hover', 'focus']}
+          trigger={["hover", "focus"]}
           placement="bottom"
           overlay={<HoverPopover text="" default={request.description} />}
         >
-          <Button variant="outline-dark" size="sm" onClick={() => handleRoleAction(request.role, request.pending)}>
-            {request.pending ? `Cancel ${request.label.toLowerCase()}` : request.label}
+          <Button
+            variant="outline-dark"
+            size="sm"
+            onClick={() => handleRoleAction(request.role, request.pending)}
+          >
+            {request.pending
+              ? `Cancel ${request.label.toLowerCase()}`
+              : request.label}
           </Button>
         </OverlayTrigger>
       ))}
@@ -113,22 +150,31 @@ export default function LibraryLandingPage() {
         variant="landing"
         middleContent={accessContent}
       />
-      {error && <div className="tempvs-plain-message text-danger mt-3">{error}</div>}
+      {error && (
+        <div className="tempvs-plain-message text-danger mt-3">{error}</div>
+      )}
       <Row className="g-4 align-items-start">
         <Col lg={12}>
           <div className="d-flex flex-column gap-3">
             <div>
               <h1 className="mb-2">
-                <FormattedMessage id="periods.title" defaultMessage="Historical periods" />
+                <FormattedMessage
+                  id="periods.title"
+                  defaultMessage="Historical periods"
+                />
               </h1>
               <p className="text-muted small mb-0">
-                Browse the catalogue by era, then drill into individual sources and their image gallery.
+                Browse the catalogue by era, then drill into individual sources
+                and their image gallery.
               </p>
             </div>
             <Row className="g-3">
-              {periods.map(period => (
+              {periods.map((period) => (
                 <Col md={6} xl={4} key={period}>
-                  <Link to={`/library/period/${period}`} className="text-decoration-none text-reset">
+                  <Link
+                    to={`/library/period/${period}`}
+                    className="text-decoration-none text-reset"
+                  >
                     <PeriodTile period={period} />
                   </Link>
                 </Col>

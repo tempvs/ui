@@ -1,5 +1,6 @@
 import {
   getClub,
+  getClubImages,
   getParticipants,
   getProfileClubs,
   type Club,
@@ -200,7 +201,9 @@ export async function loadSharedMapScope(
   switch (scope.type) {
     case "PROFILE": {
       const profile = await profileById(scope.id);
-      return profile ? loadProfileRelatedMapContent(profile) : emptyMapContent();
+      return profile
+        ? loadProfileRelatedMapContent(profile)
+        : emptyMapContent();
     }
     case "CLUB": {
       const club = await getClub(scope.id).catch(() => null);
@@ -357,8 +360,16 @@ async function clubMapMarkers(
 ): Promise<OwnedMapMarker[]> {
   const prepared = await Promise.all(
     clubs.map(async (club) => {
-      const place = await placeFor(club, resolvePlace);
+      const [place, images] = await Promise.all([
+        placeFor(club, resolvePlace),
+        club.photoThumbnailUrl || club.photoUrl || !club.photoImageId
+          ? Promise.resolve([])
+          : getClubImages(club.id).catch(() => []),
+      ]);
       if (!place || !club.locationPlaceId) return null;
+      const photo =
+        images.find((image) => image.id === club.photoImageId) ??
+        images.find((image) => image.thumbnailUrl || image.url);
       return marker({
         entityType: "CLUB",
         entityId: String(club.id),
@@ -368,7 +379,12 @@ async function clubMapMarkers(
         placeName: club.location || place.canonicalName,
         latitude: place.latitude,
         longitude: place.longitude,
-        thumbnailUrl: club.photoThumbnailUrl || club.photoUrl,
+        thumbnailUrl:
+          club.photoThumbnailUrl ||
+          club.photoUrl ||
+          photo?.thumbnailUrl ||
+          photo?.url ||
+          null,
         path: `/clubs/${encodeURIComponent(club.alias || String(club.id))}`,
       });
     }),
@@ -440,21 +456,26 @@ type SourceLocation = {
 };
 
 function sourceLocations(source: LibrarySource): SourceLocation[] {
+  const discovered = source.discoveredAtPlaceId
+    ? {
+        placeId: source.discoveredAtPlaceId,
+        placeName: source.discoveredAtPlaceName,
+        role: "DISCOVERED_AT" as const,
+      }
+    : null;
+  const held = source.heldAtPlaceId
+    ? {
+        placeId: source.heldAtPlaceId,
+        placeName: source.heldAtPlaceName,
+        role: "HELD_AT" as const,
+      }
+    : null;
+  // Discovery is the primary historical association. A second marker at the
+  // same approved place only stacks duplicate thumbnails without conveying
+  // new information, so retain one discovery marker in that case.
   return [
-    source.discoveredAtPlaceId
-      ? {
-          placeId: source.discoveredAtPlaceId,
-          placeName: source.discoveredAtPlaceName,
-          role: "DISCOVERED_AT" as const,
-        }
-      : null,
-    source.heldAtPlaceId
-      ? {
-          placeId: source.heldAtPlaceId,
-          placeName: source.heldAtPlaceName,
-          role: "HELD_AT" as const,
-        }
-      : null,
+    discovered,
+    held && held.placeId !== discovered?.placeId ? held : null,
   ].filter((location): location is SourceLocation => Boolean(location));
 }
 
