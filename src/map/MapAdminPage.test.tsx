@@ -44,6 +44,7 @@ import {
   listMapRoleMembers,
   listPendingMapRoleRequests,
   listPendingMapPlaces,
+  mergeMapPlace,
   nearbyMapPlaces,
   requestMapPlaceChanges,
   removeMapMemberRole,
@@ -63,6 +64,9 @@ const findLikelyDuplicatesMock =
   >;
 const requestChangesMock = requestMapPlaceChanges as jest.MockedFunction<
   typeof requestMapPlaceChanges
+>;
+const mergeMapPlaceMock = mergeMapPlace as jest.MockedFunction<
+  typeof mergeMapPlace
 >;
 const commentOnProposalMock = commentOnMapPlaceProposal as jest.MockedFunction<
   typeof commentOnMapPlaceProposal
@@ -213,6 +217,54 @@ test("lets a map editor request changes and removes the proposal from review", a
     ),
   );
   await waitFor(() => expect(screen.queryByText("Augusta Raurica")).toBeNull());
+});
+
+test("shows a field comparison before merging a duplicate proposal", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "editor-1",
+    roles: ["MAP_EDITOR"],
+  });
+  findLikelyDuplicatesMock.mockResolvedValue([
+    {
+      id: "seed:augusta",
+      canonicalName: "Augusta Raurica, Switzerland",
+      latitude: 47.534,
+      longitude: 7.721,
+      featureType: "HISTORIC_SETTLEMENT",
+      description: "Approved settlement",
+    },
+  ]);
+  mergeMapPlaceMock.mockResolvedValue();
+  renderAdmin();
+
+  fireEvent.change(
+    await screen.findByRole("textbox", {
+      name: "Review rationale for Augusta Raurica",
+    }),
+    { target: { value: "This is the same approved settlement." } },
+  );
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Compare with Augusta Raurica, Switzerland",
+    }),
+  );
+
+  expect(
+    await screen.findByRole("region", { name: "Place merge comparison" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Approved target")).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Confirm merge into Augusta Raurica, Switzerland",
+    }),
+  );
+  await waitFor(() =>
+    expect(mergeMapPlaceMock).toHaveBeenCalledWith(
+      "tempvs:proposal-1",
+      "seed:augusta",
+      "This is the same approved settlement.",
+    ),
+  );
 });
 
 test("records a private reviewer comment in the proposal discussion", async () => {

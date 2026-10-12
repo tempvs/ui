@@ -801,6 +801,7 @@ function DuplicateMergeActions({
   onMerge: (target: MapPlace) => void;
 }) {
   const [matches, setMatches] = useState<MapPlace[]>([]);
+  const [selectedTarget, setSelectedTarget] = useState<MapPlace | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -819,20 +820,124 @@ function DuplicateMergeActions({
 
   if (matches.length === 0) return null;
   return (
-    <div className="mt-2 d-flex align-items-center flex-wrap gap-2">
-      <small className="text-muted">Possible duplicate:</small>
-      {matches.map((target) => (
-        <Button
-          key={target.id}
-          size="sm"
-          variant="outline-secondary"
-          disabled={disabled}
-          title={disabled ? "Add a review rationale before merging" : undefined}
-          onClick={() => onMerge(target)}
+    <div className="mt-3">
+      <div className="d-flex align-items-center flex-wrap gap-2">
+        <small className="text-muted">Possible duplicate:</small>
+        {matches.map((target) => (
+          <Button
+            key={target.id}
+            size="sm"
+            variant={selectedTarget?.id === target.id ? "dark" : "outline-secondary"}
+            onClick={() => setSelectedTarget(target)}
+          >
+            Compare with {target.canonicalName}
+          </Button>
+        ))}
+      </div>
+      {selectedTarget && (
+        <div
+          className="border rounded p-3 mt-2"
+          role="region"
+          aria-label="Place merge comparison"
         >
-          Merge into {target.canonicalName}
-        </Button>
-      ))}
+          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <strong className="small">Compare proposed place with approved place</strong>
+            <Button
+              size="sm"
+              variant="link"
+              className="p-0"
+              onClick={() => setSelectedTarget(null)}
+            >
+              Close comparison
+            </Button>
+          </div>
+          <PlaceMergeComparison proposal={proposal} target={selectedTarget} />
+          <div className="d-flex align-items-center gap-2 mt-3 flex-wrap">
+            <small className="text-muted">
+              Merging keeps the approved place and records this proposal as a
+              duplicate. A rationale is required for audit.
+            </small>
+            <Button
+              size="sm"
+              variant="outline-dark"
+              disabled={disabled}
+              title={disabled ? "Add a review rationale before merging" : undefined}
+              onClick={() => onMerge(selectedTarget)}
+            >
+              Confirm merge into {selectedTarget.canonicalName}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Compare every reviewable field before an irreversible duplicate merge.
+ * Green rows are identical; highlighted rows tell the editor exactly which
+ * proposed values would be discarded in favour of the approved target. */
+function PlaceMergeComparison({
+  proposal,
+  target,
+}: {
+  proposal: PendingMapPlace;
+  target: MapPlace;
+}) {
+  const values = [
+    ["Name", proposal.canonicalName, target.canonicalName],
+    ["Type", proposal.featureType, target.featureType],
+    [
+      "Coordinates",
+      `${proposal.latitude.toFixed(6)}, ${proposal.longitude.toFixed(6)}`,
+      `${target.latitude.toFixed(6)}, ${target.longitude.toFixed(6)}`,
+    ],
+    [
+      "Other names",
+      proposal.names
+        ?.filter((name) => !name.preferred)
+        .map((name) => name.value)
+        .join(", ") || "—",
+      target.names
+        ?.filter((name) => !name.preferred)
+        .map((name) => name.value)
+        .join(", ") || "—",
+    ],
+    ["Description", proposal.description || "—", target.description || "—"],
+    [
+      "Parent place",
+      proposal.parentPlaceId || "—",
+      target.parentPlaceId || "—",
+    ],
+    [
+      "Evidence",
+      proposal.citationUrl || "—",
+      target.provenance?.map((item) => item.dataset).join(", ") || "—",
+    ],
+  ] as const;
+
+  return (
+    <div className="table-responsive">
+      <table className="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Field</th>
+            <th scope="col">Proposed</th>
+            <th scope="col">Approved target</th>
+          </tr>
+        </thead>
+        <tbody>
+          {values.map(([field, proposed, approved]) => {
+            const changed = proposed !== approved;
+            return (
+              <tr key={field} className={changed ? "table-warning" : "table-success"}>
+                <th scope="row">{field}</th>
+                <td>{proposed}</td>
+                <td>{approved}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

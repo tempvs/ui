@@ -60,12 +60,13 @@ export default function ProposalActivityPanel({
       <strong className="small">Review history</strong>
       {error && <p className="small text-danger mb-1">{error}</p>}
       <ul className="list-unstyled small mb-2">
-        {activity.map((entry) => (
+        {activity.map((entry, index) => (
           <li key={entry.id} className="border-top py-1">
             <strong>{activityLabel(entry.kind)}</strong>
             <span className="text-muted"> by {entry.actorUserId}</span>
             {entry.note && <div>{entry.note}</div>}
             {entry.revision && (
+              <>
               <div className="text-muted">
                 Revision {entry.revision.version}:{" "}
                 {entry.revision.canonicalName}
@@ -83,6 +84,13 @@ export default function ProposalActivityPanel({
                   </>
                 )}
               </div>
+              {previousRevision(activity, index) && (
+                <RevisionDiff
+                  previous={previousRevision(activity, index)!}
+                  next={entry.revision}
+                />
+              )}
+              </>
             )}
           </li>
         ))}
@@ -105,6 +113,77 @@ export default function ProposalActivityPanel({
         </Button>
       </div>
     </div>
+  );
+}
+
+function previousRevision(
+  activity: MapPlaceProposalActivity[],
+  index: number,
+): NonNullable<MapPlaceProposalActivity["revision"]> | null {
+  for (let offset = index - 1; offset >= 0; offset -= 1) {
+    const revision = activity[offset].revision;
+    if (revision) return revision;
+  }
+  return null;
+}
+
+/** Immutable snapshots make amendments reviewable as an actual field diff,
+ * rather than forcing reviewers to infer changes from two terse summaries. */
+function RevisionDiff({
+  previous,
+  next,
+}: {
+  previous: NonNullable<MapPlaceProposalActivity["revision"]>;
+  next: NonNullable<MapPlaceProposalActivity["revision"]>;
+}) {
+  const values = [
+    ["Name", previous.canonicalName, next.canonicalName],
+    ["Type", previous.featureType, next.featureType],
+    [
+      "Coordinates",
+      `${previous.latitude.toFixed(6)}, ${previous.longitude.toFixed(6)}`,
+      `${next.latitude.toFixed(6)}, ${next.longitude.toFixed(6)}`,
+    ],
+    ["Aliases", aliases(previous), aliases(next)],
+    ["Description", previous.description || "—", next.description || "—"],
+    ["Parent", previous.parentPlaceId || "—", next.parentPlaceId || "—"],
+    [
+      "Periods",
+      previous.periods?.join(", ") || "—",
+      next.periods?.join(", ") || "—",
+    ],
+    ["Evidence URL", previous.citationUrl || "—", next.citationUrl || "—"],
+  ];
+  const changed = values.filter(([, before, after]) => before !== after);
+  if (!changed.length) return null;
+
+  return (
+    <details className="mt-1" aria-label={`Revision ${next.version} changes`}>
+      <summary>Show changes from revision {previous.version}</summary>
+      <ul className="mb-0 mt-1 ps-3">
+        {changed.map(([field, before, after]) => (
+          <li key={field}>
+            <strong>{field}:</strong>{" "}
+            <span className="text-danger text-decoration-line-through">
+              {before}
+            </span>
+            {" → "}
+            <span className="text-success">{after}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function aliases(
+  revision: NonNullable<MapPlaceProposalActivity["revision"]>,
+): string {
+  return (
+    revision.names
+      .filter((name) => !name.preferred)
+      .map((name) => name.value)
+      .join(", ") || "—"
   );
 }
 

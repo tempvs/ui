@@ -161,6 +161,9 @@ export type MapPlaceProposalActivity = {
     description?: string;
     proposalNote?: string;
     citationUrl?: string;
+    parentPlaceId?: string;
+    periods?: string[];
+    provenance?: Array<{ dataset: string; externalId: string; license: string }>;
   };
 };
 
