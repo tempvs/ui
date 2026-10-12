@@ -138,10 +138,24 @@ export default function MapCanvas({
       zoom: 1.35,
       minZoom: 1,
       maxZoom: 12,
+      // The historical map is a north-up reference surface. Keep ordinary
+      // mouse/touch dragging for panning, but never let a gesture tilt or
+      // rotate the world beneath its markers.
+      bearing: 0,
+      pitch: 0,
+      maxPitch: 0,
+      dragRotate: false,
+      pitchWithRotate: false,
       attributionControl: false,
     });
     map.current = next;
-    next.addControl(new maplibregl.NavigationControl({ showCompass: true }));
+    // Disable the gesture handlers as well as their constructor options. This
+    // covers trackpad right-click/two-finger rotation in every MapLibre view,
+    // including the small related-location modals.
+    next.dragRotate.disable();
+    next.touchZoomRotate.disableRotation();
+    next.touchPitch.disable();
+    next.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     next.addControl(
       new maplibregl.AttributionControl({
         compact: true,
