@@ -38,7 +38,9 @@ type ProfileFieldsPanelProps = {
     place: { id: string; canonicalName: string; matchedName?: string } | null,
   ) => void;
   privatePin?: PrivateLocationPin | null;
-  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
+  onPrivatePinChange?: (
+    pin: PrivateLocationPin | null,
+  ) => void | Promise<boolean>;
   rangeControl?: React.ReactNode;
   relatedMapProfile?: Profile;
   onInheritClubLocation?: (club: Club) => void;

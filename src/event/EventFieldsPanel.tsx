@@ -40,7 +40,9 @@ type Props = {
   onRangeBlur?: () => void;
   onVenueChange?: (place: MapPlace | null) => void;
   privatePin?: PrivateLocationPin | null;
-  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
+  onPrivatePinChange?: (
+    pin: PrivateLocationPin | null,
+  ) => void | Promise<boolean>;
   onHistoricalSiteChange?: (place: MapPlace | null) => void;
 };
 

@@ -43,7 +43,9 @@ type PlacePickerFieldProps = {
   /** Exact coordinates owned by the edited entity. Unlike `value`, this is
    * never a canonical Map place and must not be shown to ordinary visitors. */
   privatePin?: PrivateLocationPin | null;
-  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
+  onPrivatePinChange?: (
+    pin: PrivateLocationPin | null,
+  ) => void | Promise<boolean>;
 };
 
 export type PrivateLocationPin = {
@@ -509,10 +511,14 @@ export default function PlacePickerField({
                     size="sm"
                     variant="outline-secondary"
                     disabled={!pinnedCoordinate}
-                    onClick={() => {
+                    onClick={async () => {
                       if (!pinnedCoordinate) return;
+                      const saved = await onPrivatePinChange(pinnedCoordinate);
+                      if (saved === false) return;
+                      // Clear the canonical assignment only after the private
+                      // pin is durably saved. A failed private-pin request
+                      // must never erase a public location.
                       onChange(null);
-                      onPrivatePinChange(pinnedCoordinate);
                       setShow(false);
                       setShowPinMap(false);
                     }}
@@ -559,9 +565,10 @@ export default function PlacePickerField({
             <Button
               variant="outline-danger"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
+                const removed = await onPrivatePinChange?.(null);
+                if (removed === false) return;
                 onChange(null);
-                onPrivatePinChange?.(null);
                 setShow(false);
                 setPinnedCoordinate(null);
                 setCoordinateInput({ latitude: "", longitude: "" });

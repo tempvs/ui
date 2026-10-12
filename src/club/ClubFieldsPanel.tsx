@@ -23,7 +23,9 @@ type ClubFieldsPanelProps = {
   onChange: (field: ClubField, value: ClubDraft[ClubField]) => void;
   onLocationChange: (place: MapPlace | null) => void;
   privatePin?: PrivateLocationPin | null;
-  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
+  onPrivatePinChange?: (
+    pin: PrivateLocationPin | null,
+  ) => void | Promise<boolean>;
   onBlur: (field: ClubField) => void;
 };
 

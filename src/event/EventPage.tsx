@@ -452,15 +452,17 @@ export default function EventPage() {
               onPrivatePinChange={
                 canManage
                   ? async (pin) => {
-                      if (!item) return;
+                      if (!item) return false;
                       try {
                         if (pin) setPrivatePin(await saveEventPrivatePin(item.id, pin));
                         else {
                           await deleteEventPrivatePin(item.id);
                           setPrivatePin(null);
                         }
+                        return true;
                       } catch {
                         // Preserve the last confirmed private location.
+                        return false;
                       }
                     }
                   : undefined

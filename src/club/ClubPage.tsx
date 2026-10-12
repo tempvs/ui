@@ -837,7 +837,7 @@ export default function ClubPage() {
                   onPrivatePinChange={
                     canManage && !unavailable
                       ? async (pin) => {
-                          if (!club) return;
+                          if (!club) return false;
                           try {
                             if (pin) {
                               setPrivatePin(await saveClubPrivatePin(club.id, pin));
@@ -845,8 +845,10 @@ export default function ClubPage() {
                               await deleteClubPrivatePin(club.id);
                               setPrivatePin(null);
                             }
+                            return true;
                           } catch {
                             // Keep the last confirmed private pin visible.
+                            return false;
                           }
                         }
                       : undefined

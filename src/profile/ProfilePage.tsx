@@ -545,7 +545,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   handlePrivatePinChange = async (
     privatePin: { latitude: number; longitude: number; label?: string | null } | null,
   ) => {
-    if (!this.state.profileId || !this.isEditableProfile()) return;
+    if (!this.state.profileId || !this.isEditableProfile()) return false;
     const profileId = this.state.profileId;
     try {
       if (privatePin) {
@@ -555,9 +555,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         await deletePrivateProfilePin(profileId);
         if (this.state.profileId === profileId) this.setState({ privatePin: null });
       }
+      return true;
     } catch {
       // Keep the last confirmed private pin visible. The picker remains open
       // for the editor to retry without exposing coordinates to other viewers.
+      return false;
     }
   };
 
