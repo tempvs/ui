@@ -1342,6 +1342,33 @@ button.stash-item-media-empty:disabled {
   transform: translateY(-50%);
 }
 
+.club-location-inheritance-button {
+  --bs-btn-padding-x: 0.1rem;
+  --bs-btn-padding-y: 0.05rem;
+  --bs-btn-border-width: 0;
+  --bs-btn-color: #1f2623;
+  --bs-btn-hover-color: #476b59;
+  --bs-btn-active-color: #315444;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.club-location-inheritance-button:disabled {
+  opacity: 0.42;
+}
+
+.club-location-inheritance-glyph {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.club-location-inheritance-glyph svg + svg {
+  margin-left: -0.36rem;
+}
+
 /* A two-endpoint version of the shared input row. It deliberately does not
    wrap while switching to edit mode, keeping both field slots stationary. */
 .historical-range-field-slot {

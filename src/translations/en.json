@@ -147,6 +147,7 @@
   "profile.field.clubNameRequired": "Club name *",
   "profile.field.location": "Location",
   "profile.field.alias": "Alias",
+  "profile.alias.rules": "Use 3–40 lowercase characters. Start with a letter; then use only lowercase letters, numbers, or hyphens. A UUID cannot be an alias.",
   "profile.field.period": "Period",
   "profile.field.periodRequired": "Period *",
   "profile.period.choose": "Choose a period",

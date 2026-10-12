@@ -45,6 +45,7 @@ import {
   updateProfile,
   uploadAvatar,
 } from "./profileApi";
+
 import { resolveCurrentOwnedProfileId } from "./currentProfile";
 import {
   Avatar,
@@ -55,6 +56,13 @@ import {
   ProfilePageProps,
   ProfilePageState,
 } from "./profileTypes";
+
+const PROFILE_ALIAS = /^[a-z][a-z0-9-]{2,39}$/;
+const UUID_ALIAS = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function isValidProfileAlias(value: string): boolean {
+  return PROFILE_ALIAS.test(value) && !UUID_ALIAS.test(value);
+}
 
 const AVATAR_MAX_DIMENSION = 1600;
 const AVATAR_TARGET_BYTES = 900 * 1024;
@@ -525,6 +533,22 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   handleFieldBlur = (fieldName: ProfileField) => {
     if (!this.isEditableProfile()) {
+      return;
+    }
+
+    if (
+      fieldName === "alias" &&
+      this.state.alias &&
+      !isValidProfileAlias(this.state.alias)
+    ) {
+      this.clearFieldTimer(fieldName);
+      this.clearStatusResetTimer(fieldName);
+      this.setState((prevState) => ({
+        fieldStatuses: {
+          ...prevState.fieldStatuses,
+          alias: "error",
+        },
+      }));
       return;
     }
 

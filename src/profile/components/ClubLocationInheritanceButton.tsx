@@ -48,8 +48,8 @@ export default function ClubLocationInheritanceButton({
       <Button
         type="button"
         size="sm"
-        variant="outline-dark"
-        className="d-inline-flex align-items-center gap-1"
+        variant="link"
+        className="club-location-inheritance-button"
         disabled={!available.length}
         aria-label="Inherit club location"
         title={
@@ -62,8 +62,10 @@ export default function ClubLocationInheritanceButton({
           else if (available.length > 1) setShow(true);
         }}
       >
-        <LeftArrowIcon />
-        <ClubsIcon />
+        <span className="club-location-inheritance-glyph" aria-hidden="true">
+          <LeftArrowIcon />
+          <ClubsIcon />
+        </span>
       </Button>
       <Modal show={show} onHide={() => setShow(false)} centered>
         <Modal.Header closeButton>

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Overlay, Popover } from "react-bootstrap";
 
 import EditableSelectFieldRow from "../../component/EditableSelectFieldRow";
 import EditableTextFieldRow from "../../component/EditableTextFieldRow";
@@ -53,6 +54,30 @@ export default function ProfileFieldsPanel({
   onInheritClubLocation,
 }: ProfileFieldsPanelProps) {
   const isClubProfile = type === "CLUB";
+  const aliasAnchorRef = useRef<HTMLDivElement>(null);
+  const [showAliasRules, setShowAliasRules] = useState(false);
+  const aliasIsMalformed = Boolean(
+    state.alias &&
+    (!/^[a-z][a-z0-9-]{2,39}$/.test(state.alias) ||
+      /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(state.alias)),
+  );
+
+  useEffect(() => {
+    if (state.fieldStatuses?.alias === "error" && aliasIsMalformed) {
+      setShowAliasRules(true);
+    }
+  }, [aliasIsMalformed, state.fieldStatuses?.alias]);
+
+  useEffect(() => {
+    if (!showAliasRules) return undefined;
+    const dismiss = () => setShowAliasRules(false);
+    document.addEventListener("pointerdown", dismiss, true);
+    document.addEventListener("keydown", dismiss, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("keydown", dismiss, true);
+    };
+  }, [showAliasRules]);
 
   return (
     <>
@@ -147,22 +172,40 @@ export default function ProfileFieldsPanel({
           ) : null
         }
       />
-      <EditableTextFieldRow
-        label={t("profile.field.alias", "Alias")}
-        editable={editable}
-        value={state.alias || ""}
-        readOnlyValue={state.alias || "-"}
-        onChange={(event) =>
-          onInputChange({
-            target: { name: "alias", value: event.target.value },
-          })
-        }
-        onBlur={() => onFieldBlur("alias")}
-        status={state.fieldStatuses?.alias}
-        className="mb-2"
-        savingTitle={t("profile.status.saving", "Saving")}
-        errorTitle={t("profile.status.saveFailed", "Save failed")}
-      />
+      <div ref={aliasAnchorRef}>
+        <EditableTextFieldRow
+          label={t("profile.field.alias", "Alias")}
+          editable={editable}
+          value={state.alias || ""}
+          readOnlyValue={state.alias || "-"}
+          onChange={(event) =>
+            onInputChange({
+              target: { name: "alias", value: event.target.value },
+            })
+          }
+          onBlur={() => onFieldBlur("alias")}
+          status={state.fieldStatuses?.alias}
+          className="mb-2"
+          savingTitle={t("profile.status.saving", "Saving")}
+          errorTitle={t("profile.status.saveFailed", "Save failed")}
+        />
+      </div>
+      <Overlay
+        target={aliasAnchorRef.current}
+        show={showAliasRules}
+        placement="bottom-start"
+      >
+        {(overlayProps) => (
+          <Popover {...overlayProps} id="profile-alias-rules">
+            <Popover.Body role="alert">
+              {t(
+                "profile.alias.rules",
+                "Use 3–40 lowercase characters. Start with a letter; then use only lowercase letters, numbers, or hyphens. A UUID cannot be an alias.",
+              )}
+            </Popover.Body>
+          </Popover>
+        )}
+      </Overlay>
       {isClubProfile && (
         <div className="profile-period-years-row d-flex align-items-end gap-2 mb-2">
           <div>
