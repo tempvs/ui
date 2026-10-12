@@ -40,6 +40,16 @@ type PlacePickerFieldProps = {
   /** Compact action rendered beside the location control, for entity-specific
    * helpers such as inheriting a club profile's location. */
   trailingAction?: React.ReactNode;
+  /** Exact coordinates owned by the edited entity. Unlike `value`, this is
+   * never a canonical Map place and must not be shown to ordinary visitors. */
+  privatePin?: PrivateLocationPin | null;
+  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
+};
+
+export type PrivateLocationPin = {
+  latitude: number;
+  longitude: number;
+  label?: string | null;
 };
 
 const MarkerIcon = FaMapMarkerAlt as React.ComponentType<{
@@ -97,6 +107,8 @@ export default function PlacePickerField({
   loadRelatedMapContent,
   relatedMapScope,
   trailingAction,
+  privatePin = null,
+  onPrivatePinChange,
 }: PlacePickerFieldProps) {
   // Callers commonly construct this value inline. Depend on its scalar values
   // so the debounced lookup only restarts when a year actually changes.
@@ -232,13 +244,31 @@ export default function PlacePickerField({
                 type="button"
                 className="inline-editable-input inline-editable-readonly-input text-start w-100"
                 onClick={() => {
-                  setPinnedCoordinate(null);
-                  setCoordinateInput({ latitude: "", longitude: "" });
+                  setPinnedCoordinate(
+                    privatePin
+                      ? {
+                          latitude: privatePin.latitude,
+                          longitude: privatePin.longitude,
+                        }
+                      : null,
+                  );
+                  setCoordinateInput(
+                    privatePin
+                      ? {
+                          latitude: String(privatePin.latitude),
+                          longitude: String(privatePin.longitude),
+                        }
+                      : { latitude: "", longitude: "" },
+                  );
                   setShowPinMap(false);
                   setShow(true);
                 }}
               >
-                {value?.canonicalName || readOnlyLabel || placeholder}
+                {value?.canonicalName ||
+                  (privatePin
+                    ? privatePin.label ||
+                      `Private pin (${privatePin.latitude.toFixed(4)}, ${privatePin.longitude.toFixed(4)})`
+                    : readOnlyLabel || placeholder)}
               </button>
             ) : value?.id ? (
               <span className="d-inline-flex align-items-baseline">
@@ -372,7 +402,7 @@ export default function PlacePickerField({
               Propose a different place on the map
             </Button>
           )}
-          {(!value?.id || showPinMap) && (
+          {(!value?.id || showPinMap || privatePin) && (
             <div className="place-picker-drop-map mt-3">
               <p className="small text-muted mb-2">
                 Or click the map to pin a shared place proposal. Proposed points
@@ -473,6 +503,23 @@ export default function PlacePickerField({
                 >
                   Propose pinned place
                 </Button>
+                {onPrivatePinChange && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline-secondary"
+                    disabled={!pinnedCoordinate}
+                    onClick={() => {
+                      if (!pinnedCoordinate) return;
+                      onChange(null);
+                      onPrivatePinChange(pinnedCoordinate);
+                      setShow(false);
+                      setShowPinMap(false);
+                    }}
+                  >
+                    Use as private pin
+                  </Button>
+                )}
               </div>
               {nearbyLoading && (
                 <div className="small text-muted mt-2" aria-live="polite">
@@ -507,13 +554,14 @@ export default function PlacePickerField({
             </div>
           )}
         </Modal.Body>
-        {editable && value && (
+        {editable && (value || privatePin) && (
           <Modal.Footer className="justify-content-between">
             <Button
               variant="outline-danger"
               size="sm"
               onClick={() => {
                 onChange(null);
+                onPrivatePinChange?.(null);
                 setShow(false);
                 setPinnedCoordinate(null);
                 setCoordinateInput({ latitude: "", longitude: "" });
