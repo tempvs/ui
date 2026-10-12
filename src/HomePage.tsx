@@ -1,16 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Col, Container, Row } from 'react-bootstrap';
-import { FaBook, FaSignInAlt } from 'react-icons/fa';
-import { Spinner } from 'react-bootstrap';
-import { fetchCurrentUserInfo } from './profile/profileApi';
-import WallPage from './wall/WallPage';
+import React, { useEffect, useState } from "react";
+import { Col, Container, Row, Spinner } from "react-bootstrap";
 
-type IconProps = {
-  className?: string;
-};
-
-const BookIcon = FaBook as React.ComponentType<IconProps>;
-const SignInIcon = FaSignInAlt as React.ComponentType<IconProps>;
+import AuthPanel from "./auth/AuthPanel";
+import { fetchCurrentUserInfo } from "./profile/profileApi";
+import WallPage from "./wall/WallPage";
 
 export default function HomePage() {
   const [userId, setUserId] = useState<string | null>();
@@ -20,16 +13,23 @@ export default function HomePage() {
   if (userId) return <WallPage userId={userId} />;
   return (
     <Container fluid className="home-shell px-4 px-xl-5">
-      <Row className="justify-content-center">
-        <Col xl={8} lg={9} md={10}>
-          <div className="home-message-panel">
+      <Row className="home-landing-row">
+        <Col lg={8} className="home-landing-copy-column">
+          <section className="home-message-panel home-welcome-panel">
+            <h1 className="home-welcome-title">Welcome to Tempvs!</h1>
             <p className="home-message">
-              Welcome to Tempvs! To sign in with Google, press{' '}
-              <span className="home-inline-icon"><SignInIcon /></span>. You can
-              create your reenactment profiles and associate them with your user account. To access the library, press{' '}
-              <span className="home-inline-icon"><BookIcon /></span>.
+              Bring history to life — together. Create your reenactor profiles, document your clothing, armor, weapons, and equipment, and support each item with archaeological, visual, and written sources. Explore other reenactors, compare interpretations and organize events with the community.
             </p>
-          </div>
+          </section>
+        </Col>
+        <Col lg={4} className="home-auth-column">
+          <section className="home-auth-panel auth-modal-content">
+            <div className="auth-modal-title-block home-auth-title-block">
+              <span className="auth-modal-kicker">Log in</span>
+              <h2 className="auth-modal-title">Welcome to Tempvs</h2>
+            </div>
+            <AuthPanel />
+          </section>
         </Col>
       </Row>
     </Container>

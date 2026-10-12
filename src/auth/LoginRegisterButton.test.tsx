@@ -13,9 +13,8 @@ function show() {
 test('keeps email sign-in and registration inside the regular UI modal', () => {
   window.history.pushState({}, '', '/library/source/example?tab=changes');
   show();
-  expect(screen.getByRole('tab', { name: /register/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/auth/login?provider=Google&returnTo=%2Flibrary%2Fsource%2Fexample%3Ftab%3Dchanges');
-  fireEvent.click(screen.getByRole('tab', { name: /register/i }));
-  expect(screen.getByRole('button', { name: /continue with google/i })).toHaveAttribute('href', '/auth/login?provider=Google&returnTo=%2Flibrary%2Fsource%2Fexample%3Ftab%3Dchanges');
+  expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /sign in with google/i })).toHaveAttribute('href', '/auth/login?provider=Google&returnTo=%2Flibrary%2Fsource%2Fexample%3Ftab%3Dchanges');
 });
