@@ -114,15 +114,16 @@ export default function EventPage() {
   );
   const restrictedVenueEventId =
     item?.venueVisibility === "PARTICIPANTS" ? item.id : null;
+  const privatePinEventId = canManage ? item?.id : undefined;
   useEffect(() => {
     let active = true;
-    if (!item || !canManage) {
+    if (!privatePinEventId) {
       setPrivatePin(null);
       return () => {
         active = false;
       };
     }
-    void getEventPrivatePin(item.id)
+    void getEventPrivatePin(privatePinEventId)
       .then((pin) => {
         if (active) setPrivatePin(pin);
       })
@@ -132,7 +133,7 @@ export default function EventPage() {
     return () => {
       active = false;
     };
-  }, [item?.id, canManage]);
+  }, [privatePinEventId]);
   useEffect(() => {
     if (!restrictedVenueEventId) return;
     let active = true;
