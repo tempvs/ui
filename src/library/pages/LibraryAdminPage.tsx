@@ -12,8 +12,10 @@ import { buildProfileLabel } from "../../profile/currentProfile";
 import {
   getProfileAvatar,
   getUserProfileByUserId,
+  getUserProfilesByUserIds,
   searchProfiles,
 } from "../../profile/profileApi";
+import ProfileThumbnailLink from "../../profile/components/ProfileThumbnailLink";
 import { Profile } from "../../profile/profileTypes";
 import { getErrorMessage } from "../../util/errors";
 import {
@@ -92,6 +94,9 @@ export default function LibraryAdminPage() {
   const [memberProfiles, setMemberProfiles] = useState<Record<string, Profile>>(
     {},
   );
+  const [roleRequestProfiles, setRoleRequestProfiles] = useState<
+    Record<string, Profile>
+  >({});
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>(
     {},
   );
@@ -144,6 +149,27 @@ export default function LibraryAdminPage() {
     void hydrateAvatars(resolvedProfiles.map(([, profile]) => profile));
   };
 
+  const hydrateRoleRequestProfiles = async (
+    requests: LibraryRoleRequest[],
+  ) => {
+    try {
+      const profiles = await getUserProfilesByUserIds(
+        requests.map((request) => request.userId),
+      );
+      setRoleRequestProfiles((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          profiles
+            .filter((profile) => Boolean(profile.userId))
+            .map((profile) => [String(profile.userId), profile]),
+        ),
+      }));
+    } catch {
+      // A missing Profile read must not make the moderation queue unavailable.
+      // The request's stored display name remains visible as a fallback.
+    }
+  };
+
   const isLibraryAdmin = Boolean(userInfo?.roles?.includes("ROLE_ADMIN"));
   const assignableRoleOptions = isLibraryAdmin
     ? ROLE_OPTIONS
@@ -187,8 +213,14 @@ export default function LibraryAdminPage() {
             ? "Admin access is required."
             : "Unable to load role requests.",
         );
-      setRoleRequests(result.data?.roleRequests || []);
+      const requests = result.data?.roleRequests || [];
+      setRoleRequests(requests);
       setNextToken(result.data?.nextToken || null);
+      // Resolve the requesters in one Profile API call so the moderation list
+      // uses the same linked avatar/name treatment as every other profile
+      // list. A historical request can outlive a deleted profile, so retain
+      // the Library-provided name as a safe fallback below.
+      void hydrateRoleRequestProfiles(requests);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -353,6 +385,7 @@ export default function LibraryAdminPage() {
         ...(result.data?.roleRequests || []),
       ]);
       setNextToken(result.data?.nextToken || null);
+      void hydrateRoleRequestProfiles(result.data?.roleRequests || []);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -660,25 +693,29 @@ export default function LibraryAdminPage() {
               No pending role requests.
             </div>
           )}
-          {roleRequests.map((request) => (
-            <Card
-              key={`${request.userId}-${request.role}`}
-              className="border-0 shadow-sm"
-            >
-              <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div>
-                  <div className="fw-semibold">
-                    {request.profileId ? (
-                      <Link to={`/profile/${request.profileId}`}>
-                        {request.userName}
-                      </Link>
+          {roleRequests.map((request) => {
+            const profile =
+              roleRequestProfiles[request.userId] ||
+              (request.profileId
+                ? { id: request.profileId, name: request.userName }
+                : null);
+            return (
+              <Card
+                key={`${request.userId}-${request.role}`}
+                className="border-0 shadow-sm"
+              >
+                <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                  <div className="d-flex align-items-center gap-3">
+                    {profile ? (
+                      <ProfileThumbnailLink profile={profile} />
                     ) : (
-                      request.userName
+                      <div className="fw-semibold">
+                        {request.userName || "User"}
+                      </div>
                     )}
+                    <div className="text-muted small">{request.roleLabel}</div>
                   </div>
-                  <div className="text-muted small">{request.roleLabel}</div>
-                </div>
-                <div className="d-flex gap-2">
+                  <div className="d-flex gap-2">
                   <Button
                     variant="outline-success"
                     disabled={updating !== null}
@@ -705,10 +742,11 @@ export default function LibraryAdminPage() {
                   >
                     Reject
                   </Button>
-                </div>
-              </Card.Body>
-            </Card>
-          ))}
+                  </div>
+                </Card.Body>
+              </Card>
+            );
+          })}
           {nextToken && (
             <Button
               variant="outline-dark"
