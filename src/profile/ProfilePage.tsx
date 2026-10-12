@@ -120,6 +120,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     return {
       avatarVisible: false,
       avatarLoaded: false,
+      avatarId: null,
       loaded: false,
       notFound: false,
       createMode: false,
@@ -1046,6 +1047,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       avatarVisible: true,
       avatarLoaded: true,
       avatarImage: null,
+      avatarId: avatar.id || null,
       avatarUrl: avatar.url,
       avatarInfo: avatar.description,
       avatarDescriptionDraft: avatar.description || "",
@@ -1069,24 +1071,26 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     try {
       const preparedFile = await this.prepareAvatarFile(file);
-      const response = await uploadAvatar(
+      const avatar = await uploadAvatar(
         this.state.profileId,
         preparedFile,
         this.state.avatarDescriptionDraft || null,
       );
 
-      if (response.status !== 200) {
-        throw new Error("Upload failed");
-      }
-
       this.setState({
         avatarUploadStatus: "success",
         avatarUploadMessage: null,
-        avatarVisible: false,
-        avatarLoaded: false,
+        // The common image gallery retains this pending image and polls the
+        // shared Image API until the processor supplies its signed URL.
+        avatarVisible: true,
+        avatarLoaded: true,
+        avatarId: avatar.id || null,
+        avatarUrl: avatar.url || null,
+        avatarInfo: avatar.description || "",
+        avatarDescriptionDraft: avatar.description || "",
+        avatarDescriptionPersisted: avatar.description || "",
         avatarDescriptionStatus: null,
       });
-      this.fetchAvatar(this.state.profileId);
     } catch (error) {
       this.setState({
         avatarUploadStatus: "error",
@@ -1320,6 +1324,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       this.setState({
         avatarVisible: false,
         avatarLoaded: true,
+        avatarId: null,
         avatarUrl: null,
         avatarImage: null,
         avatarInfo: "",
@@ -1452,6 +1457,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               avatarVisible={this.state.avatarVisible}
               avatarLoaded={this.state.avatarLoaded}
               avatarUrl={this.state.avatarUrl}
+              avatarId={this.state.avatarId}
               profileId={this.state.profileId}
               avatarInfo={this.state.avatarInfo}
               avatarUploadStatus={this.state.avatarUploadStatus}

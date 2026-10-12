@@ -11,6 +11,7 @@ type ProfileAvatarPanelProps = {
   avatarVisible: boolean;
   avatarLoaded: boolean;
   avatarUrl?: string | null;
+  avatarId?: string | null;
   profileId?: string | number | null;
   avatarInfo?: string | null;
   avatarUploadStatus?: string | null;
@@ -32,6 +33,7 @@ export default function ProfileAvatarPanel({
   avatarVisible,
   avatarLoaded,
   avatarUrl,
+  avatarId,
   profileId,
   avatarInfo,
   avatarUploadStatus,
@@ -67,7 +69,7 @@ export default function ProfileAvatarPanel({
               avatarVisible
                 ? [
                     {
-                      id: profileId || "profile-avatar",
+                      id: avatarId || profileId || "profile-avatar",
                       url: avatarUrl,
                       resourceType: "profile",
                       resourceId: profileId,

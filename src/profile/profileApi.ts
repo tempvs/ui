@@ -383,7 +383,7 @@ export async function uploadAvatar(
   profileId: Id,
   file: File,
   description?: string | null,
-) {
+): Promise<Avatar> {
   const intentResponse = await requestJson(
     `/api/profile/profile/${profileId}/avatar`,
     {
@@ -396,9 +396,14 @@ export async function uploadAvatar(
       }),
     },
   );
-  if (!intentResponse.ok) return intentResponse;
+  if (!intentResponse.ok) {
+    throw new Error(
+      `Unable to prepare profile picture upload (${intentResponse.status})`,
+    );
+  }
 
   const intent = (await intentResponse.json()) as {
+    image?: Avatar;
     upload?: { url?: unknown; method?: unknown; headers?: unknown };
   };
   if (
@@ -407,16 +412,20 @@ export async function uploadAvatar(
     !intent.upload.headers ||
     typeof intent.upload.headers !== "object"
   ) {
-    return new Response(null, {
-      status: 502,
-      statusText: "Invalid upload intent",
-    });
+    throw new Error("Invalid profile picture upload intent");
   }
-  return fetch(intent.upload.url, {
+  if (!intent.image?.id) {
+    throw new Error("Profile picture upload did not return image metadata");
+  }
+  const upload = await fetch(intent.upload.url, {
     method: "PUT",
     headers: intent.upload.headers as HeadersInit,
     body: file,
   });
+  if (!upload.ok) {
+    throw new Error(`Profile picture upload failed (${upload.status})`);
+  }
+  return intent.image;
 }
 
 export function updateAvatarDescription(

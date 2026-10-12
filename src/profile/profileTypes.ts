@@ -60,6 +60,10 @@ export type CurrentUserInfo = {
 };
 
 export type Avatar = {
+  id?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | null;
+  status?: "PENDING" | "READY" | "REJECTED" | null;
   url?: string | null;
   thumbnailUrl?: string | null;
   description?: string | null;
@@ -88,6 +92,7 @@ export type ProfilePageState = PersistedProfile & {
   avatarVisible: boolean;
   avatarLoaded: boolean;
   avatarImage?: string | null;
+  avatarId?: string | null;
   avatarUrl?: string | null;
   avatarInfo?: string | null;
   loaded: boolean;
