@@ -135,18 +135,18 @@ export default function ProfileFieldsPanel({
             ? { type: "PROFILE", id: String(relatedMapProfile.id) }
             : undefined
         }
-      />
-      {isClubProfile &&
-        editable &&
-        relatedMapProfile?.id &&
-        onInheritClubLocation && (
-          <div className="mb-2">
+        trailingAction={
+          isClubProfile &&
+          editable &&
+          relatedMapProfile?.id &&
+          onInheritClubLocation ? (
             <ClubLocationInheritanceButton
               profileId={String(relatedMapProfile.id)}
               onSelect={onInheritClubLocation}
             />
-          </div>
-        )}
+          ) : null
+        }
+      />
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}
         editable={editable}

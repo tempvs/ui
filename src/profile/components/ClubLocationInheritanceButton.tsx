@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button, Modal, Spinner } from "react-bootstrap";
+import { FaArrowLeft, FaUsers } from "react-icons/fa";
 import { getProfileClubs, type Club } from "../../club/clubApi";
+
+const LeftArrowIcon = FaArrowLeft as React.ComponentType;
+const ClubsIcon = FaUsers as React.ComponentType;
 
 /**
  * Selects an actual club membership before applying its location to a club
@@ -45,7 +49,9 @@ export default function ClubLocationInheritanceButton({
         type="button"
         size="sm"
         variant="outline-dark"
+        className="d-inline-flex align-items-center gap-1"
         disabled={!available.length}
+        aria-label="Inherit club location"
         title={
           available.length
             ? "Use the location of a club this profile belongs to"
@@ -56,7 +62,8 @@ export default function ClubLocationInheritanceButton({
           else if (available.length > 1) setShow(true);
         }}
       >
-        Inherit club location
+        <LeftArrowIcon />
+        <ClubsIcon />
       </Button>
       <Modal show={show} onHide={() => setShow(false)} centered>
         <Modal.Header closeButton>

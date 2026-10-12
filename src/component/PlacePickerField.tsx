@@ -37,6 +37,9 @@ type PlacePickerFieldProps = {
   /** Optional bounded relationship overlay for this page's location globe. */
   loadRelatedMapContent?: () => Promise<OwnedMapContent>;
   relatedMapScope?: SharedMapScope;
+  /** Compact action rendered beside the location control, for entity-specific
+   * helpers such as inheriting a club profile's location. */
+  trailingAction?: React.ReactNode;
 };
 
 const MarkerIcon = FaMapMarkerAlt as React.ComponentType<{
@@ -93,6 +96,7 @@ export default function PlacePickerField({
   historicalRange,
   loadRelatedMapContent,
   relatedMapScope,
+  trailingAction,
 }: PlacePickerFieldProps) {
   // Callers commonly construct this value inline. Depend on its scalar values
   // so the debounced lookup only restarts when a year actually changes.
@@ -221,7 +225,7 @@ export default function PlacePickerField({
         >
           <div
             className="inline-editable-control inline-editable-readonly"
-            style={{ minWidth: 0 }}
+            style={{ minWidth: 0, flex: "1 1 auto" }}
           >
             {editable ? (
               <button
@@ -277,6 +281,7 @@ export default function PlacePickerField({
               scope={relatedMapScope}
             />
           )}
+          {trailingAction}
         </div>
       </div>
       <Modal
