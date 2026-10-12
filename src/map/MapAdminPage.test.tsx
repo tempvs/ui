@@ -180,7 +180,7 @@ test("filters loaded proposals and opens a private point preview", async () => {
 
   fireEvent.click(screen.getByText(/review submitted details and point/i));
   expect(await screen.findByTestId("proposal-map-preview")).toBeInTheDocument();
-  expect(screen.getByText("47.533000, 7.720000")).toBeInTheDocument();
+  expect(screen.getAllByText("47.533000, 7.720000").length).toBeGreaterThan(0);
   expect(await screen.findByText("Basel, Switzerland")).toBeInTheDocument();
   expect(nearbyMapPlacesMock).toHaveBeenCalledWith(
     47.533,
@@ -296,6 +296,59 @@ test("records a private reviewer comment in the proposal discussion", async () =
     ),
   );
   expect(await screen.findByText("Please add a citation.")).toBeInTheDocument();
+});
+
+test("shows an immutable field diff when a proposal was amended", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "editor-1",
+    roles: ["MAP_EDITOR"],
+  });
+  listActivityMock.mockResolvedValue([
+    {
+      id: "revision-1",
+      placeId: "tempvs:proposal-1",
+      kind: "SUBMITTED",
+      actorUserId: "author-1",
+      occurredAt: "2026-10-08T12:00:00.000Z",
+      revision: {
+        version: 1,
+        canonicalName: "Augusta Raurica",
+        names: [{ value: "Augusta Raurica", preferred: true }],
+        latitude: 47.533,
+        longitude: 7.72,
+        featureType: "HISTORIC_SETTLEMENT",
+        description: "Initial note",
+      },
+    },
+    {
+      id: "revision-2",
+      placeId: "tempvs:proposal-1",
+      kind: "AMENDED",
+      actorUserId: "author-1",
+      occurredAt: "2026-10-09T12:00:00.000Z",
+      revision: {
+        version: 2,
+        canonicalName: "Augusta Raurica",
+        names: [{ value: "Augusta Raurica", preferred: true }],
+        latitude: 47.534,
+        longitude: 7.72,
+        featureType: "HISTORIC_SETTLEMENT",
+        description: "Corrected note",
+      },
+    },
+  ]);
+  renderAdmin();
+
+  fireEvent.click(
+    await screen.findByText(/review submitted details and point/i),
+  );
+  fireEvent.click(
+    await screen.findByText("Show changes from revision 1"),
+  );
+  expect(await screen.findByText("Initial note")).toBeInTheDocument();
+  expect(screen.getByText("Corrected note")).toBeInTheDocument();
+  expect(screen.getAllByText("47.533000, 7.720000").length).toBeGreaterThan(0);
+  expect(screen.getByText("47.534000, 7.720000")).toBeInTheDocument();
 });
 
 test("paginates Map role requests and confirms operational-role removal", async () => {
