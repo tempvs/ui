@@ -555,21 +555,22 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     string,
     string | null | { year: number; era: "BC" | "AD" }
   > {
+    const isClubProfile = this.state.type === "CLUB";
     return {
       firstName: this.state.firstName,
-      lastName: this.state.lastName,
-      nickName: this.state.nickName || null,
-      profileEmail: this.state.profileEmail || null,
+      lastName: isClubProfile ? "" : this.state.lastName,
+      nickName: null,
+      profileEmail: isClubProfile ? null : this.state.profileEmail || null,
       locationPlaceId: this.state.locationPlaceId || null,
       location: this.state.location || null,
       alias: this.state.alias || null,
-      period: this.state.type === "CLUB" ? this.state.period || null : null,
+      period: isClubProfile ? this.state.period || null : null,
       from:
-        this.state.type === "CLUB" && this.state.fromYear
+        isClubProfile && this.state.fromYear
           ? { year: Number(this.state.fromYear), era: this.state.fromEra }
           : null,
       to:
-        this.state.type === "CLUB" && this.state.toYear
+        isClubProfile && this.state.toYear
           ? { year: Number(this.state.toYear), era: this.state.toEra }
           : null,
     };
@@ -1323,15 +1324,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         <CreateProfileForm
           firstName={this.state.firstName}
           lastName={this.state.lastName}
-          nickName={this.state.nickName}
-          profileEmail={this.state.profileEmail}
-          locationPlaceId={this.state.locationPlaceId}
-          location={this.state.location}
-          alias={this.state.alias}
           isErrorMessage={this.state.messageVariant === "error"}
           t={this.t.bind(this)}
           onChange={this.handleInputChange}
-          onLocationChange={this.handleLocationPlaceChange}
           onSubmit={this.handleCreateProfile}
         />
       </PageLayout>

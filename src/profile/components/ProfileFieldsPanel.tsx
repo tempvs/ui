@@ -52,10 +52,16 @@ export default function ProfileFieldsPanel({
   relatedMapProfile,
   onInheritClubLocation,
 }: ProfileFieldsPanelProps) {
+  const isClubProfile = type === "CLUB";
+
   return (
     <>
       <EditableTextFieldRow
-        label={t("profile.field.firstNameRequired", "First name *")}
+        label={
+          isClubProfile
+            ? t("profile.field.clubNameRequired", "Club name *")
+            : t("profile.field.firstNameRequired", "First name *")
+        }
         editable={editable}
         value={state.firstName || ""}
         readOnlyValue={state.firstName}
@@ -70,55 +76,43 @@ export default function ProfileFieldsPanel({
         savingTitle={t("profile.status.saving", "Saving")}
         errorTitle={t("profile.status.saveFailed", "Save failed")}
       />
-      <EditableTextFieldRow
-        label={t("profile.field.lastNameRequired", "Last name *")}
-        editable={editable}
-        value={state.lastName || ""}
-        readOnlyValue={state.lastName}
-        onChange={(event) =>
-          onInputChange({
-            target: { name: "lastName", value: event.target.value },
-          })
-        }
-        onBlur={() => onFieldBlur("lastName")}
-        status={state.fieldStatuses?.lastName}
-        className="mb-2"
-        savingTitle={t("profile.status.saving", "Saving")}
-        errorTitle={t("profile.status.saveFailed", "Save failed")}
-      />
-      <EditableTextFieldRow
-        label={t("profile.field.nickName", "Nick name")}
-        editable={editable}
-        value={state.nickName || ""}
-        readOnlyValue={state.nickName || "-"}
-        onChange={(event) =>
-          onInputChange({
-            target: { name: "nickName", value: event.target.value },
-          })
-        }
-        onBlur={() => onFieldBlur("nickName")}
-        status={state.fieldStatuses?.nickName}
-        className="mb-2"
-        savingTitle={t("profile.status.saving", "Saving")}
-        errorTitle={t("profile.status.saveFailed", "Save failed")}
-      />
-      <EditableTextFieldRow
-        label={t("profile.field.email", "Profile email")}
-        editable={editable}
-        value={state.profileEmail || ""}
-        readOnlyValue={state.profileEmail || "-"}
-        onChange={(event) =>
-          onInputChange({
-            target: { name: "profileEmail", value: event.target.value },
-          })
-        }
-        onBlur={() => onFieldBlur("profileEmail")}
-        status={state.fieldStatuses?.profileEmail}
-        type="email"
-        className="mb-2"
-        savingTitle={t("profile.status.saving", "Saving")}
-        errorTitle={t("profile.status.saveFailed", "Save failed")}
-      />
+      {!isClubProfile && (
+        <>
+          <EditableTextFieldRow
+            label={t("profile.field.lastNameRequired", "Last name *")}
+            editable={editable}
+            value={state.lastName || ""}
+            readOnlyValue={state.lastName}
+            onChange={(event) =>
+              onInputChange({
+                target: { name: "lastName", value: event.target.value },
+              })
+            }
+            onBlur={() => onFieldBlur("lastName")}
+            status={state.fieldStatuses?.lastName}
+            className="mb-2"
+            savingTitle={t("profile.status.saving", "Saving")}
+            errorTitle={t("profile.status.saveFailed", "Save failed")}
+          />
+          <EditableTextFieldRow
+            label={t("profile.field.email", "Email")}
+            editable={editable}
+            value={state.profileEmail || ""}
+            readOnlyValue={state.profileEmail || "-"}
+            onChange={(event) =>
+              onInputChange({
+                target: { name: "profileEmail", value: event.target.value },
+              })
+            }
+            onBlur={() => onFieldBlur("profileEmail")}
+            status={state.fieldStatuses?.profileEmail}
+            type="email"
+            className="mb-2"
+            savingTitle={t("profile.status.saving", "Saving")}
+            errorTitle={t("profile.status.saveFailed", "Save failed")}
+          />
+        </>
+      )}
       <PlacePickerField
         label={t("profile.field.location", "Location")}
         editable={editable}
@@ -142,14 +136,17 @@ export default function ProfileFieldsPanel({
             : undefined
         }
       />
-      {type === "CLUB" && editable && relatedMapProfile?.id && onInheritClubLocation && (
-        <div className="mb-2">
-          <ClubLocationInheritanceButton
-            profileId={String(relatedMapProfile.id)}
-            onSelect={onInheritClubLocation}
-          />
-        </div>
-      )}
+      {isClubProfile &&
+        editable &&
+        relatedMapProfile?.id &&
+        onInheritClubLocation && (
+          <div className="mb-2">
+            <ClubLocationInheritanceButton
+              profileId={String(relatedMapProfile.id)}
+              onSelect={onInheritClubLocation}
+            />
+          </div>
+        )}
       <EditableTextFieldRow
         label={t("profile.field.alias", "Alias")}
         editable={editable}
@@ -166,7 +163,7 @@ export default function ProfileFieldsPanel({
         savingTitle={t("profile.status.saving", "Saving")}
         errorTitle={t("profile.status.saveFailed", "Save failed")}
       />
-      {type === "CLUB" && (
+      {isClubProfile && (
         <div className="profile-period-years-row d-flex align-items-end gap-2 mb-2">
           <div>
             <EditableSelectFieldRow
