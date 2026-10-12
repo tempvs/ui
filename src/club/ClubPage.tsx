@@ -21,14 +21,17 @@ import {
   Club,
   ClubDraft,
   detachProfile,
+  deleteClubPrivatePin,
   followClub,
   getClub,
+  getClubPrivatePin,
   getClubFollowState,
   getParticipants,
   isClubServiceUnavailable,
   requestJoin,
   unfollowClub,
   updateClub,
+  saveClubPrivatePin,
 } from "./clubApi";
 import ClubFollowModal from "./ClubFollowModal";
 import ClubFollowersPanel from "./ClubFollowersPanel";
@@ -273,6 +276,11 @@ export default function ClubPage() {
   const t = (key: string, defaultMessage: string) =>
     intl.formatMessage({ id: `clubs.${key}`, defaultMessage });
   const [club, setClub] = useState<Club | null>(null);
+  const [privatePin, setPrivatePin] = useState<{
+    latitude: number;
+    longitude: number;
+    label?: string | null;
+  } | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [ownedClubProfiles, setOwnedClubProfiles] = useState<Profile[]>([]);
   const [ownedUserProfile, setOwnedUserProfile] = useState<Profile | null>(
@@ -423,6 +431,25 @@ export default function ClubPage() {
       active = false;
     };
   }, [id, navigate, revision]);
+  useEffect(() => {
+    let active = true;
+    if (!club?.canManage) {
+      setPrivatePin(null);
+      return () => {
+        active = false;
+      };
+    }
+    void getClubPrivatePin(club.id)
+      .then((pin) => {
+        if (active) setPrivatePin(pin);
+      })
+      .catch(() => {
+        if (active) setPrivatePin(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [club?.id, club?.canManage]);
   useEffect(() => {
     if (!club?.creatorUserId) {
       setOwnerProfile(null);
@@ -806,6 +833,24 @@ export default function ClubPage() {
                   statuses={fieldStatuses}
                   onChange={changeClubField}
                   onLocationChange={changeClubLocation}
+                  privatePin={privatePin}
+                  onPrivatePinChange={
+                    canManage && !unavailable
+                      ? async (pin) => {
+                          if (!club) return;
+                          try {
+                            if (pin) {
+                              setPrivatePin(await saveClubPrivatePin(club.id, pin));
+                            } else {
+                              await deleteClubPrivatePin(club.id);
+                              setPrivatePin(null);
+                            }
+                          } catch {
+                            // Keep the last confirmed private pin visible.
+                          }
+                        }
+                      : undefined
+                  }
                   onBlur={saveClubField}
                 />
                 <PostPanel

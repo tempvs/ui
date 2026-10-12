@@ -329,6 +329,17 @@ export const createClub = async (draft: ClubDraft) =>
   );
 export const updateClub = async (id: Id, draft: ClubDraft) =>
   clubValue(await request<unknown>(`/clubs/${id}`, "PUT", draft));
+export type PrivateClubPin = {
+  latitude: number;
+  longitude: number;
+  label?: string | null;
+};
+export const getClubPrivatePin = (id: Id) =>
+  request<PrivateClubPin | null>(`/clubs/${id}/private-pin`);
+export const saveClubPrivatePin = (id: Id, pin: PrivateClubPin) =>
+  request<PrivateClubPin>(`/clubs/${id}/private-pin`, "PUT", pin);
+export const deleteClubPrivatePin = (id: Id) =>
+  request<void>(`/clubs/${id}/private-pin`, "DELETE");
 export const deleteClub = (id: Id) => request<void>(`/clubs/${id}`, "DELETE");
 export const getProfileClubs = async (id: Id) =>
   arrayValue(await request<unknown>(`/profiles/${id}/clubs`), clubValue);

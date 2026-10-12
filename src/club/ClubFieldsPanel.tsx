@@ -6,7 +6,9 @@ import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
 import { SaveStatus } from "../component/EditableFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
-import PlacePickerField from "../component/PlacePickerField";
+import PlacePickerField, {
+  type PrivateLocationPin,
+} from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import { loadClubRelatedMapContent } from "../map/ownedMapContent";
 import { PERIODS, getPeriodLabel } from "../util/periods";
@@ -20,6 +22,8 @@ type ClubFieldsPanelProps = {
   statuses: Partial<Record<ClubField, SaveStatus>>;
   onChange: (field: ClubField, value: ClubDraft[ClubField]) => void;
   onLocationChange: (place: MapPlace | null) => void;
+  privatePin?: PrivateLocationPin | null;
+  onPrivatePinChange?: (pin: PrivateLocationPin | null) => void;
   onBlur: (field: ClubField) => void;
 };
 
@@ -30,6 +34,8 @@ export default function ClubFieldsPanel({
   statuses,
   onChange,
   onLocationChange,
+  privatePin,
+  onPrivatePinChange,
   onBlur,
 }: ClubFieldsPanelProps) {
   const intl = useIntl();
@@ -80,6 +86,8 @@ export default function ClubFieldsPanel({
         }
         readOnlyLabel={club.location}
         onChange={onLocationChange}
+        privatePin={privatePin}
+        onPrivatePinChange={onPrivatePinChange}
         historicalRange={toMapRange(club.from, club.to)}
         status={statuses.location}
         loadRelatedMapContent={() => loadClubRelatedMapContent(club)}
