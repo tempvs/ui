@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { FaGoogle } from "react-icons/fa";
 
@@ -41,6 +41,14 @@ export default function AuthPanel() {
   const returnTo = currentReturnTo();
   const confirmed = new URLSearchParams(window.location.search).get("registration") === "confirmed";
 
+  // Authentication errors must never alter the landing or modal layout. They
+  // are rendered as a short-lived overlay anchored to this fixed form instead.
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = window.setTimeout(() => setError(null), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
+
   const submit = async (action: AuthAction) => {
     if (!formRef.current?.reportValidity()) return;
     setBusy(true);
@@ -72,7 +80,7 @@ export default function AuthPanel() {
         ? "Your email is confirmed. Sign in to create your profile."
         : "Use your email and password to create an account or sign in."}
     </p>
-    {error && <div className="auth-message auth-message-error" role="alert">{error}</div>}
+    {error && <div className="auth-error-popover" role="alert">{error}</div>}
     <Form.Group className="auth-form-group" controlId="auth-email">
       <Form.Label className="auth-form-label">Email</Form.Label>
       <Form.Control className="auth-form-input" type="email" autoComplete="email" required disabled={busy} value={email} onChange={event => setEmail(event.target.value)} />
@@ -83,7 +91,7 @@ export default function AuthPanel() {
     </Form.Group>
     <div className="d-grid">
       <Button className="auth-submit-button" type="button" disabled={busy} onClick={() => void submit("register")}>
-        {busy ? "Please wait…" : "Register"}
+        {busy ? "Please wait..." : "Register"}
       </Button>
     </div>
     <div className="auth-divider"><span>Or</span></div>

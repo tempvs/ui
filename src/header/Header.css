@@ -295,6 +295,7 @@
 }
 
 .auth-form {
+  position: relative;
   text-align: left;
 }
 
@@ -339,6 +340,35 @@
   color: #8a2c2c;
 }
 
+.auth-error-popover {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+  max-width: min(100%, 24rem);
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(156, 66, 57, 0.28);
+  border-radius: 0.25rem;
+  background: #fffaf5;
+  box-shadow: 0 0.45rem 1rem rgba(55, 37, 30, 0.14);
+  color: #8a2c2c;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.auth-error-popover::after {
+  position: absolute;
+  right: 1rem;
+  bottom: -0.38rem;
+  width: 0.68rem;
+  height: 0.68rem;
+  border-right: 1px solid rgba(156, 66, 57, 0.28);
+  border-bottom: 1px solid rgba(156, 66, 57, 0.28);
+  background: #fffaf5;
+  content: "";
+  transform: rotate(45deg);
+}
+
 .auth-message-success {
   background: rgba(176, 146, 82, 0.12);
   color: #6d5726;
@@ -347,6 +377,7 @@
 .auth-submit-button,
 .auth-secondary-button,
 .auth-oauth-button {
+  --bs-btn-focus-shadow-rgb: 176, 146, 82;
   min-height: 2.7rem;
   font-weight: 700;
 }
@@ -359,9 +390,11 @@
 
 .auth-submit-button:hover,
 .auth-submit-button:focus,
-.auth-submit-button:active {
+.auth-submit-button:active,
+.auth-submit-button:focus-visible {
   border-color: rgba(136, 110, 58, 0.34);
   background: #9e7837;
+  box-shadow: 0 0 0 0.15rem rgba(176, 146, 82, 0.2);
 }
 
 .auth-secondary-button {
@@ -373,12 +406,15 @@
 .auth-secondary-button:hover,
 .auth-secondary-button:focus,
 .auth-secondary-button:active,
+.auth-secondary-button:focus-visible,
 .auth-oauth-button:hover,
 .auth-oauth-button:focus,
-.auth-oauth-button:active {
+.auth-oauth-button:active,
+.auth-oauth-button:focus-visible {
   border-color: rgba(176, 146, 82, 0.24);
   background: #ffffff;
   color: #1f2623;
+  box-shadow: 0 0 0 0.15rem rgba(176, 146, 82, 0.16);
 }
 
 .auth-divider {
