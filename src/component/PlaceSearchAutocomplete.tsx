@@ -2,6 +2,7 @@ import React, { useEffect, useId, useState } from "react";
 import { Form } from "react-bootstrap";
 
 import type { MapPlace } from "../map/mapApi";
+import "./PlaceSearchAutocomplete.css";
 
 type PlaceSearchAutocompleteProps = {
   query: string;
@@ -38,8 +39,8 @@ export default function PlaceSearchAutocomplete({
   inputId,
   autoFocus = false,
   inputClassName,
-  resultsClassName = "place-picker-results",
-  optionClassName = "w-100 text-start mb-1",
+  resultsClassName = "place-search-autocomplete-results",
+  optionClassName = "place-search-autocomplete-option",
   statusClassName = "small text-muted mb-0",
 }: PlaceSearchAutocompleteProps) {
   const generatedId = useId().replace(/:/g, "");
