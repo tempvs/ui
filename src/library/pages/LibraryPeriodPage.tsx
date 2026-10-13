@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Form, Modal, Row } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -35,6 +35,7 @@ import { canContribute, canEditSource } from "../libraryRoles";
 import { LibraryViewer } from "../libraryApi";
 import { fetchClubProfiles } from "../../profile/profileApi";
 import { getStoredCurrentProfileValue } from "../../profile/currentProfile";
+import { rangeFromInputs } from "../../search/publicSearchFilterContract";
 
 export default function LibraryPeriodPage() {
   const { period } = useParams();
@@ -87,6 +88,7 @@ export default function LibraryPeriodPage() {
   >(null);
 
   const periodCode = (period || "").toUpperCase();
+  const sourceRange = useMemo(() => rangeFromInputs(from, to), [from, to]);
 
   useEffect(() => {
     let active = true;
@@ -130,12 +132,10 @@ export default function LibraryPeriodPage() {
           period: periodCode,
           classifications: selectedClassifications,
           types: selectedTypes,
-          ...(rangeEnabled && from.year
-            ? { from: { year: Number(from.year), era: from.era } }
+          ...(rangeEnabled && sourceRange.from
+            ? { from: sourceRange.from }
             : {}),
-          ...(rangeEnabled && to.year
-            ? { to: { year: Number(to.year), era: to.era } }
-            : {}),
+          ...(rangeEnabled && sourceRange.to ? { to: sourceRange.to } : {}),
           ...(discoveredAtPlace
             ? { discoveredAtPlaceId: discoveredAtPlace.id }
             : {}),
@@ -181,8 +181,7 @@ export default function LibraryPeriodPage() {
     selectedClassifications,
     selectedTypes,
     rangeEnabled,
-    from,
-    to,
+    sourceRange,
     discoveredAtPlace,
     heldAtPlace,
   ]);
@@ -196,12 +195,8 @@ export default function LibraryPeriodPage() {
         period: periodCode,
         classifications: selectedClassifications,
         types: selectedTypes,
-        ...(rangeEnabled && from.year
-          ? { from: { year: Number(from.year), era: from.era } }
-          : {}),
-        ...(rangeEnabled && to.year
-          ? { to: { year: Number(to.year), era: to.era } }
-          : {}),
+        ...(rangeEnabled && sourceRange.from ? { from: sourceRange.from } : {}),
+        ...(rangeEnabled && sourceRange.to ? { to: sourceRange.to } : {}),
         ...(discoveredAtPlace
           ? { discoveredAtPlaceId: discoveredAtPlace.id }
           : {}),

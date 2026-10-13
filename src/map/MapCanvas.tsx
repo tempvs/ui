@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-
 import type { MapEntityLocation, MapPlace } from "./mapApi";
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
 import "./map.css";
+
+/** Required attribution for the bundled Natural Earth reference basemap. */
+export const MAP_ATTRIBUTION = "Made with Natural Earth";
 
 type MapCanvasProps = {
   places: MapPlace[];
@@ -159,7 +161,7 @@ export default function MapCanvas({
     next.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: "Made with Natural Earth",
+        customAttribution: MAP_ATTRIBUTION,
       }),
     );
     next.on("error", (event) => {

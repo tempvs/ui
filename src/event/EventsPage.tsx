@@ -19,6 +19,10 @@ import { Profile } from "../profile/profileTypes";
 import { PeriodBadge } from "../util/periods";
 import EventForm from "./EventForm";
 import { createEvent, EventDraft, listEvents, TempvsEvent } from "./eventApi";
+import {
+  overlapsHistoricalRange,
+  rangeFromInputs,
+} from "../search/publicSearchFilterContract";
 import "./events.css";
 
 export default function EventsPage() {
@@ -94,8 +98,7 @@ export default function EventsPage() {
   };
 
   const normalized = query.trim().toLocaleLowerCase();
-  const ordinal = (value?: { year: number; era: "BC" | "AD" } | null) =>
-    !value ? null : value.era === "BC" ? 1 - value.year : value.year;
+  const range = rangeFromInputs(from, to);
   const visible = events.filter((event) => {
     if (!normalized && !rangeEnabled && !venue) return true;
     const textMatch =
@@ -110,19 +113,7 @@ export default function EventsPage() {
         : event.historicalSitePlaceId === venue.id);
     if (!textMatch || !placeMatch || !rangeEnabled)
       return textMatch && placeMatch;
-    if (!event.from && !event.to) return true;
-    const lower = from.year
-      ? ordinal({ year: Number(from.year), era: from.era })
-      : null;
-    const upper = to.year
-      ? ordinal({ year: Number(to.year), era: to.era })
-      : null;
-    const eventFrom = ordinal(event.from);
-    const eventTo = ordinal(event.to);
-    return (
-      (eventTo === null || lower === null || eventTo >= lower) &&
-      (upper === null || eventFrom === null || eventFrom <= upper)
-    );
+    return overlapsHistoricalRange(event, range);
   });
 
   return (
@@ -193,9 +184,7 @@ export default function EventsPage() {
               size="sm"
               value={placeRole}
               onChange={(event) => {
-                setPlaceRole(
-                  event.target.value as "VENUE" | "HISTORICAL_SITE",
-                );
+                setPlaceRole(event.target.value as "VENUE" | "HISTORICAL_SITE");
                 setVenue(null);
               }}
               style={{ width: "9rem" }}

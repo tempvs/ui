@@ -17,6 +17,8 @@ type ProfileSearchParams = {
   query?: string;
   period?: string | null;
   type?: string | null;
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
   page?: number;
   size?: number;
 };
@@ -245,6 +247,8 @@ export async function searchProfiles({
   query,
   period,
   type,
+  from,
+  to,
   page = 0,
   size = 20,
 }: ProfileSearchParams) {
@@ -260,6 +264,14 @@ export async function searchProfiles({
 
   if (type) {
     params.set("type", type);
+  }
+  if (from) {
+    params.set("fromYear", String(from.year));
+    params.set("fromEra", from.era);
+  }
+  if (to) {
+    params.set("toYear", String(to.year));
+    params.set("toEra", to.era);
   }
 
   params.set("page", String(page));
@@ -385,7 +397,8 @@ export async function getPrivateProfilePin(
     `/api/profile/profile/${profileId}/private-pin`,
   );
   if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`Unable to load private pin (${response.status})`);
+  if (!response.ok)
+    throw new Error(`Unable to load private pin (${response.status})`);
   const text = await response.text();
   return text ? (JSON.parse(text) as PrivateProfilePin | null) : null;
 }
@@ -394,18 +407,25 @@ export async function savePrivateProfilePin(
   profileId: Id,
   pin: PrivateProfilePin,
 ): Promise<PrivateProfilePin> {
-  const response = await requestJson(`/api/profile/profile/${profileId}/private-pin`, {
-    method: "PUT",
-    body: JSON.stringify(pin),
-  });
-  if (!response.ok) throw new Error(`Unable to save private pin (${response.status})`);
+  const response = await requestJson(
+    `/api/profile/profile/${profileId}/private-pin`,
+    {
+      method: "PUT",
+      body: JSON.stringify(pin),
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Unable to save private pin (${response.status})`);
   return JSON.parse((await response.text()) || "{}") as PrivateProfilePin;
 }
 
 export async function deletePrivateProfilePin(profileId: Id): Promise<void> {
-  const response = await requestJson(`/api/profile/profile/${profileId}/private-pin`, {
-    method: "DELETE",
-  });
+  const response = await requestJson(
+    `/api/profile/profile/${profileId}/private-pin`,
+    {
+      method: "DELETE",
+    },
+  );
   if (!response.ok && response.status !== 404)
     throw new Error(`Unable to remove private pin (${response.status})`);
 }
