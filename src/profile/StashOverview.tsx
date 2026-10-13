@@ -209,7 +209,7 @@ function segmentsIntersect(
     return false;
   }
 
-  return first > 0 !== second > 0 && third > 0 !== fourth > 0;
+  return (first > 0) !== (second > 0) && (third > 0) !== (fourth > 0);
 }
 
 function countLineIntersections(
