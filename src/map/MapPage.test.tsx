@@ -318,3 +318,19 @@ test("retains a shared public graph while hydrating a copied map URL", async () 
   );
   expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();
 });
+
+test("hydrates a copied personal map from the original user scope", async () => {
+  render(
+    <MemoryRouter initialEntries={["/map?scope=USER&scopeId=owner-1"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() =>
+    expect(mockLoadSharedMapScope).toHaveBeenCalledWith({
+      type: "USER",
+      id: "owner-1",
+    }),
+  );
+  expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();
+});

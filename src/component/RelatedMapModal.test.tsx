@@ -121,7 +121,10 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
       } as Response);
     }
     if (url.includes("/api/map/entities?")) {
-      return Promise.resolve({ ok: true, text: async () => JSON.stringify({ items: [] }) } as Response);
+      return Promise.resolve({
+        ok: true,
+        text: async () => JSON.stringify({ items: [] }),
+      } as Response);
     }
     return Promise.reject(new Error(`Unexpected fetch: ${url}`));
   });
@@ -141,7 +144,9 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
     </MemoryRouter>,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Open related map for Roma" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Open related map for Roma" }),
+  );
   await screen.findByRole("button", { name: "Open in Map" });
   expect(screen.queryByLabelText("Profiles")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Clubs")).not.toBeInTheDocument();
@@ -154,6 +159,60 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
   );
   expect(screen.getByTestId("map-location")).not.toHaveTextContent("types=");
   expect(screen.getByTestId("map-location")).toHaveTextContent("scope=PROFILE");
-  expect(screen.getByTestId("map-location")).toHaveTextContent("scopeId=profile-1");
+  expect(screen.getByTestId("map-location")).toHaveTextContent(
+    "scopeId=profile-1",
+  );
+  fetchMock.mockRestore();
+});
+
+test("keeps the scope when copying a public map link", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
+    const url = String(input);
+    if (url.includes("/api/map/places/seed%3Arome")) {
+      return Promise.resolve({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: "seed:rome",
+            canonicalName: "Rome, Italy",
+            latitude: 41.8933,
+            longitude: 12.4829,
+            featureType: "SETTLEMENT",
+          }),
+      } as Response);
+    }
+    if (url.includes("/api/map/entities?")) {
+      return Promise.resolve({
+        ok: true,
+        text: async () => JSON.stringify({ items: [] }),
+      } as Response);
+    }
+    return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+  });
+  const writeText = jest.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { clipboard: { writeText } });
+
+  render(
+    <MemoryRouter>
+      <RelatedMapModal
+        placeId="seed:rome"
+        displayName="Roma"
+        scope={{ type: "USER", id: "owner-1" }}
+      />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Open related map for Roma" }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Copy public map link" }),
+  );
+
+  await waitFor(() =>
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining("scope=USER&scopeId=owner-1"),
+    ),
+  );
   fetchMock.mockRestore();
 });

@@ -170,7 +170,9 @@ export default function ProfileFieldsPanel({
         }
         relatedMapScope={
           relatedMapProfile
-            ? { type: "PROFILE", id: String(relatedMapProfile.id) }
+            ? relatedMapProfile.userId
+              ? { type: "USER", id: String(relatedMapProfile.userId) }
+              : { type: "PROFILE", id: String(relatedMapProfile.id) }
             : undefined
         }
         trailingAction={

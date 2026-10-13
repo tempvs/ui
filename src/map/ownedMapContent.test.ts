@@ -195,15 +195,13 @@ test("loads the club avatar when the club catalogue row has an image id but no s
       photoImageId: "club-avatar",
     } as never,
   ]);
-  jest
-    .mocked(getClubImages)
-    .mockResolvedValue([
-      {
-        id: "club-avatar",
-        thumbnailUrl: "https://images.test/club-avatar.jpg",
-        status: "READY",
-      },
-    ]);
+  jest.mocked(getClubImages).mockResolvedValue([
+    {
+      id: "club-avatar",
+      thumbnailUrl: "https://images.test/club-avatar.jpg",
+      status: "READY",
+    },
+  ]);
 
   const content = await loadOwnedMapContent("viewer");
 
@@ -289,6 +287,25 @@ test("resolves an event share scope to its public venue and historical-site pins
     ]),
   );
   expect(content.connections).toEqual([]);
+});
+
+test("resolves a shared user scope from the original owner's id", async () => {
+  const content = await loadSharedMapScope({ type: "USER", id: "owner-1" });
+
+  expect(getUserProfileByUserId).toHaveBeenCalledWith("owner-1");
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ key: "PROFILE:personal:CURRENT_RESIDENCE" }),
+      expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
+      expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" }),
+    ]),
+  );
+  expect(content.connections).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ kind: "PROFILE_CLUB" }),
+      expect.objectContaining({ kind: "PROFILE_SOURCE" }),
+    ]),
+  );
 });
 
 test("publishes profile markers before optional club and source loading completes", async () => {

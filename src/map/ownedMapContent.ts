@@ -199,6 +199,12 @@ export async function loadSharedMapScope(
   scope: SharedMapScope,
 ): Promise<OwnedMapContent> {
   switch (scope.type) {
+    case "USER":
+      // A shared personal map intentionally reuses the same public graph as
+      // the owner's own Map page. The URL identifies that owner, never the
+      // recipient, so copying it cannot silently substitute another user's
+      // profiles, clubs, or source relationships.
+      return loadOwnedMapContent(scope.id);
     case "PROFILE": {
       const profile = await profileById(scope.id);
       return profile

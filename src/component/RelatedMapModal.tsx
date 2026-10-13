@@ -280,13 +280,12 @@ export default function RelatedMapModal({
             <Button
               variant="outline-dark"
               onClick={() => {
-                // Stored content must never inherit this page's relationship
-                // scope. Copy a bounded public viewport that can safely be
-                // pasted into a post or chat composer instead.
-                const path = `/map?${fullMapParameters(
-                  place,
-                  displayName,
-                  radiusKm,
+                // Keep the public page/user scope. Without it, the recipient
+                // would see their own personal map rather than the graph the
+                // sender had open.
+                const path = `/map?${appendSharedMapScope(
+                  fullMapParameters(place, displayName, radiusKm),
+                  scope,
                 ).toString()}`;
                 void navigator.clipboard
                   ?.writeText(`${window.location.origin}${path}`)

@@ -143,6 +143,16 @@ export default function MapPage() {
     void getViewer().then(setViewer);
   }, []);
 
+  // The horizontal-navigation map starts as a personal map. Make the owner
+  // explicit as soon as identity is known, so copying the address from this
+  // page keeps the original person's public graph for every recipient.
+  useEffect(() => {
+    if (!viewer || sharedScope) return;
+    const next = new URLSearchParams(params);
+    appendSharedMapScope(next, { type: "USER", id: viewer.userId });
+    setParams(next, { replace: true });
+  }, [params, setParams, sharedScope, viewer]);
+
   // Active proposals are a private author view. They are deliberately fetched
   // only after identity is known and never folded into public map results.
   useEffect(() => {
