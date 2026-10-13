@@ -33,6 +33,8 @@ type Props = {
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
   profilePeriod: string;
   onProfilePeriodChange: (value: string) => void;
+  profileType: string;
+  onProfileTypeChange: (value: string) => void;
   profileFrom: HistoricalYearInput;
   onProfileFromChange: (value: HistoricalYearInput) => void;
   profileTo: HistoricalYearInput;
@@ -76,6 +78,8 @@ export default function MapEntityFilterControls({
   onEventRolesChange,
   profilePeriod,
   onProfilePeriodChange,
+  profileType,
+  onProfileTypeChange,
   profileFrom,
   onProfileFromChange,
   profileTo,
@@ -257,6 +261,18 @@ export default function MapEntityFilterControls({
       )}
       {entityTypes.includes("PROFILE") && (
         <>
+          <Form.Group className={groupClass}>
+            <Form.Label>Profile type</Form.Label>
+            <Form.Select
+              size={compact ? "sm" : undefined}
+              value={profileType}
+              onChange={(event) => onProfileTypeChange(event.target.value)}
+            >
+              <option value="">All profile types</option>
+              <option value="USER">User</option>
+              <option value="CLUB">Club</option>
+            </Form.Select>
+          </Form.Group>
           <Form.Group className={groupClass}>
             <Form.Label>Profile period</Form.Label>
             <Form.Select

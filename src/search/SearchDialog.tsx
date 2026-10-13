@@ -332,6 +332,7 @@ export default function SearchDialog() {
     } else if (activeTab === "profiles") {
       params.set("types", "PROFILE");
       if (period) params.set("profilePeriod", period);
+      if (profileType) params.set("profileType", profileType);
       appendMapSearchParams(
         params,
         rangeEnabled ? range : { from: null, to: null },

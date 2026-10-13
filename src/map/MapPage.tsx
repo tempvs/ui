@@ -102,6 +102,9 @@ export default function MapPage() {
   const [profilePeriod, setProfilePeriod] = useState(
     params.get("profilePeriod") || "",
   );
+  const [profileType, setProfileType] = useState(
+    params.get("profileType") || "",
+  );
   const [profileFrom, setProfileFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("profileFrom")),
   );
@@ -249,6 +252,9 @@ export default function MapPage() {
   };
   const profileFilters: MapProfileFilters = {
     ...(profilePeriod ? { period: profilePeriod } : {}),
+    ...(profileType === "USER" || profileType === "CLUB"
+      ? { types: [profileType] }
+      : {}),
     ...(toAstronomicalYear(profileFrom) !== undefined
       ? { from: toAstronomicalYear(profileFrom) }
       : {}),
@@ -645,6 +651,8 @@ export default function MapPage() {
             onEventRolesChange={setEventRoles}
             profilePeriod={profilePeriod}
             onProfilePeriodChange={setProfilePeriod}
+            profileType={profileType}
+            onProfileTypeChange={setProfileType}
             profileFrom={profileFrom}
             onProfileFromChange={setProfileFrom}
             profileTo={profileTo}
@@ -1062,6 +1070,7 @@ function appendProfileFilters(
   filters: MapProfileFilters,
 ): void {
   if (filters.period) parameters.set("profilePeriod", filters.period);
+  if (filters.types?.length) parameters.set("profileType", filters.types[0]);
   if (filters.from !== undefined)
     parameters.set("profileFrom", String(filters.from));
   if (filters.to !== undefined) parameters.set("profileTo", String(filters.to));

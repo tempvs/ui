@@ -94,6 +94,7 @@ export type MapEntityLocation = {
   eventFrom?: number;
   eventTo?: number;
   profilePeriod?: string;
+  profileType?: "USER" | "CLUB";
   profileFrom?: number;
   profileTo?: number;
 };
@@ -122,6 +123,7 @@ export type MapEventFilters = {
 };
 export type MapProfileFilters = {
   period?: string;
+  types?: Array<"USER" | "CLUB">;
   from?: number;
   to?: number;
 };
@@ -735,6 +737,9 @@ export async function nearbyMapEntitiesPage(
         : {}),
       ...(profileFilters.period
         ? { profilePeriod: profileFilters.period }
+        : {}),
+      ...(profileFilters.types?.length
+        ? { profileTypes: profileFilters.types.join(",") }
         : {}),
       ...(profileFilters.from !== undefined
         ? { profileFrom: String(profileFilters.from) }
