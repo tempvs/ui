@@ -268,11 +268,11 @@ export async function listMapPlaceChildren(
     items?: unknown;
     nextCursor?: unknown;
   } | null;
+  const nextCursor =
+    body && typeof body.nextCursor === "string" ? body.nextCursor : undefined;
   return {
     items: Array.isArray(body?.items) ? (body?.items as MapPlace[]) : [],
-    ...(typeof body?.nextCursor === "string"
-      ? { nextCursor: body.nextCursor }
-      : {}),
+    ...(nextCursor ? { nextCursor } : {}),
   };
 }
 
@@ -655,6 +655,36 @@ export async function nearbyMapEntities(
   eventFilters: MapEventFilters = {},
   parentPlaceId?: string,
 ): Promise<MapEntityLocation[]> {
+  return (
+    await nearbyMapEntitiesPage(
+      latitude,
+      longitude,
+      radiusKm,
+      types,
+      query,
+      signal,
+      sourceRoles,
+      sourceFilters,
+      eventFilters,
+      parentPlaceId,
+    )
+  ).items;
+}
+
+/** A bounded continuation over the compact map-marker projection. */
+export async function nearbyMapEntitiesPage(
+  latitude: number,
+  longitude: number,
+  radiusKm: number,
+  types: MapEntityLocation["entityType"][] = [],
+  query?: string,
+  signal?: AbortSignal,
+  sourceRoles: SourceLocationRole[] = [],
+  sourceFilters: MapSourceFilters = {},
+  eventFilters: MapEventFilters = {},
+  parentPlaceId?: string,
+  cursor?: string,
+): Promise<MapEntityLocationPage> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
       latitude: String(latitude),
@@ -688,10 +718,21 @@ export async function nearbyMapEntities(
         ? { eventTo: String(eventFilters.to) }
         : {}),
       ...(parentPlaceId ? { parentPlaceId } : {}),
+      ...(cursor ? { cursor } : {}),
     })}`,
     { signal },
   );
   if (!response.ok) throw new Error("Unable to find nearby content");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
-  return Array.isArray(body?.items) ? (body?.items as MapEntityLocation[]) : [];
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
+  const nextCursor =
+    body && typeof body.nextCursor === "string" ? body.nextCursor : undefined;
+  return {
+    items: Array.isArray(body?.items)
+      ? (body?.items as MapEntityLocation[])
+      : [],
+    ...(nextCursor ? { nextCursor } : {}),
+  };
 }

@@ -11,10 +11,11 @@ import HistoricalRangeFilter, {
 import {
   getMapPlace,
   listMyMapPlaceProposals,
-  nearbyMapEntities,
+  nearbyMapEntitiesPage,
   nearbyMapPlaces,
   searchMapPlaces,
   type MapEntityLocation,
+  type MapEntityLocationPage,
   type MapEventFilters,
   type MapPlace,
   type MapPlaceProposalRecord,
@@ -64,6 +65,10 @@ export default function MapPage() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsFailed, setSuggestionsFailed] = useState(false);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
+  const [entityNextCursor, setEntityNextCursor] = useState<string | null>(
+    null,
+  );
+  const [loadingMoreEntities, setLoadingMoreEntities] = useState(false);
   const [types, setTypes] =
     useState<MapEntityLocation["entityType"][]>(() =>
       parseEntityTypes(params.get("types")),
@@ -311,10 +316,10 @@ export default function MapPage() {
     setParams(next, { replace: true });
     setLoading(true);
     try {
-      const [places, nearbyEntities] = await Promise.all([
+      const [places, nearbyEntityPage] = await Promise.all([
         nearbyMapPlaces(selected.latitude, selected.longitude, Number(radius)),
         types.length
-          ? nearbyMapEntities(
+          ? nearbyMapEntitiesPage(
               selected.latitude,
               selected.longitude,
               Number(radius),
@@ -326,13 +331,14 @@ export default function MapPage() {
               eventFilters,
               includeDescendants ? selected.id : undefined,
             )
-          : Promise.resolve([]),
+          : Promise.resolve<MapEntityLocationPage>({ items: [] }),
       ]);
       setItems([
         selected,
         ...places.filter((candidate) => candidate.id !== selected.id),
       ]);
-      setEntities(nearbyEntities);
+      setEntities(nearbyEntityPage.items);
+      setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
     } catch (caught) {
       setError((caught as Error).message || "Unable to load places.");
     } finally {
@@ -426,10 +432,10 @@ export default function MapPage() {
     setLoading(true);
     try {
       if (hasCoordinates) {
-        const [places, nearbyEntities] = await Promise.all([
+        const [places, nearbyEntityPage] = await Promise.all([
           nearbyMapPlaces(lat, lng, Number(radius)),
           types.length
-            ? nearbyMapEntities(
+            ? nearbyMapEntitiesPage(
                 lat,
                 lng,
                 Number(radius),
@@ -441,7 +447,7 @@ export default function MapPage() {
                 eventFilters,
                 includeDescendants && linkedPlace ? linkedPlace.id : undefined,
               )
-            : Promise.resolve([]),
+            : Promise.resolve<MapEntityLocationPage>({ items: [] }),
         ]);
         setItems(
           linkedPlace
@@ -451,7 +457,8 @@ export default function MapPage() {
               ]
             : places,
         );
-        setEntities(nearbyEntities);
+        setEntities(nearbyEntityPage.items);
+        setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
       } else {
         setItems(
           (
@@ -467,6 +474,7 @@ export default function MapPage() {
           })),
         );
         setEntities([]);
+        setEntityNextCursor(null);
       }
     } catch (caught) {
       setError((caught as Error).message || "Unable to load places.");
@@ -485,6 +493,41 @@ export default function MapPage() {
     // Query parameters are intentionally applied only on navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadMoreEntities = async () => {
+    if (loadingMoreEntities || !entityNextCursor) return;
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setLoadingMoreEntities(true);
+    try {
+      const page = await nearbyMapEntitiesPage(
+        lat,
+        lng,
+        Number(radius),
+        types,
+        contentQuery,
+        undefined,
+        sourceRoles,
+        sourceFilters,
+        eventFilters,
+        includeDescendants && selectedPlaceId ? selectedPlaceId : undefined,
+        entityNextCursor,
+      );
+      setEntities((current) => {
+        const known = new Set(current.map((entity) => entityKey(entity)));
+        return [
+          ...current,
+          ...page.items.filter((entity) => !known.has(entityKey(entity))),
+        ];
+      });
+      setEntityNextCursor(page.nextCursor ?? null);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load more content.");
+    } finally {
+      setLoadingMoreEntities(false);
+    }
+  };
 
   const focus = useMemo(() => {
     const selected = entities.find(
@@ -809,6 +852,18 @@ export default function MapPage() {
               </li>
             ))}
           </ul>
+          {entityNextCursor && (
+            <Button
+              type="button"
+              variant="outline-dark"
+              size="sm"
+              className="mt-2"
+              disabled={loadingMoreEntities}
+              onClick={() => void loadMoreEntities()}
+            >
+              {loadingMoreEntities ? "Loading…" : "Show more"}
+            </Button>
+          )}
         </section>
       )}
       <PlaceProposalModal

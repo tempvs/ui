@@ -13,9 +13,9 @@ import MapPage from "./MapPage";
 import {
   getMapPlace,
   listMyMapPlaceProposals,
-  nearbyMapEntities,
   nearbyMapPlaces,
   searchMapPlaces,
+  nearbyMapEntitiesPage,
 } from "./mapApi";
 import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
@@ -63,7 +63,7 @@ jest.mock("./MapCanvas", () => {
 jest.mock("./mapApi", () => ({
   searchMapPlaces: jest.fn(),
   nearbyMapPlaces: jest.fn(),
-  nearbyMapEntities: jest.fn(),
+  nearbyMapEntitiesPage: jest.fn(),
   getMapPlace: jest.fn(),
   listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),
 }));
@@ -81,7 +81,7 @@ jest.mock("./ownedMapContent", () => ({
 
 const mockSearchMapPlaces = jest.mocked(searchMapPlaces);
 const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
-const mockNearbyMapEntities = jest.mocked(nearbyMapEntities);
+const mockNearbyMapEntitiesPage = jest.mocked(nearbyMapEntitiesPage);
 const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
 const mockGetMapPlace = jest.mocked(getMapPlace);
@@ -104,7 +104,7 @@ beforeEach(() => {
     featureType: "SETTLEMENT",
   });
   mockNearbyMapPlaces.mockResolvedValue([]);
-  mockNearbyMapEntities.mockResolvedValue([]);
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
   mockListMyMapPlaceProposals.mockResolvedValue([]);
   mockLoadSharedMapScope.mockResolvedValue({ markers: [], connections: [] });
   mockLoadOwnedMapContent.mockResolvedValue({ markers: [], connections: [] });
@@ -132,7 +132,7 @@ test("searches places while typing and labels the selected marker with the match
     },
   ]);
   mockNearbyMapPlaces.mockResolvedValue([]);
-  mockNearbyMapEntities.mockResolvedValue([]);
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
 
   render(
     <MemoryRouter>
@@ -174,7 +174,7 @@ test("searches places while typing and labels the selected marker with the match
 test("restores source and event discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
-  mockNearbyMapEntities.mockResolvedValue([]);
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
 
   render(
     <MemoryRouter
@@ -187,7 +187,7 @@ test("restores source and event discovery facets from a map URL", async () => {
   );
 
   await waitFor(() =>
-    expect(mockNearbyMapEntities).toHaveBeenCalledWith(
+    expect(mockNearbyMapEntitiesPage).toHaveBeenCalledWith(
       41.9,
       12.5,
       25,
@@ -212,13 +212,69 @@ test("restores source and event discovery facets from a map URL", async () => {
   );
 });
 
+test("loads the next bounded page of nearby compact markers", async () => {
+  mockNearbyMapEntitiesPage
+    .mockResolvedValueOnce({
+      items: [
+        {
+          entityType: "PROFILE",
+          entityId: "profile-1",
+          locationRole: "CURRENT_RESIDENCE",
+          label: "First profile",
+          placeId: "seed:rome",
+          placeName: "Rome",
+          latitude: 41.9,
+          longitude: 12.5,
+        },
+      ],
+      nextCursor: "opaque-next-page",
+    })
+    .mockResolvedValueOnce({
+      items: [
+        {
+          entityType: "PROFILE",
+          entityId: "profile-2",
+          locationRole: "CURRENT_RESIDENCE",
+          label: "Second profile",
+          placeId: "seed:rome",
+          placeName: "Rome",
+          latitude: 41.91,
+          longitude: 12.51,
+        },
+      ],
+    });
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText("First profile")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Show more" }));
+
+  expect(await screen.findByText("Second profile")).toBeInTheDocument();
+  expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+    41.9,
+    12.5,
+    25,
+    ["PROFILE"],
+    "",
+    undefined,
+    ["DISCOVERED_AT"],
+    {},
+    {},
+    undefined,
+    "opaque-next-page",
+  );
+});
+
 test("lets a geography reviewer reach the proposal queue", async () => {
   mockGetViewer.mockResolvedValue({
     userId: "reviewer-1",
     roles: ["MAP_REVIEWER"],
   });
   mockNearbyMapPlaces.mockResolvedValue([]);
-  mockNearbyMapEntities.mockResolvedValue([]);
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
   mockListMyMapPlaceProposals.mockResolvedValue([]);
 
   render(
