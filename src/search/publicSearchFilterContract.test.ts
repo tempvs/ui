@@ -34,4 +34,17 @@ describe("public search filter contract", () => {
       "q=Rome&period=ANTIQUITY&fromYear=50&fromEra=BC&toYear=20&toEra=AD&sourceFrom=-49&sourceTo=20",
     );
   });
+
+  it("keeps profile historical filters in their own map namespace", () => {
+    const range = rangeFromInputs(
+      { year: "50", era: "BC" },
+      { year: "20", era: "AD" },
+    );
+    const params = appendMapSearchParams(
+      new URLSearchParams(),
+      range,
+      "profile",
+    );
+    expect(params.toString()).toBe("profileFrom=-49&profileTo=20");
+  });
 });

@@ -75,12 +75,12 @@ export function publicSearchParams({
   return params;
 }
 
-/** Map keeps source/event namespaces so filters cannot accidentally affect
+/** Map keeps source/event/profile namespaces so filters cannot accidentally affect
  * another selected layer. This projects the common UI contract into it. */
 export function appendMapSearchParams(
   params: URLSearchParams,
   range: PublicHistoricalRange,
-  namespace: "source" | "event",
+  namespace: "source" | "event" | "profile",
 ): URLSearchParams {
   const from = toAstronomicalYear(range.from);
   const to = toAstronomicalYear(range.to);

@@ -329,8 +329,16 @@ export default function SearchDialog() {
         rangeEnabled ? range : { from: null, to: null },
         "event",
       );
+    } else if (activeTab === "profiles") {
+      params.set("types", "PROFILE");
+      if (period) params.set("profilePeriod", period);
+      appendMapSearchParams(
+        params,
+        rangeEnabled ? range : { from: null, to: null },
+        "profile",
+      );
     } else {
-      params.set("types", activeTab === "clubs" ? "CLUB" : "PROFILE");
+      params.set("types", "CLUB");
     }
     return `/map?${params.toString()}`;
   };
