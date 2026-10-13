@@ -17,6 +17,7 @@ import {
   type MapEntityLocation,
   type MapEntityLocationPage,
   type MapEventFilters,
+  type MapProfileFilters,
   type MapPlace,
   type MapPlaceProposalRecord,
   type MapSourceFilters,
@@ -65,14 +66,11 @@ export default function MapPage() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsFailed, setSuggestionsFailed] = useState(false);
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
-  const [entityNextCursor, setEntityNextCursor] = useState<string | null>(
-    null,
-  );
+  const [entityNextCursor, setEntityNextCursor] = useState<string | null>(null);
   const [loadingMoreEntities, setLoadingMoreEntities] = useState(false);
-  const [types, setTypes] =
-    useState<MapEntityLocation["entityType"][]>(() =>
-      parseEntityTypes(params.get("types")),
-    );
+  const [types, setTypes] = useState<MapEntityLocation["entityType"][]>(() =>
+    parseEntityTypes(params.get("types")),
+  );
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
     parseSourceRoles(params.get("sourceRoles")),
   );
@@ -89,7 +87,9 @@ export default function MapPage() {
   const [sourceTo, setSourceTo] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("sourceTo")),
   );
-  const [eventPeriod, setEventPeriod] = useState(params.get("eventPeriod") || "");
+  const [eventPeriod, setEventPeriod] = useState(
+    params.get("eventPeriod") || "",
+  );
   const [eventRoles, setEventRoles] = useState<
     Array<"VENUE" | "HISTORICAL_SITE">
   >(() => parseEventRoles(params.get("eventRoles")));
@@ -98,6 +98,15 @@ export default function MapPage() {
   );
   const [eventTo, setEventTo] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("eventTo")),
+  );
+  const [profilePeriod, setProfilePeriod] = useState(
+    params.get("profilePeriod") || "",
+  );
+  const [profileFrom, setProfileFrom] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("profileFrom")),
+  );
+  const [profileTo, setProfileTo] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(params.get("profileTo")),
   );
   const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(params.get("nameFrom")),
@@ -238,6 +247,15 @@ export default function MapPage() {
       ? { to: toAstronomicalYear(eventTo) }
       : {}),
   };
+  const profileFilters: MapProfileFilters = {
+    ...(profilePeriod ? { period: profilePeriod } : {}),
+    ...(toAstronomicalYear(profileFrom) !== undefined
+      ? { from: toAstronomicalYear(profileFrom) }
+      : {}),
+    ...(toAstronomicalYear(profileTo) !== undefined
+      ? { to: toAstronomicalYear(profileTo) }
+      : {}),
+  };
 
   // Match the profile picker: query after a short pause and discard every
   // superseded response. This keeps the main map stable while someone types.
@@ -310,6 +328,7 @@ export default function MapPage() {
     appendSourceRoles(next, sourceRoles);
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
+    appendProfileFilters(next, profileFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (includeDescendants) next.set("descendants", "true");
@@ -330,6 +349,8 @@ export default function MapPage() {
               sourceFilters,
               eventFilters,
               includeDescendants ? selected.id : undefined,
+              undefined,
+              profileFilters,
             )
           : Promise.resolve<MapEntityLocationPage>({ items: [] }),
       ]);
@@ -376,8 +397,9 @@ export default function MapPage() {
     const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
     if (
       !isValidHistoricalRange(nameFrom, nameTo) ||
-      !isValidHistoricalRange(sourceFrom, sourceTo)
-      || !isValidHistoricalRange(eventFrom, eventTo)
+      !isValidHistoricalRange(sourceFrom, sourceTo) ||
+      !isValidHistoricalRange(eventFrom, eventTo) ||
+      !isValidHistoricalRange(profileFrom, profileTo)
     ) {
       setError("Years must be chronological positive years.");
       return;
@@ -402,6 +424,7 @@ export default function MapPage() {
     appendEntityTypes(next, types);
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
+    appendProfileFilters(next, profileFilters);
     appendNameRange(next, nameFrom, nameTo);
     if (showModernBorders) next.set("borders", "modern");
     if (includeDescendants) next.set("descendants", "true");
@@ -446,6 +469,8 @@ export default function MapPage() {
                 sourceFilters,
                 eventFilters,
                 includeDescendants && linkedPlace ? linkedPlace.id : undefined,
+                undefined,
+                profileFilters,
               )
             : Promise.resolve<MapEntityLocationPage>({ items: [] }),
         ]);
@@ -513,6 +538,7 @@ export default function MapPage() {
         eventFilters,
         includeDescendants && selectedPlaceId ? selectedPlaceId : undefined,
         entityNextCursor,
+        profileFilters,
       );
       setEntities((current) => {
         const known = new Set(current.map((entity) => entityKey(entity)));
@@ -617,6 +643,12 @@ export default function MapPage() {
             onEventToChange={setEventTo}
             eventRoles={eventRoles}
             onEventRolesChange={setEventRoles}
+            profilePeriod={profilePeriod}
+            onProfilePeriodChange={setProfilePeriod}
+            profileFrom={profileFrom}
+            onProfileFromChange={setProfileFrom}
+            profileTo={profileTo}
+            onProfileToChange={setProfileTo}
           />
           <Form.Check
             id="map-modern-borders"
@@ -811,6 +843,7 @@ export default function MapPage() {
                   sourceRoles,
                   sourceFilters,
                   eventFilters,
+                  profileFilters,
                   types,
                 )}
               >
@@ -927,6 +960,7 @@ function nearPlacePath(
   sourceRoles: SourceLocationRole[],
   sourceFilters: MapSourceFilters,
   eventFilters: MapEventFilters,
+  profileFilters: MapProfileFilters,
   types: MapEntityLocation["entityType"][],
 ): string {
   const parameters = new URLSearchParams({
@@ -941,6 +975,7 @@ function nearPlacePath(
   appendSourceRoles(parameters, sourceRoles);
   appendSourceFilters(parameters, sourceFilters);
   appendEventFilters(parameters, eventFilters);
+  appendProfileFilters(parameters, profileFilters);
   if (showModernBorders) parameters.set("borders", "modern");
   return `/map?${parameters.toString()}`;
 }
@@ -952,9 +987,8 @@ function parseEntityTypes(
   if (value === null || value === "all") return entityTypes;
   return value
     .split(",")
-    .filter(
-      (type): type is MapEntityLocation["entityType"] =>
-        entityTypes.includes(type as MapEntityLocation["entityType"]),
+    .filter((type): type is MapEntityLocation["entityType"] =>
+      entityTypes.includes(type as MapEntityLocation["entityType"]),
     )
     .filter((type, index, all) => all.indexOf(type) === index);
 }
@@ -1018,8 +1052,19 @@ function appendEventFilters(
   if (filters.locationRoles?.length)
     parameters.set("eventRoles", filters.locationRoles.join(","));
   if (filters.period) parameters.set("eventPeriod", filters.period);
-  if (filters.from !== undefined) parameters.set("eventFrom", String(filters.from));
+  if (filters.from !== undefined)
+    parameters.set("eventFrom", String(filters.from));
   if (filters.to !== undefined) parameters.set("eventTo", String(filters.to));
+}
+
+function appendProfileFilters(
+  parameters: URLSearchParams,
+  filters: MapProfileFilters,
+): void {
+  if (filters.period) parameters.set("profilePeriod", filters.period);
+  if (filters.from !== undefined)
+    parameters.set("profileFrom", String(filters.from));
+  if (filters.to !== undefined) parameters.set("profileTo", String(filters.to));
 }
 
 function parseEventRoles(

@@ -93,6 +93,9 @@ export type MapEntityLocation = {
   eventPeriods?: string[];
   eventFrom?: number;
   eventTo?: number;
+  profilePeriod?: string;
+  profileFrom?: number;
+  profileTo?: number;
 };
 
 export type MapEntityLocationPage = {
@@ -113,6 +116,11 @@ export type MapSourceFilters = {
 };
 export type MapEventFilters = {
   locationRoles?: Array<"VENUE" | "HISTORICAL_SITE">;
+  period?: string;
+  from?: number;
+  to?: number;
+};
+export type MapProfileFilters = {
   period?: string;
   from?: number;
   to?: number;
@@ -163,7 +171,11 @@ export type MapPlaceProposalActivity = {
     citationUrl?: string;
     parentPlaceId?: string;
     periods?: string[];
-    provenance?: Array<{ dataset: string; externalId: string; license: string }>;
+    provenance?: Array<{
+      dataset: string;
+      externalId: string;
+      license: string;
+    }>;
   };
 };
 
@@ -654,6 +666,7 @@ export async function nearbyMapEntities(
   sourceFilters: MapSourceFilters = {},
   eventFilters: MapEventFilters = {},
   parentPlaceId?: string,
+  profileFilters: MapProfileFilters = {},
 ): Promise<MapEntityLocation[]> {
   return (
     await nearbyMapEntitiesPage(
@@ -667,6 +680,8 @@ export async function nearbyMapEntities(
       sourceFilters,
       eventFilters,
       parentPlaceId,
+      undefined,
+      profileFilters,
     )
   ).items;
 }
@@ -684,6 +699,7 @@ export async function nearbyMapEntitiesPage(
   eventFilters: MapEventFilters = {},
   parentPlaceId?: string,
   cursor?: string,
+  profileFilters: MapProfileFilters = {},
 ): Promise<MapEntityLocationPage> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -716,6 +732,15 @@ export async function nearbyMapEntitiesPage(
         : {}),
       ...(eventFilters.to !== undefined
         ? { eventTo: String(eventFilters.to) }
+        : {}),
+      ...(profileFilters.period
+        ? { profilePeriod: profileFilters.period }
+        : {}),
+      ...(profileFilters.from !== undefined
+        ? { profileFrom: String(profileFilters.from) }
+        : {}),
+      ...(profileFilters.to !== undefined
+        ? { profileTo: String(profileFilters.to) }
         : {}),
       ...(parentPlaceId ? { parentPlaceId } : {}),
       ...(cursor ? { cursor } : {}),

@@ -5,10 +5,7 @@ import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import { CLASSIFICATIONS, PERIODS, TYPES } from "../library/libraryShared";
-import type {
-  MapEntityLocation,
-  SourceLocationRole,
-} from "./mapApi";
+import type { MapEntityLocation, SourceLocationRole } from "./mapApi";
 
 type Props = {
   idPrefix: string;
@@ -34,6 +31,12 @@ type Props = {
   onEventToChange: (value: HistoricalYearInput) => void;
   eventRoles: Array<"VENUE" | "HISTORICAL_SITE">;
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
+  profilePeriod: string;
+  onProfilePeriodChange: (value: string) => void;
+  profileFrom: HistoricalYearInput;
+  onProfileFromChange: (value: HistoricalYearInput) => void;
+  profileTo: HistoricalYearInput;
+  onProfileToChange: (value: HistoricalYearInput) => void;
   compact?: boolean;
 };
 
@@ -71,6 +74,12 @@ export default function MapEntityFilterControls({
   onEventToChange,
   eventRoles,
   onEventRolesChange,
+  profilePeriod,
+  onProfilePeriodChange,
+  profileFrom,
+  onProfileFromChange,
+  profileTo,
+  onProfileToChange,
   compact = false,
 }: Props) {
   const groupClass = compact ? "mb-2" : undefined;
@@ -241,6 +250,38 @@ export default function MapEntityFilterControls({
             onEnabledChange={() => undefined}
             onFromChange={onEventFromChange}
             onToChange={onEventToChange}
+            className={groupClass}
+            compact={compact}
+          />
+        </>
+      )}
+      {entityTypes.includes("PROFILE") && (
+        <>
+          <Form.Group className={groupClass}>
+            <Form.Label>Profile period</Form.Label>
+            <Form.Select
+              size={compact ? "sm" : undefined}
+              value={profilePeriod}
+              onChange={(event) => onProfilePeriodChange(event.target.value)}
+            >
+              <option value="">All periods</option>
+              {PERIODS.map((period) => (
+                <option key={period} value={period}>
+                  {readable(period)}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <HistoricalRangeFilter
+            label="Profile years"
+            enabled={false}
+            showToggle={false}
+            alwaysShowFields
+            from={profileFrom}
+            to={profileTo}
+            onEnabledChange={() => undefined}
+            onFromChange={onProfileFromChange}
+            onToChange={onProfileToChange}
             className={groupClass}
             compact={compact}
           />

@@ -171,7 +171,7 @@ test("searches places while typing and labels the selected marker with the match
   jest.useRealTimers();
 });
 
-test("restores source and event discovery facets from a map URL", async () => {
+test("restores source, event, and profile discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
   mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
@@ -179,7 +179,7 @@ test("restores source and event discovery facets from a map URL", async () => {
   render(
     <MemoryRouter
       initialEntries={[
-        "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE,EVENT&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476&eventPeriod=ANTIQUITY&eventFrom=-27&eventTo=476",
+        "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE,EVENT&sourcePeriod=ANTIQUITY&sourceClassification=WEAPON&sourceType=ARCHAEOLOGICAL&sourceFrom=-27&sourceTo=476&eventPeriod=ANTIQUITY&eventFrom=-27&eventTo=476&profilePeriod=ANTIQUITY&profileFrom=-27&profileTo=476",
       ]}
     >
       <MapPage />
@@ -208,6 +208,8 @@ test("restores source and event discovery facets from a map URL", async () => {
         to: 476,
       },
       undefined,
+      undefined,
+      { period: "ANTIQUITY", from: -27, to: 476 },
     ),
   );
 });
@@ -244,7 +246,9 @@ test("loads the next bounded page of nearby compact markers", async () => {
       ],
     });
   render(
-    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}>
+    <MemoryRouter
+      initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}
+    >
       <MapPage />
     </MemoryRouter>,
   );
@@ -265,6 +269,7 @@ test("loads the next bounded page of nearby compact markers", async () => {
     {},
     undefined,
     "opaque-next-page",
+    {},
   );
 });
 
