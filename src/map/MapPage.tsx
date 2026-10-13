@@ -588,6 +588,13 @@ export default function MapPage() {
     return null;
   }, [entities, items, latitude, longitude, selectedEntityKey]);
 
+  // A shared graph may span several places. Once it is available, fitting its
+  // markers is more useful than centering on the focal location encoded in
+  // the link; MapCanvas then keeps every related profile, club and source in
+  // view. Before that graph arrives, retain the focal place as feedback that
+  // the copied link itself was understood.
+  const mapFocus = sharedScope && ownedMarkers.length ? null : focus;
+
   return (
     <PageLayout className="map-page" header={{ title: "Map" }}>
       <section className="club-panel" aria-label="Map place search">
@@ -800,7 +807,7 @@ export default function MapPage() {
           entities={entities}
           ownedMarkers={ownedMarkers}
           ownedConnections={ownedConnections}
-          focus={focus}
+          focus={mapFocus}
           initialFitPoints={ownedMarkers}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}

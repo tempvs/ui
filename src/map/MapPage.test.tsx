@@ -30,6 +30,8 @@ jest.mock("./MapCanvas", () => {
     default: ({
       places,
       selectedPlaceId,
+      focus,
+      initialFitPoints,
     }: {
       places: Array<{
         id: string;
@@ -37,12 +39,16 @@ jest.mock("./MapCanvas", () => {
         canonicalName: string;
       }>;
       selectedPlaceId?: string | null;
+      focus?: { latitude: number; longitude: number } | null;
+      initialFitPoints?: Array<{ key: string }>;
     }) =>
       React.createElement(
         "div",
         {
           "data-testid": "map-canvas",
           "data-selected-place": selectedPlaceId || "",
+          "data-focus": focus ? `${focus.latitude},${focus.longitude}` : "",
+          "data-fit-count": initialFitPoints?.length || 0,
         },
         places.map((place) =>
           React.createElement(
@@ -333,4 +339,32 @@ test("hydrates a copied personal map from the original user scope", async () => 
     }),
   );
   expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();
+});
+
+test("frames every related marker after a shared graph has loaded", async () => {
+  mockLoadSharedMapScope.mockResolvedValue({
+    markers: [
+      { key: "PROFILE:first", latitude: 41.9, longitude: 12.5 },
+      { key: "SOURCE:second", latitude: 50.1, longitude: 8.6 },
+    ],
+    connections: [],
+  } as never);
+
+  render(
+    <MemoryRouter
+      initialEntries={[
+        "/map?lat=41.9&lng=12.5&radiusKm=25&scope=USER&scopeId=owner-1",
+      ]}
+    >
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() =>
+    expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+      "data-fit-count",
+      "2",
+    ),
+  );
+  expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-focus", "");
 });
