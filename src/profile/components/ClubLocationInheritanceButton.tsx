@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Button, Modal, Spinner } from "react-bootstrap";
+import { Button, Modal } from "react-bootstrap";
 import { FaArrowLeft, FaUsers } from "react-icons/fa";
 import { getProfileClubs, type Club } from "../../club/clubApi";
+import Spinner from "../../component/Spinner";
 
 const LeftArrowIcon = FaArrowLeft as React.ComponentType;
 const ClubsIcon = FaUsers as React.ComponentType;
@@ -47,8 +48,7 @@ export default function ClubLocationInheritanceButton({
     };
   }, [profileId]);
 
-  if (clubs === undefined)
-    return <Spinner animation="border" size="sm" aria-label="Loading clubs" />;
+  if (clubs === undefined) return <Spinner size="sm" />;
   if (!clubs.length) return null;
 
   const choose = (club: Club) => {

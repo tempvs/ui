@@ -1,10 +1,11 @@
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Alert, Badge, Button, Form, Modal } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { FaPlus } from "react-icons/fa";
 
 import PageLayout from "../component/PageLayout";
+import Spinner from "../component/Spinner";
 import {
   clearStoredCurrentProfileValue,
   resolveCurrentOwnedProfileId,
@@ -814,7 +815,7 @@ export default function ChatPage() {
                 defaultMessage="Conversations"
               />
             </div>
-            {loadingConversations && <Spinner animation="border" size="sm" />}
+            {loadingConversations && <Spinner size="sm" />}
             {noCurrentProfile && (
               <div className="chat-empty-state">
                 <FormattedMessage
@@ -861,7 +862,7 @@ export default function ChatPage() {
                   onClick={loadMoreConversations}
                 >
                   {loadingMoreConversations ? (
-                    <Spinner animation="border" size="sm" />
+                    <Spinner size="sm" />
                   ) : (
                     <FormattedMessage
                       id="chat.conversations.more"
@@ -908,7 +909,7 @@ export default function ChatPage() {
           )}
           {conversationId && !noCurrentProfile && loadingConversation && (
             <div className="chat-empty-workspace">
-              <Spinner animation="border" />
+              <Spinner />
             </div>
           )}
           {selectedConversation && (
@@ -935,7 +936,7 @@ export default function ChatPage() {
                     onClick={loadOlderMessages}
                   >
                     {loadingConversation ? (
-                      <Spinner animation="border" size="sm" />
+                      <Spinner size="sm" />
                     ) : (
                       <FormattedMessage
                         id="chat.messages.older"
@@ -1077,7 +1078,7 @@ export default function ChatPage() {
                   <div className="chat-search-popover">
                     {participantLoading && (
                       <div className="chat-search-popover-status">
-                        <Spinner animation="border" size="sm" />
+                        <Spinner size="sm" />
                       </div>
                     )}
                     {!participantLoading && participantResults.length === 0 && (

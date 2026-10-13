@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Spinner } from "react-bootstrap";
+import { Alert, Button } from "react-bootstrap";
 
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
+import Spinner from "../component/Spinner";
 import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
 import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
 import { resolveCurrentOwnedProfileId } from "../profile/currentProfile";
@@ -213,62 +214,64 @@ export default function WallPage({ userId }: { userId: string }) {
   return (
     <PageLayout header={{ title: "Wall" }}>
       <div className="wall-page">
-      <div className="wall-header">
-        <div>
-          <h1>Your wall</h1>
-          <p>
-            Recent updates from profiles, clubs, events, and sources that matter
-            to your current profile.
-          </p>
-        </div>
-      </div>
-      {error && <Alert variant="danger">{error}</Alert>}
-      {loading ? (
-        <div className="wall-loading">
-          <Spinner animation="border" size="sm" /> Loading updates…
-        </div>
-      ) : activities.length ? (
-        <div className="wall-list">
-          {activities.map((item) => (
-            <ActivityCard
-              key={item.id}
-              activity={item}
-              thumbnail={
-                thumbnails[`${item.targetType.toLowerCase()}:${item.targetId}`]
-              }
-              onDismiss={setDismissTarget}
-            />
-          ))}
-        </div>
-      ) : (
-        !error && (
-          <div className="wall-empty">
-            <h2>No updates yet</h2>
+        <div className="wall-header">
+          <div>
+            <h1>Your wall</h1>
             <p>
-              Follow profiles, clubs, or events and their newest activity will
-              appear here.
+              Recent updates from profiles, clubs, events, and sources that
+              matter to your current profile.
             </p>
           </div>
-        )
-      )}
-      {nextToken && (
-        <Button
-          variant="outline-secondary"
-          disabled={loadingMore}
-          onClick={() => void loadMore()}
-        >
-          {loadingMore ? "Loading…" : "Load more"}
-        </Button>
-      )}
-      <ConfirmationModal
-        show={Boolean(dismissTarget)}
-        title="Dismiss update?"
-        message="This update will no longer appear on the wall for this profile."
-        onHide={() => setDismissTarget(null)}
-        onConfirm={() => void dismiss()}
-        confirmLabel="Dismiss"
-        busy={dismissing}
-      />
+        </div>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {loading ? (
+          <div className="wall-loading">
+            <Spinner size="sm" /> Loading updates…
+          </div>
+        ) : activities.length ? (
+          <div className="wall-list">
+            {activities.map((item) => (
+              <ActivityCard
+                key={item.id}
+                activity={item}
+                thumbnail={
+                  thumbnails[
+                    `${item.targetType.toLowerCase()}:${item.targetId}`
+                  ]
+                }
+                onDismiss={setDismissTarget}
+              />
+            ))}
+          </div>
+        ) : (
+          !error && (
+            <div className="wall-empty">
+              <h2>No updates yet</h2>
+              <p>
+                Follow profiles, clubs, or events and their newest activity will
+                appear here.
+              </p>
+            </div>
+          )
+        )}
+        {nextToken && (
+          <Button
+            variant="outline-secondary"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        )}
+        <ConfirmationModal
+          show={Boolean(dismissTarget)}
+          title="Dismiss update?"
+          message="This update will no longer appear on the wall for this profile."
+          onHide={() => setDismissTarget(null)}
+          onConfirm={() => void dismiss()}
+          confirmLabel="Dismiss"
+          busy={dismissing}
+        />
       </div>
     </PageLayout>
   );

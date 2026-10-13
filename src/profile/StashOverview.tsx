@@ -19,9 +19,9 @@ import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
 import {
-  CLASSIFICATIONS,
   getClassificationLabel,
 } from "../library/libraryShared";
+import { ClassificationSelect } from "../library/components/ClassificationSelect";
 import { SaveStatus } from "../component/EditableFieldRow";
 import { clearAllTimers, clearTimer } from "../util/timers";
 import { prepareImageFile } from "../util/fileUtils";
@@ -55,7 +55,6 @@ import {
 
 const emptyGroupForm = { name: "", description: "" };
 const emptyItemForm = { name: "", description: "", classification: "OTHER" };
-const ALL_CLASSIFICATIONS = CLASSIFICATIONS;
 const ArrowLeftIcon = FaArrowLeft as React.ComponentType<{
   className?: string;
 }>;
@@ -1905,21 +1904,15 @@ export default function StashOverview({
               <Form.Label>
                 {t("profile.stash.itemClassification", "Classification")}
               </Form.Label>
-              <Form.Select
+              <ClassificationSelect
                 value={itemForm.classification}
-                onChange={(event) =>
+                onChange={(classification) =>
                   setItemForm((previousState) => ({
                     ...previousState,
-                    classification: event.target.value,
+                    classification,
                   }))
                 }
-              >
-                {ALL_CLASSIFICATIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Form.Select>
+              />
             </Form.Group>
             <div className="small text-muted">
               {t(

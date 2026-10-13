@@ -4,7 +4,8 @@ import { Form } from "react-bootstrap";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
-import { CLASSIFICATIONS, PERIODS, TYPES } from "../library/libraryShared";
+import { ClassificationSelect } from "../library/components/ClassificationSelect";
+import { PERIODS, TYPES } from "../library/libraryShared";
 import type { MapEntityLocation, SourceLocationRole } from "./mapApi";
 
 type Props = {
@@ -175,20 +176,12 @@ export default function MapEntityFilterControls({
           />
           <Form.Group className={groupClass}>
             <Form.Label>Classification</Form.Label>
-            <Form.Select
+            <ClassificationSelect
               size={compact ? "sm" : undefined}
               value={sourceClassification}
-              onChange={(event) =>
-                onSourceClassificationChange(event.target.value)
-              }
-            >
-              <option value="">All classifications</option>
-              {CLASSIFICATIONS.map((classification) => (
-                <option key={classification} value={classification}>
-                  {readable(classification)}
-                </option>
-              ))}
-            </Form.Select>
+              onChange={onSourceClassificationChange}
+              placeholder="All classifications"
+            />
           </Form.Group>
           <Form.Group className={groupClass}>
             <Form.Label>Source type</Form.Label>

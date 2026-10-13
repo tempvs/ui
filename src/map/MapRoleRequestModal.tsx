@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
+
+import Spinner from "../component/Spinner";
 import {
   listMyMapRoleRequests,
   requestMapRole,
@@ -125,7 +127,7 @@ export default function MapRoleRequestModal({
         </Form.Group>
         <h3 className="h6 mt-4">Your requests</h3>
         {loading ? (
-          <Spinner animation="border" size="sm" />
+          <Spinner size="sm" />
         ) : requests.length === 0 ? (
           <p className="small text-muted mb-0">No Map role requests yet.</p>
         ) : (

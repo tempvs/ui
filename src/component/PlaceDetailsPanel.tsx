@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import MapCanvas from "../map/MapCanvas";
 import { getMapPlace, type MapPlace } from "../map/mapApi";
 import PlaceNamesList from "./PlaceNamesList";
+import Spinner from "./Spinner";
 
 type PlaceDetailsPanelProps = {
   placeId: string;
@@ -42,7 +42,7 @@ export default function PlaceDetailsPanel({
       </div>
       {place === undefined ? (
         <div className="py-3 text-center">
-          <Spinner animation="border" size="sm" />
+          <Spinner size="sm" />
         </div>
       ) : place ? (
         <>

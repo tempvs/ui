@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useState } from "react";
-import { Alert, Button, ButtonGroup, Form, Spinner } from "react-bootstrap";
+import { Alert, Button, ButtonGroup, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
 import PlaceNamesList from "../component/PlaceNamesList";
+import Spinner from "../component/Spinner";
 import { getImageThumbnails } from "../image/imageApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import { entityThumbnailMarkers } from "./entityThumbnailMarkers";
@@ -102,7 +103,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           );
           if (relatedIds.length) {
             void Promise.all(
-              relatedIds.map((placeId) => getMapPlace(placeId, controller.signal)),
+              relatedIds.map((placeId) =>
+                getMapPlace(placeId, controller.signal),
+              ),
             ).then((relatedPlaces) => {
               if (controller.signal.aborted) return;
               setOtherContainmentParents(
@@ -199,7 +202,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   if (place === undefined)
     return (
       <PageLayout className="map-page" header={{ title: "Place" }}>
-        <Spinner animation="border" size="sm" />
+        <Spinner size="sm" />
       </PageLayout>
     );
 
@@ -287,7 +290,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
                     : undefined
                 }
               >
-                <Link to={`/map/place/${encodeURIComponent(relation.parentPlaceId)}`}>
+                <Link
+                  to={`/map/place/${encodeURIComponent(relation.parentPlaceId)}`}
+                >
                   {otherContainmentParents[relation.parentPlaceId]
                     ?.canonicalName || relation.parentPlaceId}
                 </Link>

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Form, Spinner } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import ConfirmationModal from "../component/ConfirmationModal";
 import TextFilterInput from "../component/TextFilterInput";
+import Spinner from "../component/Spinner";
 import {
   approveMapPlace,
   approveMapRoleRequest,
@@ -196,7 +197,7 @@ export default function MapAdminPage() {
             </small>
           </div>
         )}
-        {viewer === undefined && <Spinner animation="border" size="sm" />}
+        {viewer === undefined && <Spinner size="sm" />}
         {viewer !== undefined && !mayReview && (
           <Alert className="mb-0" variant="warning">
             Map reviewer access is required to view place proposals.
@@ -207,7 +208,7 @@ export default function MapAdminPage() {
             {error}
           </Alert>
         )}
-        {mayReview && loading && <Spinner animation="border" size="sm" />}
+        {mayReview && loading && <Spinner size="sm" />}
         {mayReview && !loading && proposals.length === 0 && !error && (
           <p className="text-muted mb-0">There are no pending proposals.</p>
         )}
@@ -482,7 +483,7 @@ function MapRoleAdminPanel() {
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {loading ? (
-        <Spinner animation="border" size="sm" />
+        <Spinner size="sm" />
       ) : (
         <>
           <h3 className="h6">Pending requests</h3>
@@ -827,7 +828,9 @@ function DuplicateMergeActions({
           <Button
             key={target.id}
             size="sm"
-            variant={selectedTarget?.id === target.id ? "dark" : "outline-secondary"}
+            variant={
+              selectedTarget?.id === target.id ? "dark" : "outline-secondary"
+            }
             onClick={() => setSelectedTarget(target)}
           >
             Compare with {target.canonicalName}
@@ -841,7 +844,9 @@ function DuplicateMergeActions({
           aria-label="Place merge comparison"
         >
           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <strong className="small">Compare proposed place with approved place</strong>
+            <strong className="small">
+              Compare proposed place with approved place
+            </strong>
             <Button
               size="sm"
               variant="link"
@@ -861,7 +866,9 @@ function DuplicateMergeActions({
               size="sm"
               variant="outline-dark"
               disabled={disabled}
-              title={disabled ? "Add a review rationale before merging" : undefined}
+              title={
+                disabled ? "Add a review rationale before merging" : undefined
+              }
               onClick={() => onMerge(selectedTarget)}
             >
               Confirm merge into {selectedTarget.canonicalName}
@@ -929,7 +936,10 @@ function PlaceMergeComparison({
           {values.map(([field, proposed, approved]) => {
             const changed = proposed !== approved;
             return (
-              <tr key={field} className={changed ? "table-warning" : "table-success"}>
+              <tr
+                key={field}
+                className={changed ? "table-warning" : "table-success"}
+              >
                 <th scope="row">{field}</th>
                 <td>{proposed}</td>
                 <td>{approved}</td>

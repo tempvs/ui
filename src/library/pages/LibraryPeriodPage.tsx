@@ -22,11 +22,10 @@ import {
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import { ClassificationFacet } from "../components/ClassificationFacet";
+import { ClassificationSelect } from "../components/ClassificationSelect";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import SourceCard from "../components/SourceCard";
 import {
-  CLASSIFICATIONS,
-  getClassificationLabel,
   getPeriodLabel,
   getTypeLabel,
   PAGE_SIZE,
@@ -558,23 +557,17 @@ export default function LibraryPeriodPage() {
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>Classification</Form.Label>
-                <Form.Select
+                <ClassificationSelect
                   required
                   value={draftSource.classification}
-                  onChange={(event) =>
+                  onChange={(classification) =>
                     setDraftSource((prev) => ({
                       ...prev,
-                      classification: event.target.value,
+                      classification,
                     }))
                   }
-                >
-                  <option value="">Choose classification</option>
-                  {CLASSIFICATIONS.map((classification) => (
-                    <option key={classification} value={classification}>
-                      {getClassificationLabel(intl, classification)}
-                    </option>
-                  ))}
-                </Form.Select>
+                  placeholder="Choose classification"
+                />
               </Form.Group>
               <Form.Group>
                 <Form.Label>Type</Form.Label>

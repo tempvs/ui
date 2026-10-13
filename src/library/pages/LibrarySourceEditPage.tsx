@@ -15,6 +15,7 @@ import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
 import { PERIODS } from "../../util/periods";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
+import { ClassificationSelect } from "../components/ClassificationSelect";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   amendSourceChangeset,
@@ -32,7 +33,7 @@ import {
   type SourceImageOperation,
   type SourceChangesetSnapshot,
 } from "../libraryApi";
-import { CLASSIFICATIONS, TYPES } from "../libraryShared";
+import { TYPES } from "../libraryShared";
 import { canEditSource } from "../libraryRoles";
 
 type Draft = {
@@ -612,20 +613,14 @@ export default function LibrarySourceEditPage() {
               </Form.Group>
               <Form.Group className="col-md-4">
                 <Form.Label>Classification</Form.Label>
-                <Form.Select
+                <ClassificationSelect
                   required
                   value={draft.classification}
-                  onChange={(event) =>
-                    update("classification", event.target.value)
+                  onChange={(classification) =>
+                    update("classification", classification)
                   }
-                >
-                  <option value="">Choose classification</option>
-                  {CLASSIFICATIONS.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </Form.Select>
+                  placeholder="Choose classification"
+                />
               </Form.Group>
               <Form.Group className="col-md-4">
                 <Form.Label>Type</Form.Label>
@@ -729,7 +724,10 @@ export default function LibrarySourceEditPage() {
                 }
                 onChange={(place: MapPlace | null) => {
                   update("discoveredAtPlaceId", place?.id || null);
-                  update("discoveredAtPlaceName", place?.matchedName || place?.canonicalName || "");
+                  update(
+                    "discoveredAtPlaceName",
+                    place?.matchedName || place?.canonicalName || "",
+                  );
                 }}
               />
               <PlacePickerField
@@ -746,7 +744,10 @@ export default function LibrarySourceEditPage() {
                 }
                 onChange={(place: MapPlace | null) => {
                   update("heldAtPlaceId", place?.id || null);
-                  update("heldAtPlaceName", place?.matchedName || place?.canonicalName || "");
+                  update(
+                    "heldAtPlaceName",
+                    place?.matchedName || place?.canonicalName || "",
+                  );
                 }}
                 className="mb-0"
               />

@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { getErrorMessage } from "../../util/errors";
+import { ClassificationSelect } from "../components/ClassificationSelect";
 import SourceChangesetProposalCard from "../components/SourceChangesetProposalCard";
 import {
   getLibraryViewer,
@@ -17,7 +18,6 @@ import {
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
 import {
-  CLASSIFICATIONS,
   PAGE_SIZE,
   PERIODS,
   TYPES,
@@ -54,13 +54,18 @@ export function LibraryPendingProposalsContent({
   const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [imagePreviewsByChangeset, setImagePreviewsByChangeset] = useState<Record<string, {
-    published: LibrarySourceImage[];
-    staged: LibrarySourceImage[];
-  }>>({});
-  const [loadingImagePreviewIds, setLoadingImagePreviewIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [imagePreviewsByChangeset, setImagePreviewsByChangeset] = useState<
+    Record<
+      string,
+      {
+        published: LibrarySourceImage[];
+        staged: LibrarySourceImage[];
+      }
+    >
+  >({});
+  const [loadingImagePreviewIds, setLoadingImagePreviewIds] = useState<
+    Set<string>
+  >(() => new Set());
 
   const sourceFilters = useMemo(
     () => ({
@@ -72,18 +77,21 @@ export function LibraryPendingProposalsContent({
     [period, query, selectedClassification, selectedPeriod, selectedType],
   );
 
-  const load = useCallback(async (token?: string) => {
-    const result = await getPendingSourceChangesets({
-      ...sourceFilters,
-      limit: PROPOSALS_PAGE_SIZE,
-      nextToken: token,
-    });
-    if (!result.ok) throw new Error("Unable to load pending changesets.");
-    return {
-      rows: result.data?.content || [],
-      nextToken: result.data?.nextToken || null,
-    };
-  }, [sourceFilters]);
+  const load = useCallback(
+    async (token?: string) => {
+      const result = await getPendingSourceChangesets({
+        ...sourceFilters,
+        limit: PROPOSALS_PAGE_SIZE,
+        nextToken: token,
+      });
+      if (!result.ok) throw new Error("Unable to load pending changesets.");
+      return {
+        rows: result.data?.content || [],
+        nextToken: result.data?.nextToken || null,
+      };
+    },
+    [sourceFilters],
+  );
 
   useEffect(() => {
     let active = true;
@@ -93,7 +101,9 @@ export function LibraryPendingProposalsContent({
       try {
         const viewer = await getLibraryViewer();
         if (!canEditSource(viewer)) {
-          throw new Error("Library editor access is required to review changesets.");
+          throw new Error(
+            "Library editor access is required to review changesets.",
+          );
         }
         const result = await load();
         if (active) {
@@ -136,7 +146,11 @@ export function LibraryPendingProposalsContent({
       else next.add(changeset.id);
       return next;
     });
-    if (isExpanded || !changeset.imageOperations.length || imagePreviewsByChangeset[changeset.id]) {
+    if (
+      isExpanded ||
+      !changeset.imageOperations.length ||
+      imagePreviewsByChangeset[changeset.id]
+    ) {
       return;
     }
     setLoadingImagePreviewIds((current) => new Set(current).add(changeset.id));
@@ -166,91 +180,131 @@ export function LibraryPendingProposalsContent({
     }
   };
 
-  const heading = period ? "Pending period changesets" : "All pending source changesets";
-  return <>
-    <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
-      <h1 className="h3 mb-0">{heading}</h1>
-    </div>
-    <div className="d-flex align-items-center gap-2 flex-wrap mb-4">
-      <div style={{ minWidth: "15rem", flex: "1 1 18rem" }}>
-        <TextFilterInput
-          ariaLabel="Filter pending source changesets"
-          placeholder="Filter by source name"
-          value={query}
-          onChange={setQuery}
-        />
+  const heading = period
+    ? "Pending period changesets"
+    : "All pending source changesets";
+  return (
+    <>
+      <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
+        <h1 className="h3 mb-0">{heading}</h1>
       </div>
-      {!period && (
+      <div className="d-flex align-items-center gap-2 flex-wrap mb-4">
+        <div style={{ minWidth: "15rem", flex: "1 1 18rem" }}>
+          <TextFilterInput
+            ariaLabel="Filter pending source changesets"
+            placeholder="Filter by source name"
+            value={query}
+            onChange={setQuery}
+          />
+        </div>
+        {!period && (
+          <Form.Select
+            aria-label="Filter pending changesets by period"
+            value={selectedPeriod}
+            onChange={(event) => setSelectedPeriod(event.target.value)}
+            style={{ width: "auto", minWidth: "11rem" }}
+          >
+            <option value="">All periods</option>
+            {PERIODS.map((value) => (
+              <option key={value} value={value}>
+                {getPeriodLabel(intl, value)}
+              </option>
+            ))}
+          </Form.Select>
+        )}
         <Form.Select
-          aria-label="Filter pending changesets by period"
-          value={selectedPeriod}
-          onChange={(event) => setSelectedPeriod(event.target.value)}
-          style={{ width: "auto", minWidth: "11rem" }}
+          aria-label="Filter pending proposals by source type"
+          value={selectedType}
+          onChange={(event) => setSelectedType(event.target.value)}
+          style={{ width: "auto", minWidth: "10rem" }}
         >
-          <option value="">All periods</option>
-          {PERIODS.map((value) => (
-            <option key={value} value={value}>{getPeriodLabel(intl, value)}</option>
+          <option value="">All types</option>
+          {TYPES.map((value) => (
+            <option key={value} value={value}>
+              {getTypeLabel(intl, value)}
+            </option>
           ))}
         </Form.Select>
+        <ClassificationSelect
+          ariaLabel="Filter pending proposals by classification"
+          value={selectedClassification}
+          onChange={setSelectedClassification}
+          placeholder="All classifications"
+          style={{ width: "auto", minWidth: "12rem" }}
+        />
+      </div>
+      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
+      {loading && <Spinner />}
+      {!loading && rows.length === 0 && (
+        <div className="tempvs-plain-message text-muted">
+          No pending changesets.
+        </div>
       )}
-      <Form.Select
-        aria-label="Filter pending proposals by source type"
-        value={selectedType}
-        onChange={(event) => setSelectedType(event.target.value)}
-        style={{ width: "auto", minWidth: "10rem" }}
-      >
-        <option value="">All types</option>
-        {TYPES.map((value) => (
-          <option key={value} value={value}>{getTypeLabel(intl, value)}</option>
-        ))}
-      </Form.Select>
-      <Form.Select
-        aria-label="Filter pending proposals by classification"
-        value={selectedClassification}
-        onChange={(event) => setSelectedClassification(event.target.value)}
-        style={{ width: "auto", minWidth: "12rem" }}
-      >
-        <option value="">All classifications</option>
-        {CLASSIFICATIONS.map((value) => (
-          <option key={value} value={value}>{getClassificationLabel(intl, value)}</option>
-        ))}
-      </Form.Select>
-    </div>
-    {error && <div className="tempvs-plain-message text-danger">{error}</div>}
-    {loading && <Spinner />}
-    {!loading && rows.length === 0 && <div className="tempvs-plain-message text-muted">No pending changesets.</div>}
-    {!loading && rows.map((row) => {
-      const { source, changeset } = row;
-      return <SourceChangesetProposalCard
-        key={changeset.id}
-        source={source}
-        changeset={changeset}
-        expanded={expandedChangesetIds.has(changeset.id)}
-        onToggle={() => void toggleChangeset(row)}
-        loadingImagePreviews={loadingImagePreviewIds.has(changeset.id)}
-        imagePreviews={imagePreviewsByChangeset[changeset.id]}
-        context={<div className="d-flex align-items-center gap-2 flex-wrap text-muted small mt-1">
-          {source.period && <Badge bg="light" text="dark" className="border">{getPeriodLabel(intl, source.period)}</Badge>}
-          {source.type && <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>}
-          {source.classification && <Badge bg="secondary">{getClassificationLabel(intl, source.classification)}</Badge>}
-        </div>}
-      />;
-    })}
-    {nextToken && <Button variant="outline-dark" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "Loading…" : "Load more"}</Button>}
-  </>;
+      {!loading &&
+        rows.map((row) => {
+          const { source, changeset } = row;
+          return (
+            <SourceChangesetProposalCard
+              key={changeset.id}
+              source={source}
+              changeset={changeset}
+              expanded={expandedChangesetIds.has(changeset.id)}
+              onToggle={() => void toggleChangeset(row)}
+              loadingImagePreviews={loadingImagePreviewIds.has(changeset.id)}
+              imagePreviews={imagePreviewsByChangeset[changeset.id]}
+              context={
+                <div className="d-flex align-items-center gap-2 flex-wrap text-muted small mt-1">
+                  {source.period && (
+                    <Badge bg="light" text="dark" className="border">
+                      {getPeriodLabel(intl, source.period)}
+                    </Badge>
+                  )}
+                  {source.type && (
+                    <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
+                  )}
+                  {source.classification && (
+                    <Badge bg="secondary">
+                      {getClassificationLabel(intl, source.classification)}
+                    </Badge>
+                  )}
+                </div>
+              }
+            />
+          );
+        })}
+      {nextToken && (
+        <Button
+          variant="outline-dark"
+          disabled={loadingMore}
+          onClick={() => void loadMore()}
+        >
+          {loadingMore ? "Loading…" : "Load more"}
+        </Button>
+      )}
+    </>
+  );
 }
 
 /** Dedicated period queue route; it supplies the shared page header. */
 export default function LibraryPendingProposalsPage() {
   const { period } = useParams();
 
-  return <div className="page-layout-content px-4 px-xl-5 pb-4">
-    <LibrarySectionHeader
-      title="LIBRARY"
-      subtitle={null}
-      period={period}
-      rightContent={<Link className="btn btn-outline-dark btn-sm" to={`/library/period/${period}`}>Back</Link>}
-    />
-    <LibraryPendingProposalsContent period={period} />
-  </div>;
+  return (
+    <div className="page-layout-content px-4 px-xl-5 pb-4">
+      <LibrarySectionHeader
+        title="LIBRARY"
+        subtitle={null}
+        period={period}
+        rightContent={
+          <Link
+            className="btn btn-outline-dark btn-sm"
+            to={`/library/period/${period}`}
+          >
+            Back
+          </Link>
+        }
+      />
+      <LibraryPendingProposalsContent period={period} />
+    </div>
+  );
 }

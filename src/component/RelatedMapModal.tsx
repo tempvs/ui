@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { FaGlobeAmericas } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
+import Spinner from "./Spinner";
 import MapCanvas from "../map/MapCanvas";
 import { entityThumbnailMarkers } from "../map/entityThumbnailMarkers";
 import type { OwnedMapContent } from "../map/ownedMapContent";
@@ -121,12 +122,7 @@ export default function RelatedMapModal({
           setError((caught as Error).message || "Unable to load related map.");
       });
     return () => controller.abort();
-  }, [
-    place,
-    radiusKm,
-    show,
-    showNearby,
-  ]);
+  }, [place, radiusKm, show, showNearby]);
 
   useEffect(() => {
     if (!show || !entities.length) {
@@ -167,10 +163,7 @@ export default function RelatedMapModal({
   }, [entities, show]);
 
   const visibleRelatedContent = useMemo<OwnedMapContent>(
-    () =>
-      showRelated
-        ? relatedContent
-        : { markers: [], connections: [] },
+    () => (showRelated ? relatedContent : { markers: [], connections: [] }),
     [relatedContent, showRelated],
   );
   const relatedMarkerKeys = new Set(
@@ -214,7 +207,7 @@ export default function RelatedMapModal({
         <Modal.Body>
           {place === undefined && !error && (
             <div className="py-4 text-center">
-              <Spinner animation="border" size="sm" />
+              <Spinner size="sm" />
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
@@ -240,7 +233,9 @@ export default function RelatedMapModal({
                 )}
               </div>
               <p className="small text-muted">
-                {showNearby ? `Public content within ${radiusKm} km of this location.` : "Nearby public content is hidden."}
+                {showNearby
+                  ? `Public content within ${radiusKm} km of this location.`
+                  : "Nearby public content is hidden."}
                 {visibleRelatedContent.markers.length
                   ? ` This ${visibleRelatedContent.markers.length === 1 ? "related item is" : `${visibleRelatedContent.markers.length} related items are`} shown with connection lines.`
                   : ""}
@@ -293,7 +288,8 @@ export default function RelatedMapModal({
                   displayName,
                   radiusKm,
                 ).toString()}`;
-                void navigator.clipboard?.writeText(`${window.location.origin}${path}`)
+                void navigator.clipboard
+                  ?.writeText(`${window.location.origin}${path}`)
                   .then(() => {
                     setCopied(true);
                     window.setTimeout(() => setCopied(false), 2500);
