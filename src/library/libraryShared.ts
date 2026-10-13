@@ -83,6 +83,19 @@ export function getClassificationLabel(
   });
 }
 
+/** A context-free label for shared controls rendered outside an IntlProvider. */
+export function getClassificationDefaultLabel(
+  classification: string | null | undefined,
+): string {
+  if (!classification) {
+    return "";
+  }
+
+  return hasClassificationDefault(classification)
+    ? CLASSIFICATION_DEFAULTS[classification]
+    : classification;
+}
+
 export function getTypeLabel(
   intl: IntlShape,
   type: string | null | undefined,

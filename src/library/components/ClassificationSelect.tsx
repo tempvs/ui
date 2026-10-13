@@ -1,8 +1,10 @@
 import { CSSProperties } from "react";
 import { Form } from "react-bootstrap";
-import { useIntl } from "react-intl";
 
-import { CLASSIFICATION_TREE, getClassificationLabel } from "../libraryShared";
+import {
+  CLASSIFICATION_TREE,
+  getClassificationDefaultLabel,
+} from "../libraryShared";
 
 type ClassificationSelectProps = {
   value: string;
@@ -29,8 +31,6 @@ export function ClassificationSelect({
   className,
   style,
 }: ClassificationSelectProps) {
-  const intl = useIntl();
-
   return (
     <Form.Select
       required={required}
@@ -44,11 +44,11 @@ export function ClassificationSelect({
       {placeholder && <option value="">{placeholder}</option>}
       {CLASSIFICATION_TREE.flatMap(({ value: parent, children }) => [
         <option key={parent} value={parent}>
-          {getClassificationLabel(intl, parent)}
+          {getClassificationDefaultLabel(parent)}
         </option>,
         ...children.map((child) => (
           <option key={child} value={child}>
-            {`↳ ${getClassificationLabel(intl, child)}`}
+            {`↳ ${getClassificationDefaultLabel(child)}`}
           </option>
         )),
       ])}
