@@ -22,9 +22,8 @@ import {
   LibrarySourceImage,
 } from "../library/libraryApi";
 import SourceCard from "../library/components/SourceCard";
+import { ClassificationFacet } from "../library/components/ClassificationFacet";
 import {
-  CLASSIFICATIONS,
-  getClassificationLabel,
   getPeriodLabel,
   getTypeLabel,
   PERIODS,
@@ -483,25 +482,12 @@ export default function SearchDialog() {
                       <Form.Label className="library-source-filter-heading">
                         Classification
                       </Form.Label>
-                      <div className="d-flex flex-column gap-2 mb-4">
-                        {CLASSIFICATIONS.map((classification) => (
-                          <Form.Check
-                            key={classification}
-                            type="checkbox"
-                            id={`search-classification-${classification}`}
-                            label={getClassificationLabel(intl, classification)}
-                            checked={selectedClassifications.includes(
-                              classification,
-                            )}
-                            onChange={() =>
-                              handleToggle(
-                                classification,
-                                selectedClassifications,
-                                setSelectedClassifications,
-                              )
-                            }
-                          />
-                        ))}
+                      <div className="mb-4">
+                        <ClassificationFacet
+                          idPrefix="search-classification"
+                          selected={selectedClassifications}
+                          onChange={setSelectedClassifications}
+                        />
                       </div>
 
                       <Form.Label className="library-source-filter-heading">

@@ -18,7 +18,10 @@ import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
-import { getClassificationLabel } from "../library/libraryShared";
+import {
+  CLASSIFICATIONS,
+  getClassificationLabel,
+} from "../library/libraryShared";
 import { SaveStatus } from "../component/EditableFieldRow";
 import { clearAllTimers, clearTimer } from "../util/timers";
 import { prepareImageFile } from "../util/fileUtils";
@@ -52,14 +55,7 @@ import {
 
 const emptyGroupForm = { name: "", description: "" };
 const emptyItemForm = { name: "", description: "", classification: "OTHER" };
-const ALL_CLASSIFICATIONS = [
-  "ARMOR",
-  "CLOTHING",
-  "FOOTWEAR",
-  "ACCESSORY",
-  "WEAPON",
-  "OTHER",
-];
+const ALL_CLASSIFICATIONS = CLASSIFICATIONS;
 const ArrowLeftIcon = FaArrowLeft as React.ComponentType<{
   className?: string;
 }>;
@@ -213,7 +209,7 @@ function segmentsIntersect(
     return false;
   }
 
-  return (first > 0) !== (second > 0) && (third > 0) !== (fourth > 0);
+  return first > 0 !== second > 0 && third > 0 !== fourth > 0;
 }
 
 function countLineIntersections(

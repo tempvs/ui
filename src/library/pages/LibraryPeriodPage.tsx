@@ -21,6 +21,7 @@ import {
   LibrarySourceImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
+import { ClassificationFacet } from "../components/ClassificationFacet";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import SourceCard from "../components/SourceCard";
 import {
@@ -415,26 +416,11 @@ export default function LibraryPeriodPage() {
                   <Form.Label className="library-source-filter-heading">
                     Classification
                   </Form.Label>
-                  <div className="d-flex flex-column gap-2">
-                    {CLASSIFICATIONS.map((classification) => (
-                      <Form.Check
-                        key={classification}
-                        type="checkbox"
-                        id={`classification-${classification}`}
-                        label={getClassificationLabel(intl, classification)}
-                        checked={selectedClassifications.includes(
-                          classification,
-                        )}
-                        onChange={() =>
-                          handleToggle(
-                            classification,
-                            selectedClassifications,
-                            setSelectedClassifications,
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
+                  <ClassificationFacet
+                    idPrefix="classification"
+                    selected={selectedClassifications}
+                    onChange={setSelectedClassifications}
+                  />
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label className="library-source-filter-heading">

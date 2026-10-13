@@ -1,32 +1,65 @@
-import { IntlShape } from 'react-intl';
+import { IntlShape } from "react-intl";
 
-export { PERIODS, getPeriodLabel, PeriodBadge } from '../util/periods';
-export type { Period } from '../util/periods';
+export { PERIODS, getPeriodLabel, PeriodBadge } from "../util/periods";
+export type { Period } from "../util/periods";
 
-export const CLASSIFICATIONS = ['CLOTHING', 'FOOTWEAR', 'ACCESSORY', 'WEAPON', 'ARMOR', 'OTHER'] as const;
-export const TYPES = ['WRITTEN', 'GRAPHIC', 'ARCHAEOLOGICAL', 'OTHER'] as const;
+export const CLASSIFICATIONS = [
+  "CLOTHING",
+  "FOOTWEAR",
+  "ACCESSORY",
+  "TABLEWARE",
+  "WEAPON",
+  "ARMOR",
+  "OTHER",
+] as const;
+export const TYPES = ["WRITTEN", "GRAPHIC", "ARCHAEOLOGICAL", "OTHER"] as const;
 export const PAGE_SIZE = 40;
 
-export type SourceClassification = typeof CLASSIFICATIONS[number];
-export type SourceType = typeof TYPES[number];
+export type SourceClassification = (typeof CLASSIFICATIONS)[number];
+export type SourceType = (typeof TYPES)[number];
 
 const CLASSIFICATION_DEFAULTS: Record<SourceClassification, string> = {
-  CLOTHING: 'Clothing',
-  FOOTWEAR: 'Footwear',
-  ACCESSORY: 'Accessory',
-  WEAPON: 'Weapon',
-  ARMOR: 'Armor',
-  OTHER: 'Other',
+  CLOTHING: "Clothing",
+  FOOTWEAR: "Footwear",
+  ACCESSORY: "Accessory",
+  TABLEWARE: "Tableware",
+  WEAPON: "Weapon",
+  ARMOR: "Armor",
+  OTHER: "Other",
 };
+
+/** Parent values are persisted-compatible broad categories. Children are
+ * selectable specific categories and are included by parent facet searches. */
+export const CLASSIFICATION_TREE: ReadonlyArray<{
+  value: SourceClassification;
+  children: SourceClassification[];
+}> = [
+  { value: "CLOTHING", children: ["FOOTWEAR"] },
+  { value: "ACCESSORY", children: ["TABLEWARE"] },
+  { value: "WEAPON", children: [] },
+  { value: "ARMOR", children: [] },
+  { value: "OTHER", children: [] },
+];
+
+export function classificationDescendants(
+  value: SourceClassification,
+): SourceClassification[] {
+  const node = CLASSIFICATION_TREE.find((entry) => entry.value === value);
+  return node
+    ? [...node.children, ...node.children.flatMap(classificationDescendants)]
+    : [];
+}
 
 const TYPE_DEFAULTS: Record<SourceType, string> = {
-  WRITTEN: 'Written',
-  GRAPHIC: 'Graphic',
-  ARCHAEOLOGICAL: 'Archaeological',
-  OTHER: 'Other',
+  WRITTEN: "Written",
+  GRAPHIC: "Graphic",
+  ARCHAEOLOGICAL: "Archaeological",
+  OTHER: "Other",
 };
 
-function hasClassificationDefault(value: string): value is SourceClassification {
+function hasClassificationDefault(
+  value: string,
+): value is SourceClassification {
   return value in CLASSIFICATION_DEFAULTS;
 }
 
@@ -34,9 +67,12 @@ function hasTypeDefault(value: string): value is SourceType {
   return value in TYPE_DEFAULTS;
 }
 
-export function getClassificationLabel(intl: IntlShape, classification: string | null | undefined): string {
+export function getClassificationLabel(
+  intl: IntlShape,
+  classification: string | null | undefined,
+): string {
   if (!classification) {
-    return '';
+    return "";
   }
 
   return intl.formatMessage({
@@ -47,9 +83,12 @@ export function getClassificationLabel(intl: IntlShape, classification: string |
   });
 }
 
-export function getTypeLabel(intl: IntlShape, type: string | null | undefined): string {
+export function getTypeLabel(
+  intl: IntlShape,
+  type: string | null | undefined,
+): string {
   if (!type) {
-    return '';
+    return "";
   }
 
   return intl.formatMessage({

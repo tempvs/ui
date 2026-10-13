@@ -87,6 +87,7 @@
   "library.classification.clothing": "Clothing",
   "library.classification.footwear": "Footwear",
   "library.classification.accessory": "Accessory",
+  "library.classification.tableware": "Tableware",
   "library.classification.weapon": "Weapon",
   "library.classification.armor": "Armor",
   "library.classification.other": "Other",
