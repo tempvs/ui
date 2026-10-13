@@ -55,7 +55,7 @@ test("searches approved places and returns a selected canonical place", async ()
 
   fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
   fireEvent.change(
-    screen.getByRole("searchbox", { name: "Search approved places" }),
+    screen.getByRole("combobox", { name: "Search approved places" }),
     { target: { value: "Rome" } },
   );
   await act(async () => {
@@ -67,7 +67,7 @@ test("searches approved places and returns a selected canonical place", async ()
       expect.anything(),
     ),
   );
-  fireEvent.click(await screen.findByRole("button", { name: /Rome/ }));
+  fireEvent.click(await screen.findByRole("option", { name: /Rome/ }));
   expect(onChange).toHaveBeenCalledWith(
     expect.objectContaining({
       id: "seed:pleiades:423025",
@@ -109,20 +109,67 @@ test("shows and returns the historical name which matched the search", async () 
 
   fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
   fireEvent.change(
-    screen.getByRole("searchbox", { name: "Search approved places" }),
+    screen.getByRole("combobox", { name: "Search approved places" }),
     { target: { value: "Castra" } },
   );
   await act(async () => {
     jest.advanceTimersByTime(200);
   });
   fireEvent.click(
-    await screen.findByRole("button", { name: /Castra Regina.*Regensburg/ }),
+    await screen.findByRole("option", { name: /Castra Regina.*Regensburg/ }),
   );
   expect(onChange).toHaveBeenCalledWith(
     expect.objectContaining({
       id: "seed:pleiades:118929",
       matchedName: "Castra Regina",
     }),
+  );
+  jest.useRealTimers();
+  fetchMock.mockRestore();
+});
+
+test("supports keyboard selection from the shared place autocomplete", async () => {
+  jest.useFakeTimers();
+  const onChange = jest.fn();
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    text: async () =>
+      JSON.stringify({
+        items: [
+          {
+            id: "seed:rome",
+            canonicalName: "Rome",
+            latitude: 41.9,
+            longitude: 12.5,
+            featureType: "SETTLEMENT",
+          },
+          {
+            id: "seed:roman-forum",
+            canonicalName: "Roman Forum",
+            latitude: 41.89,
+            longitude: 12.49,
+            featureType: "ARCHAEOLOGICAL_SITE",
+          },
+        ],
+      }),
+  } as Response);
+  render(<PlacePickerField label="Location" editable onChange={onChange} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
+  const input = screen.getByRole("combobox", {
+    name: "Search approved places",
+  });
+  fireEvent.change(input, { target: { value: "Rome" } });
+  await act(async () => {
+    jest.advanceTimersByTime(200);
+  });
+  await screen.findByRole("option", { name: /Rome SETTLEMENT/i });
+  fireEvent.keyDown(input, { key: "ArrowDown" });
+  expect(input).toHaveAttribute("aria-activedescendant");
+  fireEvent.keyDown(input, { key: "Enter" });
+
+  expect(onChange).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "seed:rome", canonicalName: "Rome" }),
   );
   jest.useRealTimers();
   fetchMock.mockRestore();

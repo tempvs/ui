@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Button, Form, Modal } from "react-bootstrap";
 import { FaMapMarkerAlt, FaTimes } from "react-icons/fa";
 
 import InlineSaveStatus from "./InlineSaveStatus";
 import PlaceDetailsPanel from "./PlaceDetailsPanel";
+import PlaceSearchAutocomplete from "./PlaceSearchAutocomplete";
 import PlaceNamePopover from "./PlaceNamePopover";
 import RelatedMapModal from "./RelatedMapModal";
 import type { SaveStatus } from "./EditableFieldRow";
@@ -339,60 +340,24 @@ export default function PlacePickerField({
               />
             </div>
           )}
-          <Form.Control
+          <PlaceSearchAutocomplete
+            inputId="place-picker-search"
             autoFocus
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            query={query}
+            onQueryChange={setQuery}
+            results={query.trim().length >= 2 ? results : null}
+            loading={loading}
+            failed={failed}
+            onSelect={select}
             placeholder="Search approved places"
-            aria-label="Search approved places"
+            ariaLabel="Search approved places"
+            resultsClassName="mt-3 place-picker-results"
           />
-          <div className="mt-3 place-picker-results">
-            {query.trim().length < 2 && (
-              <p className="small text-muted mb-0">
-                Enter at least two characters.
-              </p>
-            )}
-            {loading && (
-              <div className="text-center py-2">
-                <Spinner animation="border" size="sm" />
-              </div>
-            )}
-            {failed && (
-              <p className="small text-danger mb-0">
-                Unable to search places right now.
-              </p>
-            )}
-            {!loading &&
-              !failed &&
-              query.trim().length >= 2 &&
-              results.length === 0 && (
-                <p className="small text-muted mb-0">
-                  No approved places match this search.
-                </p>
-              )}
-            {!loading &&
-              results.map((place) => (
-                <Button
-                  key={place.id}
-                  variant="light"
-                  className="w-100 text-start mb-1"
-                  onClick={() => select(place)}
-                >
-                  <strong>{place.matchedName || place.canonicalName}</strong>
-                  {place.matchedName &&
-                    place.matchedName !== place.canonicalName && (
-                      <span className="text-muted">
-                        {" "}
-                        ({place.canonicalName})
-                      </span>
-                    )}
-                  <span className="ms-2 small text-muted">
-                    {place.featureType}
-                  </span>
-                </Button>
-              ))}
-          </div>
+          {query.trim().length < 2 && (
+            <p className="small text-muted mb-0 mt-3">
+              Enter at least two characters.
+            </p>
+          )}
           {value?.id && !showPinMap && (
             <Button
               type="button"

@@ -3,6 +3,7 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import PlaceSearchAutocomplete from "../component/PlaceSearchAutocomplete";
 import HistoricalRangeFilter, {
   isValidHistoricalRange,
   type HistoricalYearInput,
@@ -514,73 +515,27 @@ export default function MapPage() {
           onSubmit={search}
           className="d-flex gap-2 flex-wrap align-items-end"
         >
-          <Form.Group
-            className="map-place-search-field"
-            controlId="map-place-search"
-          >
-            <Form.Label>Place</Form.Label>
-            <Form.Control
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
+          <Form.Group className="map-place-search-field">
+            <Form.Label htmlFor="map-place-search">Place</Form.Label>
+            <PlaceSearchAutocomplete
+              inputId="map-place-search"
+              query={query}
+              onQueryChange={(value) => {
+                setQuery(value);
                 setSelectedPlaceId(null);
                 setLatitude("");
                 setLongitude("");
               }}
-              autoComplete="off"
+              results={suggestions}
+              loading={suggestionsLoading}
+              failed={suggestionsFailed}
+              onSelect={(place) => void selectPlace(place)}
               placeholder="Rome, Constantinople…"
+              ariaLabel="Place"
+              resultsClassName="map-place-suggestions"
+              optionClassName="map-place-suggestion"
+              statusClassName="map-place-suggestions-status"
             />
-            {suggestionsLoading && (
-              <p className="map-place-suggestions-status" role="status">
-                Searching…
-              </p>
-            )}
-            {suggestionsFailed && (
-              <p
-                className="map-place-suggestions-status text-danger"
-                role="alert"
-              >
-                Unable to search places right now.
-              </p>
-            )}
-            {!suggestionsLoading && suggestions && (
-              <div
-                className="map-place-suggestions"
-                role="listbox"
-                aria-label="Matching places"
-              >
-                {suggestions.length === 0 ? (
-                  <p className="small text-muted mb-0 px-2 py-1">
-                    No approved places match this search.
-                  </p>
-                ) : (
-                  suggestions.map((place) => (
-                    <button
-                      type="button"
-                      key={place.id}
-                      className="map-place-suggestion"
-                      role="option"
-                      aria-selected={selectedPlaceId === place.id}
-                      onClick={() => void selectPlace(place)}
-                    >
-                      <strong>
-                        {place.matchedName || place.canonicalName}
-                      </strong>
-                      {place.matchedName &&
-                        place.matchedName !== place.canonicalName && (
-                          <span className="text-muted">
-                            {" "}
-                            ({place.canonicalName})
-                          </span>
-                        )}
-                      <span className="text-muted ms-2 small">
-                        {place.featureType}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
           </Form.Group>
           <HistoricalRangeFilter
             enabled
