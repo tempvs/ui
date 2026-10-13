@@ -88,7 +88,7 @@ export function ClassificationFacet({ idPrefix, selected, onChange }: Props) {
             {isExpanded &&
               children.map((child) => (
                 <div key={child} className="d-flex align-items-center gap-1">
-                  <span style={{ width: "1rem" }} />
+                  <span style={{ width: "1.5rem" }} />
                   <Form.Check
                     type="checkbox"
                     id={`${idPrefix}-${child}`}
