@@ -150,7 +150,8 @@ export default function PlacePickerField({
       setLoading(true);
       setFailed(false);
       searchMapPlaces(query, controller.signal, searchHistoricalRange)
-        .then((places) =>
+        .then((places) => {
+          if (controller.signal.aborted) return;
           setResults(
             places.map((place) => ({
               ...place,
@@ -160,12 +161,18 @@ export default function PlacePickerField({
                 searchHistoricalRange,
               ),
             })),
-          ),
-        )
-        .catch((error) => {
-          if ((error as Error).name !== "AbortError") setFailed(true);
+          );
         })
-        .finally(() => setLoading(false));
+        .catch((error) => {
+          if (
+            !controller.signal.aborted &&
+            (error as Error).name !== "AbortError"
+          )
+            setFailed(true);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
     }, 180);
     return () => {
       controller.abort();

@@ -175,6 +175,52 @@ test("supports keyboard selection from the shared place autocomplete", async () 
   fetchMock.mockRestore();
 });
 
+test("does not render a late result from an aborted place search", async () => {
+  jest.useFakeTimers();
+  let resolveFirstSearch: ((value: Response) => void) | undefined;
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation(
+    () =>
+      new Promise<Response>((resolve) => {
+        resolveFirstSearch = resolve;
+      }),
+  );
+  render(<PlacePickerField label="Location" editable onChange={jest.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Choose a place" }));
+  const input = screen.getByRole("combobox", {
+    name: "Search approved places",
+  });
+  fireEvent.change(input, { target: { value: "Rome" } });
+  await act(async () => {
+    jest.advanceTimersByTime(200);
+  });
+  await waitFor(() => expect(resolveFirstSearch).toBeDefined());
+
+  fireEvent.change(input, { target: { value: "Regensburg" } });
+  await act(async () => {
+    resolveFirstSearch?.({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "seed:rome",
+              canonicalName: "Rome",
+              latitude: 41.9,
+              longitude: 12.5,
+              featureType: "SETTLEMENT",
+            },
+          ],
+        }),
+    } as Response);
+    await Promise.resolve();
+  });
+
+  expect(screen.queryByRole("option", { name: /Rome SETTLEMENT/i })).toBeNull();
+  jest.useRealTimers();
+  fetchMock.mockRestore();
+});
+
 test("offers nearby approved places after a point is picked on the map", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
     ok: true,
