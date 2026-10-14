@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import { Row, Col } from "react-bootstrap";
+import { Button, Row, Col } from "react-bootstrap";
 import { FaTrashAlt } from "react-icons/fa";
 import { injectIntl } from "react-intl";
 import { Link } from "react-router-dom";
@@ -1516,6 +1516,23 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}
             />
+            {canFollow && (
+              <Button
+                type="button"
+                className="w-100 mt-3 profile-follow-action"
+                variant={
+                  this.state.isFollowingCurrentProfile
+                    ? "danger"
+                    : "outline-dark"
+                }
+                onClick={this.handleToggleFollow}
+                disabled={!this.state.followStateLoaded}
+              >
+                {this.state.isFollowingCurrentProfile
+                  ? this.t("profile.unfollow.action", "Unfollow")
+                  : this.t("profile.follow.action", "Follow")}
+              </Button>
+            )}
             {this.state.profileId && (
               <PhotoAlbumsPanel
                 targetType="profile"
@@ -1523,18 +1540,20 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 editable={isEditable}
               />
             )}
-            <div className="profile-relationship-group mt-3">
+            <div
+              className={`profile-relationship-group profile-following-group mt-3 ${
+                isClubProfile
+                  ? "profile-following-group--club"
+                  : "profile-following-group--user"
+              }`}
+            >
               <h2 className="profile-relationship-group-title">
                 {this.t("profile.following.group", "Following")}
               </h2>
               <ProfileFollowingPanel
                 profiles={this.state.followingProfiles}
                 loaded={this.state.followingProfilesLoaded}
-                canFollow={canFollow}
-                isFollowing={this.state.isFollowingCurrentProfile}
-                followActionBusy={!this.state.followStateLoaded}
                 t={this.t.bind(this)}
-                onToggleFollow={this.handleToggleFollow}
                 hideWhenEmpty
               />
               {this.state.profileId && (
