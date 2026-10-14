@@ -279,7 +279,7 @@ test("loads the next bounded page of nearby compact markers", async () => {
   );
 });
 
-test("lets a geography reviewer reach the proposal queue", async () => {
+test("lets a geography reviewer reach map administration", async () => {
   mockGetViewer.mockResolvedValue({
     userId: "reviewer-1",
     roles: ["MAP_REVIEWER"],
@@ -295,8 +295,8 @@ test("lets a geography reviewer reach the proposal queue", async () => {
   );
 
   expect(
-    await screen.findByRole("button", { name: "Review proposals" }),
-  ).toBeInTheDocument();
+    await screen.findByRole("link", { name: "Map administration" }),
+  ).toHaveAttribute("href", "/map/admin");
 });
 
 test("retains a shared public graph while hydrating a copied map URL", async () => {
