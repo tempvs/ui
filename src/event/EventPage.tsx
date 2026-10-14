@@ -8,7 +8,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PeriodBadge, type Period } from "../util/periods";
+import { type Period } from "../util/periods";
 import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
@@ -413,16 +413,6 @@ export default function EventPage() {
     >
       {error && <Alert variant="danger">{error}</Alert>}
       <article className="event-detail">
-        <div className="event-heading">
-          <div>
-            <div className="event-period-badges">
-              {item.periods.map((period) => (
-                <PeriodBadge key={period} period={period} />
-              ))}
-            </div>
-            <h1>{item.name}</h1>
-          </div>
-        </div>
         <PageColumns variant="three" className="event-page-layout">
           <PageColumn>
             <EventPhotoPanel

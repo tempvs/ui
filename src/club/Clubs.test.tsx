@@ -66,7 +66,6 @@ beforeEach(() => {
 
 test('visitors see participants linked to profiles and no management controls', async () => {
   wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  expect(await screen.findByRole('heading', { name: 'Longbow Company' })).toBeInTheDocument();
   expect(await screen.findByRole('link', { name: 'Alex Archer' })).toHaveAttribute('href', '/profile/alex-archer');
   expect(screen.getByRole('region', { name: 'Members' }).querySelector('.profile-thumbnail-link-image')).toHaveAttribute('src', 'default-image.png');
   expect(screen.getByRole('searchbox', { name: 'Filter members' })).toBeInTheDocument();

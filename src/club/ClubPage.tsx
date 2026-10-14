@@ -782,11 +782,6 @@ export default function ClubPage() {
       ) : (
         club && (
           <>
-            <div className="club-page-heading mt-3">
-              <div>
-                <h1>{club.name}</h1>
-              </div>
-            </div>
             <PageColumns variant="three" className="club-page-columns">
               <PageColumn>
                 <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
