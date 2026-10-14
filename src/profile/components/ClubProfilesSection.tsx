@@ -176,7 +176,8 @@ export default function ClubProfilesSection({
   return (
     <>
       {isUserProfile && (
-        <div className="profile-club-section-header">
+        <section className="profile-club-profiles-panel">
+          <div className="profile-club-section-header">
           <div>
             <h4 className="profile-club-section-title">
               {t("profile.clubProfiles.title", "Club profiles")}
@@ -197,35 +198,36 @@ export default function ClubProfilesSection({
               )}
             />
           )}
-        </div>
-      )}
-      {!clubProfilesLoaded && <Spinner />}
-      {clubProfilesLoaded && clubProfilesMessage && (
-        <div className="tempvs-plain-message profile-entry-message profile-entry-message-error">
-          {clubProfilesMessage}
-        </div>
-      )}
-      {clubProfilesLoaded && showEmptyMessage && (
-        <div className="profile-club-empty">
-          {t("profile.clubProfiles.empty", "No club profiles yet.")}
-        </div>
-      )}
-      {clubProfilesLoaded && visibleClubProfiles.length > 0 && (
-        <div className="profile-club-list">
-          {visibleClubProfiles.map((clubProfile) => (
-            <div key={clubProfile.id} className="profile-club-list-item">
-              <Button
-                variant="outline-secondary"
-                className="profile-club-button"
-                onClick={() => onOpenProfile(clubProfile)}
-              >
-                <span className="profile-club-button-name">
-                  {clubProfile.firstName}
-                </span>
-              </Button>
+          </div>
+          {!clubProfilesLoaded && <Spinner />}
+          {clubProfilesLoaded && clubProfilesMessage && (
+            <div className="tempvs-plain-message profile-entry-message profile-entry-message-error">
+              {clubProfilesMessage}
             </div>
-          ))}
-        </div>
+          )}
+          {clubProfilesLoaded && showEmptyMessage && (
+            <div className="profile-club-empty">
+              {t("profile.clubProfiles.empty", "No club profiles yet.")}
+            </div>
+          )}
+          {clubProfilesLoaded && visibleClubProfiles.length > 0 && (
+            <div className="profile-club-list">
+              {visibleClubProfiles.map((clubProfile) => (
+                <div key={clubProfile.id} className="profile-club-list-item">
+                  <Button
+                    variant="outline-secondary"
+                    className="profile-club-button"
+                    onClick={() => onOpenProfile(clubProfile)}
+                  >
+                    <span className="profile-club-button-name">
+                      {clubProfile.firstName}
+                    </span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       <Modal

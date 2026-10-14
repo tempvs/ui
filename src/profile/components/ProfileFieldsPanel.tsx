@@ -91,7 +91,7 @@ export default function ProfileFieldsPanel({
   }, [showAliasRules]);
 
   return (
-    <>
+    <section className="profile-fields-panel">
       <EditableTextFieldRow
         label={
           isClubProfile
@@ -273,6 +273,6 @@ export default function ProfileFieldsPanel({
           </div>
         </div>
       )}
-    </>
+    </section>
   );
 }

@@ -50,7 +50,7 @@ export default function ProfileAvatarPanel({
   onDescriptionBlur,
 }: ProfileAvatarPanelProps) {
   return (
-    <>
+    <section className="profile-avatar-panel">
       <div
         className="position-relative d-inline-block w-100"
         style={{ maxWidth: avatarPanelWidth }}
@@ -157,6 +157,6 @@ export default function ProfileAvatarPanel({
           )}
         </div>
       )}
-    </>
+    </section>
   );
 }

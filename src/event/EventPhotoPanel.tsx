@@ -76,7 +76,7 @@ export default function EventPhotoPanel({
     resourceId: eventId,
   }));
   return (
-    <section className="event-photo-panel">
+    <section className="club-panel event-photo-panel">
       <StackedImageGallery
         mode="single"
         images={galleryImages}

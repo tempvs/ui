@@ -1493,7 +1493,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           borderColor: isClubProfile ? "#d8c7a1" : "#bfd3f2",
         }}
       >
-        <PageColumns variant="three" className="profile-page-columns">
+        <PageColumns
+          variant="three"
+          className={`profile-page-columns ${
+            isClubProfile
+              ? "profile-page-columns--club"
+              : "profile-page-columns--user"
+          }`}
+        >
           <PageColumn>
             <ProfileAvatarPanel
               avatarPanelWidth={AVATAR_PANEL_WIDTH}
@@ -1675,7 +1682,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               </div>
             )}
             {isClubProfile && this.state.profileId && (
-              <div className="profile-relationship-group">
+              <div className="profile-relationship-group profile-membership-group">
                 <h2 className="profile-relationship-group-title">
                   {this.t("profile.membership.group", "Membership")}
                 </h2>
