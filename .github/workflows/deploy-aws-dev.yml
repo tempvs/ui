@@ -32,6 +32,18 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Reject removed legacy authentication mechanisms
+        shell: bash
+        run: |
+          legacy_token="security""_token"
+          legacy_camel_token="security""Token"
+          legacy_user_info="User""-Info"
+          legacy_user_profile="User""-Profile"
+          if git grep -n -I -E "${legacy_token}|${legacy_camel_token}|${legacy_user_info}|${legacy_user_profile}" -- ':!*.md' ':!**/*.md'; then
+            echo '::error::Legacy authentication token or user-context header found.'
+            exit 1
+          fi
+
       - name: Build and test UI
         run: |
           npm ci
