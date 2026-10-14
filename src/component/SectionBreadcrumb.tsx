@@ -115,7 +115,7 @@ export default function SectionBreadcrumb({ items = [], switcher = null, classNa
   }
 
   return (
-    <div className={`d-flex align-items-center gap-2 flex-wrap small fw-normal ${className}`.trim()}>
+    <div className={`d-flex align-items-center gap-2 flex-wrap fs-6 fw-normal ${className}`.trim()}>
       {visibleItems.map((item, index) => (
         <React.Fragment key={`${String(item.label)}-${index}`}>
           {index > 0 && <span>&gt;</span>}

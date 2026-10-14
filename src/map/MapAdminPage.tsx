@@ -80,7 +80,11 @@ export default function MapAdminPage() {
   const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
 
   useEffect(() => {
-    void getViewer().then(setViewer);
+    // Map administration is frequently opened immediately after a global or
+    // Map-role grant. Refresh the server-held Cognito tokens once so the
+    // verified group claim (rather than a token up to 30 minutes old) drives
+    // the visible controls and the subsequent API calls.
+    void getViewer({ refreshRoles: true }).then(setViewer);
   }, []);
 
   const mayReview = useMemo(
