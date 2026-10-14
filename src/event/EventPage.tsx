@@ -370,7 +370,7 @@ export default function EventPage() {
     );
   return (
     <PageLayout
-      className="events-page"
+      className="events-page event-detail-page"
       header={{
         title: (
           <SectionBreadcrumb

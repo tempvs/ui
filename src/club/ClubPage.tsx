@@ -703,7 +703,7 @@ export default function ClubPage() {
     club && canManage && !club.canManage ? { ...club, canManage: true } : club;
   return (
     <PageLayout
-      className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
+      className={`clubs-page club-detail-page${unavailable ? " club-service-unavailable" : ""}`}
       header={{
         title: (
           <SectionBreadcrumb

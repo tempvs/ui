@@ -1,4 +1,5 @@
 .events-page { padding-top: 1.5rem; padding-bottom: 3rem; text-align: left; }
+.event-detail-page { padding-top: 0; }
 .event-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
 .event-panel { border: 1px solid rgba(87, 102, 98, .16); background: rgba(255, 253, 247, .88); padding: 1.25rem; box-shadow: 0 .25rem 1rem rgba(31, 38, 35, .06); }
 .event-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1rem; }

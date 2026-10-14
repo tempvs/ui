@@ -5,6 +5,12 @@ on:
     branches: [master]
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: Target deployment environment
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
       rollback_release:
         description: Optional 40-character commit SHA of an archived UI release to restore
         required: false
@@ -15,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ui-aws-dev
+  group: ui-aws-${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
   cancel-in-progress: false
 
 jobs:
@@ -65,7 +71,7 @@ jobs:
       ${{ always() && (needs.build.result == 'success'
         || (github.event_name == 'workflow_dispatch' && inputs.rollback_release != '')) }}
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
     permissions:
       contents: read
       id-token: write
@@ -74,13 +80,22 @@ jobs:
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
       ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
     steps:
       - name: Verify deployment configuration
         shell: bash
         run: |
+          if [[ "$TARGET_ENVIRONMENT" != 'dev' && "$TARGET_ENVIRONMENT" != 'prod' ]]; then
+            echo '::error::target_environment must be dev or prod.'
+            exit 1
+          fi
+          if [[ "$TARGET_ENVIRONMENT" == 'prod' && "$GITHUB_REF_NAME" != 'master' ]]; then
+            echo '::error::Production deployments must be dispatched from master.'
+            exit 1
+          fi
           if [[ -z "$AWS_DEPLOY_ROLE_ARN" || -z "$WEB_BUCKET_NAME" || -z "$CLOUDFRONT_DISTRIBUTION_ID" ]]; then
-            echo '::error::Set AWS_DEPLOY_ROLE_ARN, WEB_BUCKET_NAME and CLOUDFRONT_DISTRIBUTION_ID in the GitHub dev environment.'
+            echo "::error::Set AWS_DEPLOY_ROLE_ARN, WEB_BUCKET_NAME and CLOUDFRONT_DISTRIBUTION_ID in the GitHub $TARGET_ENVIRONMENT environment."
             exit 1
           fi
           if [[ -n "$ROLLBACK_RELEASE" && ! "$ROLLBACK_RELEASE" =~ ^[0-9a-f]{40}$ ]]; then

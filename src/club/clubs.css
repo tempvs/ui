@@ -4,6 +4,11 @@
   padding-top: 2rem;
   padding-bottom: 3rem;
 }
+/* Detail pages share PageLayout's single header-to-content gap with profiles.
+   The catalogue list retains its roomier independent spacing. */
+.club-detail-page {
+  padding-top: 0;
+}
 .club-service-unavailable {
   color: #8a8782;
   filter: grayscale(1);
