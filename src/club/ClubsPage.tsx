@@ -7,6 +7,7 @@ import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import PageLayout from "../component/PageLayout";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import RefreshingImage from "../image/RefreshingImage";
 import { fetchCurrentUserInfo } from "../profile/profileApi";
 import { PERIODS, getPeriodLabel, PeriodBadge } from "../util/periods";
@@ -176,7 +177,7 @@ export default function ClubsPage() {
     <PageLayout
       className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
       header={{
-        title: t("title", "Clubs"),
+        title: <SectionBreadcrumb items={[{ label: t("title", "Clubs") }]} />,
         rightContent:
           signedIn && !creating ? (
             <Button

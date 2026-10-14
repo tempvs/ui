@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Spinner from '../component/Spinner';
 import ConfirmationModal from '../component/ConfirmationModal';
 import PageLayout from '../component/PageLayout';
+import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import ClubEventRequestsPanel from '../event/ClubEventRequestsPanel';
 import { fetchCurrentUserInfo, fetchOwnerUserProfile } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
@@ -103,7 +104,11 @@ export default function ClubAdminPage() {
   };
 
   return <PageLayout className={`clubs-page${unavailable ? ' club-service-unavailable' : ''}`} header={{
-    title: t('title', 'Clubs'),
+    title: <SectionBreadcrumb items={[
+      { label: t('title', 'Clubs'), to: '/clubs' },
+      { label: club?.name || t('club', 'Club'), to: clubPath },
+      { label: t('adminActions', 'Administration') },
+    ]} />,
     rightContent: <Link className="btn btn-outline-dark" to={clubPath}>{t('viewClub', 'View club')}</Link>,
   }}>
     {loading ? <Spinner /> : error ? <Alert variant="danger" className="mt-3">{error}</Alert> : !club ? null : !canManage ? (

@@ -3,6 +3,7 @@ import { Alert, Button } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ConfirmationModal from '../component/ConfirmationModal';
 import PageLayout from '../component/PageLayout';
+import SectionBreadcrumb from '../component/SectionBreadcrumb';
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, fetchUserProfileByUserId } from '../profile/profileApi';
 import { Profile } from '../profile/profileTypes';
 import EventManagers from './EventManagers';
@@ -52,7 +53,11 @@ export default function EventAdminPage() {
   };
 
   return <PageLayout className="events-page" header={{
-    title: "Events",
+    title: <SectionBreadcrumb items={[
+      { label: 'Events', to: '/events' },
+      { label: event?.name || 'Event', to: `/events/${eventId}` },
+      { label: 'Administration' },
+    ]} />,
     rightContent: <Link className="btn btn-outline-dark" to={`/events/${eventId}`}>View event</Link>,
   }}>
     {error && <Alert variant="danger" className="mt-3">{error}</Alert>}

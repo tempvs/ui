@@ -502,10 +502,7 @@ export default function LibrarySourceEditPage() {
   return (
     <PageLayout
       header={{
-        title: "EDIT SOURCE",
-        backgroundColor: "#f3efe4",
-        borderColor: "#d9ccb0",
-        rightContent: (
+        title: (
           <LibraryPeriodBreadcrumb
             period={source.period}
             trailingItem={{
@@ -514,6 +511,19 @@ export default function LibrarySourceEditPage() {
             }}
           />
         ),
+        backgroundColor: "#f3efe4",
+        borderColor: "#d9ccb0",
+        rightContent: (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline-danger"
+            disabled={submitting}
+            onClick={() => setShowDeleteConfirmation(true)}
+          >
+            Delete source
+          </Button>
+        ),
       }}
     >
       <div className="page-layout-content px-4 px-xl-5 pb-4">
@@ -521,18 +531,7 @@ export default function LibrarySourceEditPage() {
           className="stash-shell p-3 p-md-4 mx-auto"
           style={{ maxWidth: "52rem" }}
         >
-          <div className="d-flex justify-content-between align-items-start gap-3 mb-1">
-            <h1 className="h3 mb-0">Propose source changes</h1>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline-danger"
-              disabled={submitting}
-              onClick={() => setShowDeleteConfirmation(true)}
-            >
-              Delete source
-            </Button>
-          </div>
+          <h1 className="h3 mb-1">Propose source changes</h1>
           <p className="text-muted mb-4">
             Your edits will be reviewed before they change the published source.
           </p>

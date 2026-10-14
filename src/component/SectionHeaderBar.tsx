@@ -34,7 +34,7 @@ export default function SectionHeaderBar({
           }}
         >
           <div className="d-flex justify-content-start" style={{ minWidth: 0 }}>
-            <div className="text-uppercase small fw-bold mb-1">
+            <div className="small fw-bold mb-1">
               {title}
             </div>
           </div>

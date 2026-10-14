@@ -3,6 +3,7 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import PlaceSearchAutocomplete from "../component/PlaceSearchAutocomplete";
 import HistoricalRangeFilter, {
   isValidHistoricalRange,
@@ -33,7 +34,6 @@ import {
 } from "./ownedMapContent";
 import { appendSharedMapScope, parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
-import MapRoleRequestModal from "./MapRoleRequestModal";
 import { matchingPlaceName } from "./placeNames";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
@@ -135,7 +135,6 @@ export default function MapPage() {
   );
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
-  const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
   const suggestionRequest = useRef(0);
   const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
 
@@ -230,13 +229,6 @@ export default function MapPage() {
     };
   }, [sharedScope, viewer]);
 
-  const canReviewPlaces = viewer?.roles.some(
-    (role) =>
-      role === "TEMPVS_ADMIN" ||
-      role === "MAP_ADMIN" ||
-      role === "MAP_EDITOR" ||
-      role === "MAP_REVIEWER",
-  );
   const sourceFilters: MapSourceFilters = {
     ...(sourcePeriod ? { period: sourcePeriod } : {}),
     ...(sourceClassification
@@ -596,7 +588,29 @@ export default function MapPage() {
   const mapFocus = sharedScope && ownedMarkers.length ? null : focus;
 
   return (
-    <PageLayout className="map-page" header={{ title: "Map" }}>
+    <PageLayout
+      className="map-page"
+      header={{
+        title: <SectionBreadcrumb items={[{ label: "Map" }]} />,
+        rightContent: viewer ? (
+          <div className="d-flex gap-2 flex-wrap justify-content-end">
+            <Button
+              type="button"
+              variant="outline-dark"
+              onClick={() => {
+                setEditingProposal(null);
+                setShowProposalModal(true);
+              }}
+            >
+              Propose a place
+            </Button>
+            <Link className="btn btn-outline-dark" to="/map/admin">
+              Map administration
+            </Link>
+          </div>
+        ) : null,
+      }}
+    >
       <section className="club-panel" aria-label="Map place search">
         <h1>Place discovery</h1>
         <p className="text-muted">
@@ -727,36 +741,6 @@ export default function MapPage() {
           <Button type="submit" variant="dark" disabled={loading}>
             {loading ? "Searching…" : "Search"}
           </Button>
-          {viewer && (
-            <Button
-              type="button"
-              variant="outline-dark"
-              onClick={() => {
-                setEditingProposal(null);
-                setShowProposalModal(true);
-              }}
-            >
-              Propose a place
-            </Button>
-          )}
-          {viewer && (
-            <Button
-              type="button"
-              variant="outline-dark"
-              onClick={() => setShowRoleRequestModal(true)}
-            >
-              Map roles
-            </Button>
-          )}
-          {canReviewPlaces && (
-            <Button
-              type="button"
-              variant="outline-dark"
-              onClick={() => navigate("/map/admin")}
-            >
-              Review proposals
-            </Button>
-          )}
         </Form>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
@@ -944,10 +928,6 @@ export default function MapPage() {
           setShowProposalModal(false);
           setEditingProposal(null);
         }}
-      />
-      <MapRoleRequestModal
-        show={showRoleRequestModal}
-        onHide={() => setShowRoleRequestModal(false)}
       />
     </PageLayout>
   );

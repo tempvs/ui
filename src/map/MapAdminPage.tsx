@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import ConfirmationModal from "../component/ConfirmationModal";
 import TextFilterInput from "../component/TextFilterInput";
 import Spinner from "../component/Spinner";
@@ -27,6 +28,7 @@ import {
 } from "./mapApi";
 import MapCanvas from "./MapCanvas";
 import ProposalActivityPanel from "./ProposalActivityPanel";
+import MapRoleRequestModal from "./MapRoleRequestModal";
 
 function canViewPlaceReviews(viewer: Viewer | null): boolean {
   return Boolean(
@@ -75,6 +77,7 @@ export default function MapAdminPage() {
   const [loading, setLoading] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -176,7 +179,34 @@ export default function MapAdminPage() {
   };
 
   return (
-    <PageLayout className="map-page" header={{ title: "Map administration" }}>
+    <PageLayout
+      className="map-page"
+      header={{
+        title: (
+          <SectionBreadcrumb
+            items={[
+              { label: "Map", to: "/map" },
+              { label: "Administration" },
+            ]}
+          />
+        ),
+        rightContent: (
+          <div className="d-flex gap-2 flex-wrap justify-content-end">
+            {viewer && (
+              <Button
+                variant="outline-dark"
+                onClick={() => setShowRoleRequestModal(true)}
+              >
+                Request Map role
+              </Button>
+            )}
+            <Link className="btn btn-outline-dark" to="/map">
+              View map
+            </Link>
+          </div>
+        ),
+      }}
+    >
       <section className="club-panel" aria-label="Pending place proposals">
         <h1>Place proposals</h1>
         <p className="text-muted">
@@ -356,6 +386,10 @@ export default function MapAdminPage() {
         )}
       </section>
       {mayAdministerRoles && <MapRoleAdminPanel />}
+      <MapRoleRequestModal
+        show={showRoleRequestModal}
+        onHide={() => setShowRoleRequestModal(false)}
+      />
     </PageLayout>
   );
 }

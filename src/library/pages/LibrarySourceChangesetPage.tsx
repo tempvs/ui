@@ -171,10 +171,7 @@ export default function LibrarySourceChangesetPage() {
   return (
     <PageLayout
       header={{
-        title: "SOURCE CHANGESET",
-        backgroundColor: "#f3efe4",
-        borderColor: "#d9ccb0",
-        rightContent: (
+        title: (
           <LibraryPeriodBreadcrumb
             period={source.period}
             trailingItem={{
@@ -183,6 +180,8 @@ export default function LibrarySourceChangesetPage() {
             }}
           />
         ),
+        backgroundColor: "#f3efe4",
+        borderColor: "#d9ccb0",
       }}
     >
       <div className="page-layout-content px-4 px-xl-5 pb-4">

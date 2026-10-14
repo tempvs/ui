@@ -1,13 +1,12 @@
 import React, { Component } from "react";
 
 import { Button, Row, Col } from "react-bootstrap";
-import { FaTrashAlt } from "react-icons/fa";
 import { injectIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
-import IconActionButton from "../component/IconActionButton";
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import {
@@ -71,8 +70,6 @@ const AVATAR_MAX_DIMENSION = 1600;
 const AVATAR_TARGET_BYTES = 900 * 1024;
 const AVATAR_MIN_QUALITY = 0.55;
 const AVATAR_PANEL_WIDTH = "18rem";
-
-const TrashIcon = FaTrashAlt as React.ComponentType;
 
 type ProfileInputChangeEvent =
   | React.ChangeEvent<
@@ -1468,8 +1465,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     return (
       <PageLayout
         header={{
-          title: headerSubtitleDisplay,
-          rightContent: (
+          title: isClubProfile ? (
             <ProfileHeaderBreadcrumb
               ownerLink={ownerLink}
               ownerLabel={ownerLabel}
@@ -1488,7 +1484,30 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 "No other club profiles",
               )}
             />
+          ) : (
+            <SectionBreadcrumb
+              items={[
+                {
+                  label:
+                    `${this.state.firstName || ""} ${this.state.lastName || ""}`.trim() ||
+                    headerSubtitleDisplay,
+                  to: this.getCanonicalProfilePath({
+                    id: this.state.profileId || "",
+                    alias: this.state.alias,
+                  }),
+                },
+              ]}
+            />
           ),
+          rightContent:
+            isClubProfile && isEditable && this.state.profileId ? (
+              <Link
+                className="btn btn-outline-dark"
+                to={`/profile/${this.state.alias || this.state.profileId}/admin`}
+              >
+                {this.t("profile.manage.action", "Manage profile")}
+              </Link>
+            ) : null,
           backgroundColor: isClubProfile ? "#f8f4ea" : "#eef5ff",
           borderColor: isClubProfile ? "#d8c7a1" : "#bfd3f2",
         }}
@@ -1649,28 +1668,6 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           <PageColumn>
             {isClubProfile && (
               <div className="mb-3">
-                {isEditable && (
-                  <div className="d-flex justify-content-end mb-2">
-                    <IconActionButton
-                      size="1.9rem"
-                      fontSize="0.9rem"
-                      onClick={() =>
-                        this.openDeleteClubProfileModal({
-                          id: this.state.profileId || "",
-                          firstName: this.state.firstName,
-                          lastName: this.state.lastName,
-                          userId: this.state.userId,
-                        })
-                      }
-                      title={this.t(
-                        "profile.clubProfile.delete.title",
-                        "Delete club profile",
-                      )}
-                    >
-                      <TrashIcon />
-                    </IconActionButton>
-                  </div>
-                )}
                 <div className="d-flex justify-content-start">
                   <Link
                     to={`/stash/${this.state.alias || this.state.profileId}`}

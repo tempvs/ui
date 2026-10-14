@@ -15,6 +15,7 @@ import { PageShellContext } from "./component/PageHeader";
 import AppNotice from "./component/AppNotice";
 import Header from "./header/Header";
 import ProfilePage from "./profile/ProfilePage";
+import ProfileAdminPage from "./profile/ProfileAdminPage";
 import StashPage from "./profile/StashPage";
 import StashItemPage from "./profile/StashItemPage";
 import LibraryPage from "./library/LibraryPage";
@@ -34,6 +35,11 @@ import MapPage from "./map/MapPage";
 function ProfilePageWithParam() {
   const { id } = useParams();
   return <ProfilePage key={`profile:${id || ""}`} id={id} />;
+}
+
+function ProfileAdminPageWithParam() {
+  const { id } = useParams();
+  return <ProfileAdminPage key={`profile-admin:${id || ""}`} />;
 }
 
 function UserProfilePageWithParam() {
@@ -114,6 +120,10 @@ function App() {
             <Route
               path="/profile/user/:userId"
               element={<UserProfilePageWithParam />}
+            />
+            <Route
+              path="/profile/:id/admin"
+              element={<ProfileAdminPageWithParam />}
             />
             <Route path="/profile/:id" element={<ProfilePageWithParam />} />
             <Route path="/stash/:id" element={<StashPage />} />

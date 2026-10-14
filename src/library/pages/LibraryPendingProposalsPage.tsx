@@ -295,7 +295,7 @@ export default function LibraryPendingProposalsPage() {
         title="LIBRARY"
         subtitle={null}
         period={period}
-        rightContent={
+        middleContent={
           <Link
             className="btn btn-outline-dark btn-sm"
             to={`/library/period/${period}`}

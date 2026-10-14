@@ -12,6 +12,7 @@ import { PeriodBadge, type Period } from "../util/periods";
 import type { HistoricalYearInput } from "../component/HistoricalRangeFilter";
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import EventManagers from "./EventManagers";
 import EventPhotoPanel from "./EventPhotoPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
@@ -371,7 +372,14 @@ export default function EventPage() {
     <PageLayout
       className="events-page"
       header={{
-        title: "Events",
+        title: (
+          <SectionBreadcrumb
+            items={[
+              { label: "Events", to: "/events" },
+              { label: item.name },
+            ]}
+          />
+        ),
         rightContent: (
           <div className="event-actions mt-0">
             {applicantProfiles.length > 0 && (

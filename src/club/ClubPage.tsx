@@ -7,6 +7,7 @@ import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
 import {
   fetchClubProfiles,
@@ -704,7 +705,14 @@ export default function ClubPage() {
     <PageLayout
       className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
       header={{
-        title: t("title", "Clubs"),
+        title: (
+          <SectionBreadcrumb
+            items={[
+              { label: t("title", "Clubs"), to: "/clubs" },
+              ...(club ? [{ label: club.name }] : []),
+            ]}
+          />
+        ),
         rightContent: club ? (
           <div className="d-flex gap-2 flex-wrap justify-content-end">
             {currentUserId != null && (

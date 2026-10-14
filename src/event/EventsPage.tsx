@@ -8,6 +8,7 @@ import HistoricalRangeFilter, {
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import PageLayout from "../component/PageLayout";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import RefreshingImage from "../image/RefreshingImage";
 import {
@@ -120,7 +121,7 @@ export default function EventsPage() {
     <PageLayout
       className="events-page"
       header={{
-        title: "Events",
+        title: <SectionBreadcrumb items={[{ label: "Events" }]} />,
         rightContent:
           profiles.length > 0 && !creating ? (
             <Button variant="secondary" onClick={() => setCreating(true)}>

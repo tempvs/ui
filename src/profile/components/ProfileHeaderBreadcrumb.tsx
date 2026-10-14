@@ -33,17 +33,17 @@ export default function ProfileHeaderBreadcrumb({
   getPeriodLabel,
   emptyLabel,
 }: ProfileHeaderBreadcrumbProps) {
-  if (!ownerLink) {
-    return null;
-  }
-
   const currentLabel = buildClubProfileLabel(currentProfile, getPeriodLabel);
+  const currentItem = {
+    label: currentLabel,
+    to: buildProfilePath(getCanonicalProfilePath, currentProfile),
+  };
 
   return (
     <SectionBreadcrumb
       items={[
-        { label: ownerLabel, to: ownerLink },
-        { label: currentLabel, to: buildProfilePath(getCanonicalProfilePath, currentProfile) },
+        ...(ownerLink && ownerLabel ? [{ label: ownerLabel, to: ownerLink }] : []),
+        currentItem,
       ]}
       switcher={{
         id: 'club-profile-switcher',

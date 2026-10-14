@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import { Form, Overlay, Popover } from "react-bootstrap";
-import { useIntl } from "react-intl";
 import { Link, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
@@ -39,7 +38,6 @@ import {
   uploadSourceImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
-import { getClassificationLabel, getTypeLabel } from "../libraryShared";
 import { canContribute, canEditSource } from "../libraryRoles";
 import { prepareImageFile } from "../../util/fileUtils";
 import { getErrorMessage } from "../../util/errors";
@@ -64,7 +62,6 @@ type ImageRecord<T> = Record<string | number, T>;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
-  const intl = useIntl();
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -651,23 +648,25 @@ export default function LibrarySourcePage() {
     );
   }
 
-  const headerTitle = [
-    "SOURCE",
-    getClassificationLabel(intl, source.classification),
-    getTypeLabel(intl, source.type),
-  ]
-    .filter(Boolean)
-    .join(" \u2022 ");
   const sourceDescription = draftDescription || source.description || "";
   const sourceDescriptionMissing = !sourceDescription;
   const sourceDescriptionDisplay = sourceDescription || "No description";
   return (
     <PageLayout
       header={{
-        title: headerTitle,
+        title: (
+          <LibraryPeriodBreadcrumb
+            period={source.period}
+            variant="source"
+            trailingItem={{
+              label: source.name,
+              to: `/library/source/${source.id}`,
+            }}
+          />
+        ),
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        middleContent: canEditSource(userInfo) ? (
+        rightContent: canEditSource(userInfo) ? (
           <div className="d-flex gap-2">
             <Link
               ref={pendingProposalsRef}
@@ -684,18 +683,6 @@ export default function LibrarySourcePage() {
             </Link>
           </div>
         ) : null,
-        rightContent: (
-          <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
-            <LibraryPeriodBreadcrumb
-              period={source.period}
-              variant="source"
-              trailingItem={{
-                label: source.name,
-                to: `/library/source/${source.id}`,
-              }}
-            />
-          </div>
-        ),
       }}
     >
       <Overlay
