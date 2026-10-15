@@ -80,8 +80,8 @@ export default function MapEntityFilterControls({
     );
 
   return (
-    <>
-      <Form.Group className="mb-0">
+    <div className="map-entity-filter-controls">
+      <Form.Group className="map-filter-layers mb-0">
         <Form.Label>Show</Form.Label>
         <div className="d-flex gap-2 flex-wrap">
           {allEntityTypes.map((type) => (
@@ -96,7 +96,7 @@ export default function MapEntityFilterControls({
           ))}
         </div>
       </Form.Group>
-      <Form.Group className="mb-0">
+      <Form.Group className="map-filter-period mb-0">
         <Form.Label>Period</Form.Label>
         <Form.Select
           size="sm"
@@ -112,19 +112,21 @@ export default function MapEntityFilterControls({
           ))}
         </Form.Select>
       </Form.Group>
-      <HistoricalRangeFilter
-        label="Years"
-        enabled
-        showToggle={false}
-        alwaysShowFields
-        from={from}
-        to={to}
-        onEnabledChange={() => undefined}
-        onFromChange={onFromChange}
-        onToChange={onToChange}
-        compact
-        className="mb-0"
-      />
+      <div className="map-filter-years">
+        <HistoricalRangeFilter
+          label="Years"
+          enabled
+          showToggle={false}
+          alwaysShowFields
+          from={from}
+          to={to}
+          onEnabledChange={() => undefined}
+          onFromChange={onFromChange}
+          onToChange={onToChange}
+          compact
+          className="mb-0"
+        />
+      </div>
       <details className="map-advanced-filters">
         <summary>More filters</summary>
         <div className="map-advanced-filters-content">
@@ -214,7 +216,7 @@ export default function MapEntityFilterControls({
           )}
         </div>
       </details>
-    </>
+    </div>
   );
 }
 

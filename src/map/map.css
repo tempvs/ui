@@ -77,22 +77,74 @@
 
 .map-place-search-field {
   position: relative;
+  min-width: min(22rem, 100%);
+}
+
+.map-discovery-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.map-discovery-heading {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.map-discovery-heading h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.map-discovery-controls {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.5fr) minmax(30rem, 2.5fr) minmax(5.25rem, auto) auto;
+  align-items: end;
+  gap: 0.85rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgb(91 75 49 / 18%);
+}
+
+.map-entity-filter-controls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.35fr) minmax(8rem, 0.8fr) minmax(10rem, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.map-filter-layers .form-check {
+  margin-right: 0.15rem;
+  white-space: nowrap;
+}
+
+.map-filter-period .form-select {
+  min-width: 8.5rem;
+}
+
+.map-filter-years .historical-year-era-toggle {
+  min-width: 2.35rem;
+}
+
+.map-filter-radius .form-control {
+  width: 4.25rem;
 }
 
 .map-advanced-filters {
-  align-self: end;
-  min-width: 9rem;
-  padding-bottom: 0.1rem;
+  min-width: 6.7rem;
+  padding-bottom: 0.16rem;
 }
 
-.map-advanced-filters summary {
+.map-advanced-filters summary,
+.map-view-options summary,
+.map-coordinate-options summary {
   cursor: pointer;
   color: #4d4438;
   font-size: 0.88rem;
   font-weight: 600;
+  user-select: none;
 }
 
-.map-advanced-filters-content {
+.map-advanced-filters-content,
+.map-view-options-content {
   display: grid;
   gap: 0.55rem;
   min-width: min(17rem, calc(100vw - 3rem));
@@ -100,6 +152,81 @@
   padding: 0.75rem;
   border: 1px solid #d4c9b5;
   background: #fffdf7;
+  box-shadow: 0 0.35rem 0.8rem rgb(38 29 17 / 10%);
+}
+
+.map-view-options {
+  min-width: 7.4rem;
+  padding-bottom: 0.16rem;
+}
+
+.map-view-options-content {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  width: min(18rem, calc(100vw - 3rem));
+}
+
+.map-view-options {
+  position: relative;
+}
+
+.map-coordinate-options {
+  padding-top: 0.2rem;
+  border-top: 1px solid rgb(91 75 49 / 16%);
+}
+
+.map-coordinate-options-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 1199.98px) {
+  .map-discovery-controls {
+    grid-template-columns: minmax(16rem, 1fr) minmax(27rem, 2fr) auto;
+  }
+
+  .map-view-options {
+    grid-column: 1 / -1;
+  }
+
+  .map-view-options-content {
+    right: auto;
+    left: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .map-discovery-controls,
+  .map-entity-filter-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .map-place-search-field {
+    min-width: 0;
+  }
+
+  .map-filter-radius,
+  .map-view-options {
+    justify-self: start;
+  }
+
+  .map-view-options-content {
+    position: static;
+    width: min(100%, 22rem);
+  }
+
+  .map-coordinate-options-content {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .map-coordinate-options-content .btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 
 .map-place-suggestion {

@@ -428,12 +428,13 @@ export default function MapPage() {
     }
   };
 
-  const search = async (event?: React.FormEvent) => {
-    event?.preventDefault();
+  const search = async (options?: { useCurrentCoordinates?: boolean }) => {
     setError("");
     setMapError("");
     const trimmed = query.trim();
-    const linkedPlaceId = event ? null : params.get("placeId");
+    const linkedPlaceId = options?.useCurrentCoordinates
+      ? null
+      : params.get("placeId");
     let linkedPlace: MapPlace | null = null;
     if (linkedPlaceId) {
       try {
@@ -489,7 +490,8 @@ export default function MapPage() {
     // new search), so retain it while loading the focal place. Otherwise a
     // pasted link briefly loads its graph and then silently replaces it with
     // the recipient's private map (or nothing when they are signed out).
-    if (!event) appendSharedMapScope(next, sharedScope || undefined);
+    if (!options?.useCurrentCoordinates)
+      appendSharedMapScope(next, sharedScope || undefined);
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
@@ -659,13 +661,14 @@ export default function MapPage() {
         ) : null,
       }}
     >
-      <section className="club-panel" aria-label="Map place search">
-        <h1>Place discovery</h1>
-        <p className="text-muted">
-          Search approved places by name, or browse a bounded radius around
-          coordinates.
-        </p>
-        <div className="d-flex gap-2 flex-wrap align-items-end">
+      <section className="club-panel map-discovery-panel" aria-label="Map place search">
+        <div className="map-discovery-heading">
+          <h1>Discover places</h1>
+          <p className="text-muted mb-0">
+            Start with a place, then refine what appears on the map.
+          </p>
+        </div>
+        <div className="map-discovery-controls">
           <Form.Group className="map-place-search-field">
             <Form.Label htmlFor="map-place-search">Place</Form.Label>
             <PlaceSearchAutocomplete
@@ -709,55 +712,82 @@ export default function MapPage() {
             profileType={profileType}
             onProfileTypeChange={setProfileType}
           />
-          <Form.Check
-            id="map-modern-borders"
-            label="Modern borders"
-            checked={showModernBorders}
-            onChange={(event) => setShowModernBorders(event.target.checked)}
-          />
-          <Form.Group>
-            <Form.Label>Content</Form.Label>
-            <Form.Control
-              value={contentQuery}
-              onChange={(event) => setContentQuery(event.target.value)}
-              placeholder="Name or place"
-              aria-label="Filter nearby content"
-            />
+          <Form.Group className="map-filter-radius mb-0">
+            <Form.Label>Within</Form.Label>
+            <div className="d-flex align-items-center gap-1">
+              <Form.Control
+                value={radius}
+                onChange={(event) => setRadius(event.target.value)}
+                type="number"
+                min={1}
+                max={200}
+                size="sm"
+                aria-label="Radius in kilometres"
+              />
+              <span className="small text-muted">km</span>
+            </div>
           </Form.Group>
-          {selectedPlaceId && (
-            <Form.Check
-              id="map-include-descendants"
-              label="Include child places"
-              checked={includeDescendants}
-              onChange={(event) => setIncludeDescendants(event.target.checked)}
-            />
-          )}
-          <Form.Group>
-            <Form.Label>Latitude</Form.Label>
-            <Form.Control
-              value={latitude}
-              onChange={(event) => setLatitude(event.target.value)}
-              inputMode="decimal"
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Longitude</Form.Label>
-            <Form.Control
-              value={longitude}
-              onChange={(event) => setLongitude(event.target.value)}
-              inputMode="decimal"
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Radius km</Form.Label>
-            <Form.Control
-              value={radius}
-              onChange={(event) => setRadius(event.target.value)}
-              type="number"
-              min={1}
-              max={200}
-            />
-          </Form.Group>
+          <details className="map-view-options">
+            <summary>Map options</summary>
+            <div className="map-view-options-content">
+              <Form.Check
+                id="map-modern-borders"
+                label="Show modern borders"
+                checked={showModernBorders}
+                onChange={(event) => setShowModernBorders(event.target.checked)}
+              />
+              {selectedPlaceId && (
+                <Form.Check
+                  id="map-include-descendants"
+                  label="Include child places"
+                  checked={includeDescendants}
+                  onChange={(event) => setIncludeDescendants(event.target.checked)}
+                />
+              )}
+              <Form.Group>
+                <Form.Label>Filter nearby content</Form.Label>
+                <Form.Control
+                  size="sm"
+                  value={contentQuery}
+                  onChange={(event) => setContentQuery(event.target.value)}
+                  placeholder="Name or place"
+                  aria-label="Filter nearby content"
+                />
+              </Form.Group>
+              <details className="map-coordinate-options">
+                <summary>Use coordinates instead</summary>
+                <div className="map-coordinate-options-content">
+                  <Form.Group>
+                    <Form.Label>Latitude</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      value={latitude}
+                      onChange={(event) => setLatitude(event.target.value)}
+                      inputMode="decimal"
+                    />
+                  </Form.Group>
+                  <Form.Group>
+                    <Form.Label>Longitude</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      value={longitude}
+                      onChange={(event) => setLongitude(event.target.value)}
+                      inputMode="decimal"
+                    />
+                  </Form.Group>
+                  <Button
+                    type="button"
+                    variant="outline-dark"
+                    size="sm"
+                    onClick={() => void search({ useCurrentCoordinates: true })}
+                    disabled={loading}
+                  >
+                    Show area
+                  </Button>
+                </div>
+              </details>
+            </div>
+          </details>
         </div>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
