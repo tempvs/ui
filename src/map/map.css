@@ -79,6 +79,29 @@
   position: relative;
 }
 
+.map-advanced-filters {
+  align-self: end;
+  min-width: 9rem;
+  padding-bottom: 0.1rem;
+}
+
+.map-advanced-filters summary {
+  cursor: pointer;
+  color: #4d4438;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.map-advanced-filters-content {
+  display: grid;
+  gap: 0.55rem;
+  min-width: min(17rem, calc(100vw - 3rem));
+  margin-top: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid #d4c9b5;
+  background: #fffdf7;
+}
+
 .map-place-suggestion {
   display: block;
   width: 100%;

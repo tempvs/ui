@@ -9,6 +9,10 @@ import {
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
+import {
+  getClubProfiles,
+  getUserProfileByUserId,
+} from "../profile/profileApi";
 import MapPage from "./MapPage";
 import {
   getMapPlace,
@@ -21,6 +25,11 @@ import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
+}));
+
+jest.mock("../profile/profileApi", () => ({
+  getClubProfiles: jest.fn(),
+  getUserProfileByUserId: jest.fn(),
 }));
 
 jest.mock("./MapCanvas", () => {
@@ -90,6 +99,8 @@ const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
 const mockNearbyMapEntitiesPage = jest.mocked(nearbyMapEntitiesPage);
 const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
+const mockGetClubProfiles = jest.mocked(getClubProfiles);
+const mockGetUserProfileByUserId = jest.mocked(getUserProfileByUserId);
 const mockGetMapPlace = jest.mocked(getMapPlace);
 const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
 const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
@@ -101,7 +112,10 @@ function LocationProbe() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  window.localStorage.clear();
   mockGetViewer.mockResolvedValue(null);
+  mockGetUserProfileByUserId.mockResolvedValue(null);
+  mockGetClubProfiles.mockResolvedValue([]);
   mockGetMapPlace.mockResolvedValue({
     id: "seed:rome",
     canonicalName: "Rome",
@@ -114,6 +128,56 @@ beforeEach(() => {
   mockListMyMapPlaceProposals.mockResolvedValue([]);
   mockLoadSharedMapScope.mockResolvedValue({ markers: [], connections: [] });
   mockLoadOwnedMapContent.mockResolvedValue({ markers: [], connections: [] });
+});
+
+test("uses the selected club profile's historical context without filtering for a user profile", async () => {
+  mockGetViewer.mockResolvedValue({ userId: "viewer", roles: [] });
+  mockGetUserProfileByUserId.mockResolvedValue({
+    id: "user-profile",
+    type: "USER",
+    firstName: "User",
+  });
+  mockGetClubProfiles.mockResolvedValue([
+    {
+      id: "club-profile",
+      type: "CLUB",
+      firstName: "Legio",
+      period: "ANTIQUITY",
+      from: { year: 27, era: "BC" },
+      to: { year: 476, era: "AD" },
+    },
+  ]);
+  window.localStorage.setItem("TEMPVS_CURRENT_PROFILE", "profile:club-profile");
+
+  const { unmount } = render(
+    <MemoryRouter>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() =>
+    expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue(
+      "ANTIQUITY",
+    ),
+  );
+  expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue(
+    "27",
+  );
+  expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue(
+    "476",
+  );
+  expect(screen.queryByRole("button", { name: "Search" })).not.toBeInTheDocument();
+
+  unmount();
+  window.localStorage.setItem("TEMPVS_CURRENT_PROFILE", "user-profile");
+  render(
+    <MemoryRouter>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue(""),
+  );
 });
 
 test("searches places while typing and labels the selected marker with the matched historical name", async () => {

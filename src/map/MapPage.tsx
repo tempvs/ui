@@ -5,10 +5,18 @@ import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import PlaceSearchAutocomplete from "../component/PlaceSearchAutocomplete";
-import HistoricalRangeFilter, {
+import {
   isValidHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
+import {
+  getClubProfiles,
+  getUserProfileByUserId,
+} from "../profile/profileApi";
+import {
+  buildOwnedProfileOptions,
+  resolveCurrentProfileOption,
+} from "../profile/currentProfile";
 import {
   getMapPlace,
   listMyMapPlaceProposals,
@@ -74,48 +82,38 @@ export default function MapPage() {
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
     parseSourceRoles(params.get("sourceRoles")),
   );
-  const [sourcePeriod, setSourcePeriod] = useState(
-    params.get("sourcePeriod") || "",
+  const [period, setPeriod] = useState(
+    params.get("period") ||
+      params.get("sourcePeriod") ||
+      params.get("eventPeriod") ||
+      params.get("profilePeriod") ||
+      "",
   );
   const [sourceClassification, setSourceClassification] = useState(
     params.get("sourceClassification") || "",
   );
   const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
-  const [sourceFrom, setSourceFrom] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("sourceFrom")),
+  const [from, setFrom] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(
+      params.get("from") ||
+        params.get("sourceFrom") ||
+        params.get("eventFrom") ||
+        params.get("profileFrom"),
+    ),
   );
-  const [sourceTo, setSourceTo] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("sourceTo")),
-  );
-  const [eventPeriod, setEventPeriod] = useState(
-    params.get("eventPeriod") || "",
+  const [to, setTo] = useState<HistoricalYearInput>(() =>
+    parseHistoricalYear(
+      params.get("to") ||
+        params.get("sourceTo") ||
+        params.get("eventTo") ||
+        params.get("profileTo"),
+    ),
   );
   const [eventRoles, setEventRoles] = useState<
     Array<"VENUE" | "HISTORICAL_SITE">
   >(() => parseEventRoles(params.get("eventRoles")));
-  const [eventFrom, setEventFrom] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("eventFrom")),
-  );
-  const [eventTo, setEventTo] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("eventTo")),
-  );
-  const [profilePeriod, setProfilePeriod] = useState(
-    params.get("profilePeriod") || "",
-  );
   const [profileType, setProfileType] = useState(
     params.get("profileType") || "",
-  );
-  const [profileFrom, setProfileFrom] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("profileFrom")),
-  );
-  const [profileTo, setProfileTo] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("profileTo")),
-  );
-  const [nameFrom, setNameFrom] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("nameFrom")),
-  );
-  const [nameTo, setNameTo] = useState<HistoricalYearInput>(() =>
-    parseHistoricalYear(params.get("nameTo")),
   );
   const [error, setError] = useState("");
   const [mapError, setMapError] = useState("");
@@ -129,6 +127,13 @@ export default function MapPage() {
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
   >([]);
+  const [showOwnedMap, setShowOwnedMap] = useState(
+    () =>
+      !params.get("placeId") &&
+      !params.get("lat") &&
+      !params.get("lng") &&
+      !params.get("scope"),
+  );
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [ownProposals, setOwnProposals] = useState<MapPlaceProposalRecord[]>(
     [],
@@ -136,6 +141,7 @@ export default function MapPage() {
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
   const suggestionRequest = useRef(0);
+  const profileDefaultsApplied = useRef(false);
   const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
 
   useEffect(() => {
@@ -199,7 +205,7 @@ export default function MapPage() {
     // Opening the Map from horizontal navigation should be useful even before
     // a search: show the signed-in person's own graph. This is deliberately
     // separate from public, URL-addressable page slices above.
-    if (!viewer) {
+    if (!viewer || !showOwnedMap) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
       return () => {
@@ -227,41 +233,85 @@ export default function MapPage() {
     return () => {
       active = false;
     };
-  }, [sharedScope, viewer]);
+  }, [sharedScope, showOwnedMap, viewer]);
+
+  // A club profile represents a historical persona, so its period/range make
+  // useful first defaults for discovery. Personal user profiles intentionally
+  // have no historical range and therefore leave Map unfiltered.
+  useEffect(() => {
+    if (!viewer || profileDefaultsApplied.current) return;
+    profileDefaultsApplied.current = true;
+    if (
+      params.has("period") ||
+      params.has("from") ||
+      params.has("to") ||
+      params.has("sourcePeriod") ||
+      params.has("eventPeriod") ||
+      params.has("profilePeriod")
+    )
+      return;
+    let active = true;
+    void Promise.all([
+      getUserProfileByUserId(viewer.userId),
+      getClubProfiles(viewer.userId),
+    ])
+      .then(([userProfile, clubProfiles]) => {
+        if (!active) return;
+        const profile = resolveCurrentProfileOption(
+          buildOwnedProfileOptions(userProfile, clubProfiles),
+        )?.profile;
+        if (!profile || profile.type !== "CLUB") return;
+        setPeriod(profile.period || "");
+        setFrom(
+          profile.from
+            ? { year: String(profile.from.year), era: profile.from.era }
+            : { year: "", era: "AD" },
+        );
+        setTo(
+          profile.to
+            ? { year: String(profile.to.year), era: profile.to.era }
+            : { year: "", era: "AD" },
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [params, viewer]);
 
   const sourceFilters: MapSourceFilters = {
-    ...(sourcePeriod ? { period: sourcePeriod } : {}),
+    ...(period ? { period } : {}),
     ...(sourceClassification
       ? { classifications: [sourceClassification] }
       : {}),
     ...(sourceType ? { types: [sourceType] } : {}),
-    ...(toAstronomicalYear(sourceFrom) !== undefined
-      ? { from: toAstronomicalYear(sourceFrom) }
+    ...(toAstronomicalYear(from) !== undefined
+      ? { from: toAstronomicalYear(from) }
       : {}),
-    ...(toAstronomicalYear(sourceTo) !== undefined
-      ? { to: toAstronomicalYear(sourceTo) }
+    ...(toAstronomicalYear(to) !== undefined
+      ? { to: toAstronomicalYear(to) }
       : {}),
   };
   const eventFilters: MapEventFilters = {
     ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
-    ...(eventPeriod ? { period: eventPeriod } : {}),
-    ...(toAstronomicalYear(eventFrom) !== undefined
-      ? { from: toAstronomicalYear(eventFrom) }
+    ...(period ? { period } : {}),
+    ...(toAstronomicalYear(from) !== undefined
+      ? { from: toAstronomicalYear(from) }
       : {}),
-    ...(toAstronomicalYear(eventTo) !== undefined
-      ? { to: toAstronomicalYear(eventTo) }
+    ...(toAstronomicalYear(to) !== undefined
+      ? { to: toAstronomicalYear(to) }
       : {}),
   };
   const profileFilters: MapProfileFilters = {
-    ...(profilePeriod ? { period: profilePeriod } : {}),
+    ...(period ? { period } : {}),
     ...(profileType === "USER" || profileType === "CLUB"
       ? { types: [profileType] }
       : {}),
-    ...(toAstronomicalYear(profileFrom) !== undefined
-      ? { from: toAstronomicalYear(profileFrom) }
+    ...(toAstronomicalYear(from) !== undefined
+      ? { from: toAstronomicalYear(from) }
       : {}),
-    ...(toAstronomicalYear(profileTo) !== undefined
-      ? { to: toAstronomicalYear(profileTo) }
+    ...(toAstronomicalYear(to) !== undefined
+      ? { to: toAstronomicalYear(to) }
       : {}),
   };
 
@@ -280,7 +330,7 @@ export default function MapPage() {
     const timer = window.setTimeout(() => {
       setSuggestionsLoading(true);
       setSuggestionsFailed(false);
-      searchPlacesWithNameRange(normalized, controller.signal, nameFrom, nameTo)
+      searchPlacesWithNameRange(normalized, controller.signal, from, to)
         .then((places) => {
           if (requestId !== suggestionRequest.current) return;
           setSuggestions(
@@ -308,7 +358,7 @@ export default function MapPage() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, selectedPlaceId, nameFrom, nameTo]);
+  }, [query, selectedPlaceId, from, to]);
 
   const selectPlace = async (place: MapPlace) => {
     const selected = {
@@ -321,6 +371,9 @@ export default function MapPage() {
     setQuery(nextQuery);
     setLatitude(String(selected.latitude));
     setLongitude(String(selected.longitude));
+    setShowOwnedMap(false);
+    setOwnedMarkers([]);
+    setOwnedConnections([]);
     setSelectedPlaceId(selected.id);
     setSelectedEntityKey(null);
     setSuggestions(null);
@@ -337,7 +390,7 @@ export default function MapPage() {
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
     appendProfileFilters(next, profileFilters);
-    appendNameRange(next, nameFrom, nameTo);
+    appendHistoricalContext(next, period, from, to);
     if (showModernBorders) next.set("borders", "modern");
     if (includeDescendants) next.set("descendants", "true");
     setParams(next, { replace: true });
@@ -403,12 +456,7 @@ export default function MapPage() {
     const lat = Number(activeLatitude);
     const lng = Number(activeLongitude);
     const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
-    if (
-      !isValidHistoricalRange(nameFrom, nameTo) ||
-      !isValidHistoricalRange(sourceFrom, sourceTo) ||
-      !isValidHistoricalRange(eventFrom, eventTo) ||
-      !isValidHistoricalRange(profileFrom, profileTo)
-    ) {
+    if (!isValidHistoricalRange(from, to)) {
       setError("Years must be chronological positive years.");
       return;
     }
@@ -433,7 +481,7 @@ export default function MapPage() {
     appendSourceFilters(next, sourceFilters);
     appendEventFilters(next, eventFilters);
     appendProfileFilters(next, profileFilters);
-    appendNameRange(next, nameFrom, nameTo);
+    appendHistoricalContext(next, period, from, to);
     if (showModernBorders) next.set("borders", "modern");
     if (includeDescendants) next.set("descendants", "true");
     // A shared page graph is part of the address, not a viewer preference.
@@ -498,8 +546,8 @@ export default function MapPage() {
             await searchPlacesWithNameRange(
               trimmed,
               undefined,
-              nameFrom,
-              nameTo,
+              from,
+              to,
             )
           ).map((place) => ({
             ...place,
@@ -617,10 +665,7 @@ export default function MapPage() {
           Search approved places by name, or browse a bounded radius around
           coordinates.
         </p>
-        <Form
-          onSubmit={search}
-          className="d-flex gap-2 flex-wrap align-items-end"
-        >
+        <div className="d-flex gap-2 flex-wrap align-items-end">
           <Form.Group className="map-place-search-field">
             <Form.Label htmlFor="map-place-search">Place</Form.Label>
             <PlaceSearchAutocomplete
@@ -643,51 +688,26 @@ export default function MapPage() {
               statusClassName="map-place-suggestions-status"
             />
           </Form.Group>
-          <HistoricalRangeFilter
-            enabled
-            from={nameFrom}
-            to={nameTo}
-            onEnabledChange={() => undefined}
-            onFromChange={setNameFrom}
-            onToChange={setNameTo}
-            label="Name years"
-            showToggle={false}
-            alwaysShowFields
-            compact
-            className="mb-0"
-          />
           <MapEntityFilterControls
             idPrefix="map"
             entityTypes={types}
             onEntityTypesChange={setTypes}
+            period={period}
+            onPeriodChange={setPeriod}
+            from={from}
+            onFromChange={setFrom}
+            to={to}
+            onToChange={setTo}
             sourceRoles={sourceRoles}
             onSourceRolesChange={setSourceRoles}
-            sourcePeriod={sourcePeriod}
-            onSourcePeriodChange={setSourcePeriod}
             sourceClassification={sourceClassification}
             onSourceClassificationChange={setSourceClassification}
             sourceType={sourceType}
             onSourceTypeChange={setSourceType}
-            sourceFrom={sourceFrom}
-            onSourceFromChange={setSourceFrom}
-            sourceTo={sourceTo}
-            onSourceToChange={setSourceTo}
-            eventPeriod={eventPeriod}
-            onEventPeriodChange={setEventPeriod}
-            eventFrom={eventFrom}
-            onEventFromChange={setEventFrom}
-            eventTo={eventTo}
-            onEventToChange={setEventTo}
             eventRoles={eventRoles}
             onEventRolesChange={setEventRoles}
-            profilePeriod={profilePeriod}
-            onProfilePeriodChange={setProfilePeriod}
             profileType={profileType}
             onProfileTypeChange={setProfileType}
-            profileFrom={profileFrom}
-            onProfileFromChange={setProfileFrom}
-            profileTo={profileTo}
-            onProfileToChange={setProfileTo}
           />
           <Form.Check
             id="map-modern-borders"
@@ -738,10 +758,7 @@ export default function MapPage() {
               max={200}
             />
           </Form.Group>
-          <Button type="submit" variant="dark" disabled={loading}>
-            {loading ? "Searching…" : "Search"}
-          </Button>
-        </Form>
+        </div>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
             {error}
@@ -978,6 +995,7 @@ function nearPlacePath(
   if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
   appendEntityTypes(parameters, types);
   appendSourceRoles(parameters, sourceRoles);
+  appendHistoricalContextFromFilters(parameters, sourceFilters);
   appendSourceFilters(parameters, sourceFilters);
   appendEventFilters(parameters, eventFilters);
   appendProfileFilters(parameters, profileFilters);
@@ -1041,13 +1059,9 @@ function appendSourceFilters(
   parameters: URLSearchParams,
   filters: MapSourceFilters,
 ): void {
-  if (filters.period) parameters.set("sourcePeriod", filters.period);
   if (filters.classifications?.length)
     parameters.set("sourceClassification", filters.classifications[0]);
   if (filters.types?.length) parameters.set("sourceType", filters.types[0]);
-  if (filters.from !== undefined)
-    parameters.set("sourceFrom", String(filters.from));
-  if (filters.to !== undefined) parameters.set("sourceTo", String(filters.to));
 }
 
 function appendEventFilters(
@@ -1056,21 +1070,13 @@ function appendEventFilters(
 ): void {
   if (filters.locationRoles?.length)
     parameters.set("eventRoles", filters.locationRoles.join(","));
-  if (filters.period) parameters.set("eventPeriod", filters.period);
-  if (filters.from !== undefined)
-    parameters.set("eventFrom", String(filters.from));
-  if (filters.to !== undefined) parameters.set("eventTo", String(filters.to));
 }
 
 function appendProfileFilters(
   parameters: URLSearchParams,
   filters: MapProfileFilters,
 ): void {
-  if (filters.period) parameters.set("profilePeriod", filters.period);
   if (filters.types?.length) parameters.set("profileType", filters.types[0]);
-  if (filters.from !== undefined)
-    parameters.set("profileFrom", String(filters.from));
-  if (filters.to !== undefined) parameters.set("profileTo", String(filters.to));
 }
 
 function parseEventRoles(
@@ -1101,15 +1107,26 @@ function toAstronomicalYear(value: HistoricalYearInput): number | undefined {
   return value.era === "BC" ? 1 - year : year;
 }
 
-function appendNameRange(
+function appendHistoricalContext(
   parameters: URLSearchParams,
+  period: string,
   from: HistoricalYearInput,
   to: HistoricalYearInput,
 ): void {
+  if (period) parameters.set("period", period);
   const start = toAstronomicalYear(from);
   const end = toAstronomicalYear(to);
-  if (start !== undefined) parameters.set("nameFrom", String(start));
-  if (end !== undefined) parameters.set("nameTo", String(end));
+  if (start !== undefined) parameters.set("from", String(start));
+  if (end !== undefined) parameters.set("to", String(end));
+}
+
+function appendHistoricalContextFromFilters(
+  parameters: URLSearchParams,
+  filters: MapSourceFilters,
+): void {
+  if (filters.period) parameters.set("period", filters.period);
+  if (filters.from !== undefined) parameters.set("from", String(filters.from));
+  if (filters.to !== undefined) parameters.set("to", String(filters.to));
 }
 
 function searchPlacesWithNameRange(
