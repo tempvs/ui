@@ -711,6 +711,69 @@ export default function MapPage() {
             onEventRolesChange={setEventRoles}
             profileType={profileType}
             onProfileTypeChange={setProfileType}
+            additionalFilters={
+              <details className="map-view-options">
+                <summary>Map options</summary>
+                <div className="map-view-options-content">
+                  <Form.Check
+                    id="map-modern-borders"
+                    label="Show modern borders"
+                    checked={showModernBorders}
+                    onChange={(event) => setShowModernBorders(event.target.checked)}
+                  />
+                  {selectedPlaceId && (
+                    <Form.Check
+                      id="map-include-descendants"
+                      label="Include child places"
+                      checked={includeDescendants}
+                      onChange={(event) => setIncludeDescendants(event.target.checked)}
+                    />
+                  )}
+                  <Form.Group>
+                    <Form.Label>Filter nearby content</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      value={contentQuery}
+                      onChange={(event) => setContentQuery(event.target.value)}
+                      placeholder="Name or place"
+                      aria-label="Filter nearby content"
+                    />
+                  </Form.Group>
+                  <details className="map-coordinate-options">
+                    <summary>Use coordinates instead</summary>
+                    <div className="map-coordinate-options-content">
+                      <Form.Group>
+                        <Form.Label>Latitude</Form.Label>
+                        <Form.Control
+                          size="sm"
+                          value={latitude}
+                          onChange={(event) => setLatitude(event.target.value)}
+                          inputMode="decimal"
+                        />
+                      </Form.Group>
+                      <Form.Group>
+                        <Form.Label>Longitude</Form.Label>
+                        <Form.Control
+                          size="sm"
+                          value={longitude}
+                          onChange={(event) => setLongitude(event.target.value)}
+                          inputMode="decimal"
+                        />
+                      </Form.Group>
+                      <Button
+                        type="button"
+                        variant="outline-dark"
+                        size="sm"
+                        onClick={() => void search({ useCurrentCoordinates: true })}
+                        disabled={loading}
+                      >
+                        Show area
+                      </Button>
+                    </div>
+                  </details>
+                </div>
+              </details>
+            }
           />
           <Form.Group className="map-filter-radius mb-0">
             <Form.Label>Within</Form.Label>
@@ -727,67 +790,6 @@ export default function MapPage() {
               <span className="small text-muted">km</span>
             </div>
           </Form.Group>
-          <details className="map-view-options">
-            <summary>Map options</summary>
-            <div className="map-view-options-content">
-              <Form.Check
-                id="map-modern-borders"
-                label="Show modern borders"
-                checked={showModernBorders}
-                onChange={(event) => setShowModernBorders(event.target.checked)}
-              />
-              {selectedPlaceId && (
-                <Form.Check
-                  id="map-include-descendants"
-                  label="Include child places"
-                  checked={includeDescendants}
-                  onChange={(event) => setIncludeDescendants(event.target.checked)}
-                />
-              )}
-              <Form.Group>
-                <Form.Label>Filter nearby content</Form.Label>
-                <Form.Control
-                  size="sm"
-                  value={contentQuery}
-                  onChange={(event) => setContentQuery(event.target.value)}
-                  placeholder="Name or place"
-                  aria-label="Filter nearby content"
-                />
-              </Form.Group>
-              <details className="map-coordinate-options">
-                <summary>Use coordinates instead</summary>
-                <div className="map-coordinate-options-content">
-                  <Form.Group>
-                    <Form.Label>Latitude</Form.Label>
-                    <Form.Control
-                      size="sm"
-                      value={latitude}
-                      onChange={(event) => setLatitude(event.target.value)}
-                      inputMode="decimal"
-                    />
-                  </Form.Group>
-                  <Form.Group>
-                    <Form.Label>Longitude</Form.Label>
-                    <Form.Control
-                      size="sm"
-                      value={longitude}
-                      onChange={(event) => setLongitude(event.target.value)}
-                      inputMode="decimal"
-                    />
-                  </Form.Group>
-                  <Button
-                    type="button"
-                    variant="outline-dark"
-                    size="sm"
-                    onClick={() => void search({ useCurrentCoordinates: true })}
-                    disabled={loading}
-                  >
-                    Show area
-                  </Button>
-                </div>
-              </details>
-            </div>
-          </details>
         </div>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">

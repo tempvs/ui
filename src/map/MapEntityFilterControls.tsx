@@ -28,6 +28,7 @@ type Props = {
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
   profileType: string;
   onProfileTypeChange: (value: string) => void;
+  additionalFilters?: React.ReactNode;
 };
 
 const allEntityTypes: MapEntityLocation["entityType"][] = [
@@ -59,6 +60,7 @@ export default function MapEntityFilterControls({
   onEventRolesChange,
   profileType,
   onProfileTypeChange,
+  additionalFilters,
 }: Props) {
   const toggleEntityType = (type: MapEntityLocation["entityType"]) =>
     onEntityTypesChange(
@@ -128,9 +130,10 @@ export default function MapEntityFilterControls({
             className="mb-0"
           />
         </div>
-        <details className="map-advanced-filters">
-          <summary>More filters</summary>
-          <div className="map-advanced-filters-content">
+        <div className="map-filter-disclosures">
+          <details className="map-advanced-filters">
+            <summary>More filters</summary>
+            <div className="map-advanced-filters-content">
           {entityTypes.includes("SOURCE") && (
             <>
               <Form.Group className="mb-2">
@@ -215,8 +218,10 @@ export default function MapEntityFilterControls({
               </Form.Select>
             </Form.Group>
           )}
-          </div>
-        </details>
+            </div>
+          </details>
+          {additionalFilters}
+        </div>
       </div>
     </div>
   );

@@ -156,6 +156,12 @@
   padding-bottom: 0.16rem;
 }
 
+.map-filter-disclosures {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
 .map-advanced-filters summary,
 .map-view-options summary,
 .map-coordinate-options summary {
@@ -185,9 +191,7 @@
 }
 
 .map-view-options {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  justify-self: start;
+  position: relative;
   min-width: 7.4rem;
   padding-bottom: 0.16rem;
 }
@@ -195,12 +199,8 @@
 .map-view-options-content {
   position: absolute;
   z-index: 5;
-  right: 0;
+  left: 0;
   width: min(18rem, calc(100vw - 3rem));
-}
-
-.map-view-options {
-  position: relative;
 }
 
 .map-coordinate-options {
@@ -221,10 +221,6 @@
     grid-template-columns: minmax(20rem, 0.9fr) minmax(17rem, 1.1fr) auto;
   }
 
-  .map-view-options-content {
-    right: auto;
-    left: 0;
-  }
 }
 
 @media (max-width: 991.98px) {
@@ -246,9 +242,6 @@
     grid-row: 2;
   }
 
-  .map-view-options {
-    grid-row: 3;
-  }
 }
 
 @media (max-width: 767.98px) {
@@ -258,8 +251,7 @@
   }
 
   .map-place-search-field,
-  .map-filter-radius,
-  .map-view-options {
+  .map-filter-radius {
     grid-column: 1;
     grid-row: auto;
   }
@@ -268,8 +260,7 @@
     min-width: 0;
   }
 
-  .map-filter-radius,
-  .map-view-options {
+  .map-filter-radius {
     justify-self: start;
   }
 
