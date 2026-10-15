@@ -97,8 +97,8 @@
 
 .map-discovery-controls {
   display: grid;
-  grid-template-columns: minmax(16rem, 1.5fr) minmax(30rem, 2.5fr) minmax(5.25rem, auto) auto;
-  align-items: end;
+  grid-template-columns: minmax(20rem, 0.9fr) minmax(18rem, 1.1fr) auto;
+  align-items: start;
   gap: 0.85rem;
   padding-top: 0.9rem;
   border-top: 1px solid rgb(91 75 49 / 18%);
@@ -106,14 +106,26 @@
 
 .map-entity-filter-controls {
   display: grid;
-  grid-template-columns: minmax(12rem, 1.35fr) minmax(8rem, 0.8fr) minmax(10rem, 1fr) auto;
-  align-items: end;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(7.5rem, max-content) minmax(11.5rem, 1fr);
+  align-items: start;
   gap: 0.75rem;
 }
 
-.map-filter-layers .form-check {
-  margin-right: 0.15rem;
+.map-filter-layer-list {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.map-filter-layer-list .form-check {
+  margin-right: 0;
   white-space: nowrap;
+}
+
+.map-temporal-controls {
+  display: grid;
+  gap: 0.55rem;
 }
 
 .map-filter-period .form-select {
@@ -126,6 +138,16 @@
 
 .map-filter-radius .form-control {
   width: 4.25rem;
+}
+
+.map-place-search-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.map-filter-radius {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .map-advanced-filters {
@@ -163,6 +185,9 @@
 }
 
 .map-view-options {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: start;
   min-width: 7.4rem;
   padding-bottom: 0.16rem;
 }
@@ -191,20 +216,9 @@
   margin-top: 0.45rem;
 }
 
-/* Keep the discovery controls intentionally ordered as search, context, then
- * optional view settings. At narrower desktop widths, the historical context
- * gets its own full row instead of compressing its controls into each other. */
 @media (max-width: 1399.98px) {
   .map-discovery-controls {
-    grid-template-columns: minmax(16rem, 1fr) auto auto;
-  }
-
-  .map-entity-filter-controls {
-    grid-column: 1 / -1;
-  }
-
-  .map-view-options {
-    grid-column: auto;
+    grid-template-columns: minmax(20rem, 0.9fr) minmax(17rem, 1.1fr) auto;
   }
 
   .map-view-options-content {
@@ -214,8 +228,26 @@
 }
 
 @media (max-width: 991.98px) {
+  .map-discovery-controls {
+    grid-template-columns: minmax(20rem, 1fr) auto;
+  }
+
   .map-entity-filter-controls {
-    grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 0.7fr) minmax(10rem, 1fr) auto;
+    grid-column: 1 / -1;
+  }
+
+  .map-place-search-field {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .map-filter-radius {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .map-view-options {
+    grid-row: 3;
   }
 }
 
@@ -223,6 +255,13 @@
   .map-discovery-controls,
   .map-entity-filter-controls {
     grid-template-columns: 1fr;
+  }
+
+  .map-place-search-field,
+  .map-filter-radius,
+  .map-view-options {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .map-place-search-field {

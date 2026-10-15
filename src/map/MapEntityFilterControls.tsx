@@ -83,7 +83,7 @@ export default function MapEntityFilterControls({
     <div className="map-entity-filter-controls">
       <Form.Group className="map-filter-layers mb-0">
         <Form.Label>Show</Form.Label>
-        <div className="d-flex gap-2 flex-wrap">
+        <div className="map-filter-layer-list">
           {allEntityTypes.map((type) => (
             <Form.Check
               inline
@@ -96,40 +96,41 @@ export default function MapEntityFilterControls({
           ))}
         </div>
       </Form.Group>
-      <Form.Group className="map-filter-period mb-0">
-        <Form.Label>Period</Form.Label>
-        <Form.Select
-          size="sm"
-          value={period}
-          onChange={(event) => onPeriodChange(event.target.value)}
-          aria-label="Period"
-        >
-          <option value="">All periods</option>
-          {PERIODS.map((value) => (
-            <option key={value} value={value}>
-              {readable(value)}
-            </option>
-          ))}
-        </Form.Select>
-      </Form.Group>
-      <div className="map-filter-years">
-        <HistoricalRangeFilter
-          label="Years"
-          enabled
-          showToggle={false}
-          alwaysShowFields
-          from={from}
-          to={to}
-          onEnabledChange={() => undefined}
-          onFromChange={onFromChange}
-          onToChange={onToChange}
-          compact
-          className="mb-0"
-        />
-      </div>
-      <details className="map-advanced-filters">
-        <summary>More filters</summary>
-        <div className="map-advanced-filters-content">
+      <div className="map-temporal-controls">
+        <Form.Group className="map-filter-period mb-0">
+          <Form.Label>Period</Form.Label>
+          <Form.Select
+            size="sm"
+            value={period}
+            onChange={(event) => onPeriodChange(event.target.value)}
+            aria-label="Period"
+          >
+            <option value="">All periods</option>
+            {PERIODS.map((value) => (
+              <option key={value} value={value}>
+                {readable(value)}
+              </option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+        <div className="map-filter-years">
+          <HistoricalRangeFilter
+            label="Years"
+            enabled
+            showToggle={false}
+            alwaysShowFields
+            from={from}
+            to={to}
+            onEnabledChange={() => undefined}
+            onFromChange={onFromChange}
+            onToChange={onToChange}
+            compact
+            className="mb-0"
+          />
+        </div>
+        <details className="map-advanced-filters">
+          <summary>More filters</summary>
+          <div className="map-advanced-filters-content">
           {entityTypes.includes("SOURCE") && (
             <>
               <Form.Group className="mb-2">
@@ -214,8 +215,9 @@ export default function MapEntityFilterControls({
               </Form.Select>
             </Form.Group>
           )}
-        </div>
-      </details>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
