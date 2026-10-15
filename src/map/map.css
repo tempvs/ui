@@ -129,6 +129,7 @@
 }
 
 .map-advanced-filters {
+  position: relative;
   min-width: 6.7rem;
   padding-bottom: 0.16rem;
 }
@@ -153,6 +154,12 @@
   border: 1px solid #d4c9b5;
   background: #fffdf7;
   box-shadow: 0 0.35rem 0.8rem rgb(38 29 17 / 10%);
+}
+
+.map-advanced-filters-content {
+  position: absolute;
+  z-index: 5;
+  width: min(20rem, calc(100vw - 3rem));
 }
 
 .map-view-options {
@@ -184,18 +191,31 @@
   margin-top: 0.45rem;
 }
 
-@media (max-width: 1199.98px) {
+/* Keep the discovery controls intentionally ordered as search, context, then
+ * optional view settings. At narrower desktop widths, the historical context
+ * gets its own full row instead of compressing its controls into each other. */
+@media (max-width: 1399.98px) {
   .map-discovery-controls {
-    grid-template-columns: minmax(16rem, 1fr) minmax(27rem, 2fr) auto;
+    grid-template-columns: minmax(16rem, 1fr) auto auto;
+  }
+
+  .map-entity-filter-controls {
+    grid-column: 1 / -1;
   }
 
   .map-view-options {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .map-view-options-content {
     right: auto;
     left: 0;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .map-entity-filter-controls {
+    grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 0.7fr) minmax(10rem, 1fr) auto;
   }
 }
 
@@ -215,6 +235,11 @@
   }
 
   .map-view-options-content {
+    position: static;
+    width: min(100%, 22rem);
+  }
+
+  .map-advanced-filters-content {
     position: static;
     width: min(100%, 22rem);
   }
