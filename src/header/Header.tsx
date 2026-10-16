@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Col, Container, Row } from "react-bootstrap";
-import { NavigateFunction, useNavigate } from "react-router-dom";
+import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import HomeButton from "../home/HomeButton";
 import ProfileButton from "../profile/ProfileButton";
@@ -48,6 +48,7 @@ type HeaderState = {
 
 type HeaderProps = {
   navigate: NavigateFunction;
+  locationPath: string;
 };
 
 class HeaderContent extends Component<HeaderProps, HeaderState> {
@@ -105,11 +106,13 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
 
   loadOwnedProfiles(userId: string) {
     const toPromiseUserProfile = () =>
-      new Promise<Profile | null>((resolve) => {
+      new Promise<{ profile: Profile | null; missing: boolean }>((resolve) => {
         fetchUserProfileByUserId(userId, {
-          onSuccess: (profile) => resolve(profile || null),
-          onMissing: () => resolve(null),
-          onError: () => resolve(null),
+          onSuccess: (profile) => resolve({ profile: profile || null, missing: false }),
+          onMissing: () => resolve({ profile: null, missing: true }),
+          // A transient profile-service error must never send an established
+          // user into profile creation. Only an explicit 404 is a new user.
+          onError: () => resolve({ profile: null, missing: false }),
         });
       });
 
@@ -123,7 +126,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       });
 
     Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
-      .then(([userProfile, clubProfiles]) => {
+      .then(([userProfileResult, clubProfiles]) => {
+        const userProfile = userProfileResult.profile;
         const profileOptions = buildOwnedProfileOptions(
           userProfile,
           clubProfiles,
@@ -134,6 +138,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
         });
+        // A new Cognito user has no personal profile yet. Apply this guard in
+        // the persistent header so it covers both password and Google sign-in
+        // from any public page, not merely the landing page.
+        if (userProfileResult.missing && this.props.locationPath !== "/profile") {
+          this.props.navigate("/profile", { replace: true });
+        }
       })
       .catch(() => {
         this.setState({
@@ -195,9 +205,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         <Container>
           <Row className="show-grid">
             <Col sm={2}>
-              {this.state.loggedIn && (
-                <div className="header-profile-switcher">
-                  <HomeButton to="/" />
+              <div className="header-profile-switcher">
+                <HomeButton to="/" />
+                {this.state.loggedIn && (
+                  <>
                   <ProfileButton to={this.state.currentProfilePath} />
                   <ProfilePicker
                     className="header-profile-select"
@@ -206,8 +217,9 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                     options={this.state.profileOptions}
                     onChange={this.handleCurrentProfileChange}
                   />
-                </div>
-              )}
+                  </>
+                )}
+              </div>
             </Col>
             <Col sm={9}>
               <div className="header-main-actions">
@@ -242,5 +254,6 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
 }
 
 export default function Header() {
-  return <HeaderContent navigate={useNavigate()} />;
+  const location = useLocation();
+  return <HeaderContent navigate={useNavigate()} locationPath={location.pathname} />;
 }
