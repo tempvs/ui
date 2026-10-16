@@ -184,8 +184,8 @@
 
 .header-search-shell {
   position: relative;
-  flex: 1 1 16rem;
-  min-width: 14rem;
+  flex: 0 1 18rem;
+  min-width: 12rem;
 }
 
 .search-popover {

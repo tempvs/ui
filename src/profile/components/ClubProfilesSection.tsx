@@ -68,7 +68,7 @@ export default function ClubProfilesSection({
       <div className="profile-entry-grid">
         <Form.Group controlId="clubFirstName" className="profile-entry-group">
           <Form.Label className="profile-entry-label">
-            {t("profile.field.clubName", "Name")} *
+            {t("profile.field.name", "Name")} *
           </Form.Label>
           <Form.Control
             className="profile-entry-input"

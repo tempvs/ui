@@ -144,6 +144,7 @@
   "profile.field.lastNameRequired": "Last name *",
   "profile.field.nickName": "Nick name",
   "profile.field.email": "Email",
+  "profile.field.name": "Name",
   "profile.field.clubName": "Club name",
   "profile.field.clubNameRequired": "Club name *",
   "profile.field.location": "Location",

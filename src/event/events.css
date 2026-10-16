@@ -227,6 +227,9 @@
 .event-search-query {
   min-width: 0;
 }
+.event-search-results {
+  margin-top: 1rem;
+}
 .event-detail-photo {
   width: 100%;
   max-height: 28rem;

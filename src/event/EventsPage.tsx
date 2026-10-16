@@ -213,9 +213,7 @@ export default function EventsPage() {
                 placeholder="Filter events"
                 ariaLabel="Filter events"
               />
-            </div>
-          </div>
-          <div className="event-card-grid">
+          <div className="event-card-grid event-search-results">
             {visible.map((event) => (
               <article className="event-panel event-card" key={event.id}>
                 <Link
@@ -252,6 +250,8 @@ export default function EventsPage() {
           {!loading && !error && visible.length === 0 && (
             <p className="event-panel">No events found.</p>
           )}
+            </div>
+          </div>
         </>
       )}
     </PageLayout>
