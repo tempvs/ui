@@ -221,4 +221,5 @@ export type StashPanelProps = {
   embedded?: boolean;
   initialGroupId?: Id | null;
   onActiveGroupChange?: (group: StashGroup | null) => void;
+  onGroupsChange?: (groups: StashGroup[]) => void;
 };

@@ -33,6 +33,7 @@ export type ClubDraft = Pick<
   | "to"
 > & {
   alias?: string | null;
+  ownerProfileId?: string;
 };
 
 export class ClubApiError extends Error {
@@ -341,6 +342,13 @@ export const saveClubPrivatePin = (id: Id, pin: PrivateClubPin) =>
 export const deleteClubPrivatePin = (id: Id) =>
   request<void>(`/clubs/${id}/private-pin`, "DELETE");
 export const deleteClub = (id: Id) => request<void>(`/clubs/${id}`, "DELETE");
+export const transferClubOwnership = async (id: Id, userId: Id) =>
+  clubValue(
+    await request<unknown>(
+      `/clubs/${encodeURIComponent(String(id))}/owner/${encodeURIComponent(String(userId))}`,
+      "PUT",
+    ),
+  );
 export const getProfileClubs = async (id: Id) =>
   arrayValue(await request<unknown>(`/profiles/${id}/clubs`), clubValue);
 export type JoinOption = {

@@ -5,12 +5,11 @@ on:
     branches: [master]
   workflow_dispatch:
     inputs:
-      target_environment:
-        description: Target deployment environment
+      deploy_production:
+        description: Deploy the validated release to production after Dev succeeds (requires production-environment approval)
         required: true
-        default: dev
-        type: choice
-        options: [dev, prod]
+        default: false
+        type: boolean
       rollback_release:
         description: Optional 40-character commit SHA of an archived UI release to restore
         required: false
@@ -21,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ui-aws-${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
+  group: ui-aws-${{ github.event_name == 'workflow_dispatch' && inputs.deploy_production && 'promotion' || 'dev' }}
   cancel-in-progress: false
 
 jobs:
@@ -65,13 +64,13 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  deploy:
+  deploy-dev:
     needs: build
     if: >-
       ${{ always() && (needs.build.result == 'success'
         || (github.event_name == 'workflow_dispatch' && inputs.rollback_release != '')) }}
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
+    environment: dev
     permissions:
       contents: read
       id-token: write
@@ -81,20 +80,12 @@ jobs:
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-      TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
+      TARGET_ENVIRONMENT: dev
       ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
     steps:
       - name: Verify deployment configuration
         shell: bash
         run: |
-          if [[ "$TARGET_ENVIRONMENT" != 'dev' && "$TARGET_ENVIRONMENT" != 'prod' ]]; then
-            echo '::error::target_environment must be dev or prod.'
-            exit 1
-          fi
-          if [[ "$TARGET_ENVIRONMENT" == 'prod' && "$GITHUB_REF_NAME" != 'master' ]]; then
-            echo '::error::Production deployments must be dispatched from master.'
-            exit 1
-          fi
           if [[ -z "$AWS_ACCOUNT_ID" || ! "$AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
             echo "::error::Set the 12-digit AWS_ACCOUNT_ID in the GitHub $TARGET_ENVIRONMENT environment."
             exit 1
@@ -142,6 +133,88 @@ jobs:
           aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
           # Public GeoJSON basemap layers are runtime data rather than bundled
           # JavaScript, so publish them alongside the existing static assets.
+          if [[ -d build/maps ]]; then
+            aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=31536000,immutable' --no-progress
+          fi
+          for asset in build/*; do
+            if [[ -f "$asset" && "$asset" != 'build/index.html' ]]; then
+              aws s3 cp "$asset" "s3://$WEB_BUCKET_NAME/$(basename "$asset")" --cache-control 'public,max-age=3600' --no-progress
+            fi
+          done
+          aws s3 cp build/index.html "s3://$WEB_BUCKET_NAME/index.html" --content-type 'text/html; charset=utf-8' --cache-control 'no-cache,no-store,must-revalidate' --no-progress
+          aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*'
+
+  deploy-prod:
+    name: Deploy production (approval required)
+    needs: deploy-dev
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_production }}
+    runs-on: ubuntu-latest
+    # Configure the `prod` environment with required reviewers in GitHub.
+    # GitHub pauses this job here until one approves the promotion.
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      WEB_BUCKET_NAME: ${{ vars.WEB_BUCKET_NAME }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+    steps:
+      - name: Verify production deployment configuration
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" != 'master' ]]; then
+            echo '::error::Production deployments must be dispatched from master.'
+            exit 1
+          fi
+          if [[ -z "$AWS_ACCOUNT_ID" || ! "$AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
+            echo '::error::Set the 12-digit AWS_ACCOUNT_ID in the GitHub prod environment.'
+            exit 1
+          fi
+          if [[ -z "$AWS_DEPLOY_ROLE_ARN" || -z "$WEB_BUCKET_NAME" || -z "$CLOUDFRONT_DISTRIBUTION_ID" ]]; then
+            echo '::error::Set AWS_DEPLOY_ROLE_ARN, WEB_BUCKET_NAME and CLOUDFRONT_DISTRIBUTION_ID in the GitHub prod environment.'
+            exit 1
+          fi
+          if [[ -n "$ROLLBACK_RELEASE" && ! "$ROLLBACK_RELEASE" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::rollback_release must be a full lowercase 40-character commit SHA.'
+            exit 1
+          fi
+
+      - name: Download UI build
+        if: ${{ inputs.rollback_release == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-build-${{ github.sha }}
+          path: build
+
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: Archive release in versioned bucket
+        if: ${{ inputs.rollback_release == '' }}
+        run: aws s3 sync build/ "s3://$WEB_BUCKET_NAME/releases/$GITHUB_SHA/" --no-progress
+
+      - name: Restore archived release
+        if: ${{ inputs.rollback_release != '' }}
+        shell: bash
+        run: |
+          if ! aws s3api head-object --bucket "$WEB_BUCKET_NAME" --key "releases/$ROLLBACK_RELEASE/index.html" >/dev/null; then
+            echo '::error::The requested release is not archived in the web bucket.'
+            exit 1
+          fi
+          aws s3 sync "s3://$WEB_BUCKET_NAME/releases/$ROLLBACK_RELEASE/" build/ --no-progress
+
+      - name: Publish static assets, then HTML
+        shell: bash
+        run: |
+          aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
           if [[ -d build/maps ]]; then
             aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=31536000,immutable' --no-progress
           fi

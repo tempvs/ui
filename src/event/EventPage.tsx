@@ -342,7 +342,8 @@ export default function EventPage() {
     replaceItem({
       ...current,
       historicalSitePlaceId: place?.id || null,
-      historicalSitePlaceName: place?.matchedName || place?.canonicalName || null,
+      historicalSitePlaceName:
+        place?.matchedName || place?.canonicalName || null,
     });
     void saveField("historicalSite");
   };
@@ -374,10 +375,7 @@ export default function EventPage() {
       header={{
         title: (
           <SectionBreadcrumb
-            items={[
-              { label: "Events", to: "/events" },
-              { label: item.name },
-            ]}
+            items={[{ label: "Events", to: "/events" }, { label: item.name }]}
           />
         ),
         rightContent: (
@@ -453,7 +451,10 @@ export default function EventPage() {
                   ? async (pin) => {
                       if (!item) return false;
                       try {
-                        if (pin) setPrivatePin(await saveEventPrivatePin(item.id, pin));
+                        if (pin)
+                          setPrivatePin(
+                            await saveEventPrivatePin(item.id, pin),
+                          );
                         else {
                           await deleteEventPrivatePin(item.id);
                           setPrivatePin(null);
@@ -479,6 +480,7 @@ export default function EventPage() {
               event={item}
               owner={owner}
               canManageAdmins={false}
+              ownedProfiles={[]}
               onChange={replaceItem}
             />
           </PageColumn>
@@ -508,6 +510,7 @@ export default function EventPage() {
           event={item}
           owner={owner}
           canManageAdmins={false}
+          ownedProfiles={[]}
           onChange={setItem}
         />
         <EventPeoplePanels

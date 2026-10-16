@@ -11,6 +11,7 @@ import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
 
 import Spinner from "../component/Spinner";
+import TextFilterInput from "../component/TextFilterInput";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
@@ -64,6 +65,12 @@ export default function SearchDialog() {
   const intl = useIntl();
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const pagingRef = useRef({
+    profilePage: 0,
+    clubNextToken: undefined as string | undefined,
+    sourceNextToken: undefined as string | undefined,
+  });
 
   const [showPopover, setShowPopover] = useState(false);
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
@@ -90,6 +97,7 @@ export default function SearchDialog() {
   const [sourceResults, setSourceResults] = useState<LibrarySource[]>([]);
   const [clubResults, setClubResults] = useState<Club[]>([]);
   const [eventResults, setEventResults] = useState<TempvsEvent[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [sourcePreviewImages, setSourcePreviewImages] = useState<
     Record<string | number, LibrarySourceImage | null>
   >({});
@@ -110,9 +118,17 @@ export default function SearchDialog() {
   };
 
   const runSearch = useCallback(
-    async (tab: SearchTab) => {
+    async (tab: SearchTab, append = false) => {
       setLoading(true);
       setError(null);
+      if (!append) {
+        pagingRef.current = {
+          profilePage: 0,
+          clubNextToken: undefined,
+          sourceNextToken: undefined,
+        };
+        setHasMore(false);
+      }
 
       try {
         if (tab === "profiles") {
@@ -122,15 +138,30 @@ export default function SearchDialog() {
             type: profileType || null,
             ...(rangeEnabled && range.from ? { from: range.from } : {}),
             ...(rangeEnabled && range.to ? { to: range.to } : {}),
-            page: 0,
+            page: append ? pagingRef.current.profilePage + 1 : 0,
             size: PAGE_SIZE,
           });
 
-          setProfileResults(
-            (Array.isArray(results) ? results : []).filter(
-              (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
-            ),
+          const content = (Array.isArray(results) ? results : []).filter(
+            (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
           );
+          setProfileResults((previous) =>
+            append
+              ? [
+                  ...previous,
+                  ...content.filter(
+                    (item) =>
+                      !previous.some(
+                        (current) => String(current.id) === String(item.id),
+                      ),
+                  ),
+                ]
+              : content,
+          );
+          pagingRef.current.profilePage = append
+            ? pagingRef.current.profilePage + 1
+            : 0;
+          setHasMore(content.length === PAGE_SIZE);
 
           const previewEntries = await Promise.all(
             (Array.isArray(results) ? results : []).map(async (profile) => {
@@ -143,7 +174,11 @@ export default function SearchDialog() {
             }),
           );
 
-          setProfilePreviewImages(Object.fromEntries(previewEntries));
+          setProfilePreviewImages((previous) =>
+            append
+              ? { ...previous, ...Object.fromEntries(previewEntries) }
+              : Object.fromEntries(previewEntries),
+          );
           return;
         }
 
@@ -151,16 +186,29 @@ export default function SearchDialog() {
           const result = await listClubs(
             query,
             period,
-            undefined,
+            append ? pagingRef.current.clubNextToken : undefined,
             undefined,
             rangeEnabled ? range.from : null,
             rangeEnabled ? range.to : null,
           );
-          setClubResults(
-            (result.content || []).filter(
-              (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
-            ),
+          const content = (result.content || []).filter(
+            (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
           );
+          setClubResults((previous) =>
+            append
+              ? [
+                  ...previous,
+                  ...content.filter(
+                    (item) =>
+                      !previous.some(
+                        (current) => String(current.id) === String(item.id),
+                      ),
+                  ),
+                ]
+              : content,
+          );
+          pagingRef.current.clubNextToken = result.nextToken;
+          setHasMore(result.hasMore);
           return;
         }
 
@@ -178,6 +226,7 @@ export default function SearchDialog() {
                 (!rangeEnabled || overlapsHistoricalRange(item, range)),
             ),
           );
+          setHasMore(false);
           return;
         }
 
@@ -187,7 +236,7 @@ export default function SearchDialog() {
           classifications: selectedClassifications,
           types: selectedTypes,
           ...(rangeEnabled ? range : {}),
-          page: 0,
+          nextToken: append ? pagingRef.current.sourceNextToken : undefined,
           size: PAGE_SIZE,
         });
 
@@ -196,7 +245,21 @@ export default function SearchDialog() {
         }
 
         const sources = Array.isArray(result.data) ? result.data : [];
-        setSourceResults(sources);
+        setSourceResults((previous) =>
+          append
+            ? [
+                ...previous,
+                ...sources.filter(
+                  (source) =>
+                    !previous.some(
+                      (current) => String(current.id) === String(source.id),
+                    ),
+                ),
+              ]
+            : sources,
+        );
+        pagingRef.current.sourceNextToken = result.nextToken || undefined;
+        setHasMore(Boolean(result.nextToken));
 
         const previewEntries = await Promise.all(
           sources.map(async (source) => {
@@ -213,7 +276,11 @@ export default function SearchDialog() {
           }),
         );
 
-        setSourcePreviewImages(Object.fromEntries(previewEntries));
+        setSourcePreviewImages((previous) =>
+          append
+            ? { ...previous, ...Object.fromEntries(previewEntries) }
+            : Object.fromEntries(previewEntries),
+        );
       } catch (searchError) {
         setError(getErrorMessage(searchError));
       } finally {
@@ -261,6 +328,20 @@ export default function SearchDialog() {
   ]);
 
   useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!showPopover || !target || !hasMore || loading) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting))
+          void runSearch(activeTab, true);
+      },
+      { root: null, rootMargin: "160px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeTab, hasMore, loading, runSearch, showPopover]);
+
+  useEffect(() => {
     if (!showPopover) {
       return;
     }
@@ -296,10 +377,8 @@ export default function SearchDialog() {
   };
   const closePopover = () => setShowPopover(false);
 
-  const handleTriggerChange: React.ChangeEventHandler<HTMLInputElement> = (
-    event,
-  ) => {
-    setQuery(event.target.value);
+  const handleTriggerChange = (value: string) => {
+    setQuery(value);
     setShowPopover(true);
   };
   const mapSearchLink = () => {
@@ -355,12 +434,13 @@ export default function SearchDialog() {
           >
             <SearchIcon />
           </button>
-          <Form.Control
+          <TextFilterInput
             value={query}
             onFocus={openPopover}
             onChange={handleTriggerChange}
             className="header-search-input"
             placeholder="Search"
+            ariaLabel="Search profiles, clubs, events, and sources"
           />
         </div>
 
@@ -767,6 +847,13 @@ export default function SearchDialog() {
                       ))}
                     </div>
                   </>
+                )}
+                {hasMore && (
+                  <div
+                    ref={loadMoreRef}
+                    className="search-load-more-sentinel"
+                    aria-hidden="true"
+                  />
                 )}
               </Col>
             </Row>

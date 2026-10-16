@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
 import HistoricalRangeFilter, {
@@ -17,7 +18,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PeriodBadge } from "../util/periods";
+import { getPeriodLabel, PERIODS, PeriodBadge } from "../util/periods";
 import EventForm from "./EventForm";
 import { createEvent, EventDraft, listEvents, TempvsEvent } from "./eventApi";
 import {
@@ -28,9 +29,11 @@ import "./events.css";
 
 export default function EventsPage() {
   const navigate = useNavigate();
+  const intl = useIntl();
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
+  const [period, setPeriod] = useState("");
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
@@ -101,7 +104,7 @@ export default function EventsPage() {
   const normalized = query.trim().toLocaleLowerCase();
   const range = rangeFromInputs(from, to);
   const visible = events.filter((event) => {
-    if (!normalized && !rangeEnabled && !venue) return true;
+    if (!normalized && !period && !rangeEnabled && !venue) return true;
     const textMatch =
       !normalized ||
       `${event.name} ${event.description || ""}`
@@ -112,8 +115,9 @@ export default function EventsPage() {
       (placeRole === "VENUE"
         ? event.venuePlaceId === venue.id
         : event.historicalSitePlaceId === venue.id);
-    if (!textMatch || !placeMatch || !rangeEnabled)
-      return textMatch && placeMatch;
+    const periodMatch = !period || event.periods.includes(period as never);
+    if (!textMatch || !placeMatch || !periodMatch || !rangeEnabled)
+      return textMatch && placeMatch && periodMatch;
     return overlapsHistoricalRange(event, range);
   });
 
@@ -149,8 +153,60 @@ export default function EventsPage() {
         </section>
       ) : (
         <>
-          <div className="event-search-row">
-            <div style={{ minWidth: "16rem", flex: "1 1 16rem" }}>
+          <div className="event-search-layout">
+            <aside className="event-search-filters">
+              <Form.Select
+                aria-label="Period"
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+              >
+                <option value="">All periods</option>
+                {PERIODS.map((value) => (
+                  <option key={value} value={value}>
+                    {getPeriodLabel(intl, value)}
+                  </option>
+                ))}
+              </Form.Select>
+              <div className="event-search-place-row">
+                <PlacePickerField
+                  label={placeRole === "VENUE" ? "Venue" : "Historical site"}
+                  value={venue}
+                  editable
+                  onChange={setVenue}
+                  labelWidth="3rem"
+                  fieldMaxWidth="15rem"
+                  className="mb-0"
+                />
+                <Form.Select
+                  aria-label="Event location role"
+                  size="sm"
+                  value={placeRole}
+                  onChange={(event) => {
+                    setPlaceRole(
+                      event.target.value as "VENUE" | "HISTORICAL_SITE",
+                    );
+                    setVenue(null);
+                  }}
+                >
+                  <option value="VENUE">Venue</option>
+                  <option value="HISTORICAL_SITE">Historical site</option>
+                </Form.Select>
+              </div>
+              <HistoricalRangeFilter
+                enabled={rangeEnabled}
+                from={from}
+                to={to}
+                onEnabledChange={setRangeEnabled}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onValueEntered={() => setRangeEnabled(true)}
+                label="Years"
+                alwaysShowFields
+                compact
+                inlineToggle
+              />
+            </aside>
+            <div className="event-search-query">
               <TextFilterInput
                 value={query}
                 onChange={setQuery}
@@ -158,41 +214,6 @@ export default function EventsPage() {
                 ariaLabel="Filter events"
               />
             </div>
-            <HistoricalRangeFilter
-              enabled={rangeEnabled}
-              from={from}
-              to={to}
-              onEnabledChange={setRangeEnabled}
-              onFromChange={setFrom}
-              onToChange={setTo}
-              onValueEntered={() => setRangeEnabled(true)}
-              label="Years"
-              alwaysShowFields
-              compact
-              inlineToggle
-            />
-            <PlacePickerField
-              label={placeRole === "VENUE" ? "Venue" : "Historical site"}
-              value={venue}
-              editable
-              onChange={setVenue}
-              labelWidth="3rem"
-              fieldMaxWidth="15rem"
-              className="mb-0"
-            />
-            <Form.Select
-              aria-label="Event location role"
-              size="sm"
-              value={placeRole}
-              onChange={(event) => {
-                setPlaceRole(event.target.value as "VENUE" | "HISTORICAL_SITE");
-                setVenue(null);
-              }}
-              style={{ width: "9rem" }}
-            >
-              <option value="VENUE">Venue</option>
-              <option value="HISTORICAL_SITE">Historical site</option>
-            </Form.Select>
           </div>
           <div className="event-card-grid">
             {visible.map((event) => (

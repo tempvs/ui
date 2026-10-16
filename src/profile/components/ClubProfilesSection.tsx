@@ -62,13 +62,13 @@ export default function ClubProfilesSection({
       <p className="profile-entry-copy">
         {t(
           "profile.clubProfile.create.subtitle",
-          "Create a club profile with its own name, alias, location, and period.",
+          "Create a club profile with its own name, alias, and period.",
         )}
       </p>
       <div className="profile-entry-grid">
         <Form.Group controlId="clubFirstName" className="profile-entry-group">
           <Form.Label className="profile-entry-label">
-            {t("profile.field.clubName", "Club name")} *
+            {t("profile.field.clubName", "Name")} *
           </Form.Label>
           <Form.Control
             className="profile-entry-input"
@@ -77,22 +77,12 @@ export default function ClubProfilesSection({
             required
           />
         </Form.Group>
-        <Form.Group controlId="clubLocation" className="profile-entry-group">
-          <Form.Label className="profile-entry-label">
-            {t("profile.field.location", "Location")}
-          </Form.Label>
-          <Form.Control
-            className="profile-entry-input"
-            name="location"
-            type="text"
-          />
-        </Form.Group>
         <Form.Group controlId="clubAlias" className="profile-entry-group">
           <Form.Label className="profile-entry-label">
             {t("profile.field.alias", "Alias")}
           </Form.Label>
           <Form.Control
-            className="profile-entry-input"
+            className="profile-entry-input profile-entry-select"
             name="alias"
             type="text"
           />
@@ -178,26 +168,26 @@ export default function ClubProfilesSection({
       {isUserProfile && (
         <section className="profile-club-profiles-panel">
           <div className="profile-club-section-header">
-          <div>
-            <h4 className="profile-club-section-title">
-              {t("profile.clubProfiles.title", "Club profiles")}
-            </h4>
-            <p className="profile-club-section-copy">
-              {t(
-                "profile.clubProfiles.subtitle",
-                "Keep separate club identities ready for each period.",
-              )}
-            </p>
-          </div>
-          {canCreate && (
-            <PlusActionButton
-              onClick={onShowCreate}
-              title={t(
-                "profile.clubProfile.create.title",
-                "Create club profile",
-              )}
-            />
-          )}
+            <div>
+              <h4 className="profile-club-section-title">
+                {t("profile.clubProfiles.title", "Club profiles")}
+              </h4>
+              <p className="profile-club-section-copy">
+                {t(
+                  "profile.clubProfiles.subtitle",
+                  "Keep separate club identities ready for each period.",
+                )}
+              </p>
+            </div>
+            {canCreate && (
+              <PlusActionButton
+                onClick={onShowCreate}
+                title={t(
+                  "profile.clubProfile.create.title",
+                  "Create club profile",
+                )}
+              />
+            )}
           </div>
           {!clubProfilesLoaded && <Spinner />}
           {clubProfilesLoaded && clubProfilesMessage && (

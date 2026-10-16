@@ -4,17 +4,23 @@ import { useIntl } from "react-intl";
 import { getPeriodLabel, PERIODS, Period } from "../util/periods";
 import PlacePickerField from "../component/PlacePickerField";
 import { ClubDraft } from "./clubApi";
+import ProfilePicker, {
+  ProfilePickerOption,
+} from "../profile/components/ProfilePicker";
+import { Profile } from "../profile/profileTypes";
 
 export default function ClubForm({
   initial,
   busy,
   onSave,
   onCancel,
+  ownerProfiles = [],
 }: {
   initial?: ClubDraft;
   busy: boolean;
   onSave: (draft: ClubDraft) => void;
   onCancel: () => void;
+  ownerProfiles?: Profile[];
 }) {
   const intl = useIntl();
   const t = (id: string, defaultMessage: string) =>
@@ -30,6 +36,14 @@ export default function ClubForm({
       period: "OTHER",
     },
   );
+  const ownerOptions = ownerProfiles.map<ProfilePickerOption>((profile) => ({
+    value: String(profile.id),
+    label:
+      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
+      profile.alias ||
+      "Profile",
+    profile,
+  }));
   return (
     <Form
       className="club-form"
@@ -74,6 +88,19 @@ export default function ClubForm({
           />
         </Form.Group>
         <div className="club-form-grid">
+          {ownerOptions.length > 0 && (
+            <Form.Group controlId="club-owner">
+              <Form.Label>{t("owner", "Owner")}</Form.Label>
+              <ProfilePicker
+                ariaLabel={t("owner", "Owner")}
+                options={ownerOptions}
+                value={draft.ownerProfileId || ownerOptions[0]?.value || null}
+                onChange={(ownerProfileId) =>
+                  setDraft({ ...draft, ownerProfileId })
+                }
+              />
+            </Form.Group>
+          )}
           <Form.Group controlId="club-period">
             <Form.Label>{t("period", "Period")}</Form.Label>
             <Form.Select

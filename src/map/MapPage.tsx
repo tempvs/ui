@@ -240,7 +240,6 @@ export default function MapPage() {
   // have no historical range and therefore leave Map unfiltered.
   useEffect(() => {
     if (!viewer || profileDefaultsApplied.current) return;
-    profileDefaultsApplied.current = true;
     if (
       params.has("period") ||
       params.has("from") ||
@@ -248,8 +247,10 @@ export default function MapPage() {
       params.has("sourcePeriod") ||
       params.has("eventPeriod") ||
       params.has("profilePeriod")
-    )
+    ) {
+      profileDefaultsApplied.current = true;
       return;
+    }
     let active = true;
     void Promise.all([
       getUserProfileByUserId(viewer.userId),
@@ -257,6 +258,7 @@ export default function MapPage() {
     ])
       .then(([userProfile, clubProfiles]) => {
         if (!active) return;
+        profileDefaultsApplied.current = true;
         const profile = resolveCurrentProfileOption(
           buildOwnedProfileOptions(userProfile, clubProfiles),
         )?.profile;
@@ -273,7 +275,9 @@ export default function MapPage() {
             : { year: "", era: "AD" },
         );
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) profileDefaultsApplied.current = true;
+      });
     return () => {
       active = false;
     };

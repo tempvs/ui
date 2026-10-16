@@ -60,6 +60,10 @@ type StackedImageGalleryProps = {
   fitPreviewHeightToImage?: boolean;
   modalSize?: "sm" | "lg" | "xl";
   showInlineDescription?: boolean;
+  /** Return false to consume a preview click without opening the lightbox. */
+  onPreviewClick?: (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => boolean | void;
 };
 
 const UploadIcon = FaUpload as React.ComponentType<{ className?: string }>;
@@ -101,6 +105,7 @@ export default function StackedImageGallery({
   fitPreviewHeightToImage = false,
   modalSize = "xl",
   showInlineDescription = false,
+  onPreviewClick,
 }: StackedImageGalleryProps) {
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -115,10 +120,14 @@ export default function StackedImageGallery({
   );
   const isCompact = previewSize === "compact";
   const isInventory = previewSize === "inventory";
-  const previewBaseHeight = isInventory ? "11rem" : isCompact ? "7.25rem" : "18rem";
-  const previewStackOffset = Math.max(0, previewImages.length - 1) * (
-    isCompact ? 7 : isInventory ? 5 : 14
-  );
+  const previewBaseHeight = isInventory
+    ? "11rem"
+    : isCompact
+      ? "7.25rem"
+      : "18rem";
+  const previewStackOffset =
+    Math.max(0, previewImages.length - 1) *
+    (isCompact ? 7 : isInventory ? 5 : 14);
   const activeImage = displayImages[activeIndex] || displayImages[0];
   const galleryWrapperClassName = [
     "position-relative",
@@ -277,7 +286,7 @@ export default function StackedImageGallery({
             className="btn p-0 border-0 bg-transparent text-start w-100"
             onClick={(event) => {
               event.stopPropagation();
-              setShow(true);
+              if (onPreviewClick?.(event) !== false) setShow(true);
             }}
             style={{ cursor: "zoom-in" }}
           >
@@ -297,7 +306,8 @@ export default function StackedImageGallery({
           <button
             type="button"
             className="btn p-0 border-0 bg-transparent text-start w-100"
-            onClick={() => {
+            onClick={(event) => {
+              if (onPreviewClick?.(event) === false) return;
               setActiveIndex(0);
               setShow(true);
             }}
@@ -330,7 +340,9 @@ export default function StackedImageGallery({
                       className={`${establishesPreviewHeight ? "position-relative" : "position-absolute top-0 start-0"} stacked-image-gallery-preview-image rounded shadow-sm overflow-hidden border bg-white`}
                       style={{
                         width: "100%",
-                        height: establishesPreviewHeight ? "auto" : previewBaseHeight,
+                        height: establishesPreviewHeight
+                          ? "auto"
+                          : previewBaseHeight,
                         transform: `translate(${depth * (isCompact ? 8 : isInventory ? 6 : 16)}px, ${depth * (isCompact ? 7 : isInventory ? 5 : 14)}px)`,
                         zIndex: index + 1,
                         borderColor: "#d8cbb4",
@@ -342,7 +354,9 @@ export default function StackedImageGallery({
                         alt={image.fileName || title}
                         style={{
                           width: "100%",
-                          height: establishesPreviewHeight ? "auto" : previewBaseHeight,
+                          height: establishesPreviewHeight
+                            ? "auto"
+                            : previewBaseHeight,
                           objectFit: "contain",
                           backgroundColor: "#f8faf8",
                           display: "block",
@@ -378,19 +392,19 @@ export default function StackedImageGallery({
             modalImagePanel(activeImage)
           ) : (
             <>
-            <Carousel
-              className="stacked-image-gallery-carousel"
-              activeIndex={activeIndex}
-              onSelect={(selectedIndex) => setActiveIndex(selectedIndex || 0)}
-              interval={null}
-            >
-              {displayImages.map((image, index) => (
-                <Carousel.Item key={image.id || index}>
-                  {modalImageFrame(image, index)}
-                </Carousel.Item>
-              ))}
-            </Carousel>
-            {activeImage && modalImageDetails(activeImage)}
+              <Carousel
+                className="stacked-image-gallery-carousel"
+                activeIndex={activeIndex}
+                onSelect={(selectedIndex) => setActiveIndex(selectedIndex || 0)}
+                interval={null}
+              >
+                {displayImages.map((image, index) => (
+                  <Carousel.Item key={image.id || index}>
+                    {modalImageFrame(image, index)}
+                  </Carousel.Item>
+                ))}
+              </Carousel>
+              {activeImage && modalImageDetails(activeImage)}
             </>
           )}
         </Modal.Body>

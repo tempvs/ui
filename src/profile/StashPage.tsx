@@ -15,7 +15,7 @@ import {
   fetchOwnerUserProfile,
   fetchProfileById,
 } from "./profileApi";
-import { Id, Profile } from "./profileTypes";
+import { Id, Profile, StashGroup } from "./profileTypes";
 
 function buildCanonicalProfilePath(profile: Profile | null) {
   return `/profile/${profile?.alias || profile?.id}`;
@@ -40,6 +40,7 @@ function StashPage({ intl }: StashPageProps) {
     id: Id;
     name?: string | null;
   } | null>(null);
+  const [groups, setGroups] = useState<StashGroup[]>([]);
 
   const t = useCallback(
     (
@@ -139,7 +140,7 @@ function StashPage({ intl }: StashPageProps) {
 
   if (!loaded) {
     return (
-      <PageLayout header={{ title: "STASH" }}>
+      <PageLayout header={{ title: "Owned items" }}>
         <Spinner />
       </PageLayout>
     );
@@ -147,7 +148,7 @@ function StashPage({ intl }: StashPageProps) {
 
   if (!profile || profile.type !== "CLUB") {
     return (
-      <PageLayout header={{ title: "STASH" }}>
+      <PageLayout header={{ title: "Owned items" }}>
         {t("profile.stash.notFound", "Club stash not found.")}
       </PageLayout>
     );
@@ -156,8 +157,7 @@ function StashPage({ intl }: StashPageProps) {
   return (
     <PageLayout
       header={{
-        title: "STASH",
-        rightContent: (
+        title: (
           <SectionBreadcrumb
             items={[
               ownerUserProfile
@@ -182,16 +182,27 @@ function StashPage({ intl }: StashPageProps) {
                   })),
                 },
               },
-              {
-                label: "Owned items",
-                to: `/stash/${profile.alias || profile.id}`,
-              },
               activeGroup
                 ? {
                     label:
                       activeGroup.name ||
                       t("profile.stash.groupName", "Collection"),
                     to: `/stash/${profile.alias || profile.id}?group=${activeGroup.id}`,
+                    switcher: {
+                      id: "stash-collection-switcher",
+                      emptyLabel: t(
+                        "profile.stash.collectionsEmpty",
+                        "No collections",
+                      ),
+                      items: groups.map((group) => ({
+                        key: group.id,
+                        label:
+                          group.name ||
+                          t("profile.stash.groupName", "Collection"),
+                        to: `/stash/${profile.alias || profile.id}?group=${group.id}`,
+                        active: String(group.id) === String(activeGroup.id),
+                      })),
+                    },
                   }
                 : null,
             ]}
@@ -223,6 +234,7 @@ function StashPage({ intl }: StashPageProps) {
                 group ? { id: group.id, name: group.name } : null,
               )
             }
+            onGroupsChange={setGroups}
           />
         </PageColumn>
       </PageColumns>

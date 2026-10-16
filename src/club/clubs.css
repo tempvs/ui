@@ -82,6 +82,23 @@
 .club-search {
   margin-bottom: 1.5rem;
 }
+.club-search-layout {
+  display: grid;
+  grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+.club-search-filters {
+  display: grid;
+  gap: 0.75rem;
+}
+.club-search-filters select {
+  max-width: none;
+}
+.club-search-query {
+  min-width: 0;
+}
 .club-search select {
   max-width: 18rem;
 }

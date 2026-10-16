@@ -9,7 +9,12 @@ import HistoricalRangeFilter, {
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import RefreshingImage from "../image/RefreshingImage";
-import { fetchCurrentUserInfo } from "../profile/profileApi";
+import {
+  fetchClubProfiles,
+  fetchCurrentUserInfo,
+  fetchUserProfileByUserId,
+} from "../profile/profileApi";
+import { Profile } from "../profile/profileTypes";
 import { PERIODS, getPeriodLabel, PeriodBadge } from "../util/periods";
 import {
   Club,
@@ -47,6 +52,7 @@ export default function ClubsPage() {
   const [unavailable, setUnavailable] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadMore = useRef<() => void>(() => {});
   const matchesRange = useCallback(
@@ -59,9 +65,32 @@ export default function ClubsPage() {
 
   useEffect(
     () =>
-      fetchCurrentUserInfo((result) =>
-        setSignedIn(Boolean(result.currentUserId)),
-      ),
+      fetchCurrentUserInfo((result) => {
+        setSignedIn(Boolean(result.currentUserId));
+        if (!result.currentUserId) {
+          setOwnedProfiles([]);
+          return;
+        }
+        let personal: Profile | null = null;
+        let clubs: Profile[] = [];
+        const finish = () =>
+          setOwnedProfiles([...(personal ? [personal] : []), ...clubs]);
+        fetchUserProfileByUserId(result.currentUserId, {
+          onSuccess: (profile) => {
+            personal = profile;
+            finish();
+          },
+          onMissing: finish,
+          onError: finish,
+        });
+        fetchClubProfiles(result.currentUserId, {
+          onSuccess: (profiles) => {
+            clubs = profiles;
+            finish();
+          },
+          onError: finish,
+        });
+      }),
     [],
   );
 
@@ -202,47 +231,52 @@ export default function ClubsPage() {
           <h2>{t("create", "Create club")}</h2>
           <ClubForm
             busy={busy || unavailable}
+            ownerProfiles={ownedProfiles}
             onSave={save}
             onCancel={() => setCreating(false)}
           />
         </section>
       ) : (
         <>
-          <div className="club-search">
-            <Form.Control
-              aria-label={t("searchClubs", "Search clubs")}
-              placeholder={t("searchClubs", "Search clubs")}
-              maxLength={120}
-              value={query}
-              disabled={unavailable}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <HistoricalRangeFilter
-              enabled={rangeEnabled}
-              from={from}
-              to={to}
-              onEnabledChange={setRangeEnabled}
-              onFromChange={setFrom}
-              onToChange={setTo}
-              onValueEntered={() => setRangeEnabled(true)}
-              label="Years"
-              alwaysShowFields
-              compact
-              inlineToggle
-            />
-            <Form.Select
-              aria-label={t("period", "Period")}
-              value={period}
-              disabled={unavailable}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option value="">{t("allPeriods", "All periods")}</option>
-              {PERIODS.map((value) => (
-                <option key={value} value={value}>
-                  {getPeriodLabel(intl, value)}
-                </option>
-              ))}
-            </Form.Select>
+          <div className="club-search-layout">
+            <aside className="club-search-filters">
+              <HistoricalRangeFilter
+                enabled={rangeEnabled}
+                from={from}
+                to={to}
+                onEnabledChange={setRangeEnabled}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onValueEntered={() => setRangeEnabled(true)}
+                label="Years"
+                alwaysShowFields
+                compact
+                inlineToggle
+              />
+              <Form.Select
+                aria-label={t("period", "Period")}
+                value={period}
+                disabled={unavailable}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="">{t("allPeriods", "All periods")}</option>
+                {PERIODS.map((value) => (
+                  <option key={value} value={value}>
+                    {getPeriodLabel(intl, value)}
+                  </option>
+                ))}
+              </Form.Select>
+            </aside>
+            <div className="club-search-query">
+              <Form.Control
+                aria-label={t("searchClubs", "Search clubs")}
+                placeholder={t("searchClubs", "Search clubs")}
+                maxLength={120}
+                value={query}
+                disabled={unavailable}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
           </div>
           <div className="club-card-grid">
             {clubs.map((club) => (

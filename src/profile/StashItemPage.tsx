@@ -33,6 +33,7 @@ import {
   getLibrarySourcesByIds,
   getStashEntityImages,
   getStashItem,
+  getProfileStash,
   linkStashItemSource,
   searchLibrarySources,
   unlinkStashItemSource,
@@ -49,6 +50,7 @@ import {
   Profile,
   SourceSearchState,
   StashItem,
+  StashGroup,
 } from "./profileTypes";
 
 type StashItemPageProps = {
@@ -107,6 +109,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
     null,
   );
   const [item, setItem] = useState<StashItem | null>(null);
+  const [collectionGroups, setCollectionGroups] = useState<StashGroup[]>([]);
   const [itemDrafts, setItemDrafts] = useState({ name: "", description: "" });
   const [itemStatuses, setItemStatuses] = useState<FieldStatusMap>({});
   const [itemImages, setItemImages] = useState<EntityImage[]>([]);
@@ -212,9 +215,10 @@ function StashItemPage({ intl }: StashItemPageProps) {
           setOwnerUserProfile(null);
         }
 
-        const [nextItemImages, nextSources] = await Promise.all([
+        const [nextItemImages, nextSources, nextStash] = await Promise.all([
           getStashEntityImages("item", nextItem?.id ? [nextItem.id] : []),
           getLibrarySourcesByIds(nextItem?.sources || []),
+          nextProfile ? getProfileStash(nextProfile.id) : Promise.resolve(null),
         ]);
 
         if (!active) {
@@ -233,6 +237,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         );
         setImageStatuses({});
         setSources(Array.isArray(nextSources) ? nextSources : []);
+        setCollectionGroups(nextStash?.groups || []);
 
         const nextSourceImages = await getStashEntityImages(
           "source",
@@ -254,6 +259,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         setItemImages([]);
         setSources([]);
         setSourceImages({});
+        setCollectionGroups([]);
       } finally {
         if (active) {
           setLoaded(true);
@@ -637,6 +643,21 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 ? {
                     label: item.itemGroup.name,
                     to: `/stash/${profile.alias || profile.id}?group=${item.itemGroup.id}`,
+                    switcher: {
+                      id: "item-collection-switcher",
+                      emptyLabel: t(
+                        "profile.stash.collectionsEmpty",
+                        "No collections",
+                      ),
+                      items: collectionGroups.map((group) => ({
+                        key: group.id,
+                        label:
+                          group.name ||
+                          t("profile.stash.groupName", "Collection"),
+                        to: `/stash/${profile.alias || profile.id}?group=${group.id}`,
+                        active: String(group.id) === String(item.itemGroup?.id),
+                      })),
+                    },
                   }
                 : null,
               {

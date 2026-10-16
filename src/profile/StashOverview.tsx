@@ -18,9 +18,7 @@ import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
-import {
-  getClassificationLabel,
-} from "../library/libraryShared";
+import { getClassificationLabel } from "../library/libraryShared";
 import { ClassificationSelect } from "../library/components/ClassificationSelect";
 import { SaveStatus } from "../component/EditableFieldRow";
 import { clearAllTimers, clearTimer } from "../util/timers";
@@ -311,6 +309,7 @@ export default function StashOverview({
   embedded = true,
   initialGroupId = null,
   onActiveGroupChange,
+  onGroupsChange,
 }: StashPanelProps) {
   const intl = useIntl();
   const navigate = useNavigate();
@@ -476,6 +475,9 @@ export default function StashOverview({
   useEffect(() => {
     onActiveGroupChange?.(activeGroup);
   }, [activeGroup, onActiveGroupChange]);
+  useEffect(() => {
+    onGroupsChange?.(stash?.groups || []);
+  }, [onGroupsChange, stash?.groups]);
   const activeGroupImage = activeGroup
     ? groupImages[toRecordKey(activeGroup.id)]
     : null;
@@ -1081,9 +1083,7 @@ export default function StashOverview({
     }
   }
 
-  function getNormalizedMarkerPosition(
-    event: React.MouseEvent<HTMLDivElement>,
-  ) {
+  function getNormalizedMarkerPosition(event: React.MouseEvent<HTMLElement>) {
     const imageElement = event.currentTarget.querySelector(".stash-hero-image");
     const bounds = (
       imageElement || event.currentTarget
@@ -1107,7 +1107,7 @@ export default function StashOverview({
     setMarkerPreviewPosition(getNormalizedMarkerPosition(event));
   }
 
-  async function handleImageClick(event: React.MouseEvent<HTMLDivElement>) {
+  async function handleImageClick(event: React.MouseEvent<HTMLElement>) {
     if ((event.target as Element).closest("button, input, textarea")) {
       return;
     }
@@ -1418,6 +1418,14 @@ export default function StashOverview({
                       imageClassName="stash-hero-image"
                       previewStyle={{ objectFit: "contain" }}
                       wrapperClassName="h-100"
+                      onPreviewClick={
+                        markerPlacement
+                          ? (event) => {
+                              void handleImageClick(event);
+                              return false;
+                            }
+                          : undefined
+                      }
                       showInlineDescription
                       emptyContent={
                         <div className="stash-hero-image stash-hero-image--empty">

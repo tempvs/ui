@@ -150,10 +150,13 @@ export function getEventPrivatePin(eventId: string) {
   );
 }
 export function saveEventPrivatePin(eventId: string, pin: PrivateEventPin) {
-  return request<PrivateEventPin>(`/${encodeURIComponent(eventId)}/private-pin`, {
-    method: "PUT",
-    body: JSON.stringify(pin),
-  });
+  return request<PrivateEventPin>(
+    `/${encodeURIComponent(eventId)}/private-pin`,
+    {
+      method: "PUT",
+      body: JSON.stringify(pin),
+    },
+  );
 }
 export function deleteEventPrivatePin(eventId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}/private-pin`, {
@@ -197,6 +200,13 @@ export function removeEventAdmin(eventId: string, profileId: string) {
     {
       method: "DELETE",
     },
+  );
+}
+
+export function transferEventOwnership(eventId: string, profileId: string) {
+  return request<TempvsEvent>(
+    `/${encodeURIComponent(eventId)}/owner/${encodeURIComponent(profileId)}`,
+    { method: "PUT" },
   );
 }
 

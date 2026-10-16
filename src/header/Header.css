@@ -84,6 +84,7 @@
   gap: 0.3rem;
   justify-content: flex-start;
   width: 100%;
+  min-width: 0;
 }
 
 .header-inline-link {
@@ -183,8 +184,8 @@
 
 .header-search-shell {
   position: relative;
-  flex: 0 1 18rem;
-  min-width: 12rem;
+  flex: 1 1 16rem;
+  min-width: 14rem;
 }
 
 .search-popover {

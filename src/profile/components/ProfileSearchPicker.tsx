@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Form } from "react-bootstrap";
 
-import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../../component/DefaultHourglassImage';
-import RefreshingImage from '../../image/RefreshingImage';
-import { PeriodBadge } from '../../util/periods';
-import { buildProfileLabel } from '../currentProfile';
-import { searchProfiles } from '../profileApi';
-import { Profile, ProfileType } from '../profileTypes';
+import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../../component/DefaultHourglassImage";
+import RefreshingImage from "../../image/RefreshingImage";
+import { PeriodBadge } from "../../util/periods";
+import { buildProfileLabel } from "../currentProfile";
+import { searchProfiles } from "../profileApi";
+import { Profile, ProfileType } from "../profileTypes";
 
 type ProfileSearchPickerProps = {
   type?: ProfileType;
@@ -15,6 +15,8 @@ type ProfileSearchPickerProps = {
   onSelect: (profile: Profile) => void;
   selectLabel?: string;
   placeholder?: string;
+  /** Profiles belonging to the current user are always listed first. */
+  ownedProfiles?: Profile[];
 };
 
 /** A debounced, reusable profile picker for any profile-scoped action. */
@@ -23,10 +25,11 @@ export default function ProfileSearchPicker({
   period,
   busy = false,
   onSelect,
-  selectLabel = 'Select',
-  placeholder = 'Search profiles by name or alias',
+  selectLabel = "Select",
+  placeholder = "Search profiles by name or alias",
+  ownedProfiles = [],
 }: ProfileSearchPickerProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,7 +48,7 @@ export default function ProfileSearchPicker({
       setLoading(true);
       setFailed(false);
       searchProfiles({ query: normalized, type, period, size: 20 })
-        .then(profiles => {
+        .then((profiles) => {
           if (id === requestId.current) setResults(profiles);
         })
         .catch(() => {
@@ -61,32 +64,86 @@ export default function ProfileSearchPicker({
     return () => window.clearTimeout(timer);
   }, [period, query, type]);
 
-  return <div>
-    <Form.Control
-      aria-label={placeholder}
-      placeholder={placeholder}
-      value={query}
-      onChange={event => setQuery(event.target.value)}
-      autoComplete="off"
-    />
-    {loading && <p className="text-muted small mt-2 mb-0" role="status">Searching…</p>}
-    {failed && <p role="alert" className="mt-2 mb-0">Unable to search profiles. Please try again.</p>}
-    {!loading && results?.length === 0 && <p className="mt-2 mb-0">No matching profiles.</p>}
-    {results && results.length > 0 && <ul className="club-member-list mb-0">
-      {results.map(profile => <li key={profile.id}>
-        <span className="club-thumbnail-link">
-          <RefreshingImage
-            image={{ resourceType: 'profile', resourceId: profile.id }}
-            variant="thumbnail"
-            fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-            className="club-list-thumbnail"
-            alt=""
-            loading="lazy"
-          />
-          <span>{buildProfileLabel(profile)} <PeriodBadge period={profile.period} /></span>
-        </span>
-        <Button size="sm" variant="outline-secondary" disabled={busy} onClick={() => onSelect(profile)}>{selectLabel}</Button>
-      </li>)}
-    </ul>}
-  </div>;
+  const normalized = query.trim().toLocaleLowerCase();
+  const ownMatches = ownedProfiles.filter(
+    (profile) =>
+      !normalized ||
+      [profile.firstName, profile.lastName, profile.nickName, profile.alias]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(normalized),
+  );
+  const visibleResults = normalized
+    ? [
+        ...ownMatches,
+        ...(results || []).filter(
+          (profile) =>
+            !ownMatches.some((own) => String(own.id) === String(profile.id)),
+        ),
+      ]
+    : ownMatches;
+
+  return (
+    <div>
+      <Form.Control
+        aria-label={placeholder}
+        placeholder={placeholder}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        autoComplete="off"
+      />
+      {loading && (
+        <p className="text-muted small mt-2 mb-0" role="status">
+          Searching…
+        </p>
+      )}
+      {failed && (
+        <p role="alert" className="mt-2 mb-0">
+          Unable to search profiles. Please try again.
+        </p>
+      )}
+      {!loading &&
+        normalized &&
+        results?.length === 0 &&
+        ownMatches.length === 0 && (
+          <p className="mt-2 mb-0">No matching profiles.</p>
+        )}
+      {visibleResults.length > 0 && (
+        <ul className="club-member-list mb-0">
+          {visibleResults.map((profile) => (
+            <li key={profile.id}>
+              <span className="club-thumbnail-link">
+                <RefreshingImage
+                  image={{ resourceType: "profile", resourceId: profile.id }}
+                  variant="thumbnail"
+                  fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
+                  className="club-list-thumbnail"
+                  alt=""
+                  loading="lazy"
+                />
+                <span>
+                  {buildProfileLabel(profile)}{" "}
+                  {ownedProfiles.some(
+                    (own) => String(own.id) === String(profile.id),
+                  ) && (
+                    <small className="text-muted ms-1">(Your profile)</small>
+                  )}{" "}
+                  <PeriodBadge period={profile.period} />
+                </span>
+              </span>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                disabled={busy}
+                onClick={() => onSelect(profile)}
+              >
+                {selectLabel}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
