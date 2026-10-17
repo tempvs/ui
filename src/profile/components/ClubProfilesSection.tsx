@@ -94,21 +94,26 @@ export default function ClubProfilesSection({
           <Form.Label className="profile-entry-label">
             {t("profile.field.period", "Period")} *
           </Form.Label>
-          <Form.Select
-            className="profile-entry-input"
-            name="period"
-            required
-            defaultValue=""
-          >
-            <option value="">
-              {t("profile.period.choose", "Choose a period")}
-            </option>
-            {periods.map((period) => (
-              <option key={period} value={period}>
-                {getPeriodLabel(period)}
+          <div className="profile-entry-select-shell">
+            <Form.Select
+              className="profile-entry-input profile-entry-select"
+              name="period"
+              required
+              defaultValue=""
+            >
+              <option value="">
+                {t("profile.period.choose", "Choose a period")}
               </option>
-            ))}
-          </Form.Select>
+              {periods.map((period) => (
+                <option key={period} value={period}>
+                  {getPeriodLabel(period)}
+                </option>
+              ))}
+            </Form.Select>
+            <span className="profile-entry-select-caret" aria-hidden="true">
+              ▾
+            </span>
+          </div>
         </Form.Group>
       </div>
       {clubProfileCreateError ? (

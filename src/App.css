@@ -582,6 +582,27 @@ h3 {
   box-shadow: 0 0 0 0.15rem rgba(176, 146, 82, 0.14);
 }
 
+.profile-entry-select-shell {
+  position: relative;
+}
+
+.profile-entry-select.form-select {
+  padding-right: 2.25rem;
+  appearance: none;
+  background-image: none;
+}
+
+.profile-entry-select-caret {
+  position: absolute;
+  top: 50%;
+  right: 0.82rem;
+  color: #6a624f;
+  font-size: 0.9rem;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .profile-entry-message {
   margin: 0.95rem 0 0 0;
   padding: 0.65rem 0.8rem;
