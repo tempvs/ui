@@ -301,6 +301,7 @@ export default function ClubAdminPage() {
                 )}
               </p>
               <ProfilePicker
+                type="USER"
                 busy={busy}
                 ownedProfiles={ownedProfiles}
                 selectLabel={t("transfer", "Transfer")}

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { getPeriodLabel, PERIODS, Period } from "../util/periods";
-import PlacePickerField from "../component/PlacePickerField";
 import { ClubDraft } from "./clubApi";
 import ProfilePicker, {
   ProfilePickerOption,
@@ -31,9 +30,10 @@ export default function ClubForm({
       alias: "",
       description: "",
       locationPlaceId: null,
-      location: "",
-      contactEmail: "",
+      location: null,
+      contactEmail: null,
       period: "OTHER",
+      ownerProfileId: ownerProfiles[0] ? String(ownerProfiles[0].id) : undefined,
     },
   );
   const ownerOptions = ownerProfiles.map<ProfilePickerOption>((profile) => ({
@@ -116,47 +116,6 @@ export default function ClubForm({
                 </option>
               ))}
             </Form.Select>
-          </Form.Group>
-          <Form.Group controlId="club-location">
-            <Form.Label>{t("location", "Location")}</Form.Label>
-            <PlacePickerField
-              label={
-                <span className="visually-hidden">
-                  {t("location", "Location")}
-                </span>
-              }
-              labelWidth="0"
-              fieldMaxWidth="100%"
-              className="mb-0 gap-0"
-              editable
-              value={
-                draft.locationPlaceId
-                  ? {
-                      id: draft.locationPlaceId,
-                      canonicalName: draft.location || "",
-                    }
-                  : null
-              }
-              readOnlyLabel={draft.location}
-              onChange={(place) =>
-                setDraft({
-                  ...draft,
-                  locationPlaceId: place?.id || null,
-                  location: place?.matchedName || place?.canonicalName || "",
-                })
-              }
-            />
-          </Form.Group>
-          <Form.Group controlId="club-email">
-            <Form.Label>{t("email", "Contact email")}</Form.Label>
-            <Form.Control
-              type="email"
-              maxLength={255}
-              value={draft.contactEmail || ""}
-              onChange={(e) =>
-                setDraft({ ...draft, contactEmail: e.target.value })
-              }
-            />
           </Form.Group>
         </div>
         <div className="club-actions mt-4">

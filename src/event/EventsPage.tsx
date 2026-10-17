@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
-import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
+import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
@@ -18,7 +18,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { getPeriodLabel, PERIODS, PeriodBadge } from "../util/periods";
+import { PeriodBadge, type Period } from "../util/periods";
 import EventForm from "./EventForm";
 import { createEvent, EventDraft, listEvents, TempvsEvent } from "./eventApi";
 import {
@@ -29,11 +29,10 @@ import "./events.css";
 
 export default function EventsPage() {
   const navigate = useNavigate();
-  const intl = useIntl();
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
-  const [period, setPeriod] = useState("");
+  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
@@ -104,7 +103,7 @@ export default function EventsPage() {
   const normalized = query.trim().toLocaleLowerCase();
   const range = rangeFromInputs(from, to);
   const visible = events.filter((event) => {
-    if (!normalized && !period && !rangeEnabled && !venue) return true;
+    if (!normalized && !selectedPeriods.length && !rangeEnabled && !venue) return true;
     const textMatch =
       !normalized ||
       `${event.name} ${event.description || ""}`
@@ -115,7 +114,9 @@ export default function EventsPage() {
       (placeRole === "VENUE"
         ? event.venuePlaceId === venue.id
         : event.historicalSitePlaceId === venue.id);
-    const periodMatch = !period || event.periods.includes(period as never);
+    const periodMatch =
+      selectedPeriods.length === 0 ||
+      event.periods.some((eventPeriod) => selectedPeriods.includes(eventPeriod));
     if (!textMatch || !placeMatch || !periodMatch || !rangeEnabled)
       return textMatch && placeMatch && periodMatch;
     return overlapsHistoricalRange(event, range);
@@ -155,18 +156,11 @@ export default function EventsPage() {
         <>
           <div className="event-search-layout">
             <aside className="event-search-filters">
-              <Form.Select
-                aria-label="Period"
-                value={period}
-                onChange={(event) => setPeriod(event.target.value)}
-              >
-                <option value="">All periods</option>
-                {PERIODS.map((value) => (
-                  <option key={value} value={value}>
-                    {getPeriodLabel(intl, value)}
-                  </option>
-                ))}
-              </Form.Select>
+              <PeriodMultiSelect
+                ariaLabel="Period"
+                selected={selectedPeriods}
+                onChange={setSelectedPeriods}
+              />
               <div className="event-search-place-row">
                 <PlacePickerField
                   label={placeRole === "VENUE" ? "Venue" : "Historical site"}

@@ -192,6 +192,7 @@ export default function EventManagers({
             administrator.
           </p>
           <ProfileSearchPicker
+            type="USER"
             busy={busy}
             ownedProfiles={ownedProfiles}
             onSelect={setTransferTarget}

@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
+import InlineEditableText from "../component/InlineEditableText";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
@@ -37,6 +38,7 @@ import {
   getStashEntityImages,
   getStashItemMarkers,
   updateStashGroupDescription,
+  updateStashGroupName,
   updateStashGroupImageDescription,
   updateStashItemMarker,
   uploadStashGroupImage,
@@ -77,6 +79,16 @@ type ArrowLayout = {
   y1: number;
   x2: number;
   y2: number;
+};
+
+/** The image is shorter than its shell when its description is visible. Markers
+ * are stored relative to the image, so their overlay must use these bounds
+ * instead of the taller shell. */
+type ImageOverlayBounds = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 function toRecordKey(value: Id) {
@@ -339,8 +351,10 @@ export default function StashOverview({
   const [groupImageUploading, setGroupImageUploading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [groupDescriptionDraft, setGroupDescriptionDraft] = useState("");
+  const [groupNameDraft, setGroupNameDraft] = useState("");
   const [groupDescriptionStatus, setGroupDescriptionStatus] =
     useState<SaveStatus>(null);
+  const [groupNameStatus, setGroupNameStatus] = useState<SaveStatus>(null);
   const [groupImageDescriptionDraft, setGroupImageDescriptionDraft] =
     useState("");
   const [groupImageDescriptionStatus, setGroupImageDescriptionStatus] =
@@ -354,6 +368,8 @@ export default function StashOverview({
   );
   const [markerBusy, setMarkerBusy] = useState(false);
   const [arrowLayouts, setArrowLayouts] = useState<ArrowLayout[]>([]);
+  const [imageOverlayBounds, setImageOverlayBounds] =
+    useState<ImageOverlayBounds | null>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const imageShellRef = useRef<HTMLDivElement>(null);
   const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -467,6 +483,11 @@ export default function StashOverview({
     groups.find((group) => idsEqual(group.id, activeGroupId)) ||
     groups[0] ||
     null;
+  useEffect(() => {
+    setGroupNameDraft(activeGroup?.name || "");
+    setGroupNameStatus(null);
+    clearTimer(groupDescriptionTimersRef.current, "name");
+  }, [activeGroup?.id, activeGroup?.name]);
   useEffect(() => {
     setGroupDescriptionDraft(activeGroup?.description || "");
     setGroupDescriptionStatus(null);
@@ -587,6 +608,7 @@ export default function StashOverview({
 
     if (!layoutElement || !imageShellElement || !hasActiveGroupImage) {
       setArrowLayouts([]);
+      setImageOverlayBounds(null);
       return;
     }
 
@@ -595,6 +617,22 @@ export default function StashOverview({
     const imageBounds = (
       imageElement || imageShellElement
     ).getBoundingClientRect();
+    const shellBounds = imageShellElement.getBoundingClientRect();
+    const nextOverlayBounds = {
+      left: imageBounds.left - shellBounds.left,
+      top: imageBounds.top - shellBounds.top,
+      width: imageBounds.width,
+      height: imageBounds.height,
+    };
+    setImageOverlayBounds((current) =>
+      current &&
+      Math.abs(current.left - nextOverlayBounds.left) < 0.5 &&
+      Math.abs(current.top - nextOverlayBounds.top) < 0.5 &&
+      Math.abs(current.width - nextOverlayBounds.width) < 0.5 &&
+      Math.abs(current.height - nextOverlayBounds.height) < 0.5
+        ? current
+        : nextOverlayBounds,
+    );
 
     const nextArrowLayouts = activeItems.flatMap((item) => {
       const marker =
@@ -795,6 +833,58 @@ export default function StashOverview({
         ),
       };
     });
+  }
+
+  function setActiveGroupName(name: string) {
+    if (!activeGroup) return;
+    const groupKey = toRecordKey(activeGroup.id);
+    setStash((previousState) =>
+      !previousState
+        ? previousState
+        : {
+            ...previousState,
+            groups: (previousState.groups || []).map((group) =>
+              toRecordKey(group.id) === groupKey ? { ...group, name } : group,
+            ),
+          },
+    );
+  }
+
+  function handleGroupNameChange(value: string) {
+    const persisted = activeGroup?.name || "";
+    setGroupNameDraft(value);
+    setGroupNameStatus(value === persisted ? null : "pending");
+    clearTimer(groupDescriptionTimersRef.current, "name");
+    groupDescriptionTimersRef.current.name = window.setTimeout(() => {
+      void handleSaveGroupName();
+    }, 1800);
+  }
+
+  async function handleSaveGroupName() {
+    if (!activeGroup || !isEditable) return;
+    const persisted = activeGroup.name || "";
+    const draft = groupNameDraft.trim();
+    clearTimer(groupDescriptionTimersRef.current, "name");
+    if (draft === persisted) {
+      setGroupNameStatus(null);
+      return;
+    }
+    if (!draft) {
+      setGroupNameDraft(persisted);
+      setGroupNameStatus("error");
+      return;
+    }
+    try {
+      setGroupNameStatus("saving");
+      const updatedGroup = await updateStashGroupName(activeGroup.id, draft);
+      setActiveGroupName(updatedGroup.name || draft);
+      setGroupNameDraft(updatedGroup.name || draft);
+      setGroupNameStatus("saved");
+      window.setTimeout(() => setGroupNameStatus(null), 1000);
+    } catch {
+      setGroupNameDraft(persisted);
+      setGroupNameStatus("error");
+    }
   }
 
   function handleGroupDescriptionChange(value: string) {
@@ -1087,7 +1177,9 @@ export default function StashOverview({
   }
 
   function getNormalizedMarkerPosition(event: React.MouseEvent<HTMLElement>) {
-    const imageElement = event.currentTarget.querySelector(".stash-hero-image");
+    const imageElement = imageShellRef.current?.querySelector(
+      ".stash-hero-image",
+    );
     const bounds = (
       imageElement || event.currentTarget
     ).getBoundingClientRect();
@@ -1450,18 +1542,20 @@ export default function StashOverview({
                           type="button"
                           className={`stash-marker-dot${markerPlacement?.markerId === marker.id ? " is-active" : ""}${hoveredMarkerItemId === marker.itemId ? " is-highlighted" : ""}`}
                           style={{
-                            left: `${
-                              (markerPlacement?.markerId === marker.id &&
-                              activePreviewMarker
-                                ? activePreviewMarker.x
-                                : marker.x) * 100
-                            }%`,
-                            top: `${
-                              (markerPlacement?.markerId === marker.id &&
-                              activePreviewMarker
-                                ? activePreviewMarker.y
-                                : marker.y) * 100
-                            }%`,
+                            left: imageOverlayBounds
+                              ? `${imageOverlayBounds.left +
+                                  (markerPlacement?.markerId === marker.id &&
+                                  activePreviewMarker
+                                    ? activePreviewMarker.x
+                                    : marker.x) * imageOverlayBounds.width}px`
+                              : "50%",
+                            top: imageOverlayBounds
+                              ? `${imageOverlayBounds.top +
+                                  (markerPlacement?.markerId === marker.id &&
+                                  activePreviewMarker
+                                    ? activePreviewMarker.y
+                                    : marker.y) * imageOverlayBounds.height}px`
+                              : "50%",
                             pointerEvents:
                               markerPlacement?.markerId === marker.id
                                 ? "none"
@@ -1497,6 +1591,22 @@ export default function StashOverview({
                   </div>
 
                   <div className="stash-hero-copy">
+                    <InlineEditableText
+                      editable={isEditable}
+                      value={groupNameDraft}
+                      readOnlyValue={
+                        activeGroup.name ||
+                        t("profile.stash.groupName", "Collection")
+                      }
+                      onValueChange={handleGroupNameChange}
+                      onBlur={() => {
+                        void handleSaveGroupName();
+                      }}
+                      status={groupNameStatus}
+                      className="stash-hero-title-field"
+                      textClassName="stash-hero-title"
+                      placeholder="Collection name"
+                    />
                     <EditableDescriptionField
                       editable={isEditable}
                       value={groupDescriptionDraft}

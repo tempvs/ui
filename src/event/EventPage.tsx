@@ -113,6 +113,9 @@ export default function EventPage() {
         item.adminProfileIds.includes(String(profile.id)),
     ),
   );
+  const canManageAdmins = Boolean(
+    item && ownedProfiles.some((profile) => String(profile.id) === item.ownerProfileId),
+  );
   const restrictedVenueEventId =
     item?.venueVisibility === "PARTICIPANTS" ? item.id : null;
   const privatePinEventId = canManage ? item?.id : undefined;
@@ -481,8 +484,8 @@ export default function EventPage() {
             <EventManagers
               event={item}
               owner={owner}
-              canManageAdmins={false}
-              ownedProfiles={[]}
+              canManageAdmins={canManageAdmins}
+              ownedProfiles={ownedProfiles}
               onChange={replaceItem}
             />
           </PageColumn>
@@ -511,8 +514,8 @@ export default function EventPage() {
         <EventManagers
           event={item}
           owner={owner}
-          canManageAdmins={false}
-          ownedProfiles={[]}
+          canManageAdmins={canManageAdmins}
+          ownedProfiles={ownedProfiles}
           onChange={setItem}
         />
         <EventPeoplePanels

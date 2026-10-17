@@ -309,7 +309,8 @@ test('club browsing searches as the user types and changes period', async () => 
   expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', '', undefined, expect.any(AbortSignal)));
-  fireEvent.change(screen.getByLabelText('Period'), { target: { value: 'HIGH_MIDDLE_AGES' } });
+  fireEvent.click(screen.getByLabelText('Period'));
+  fireEvent.click(screen.getByLabelText('HIGH_MIDDLE_AGES'));
   await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', 'HIGH_MIDDLE_AGES', undefined, expect.any(AbortSignal)));
 });
 

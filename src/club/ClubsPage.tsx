@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
+import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import RefreshingImage from "../image/RefreshingImage";
@@ -15,7 +16,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PERIODS, getPeriodLabel, PeriodBadge } from "../util/periods";
+import { PeriodBadge, type Period } from "../util/periods";
 import {
   Club,
   ClubDraft,
@@ -37,7 +38,7 @@ export default function ClubsPage() {
     intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
   const [clubs, setClubs] = useState<Club[]>([]);
   const [query, setQuery] = useState("");
-  const [period, setPeriod] = useState("");
+  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
@@ -95,7 +96,6 @@ export default function ClubsPage() {
   );
 
   useEffect(() => {
-    if (creating) return;
     const controller = new AbortController();
     let active = true,
       fetching = false,
@@ -118,20 +118,28 @@ export default function ClubsPage() {
         const data = rangeEnabled
           ? await listClubs(
               query.trim(),
-              period,
+              selectedPeriods.length === 1 ? selectedPeriods[0] : "",
               nextToken,
               controller.signal,
               from.year ? { year: Number(from.year), era: from.era } : null,
               to.year ? { year: Number(to.year), era: to.era } : null,
             )
-          : await listClubs(query.trim(), period, nextToken, controller.signal);
+          : await listClubs(
+              query.trim(),
+              selectedPeriods.length === 1 ? selectedPeriods[0] : "",
+              nextToken,
+              controller.signal,
+            );
         if (!active) return;
         setClubs((current) => {
           const ids = new Set(current.map((club) => club.id));
           return [
             ...current,
             ...data.content.filter(
-              (club) => !ids.has(club.id) && matchesRange(club),
+              (club) =>
+                !ids.has(club.id) &&
+                matchesRange(club) &&
+                (!selectedPeriods.length || selectedPeriods.includes(club.period)),
             ),
           ];
         });
@@ -172,12 +180,11 @@ export default function ClubsPage() {
       window.removeEventListener("scroll", checkScroll);
       window.removeEventListener("resize", checkScroll);
     };
-  }, [query, period, creating, rangeEnabled, from, to, matchesRange]);
+  }, [query, selectedPeriods, rangeEnabled, from, to, matchesRange]);
 
   useEffect(() => {
     const element = sentinel.current;
     if (
-      !creating &&
       !loading &&
       hasMore &&
       !searchError &&
@@ -187,7 +194,7 @@ export default function ClubsPage() {
     ) {
       loadMore.current();
     }
-  }, [creating, loading, hasMore, searchError, clubs.length]);
+  }, [loading, hasMore, searchError, clubs.length]);
 
   const save = async (draft: ClubDraft) => {
     setBusy(true);
@@ -208,7 +215,7 @@ export default function ClubsPage() {
       header={{
         title: <SectionBreadcrumb items={[{ label: t("title", "Clubs") }]} />,
         rightContent:
-          signedIn && !creating ? (
+          signedIn ? (
             <Button
               variant="secondary"
               disabled={unavailable}
@@ -225,19 +232,8 @@ export default function ClubsPage() {
           <p>{t("intro", "Find the people who bring your period to life.")}</p>
         </div>
       </div>
-      {error && <Alert variant="danger">{error}</Alert>}
-      {creating ? (
-        <section className="club-panel">
-          <h2>{t("create", "Create club")}</h2>
-          <ClubForm
-            busy={busy || unavailable}
-            ownerProfiles={ownedProfiles}
-            onSave={save}
-            onCancel={() => setCreating(false)}
-          />
-        </section>
-      ) : (
-        <>
+      {error && !creating && <Alert variant="danger">{error}</Alert>}
+      <>
           <div className="club-search-layout">
             <aside className="club-search-filters">
               <HistoricalRangeFilter
@@ -253,19 +249,12 @@ export default function ClubsPage() {
                 compact
                 inlineToggle
               />
-              <Form.Select
-                aria-label={t("period", "Period")}
-                value={period}
+              <PeriodMultiSelect
+                ariaLabel={t("period", "Period")}
+                selected={selectedPeriods}
+                onChange={setSelectedPeriods}
                 disabled={unavailable}
-                onChange={(e) => setPeriod(e.target.value)}
-              >
-                <option value="">{t("allPeriods", "All periods")}</option>
-                {PERIODS.map((value) => (
-                  <option key={value} value={value}>
-                    {getPeriodLabel(intl, value)}
-                  </option>
-                ))}
-              </Form.Select>
+              />
             </aside>
             <div className="club-search-query">
               <Form.Control
@@ -331,8 +320,33 @@ export default function ClubsPage() {
             className="clubs-load-sentinel"
             aria-hidden="true"
           />
-        </>
-      )}
+      </>
+      <Modal
+        show={creating}
+        onHide={() => {
+          if (!busy) {
+            setCreating(false);
+            setError("");
+          }
+        }}
+        centered
+      >
+        <Modal.Header closeButton={!busy}>
+          <Modal.Title>{t("create", "Create club")}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && <Alert variant="danger">{error}</Alert>}
+          <ClubForm
+            busy={busy || unavailable}
+            ownerProfiles={ownedProfiles}
+            onSave={save}
+            onCancel={() => {
+              setCreating(false);
+              setError("");
+            }}
+          />
+        </Modal.Body>
+      </Modal>
     </PageLayout>
   );
 }
