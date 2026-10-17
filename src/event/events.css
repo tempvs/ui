@@ -281,18 +281,39 @@
 }
 .event-review-actions,
 .event-application-actions,
-.event-club-application {
+.event-application-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 0.45rem;
 }
 .event-application-actions {
-  flex-wrap: wrap;
-  max-width: 28rem;
+  display: grid;
+  gap: 0.75rem;
+  width: min(100%, 44rem);
 }
-.event-club-application select {
+.event-application-row .profile-picker,
+.event-application-row select {
   min-width: 11rem;
+}
+.event-application-row .profile-picker {
+  width: 14rem;
+}
+.event-application-row .text-muted {
+  margin-left: auto;
+}
+.event-application-or {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #746d65;
+  font-size: 0.875rem;
+}
+.event-application-or::before,
+.event-application-or::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(87, 102, 98, 0.22);
 }
 .event-participation-list > .club-member-list {
   margin-top: 0;

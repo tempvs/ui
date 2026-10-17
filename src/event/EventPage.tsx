@@ -544,33 +544,19 @@ export default function EventPage() {
           <Modal.Title>Apply for event</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="text-muted">
-            A club profile can participate independently or on behalf of one of
-            its approved clubs.
-          </p>
-          <ProfileList
+          {occurrence && <EventApplicationActions
+            eventId={item.id}
+            occurrenceId={occurrence.id}
             profiles={applicantProfiles}
-            renderActions={(profile) =>
-              occurrence ? (
-                <EventApplicationActions
-                  eventId={item.id}
-                  occurrenceId={occurrence.id}
-                  profile={profile}
-                  application={applications[String(profile.id)] || null}
-                  busy={busy}
-                  onBusy={setBusy}
-                  onError={setError}
-                  onChange={(application) =>
-                    setApplications((current) => ({
-                      ...current,
-                      [String(profile.id)]: application,
-                    }))
-                  }
-                  onChanged={() => setPeopleRevision((value) => value + 1)}
-                />
-              ) : null
+            applications={applications}
+            busy={busy}
+            onBusy={setBusy}
+            onError={setError}
+            onChange={(profileId, application) =>
+              setApplications((current) => ({ ...current, [profileId]: application }))
             }
-          />
+            onChanged={() => setPeopleRevision((value) => value + 1)}
+          />}
         </Modal.Body>
       </Modal>
       <Modal
