@@ -218,7 +218,11 @@ function segmentsIntersect(
     return false;
   }
 
-  return (first > 0) !== (second > 0) && (third > 0) !== (fourth > 0);
+  const firstPositive = first > 0;
+  const secondPositive = second > 0;
+  const thirdPositive = third > 0;
+  const fourthPositive = fourth > 0;
+  return firstPositive !== secondPositive && thirdPositive !== fourthPositive;
 }
 
 function countLineIntersections(
@@ -1365,7 +1369,7 @@ export default function StashOverview({
                     <button
                       key={group.id}
                       type="button"
-                      className={`stash-collection-tab${group.id === activeGroup?.id ? " is-active" : ""}`}
+                      className={`stash-collection-tab${idsEqual(group.id, activeGroup?.id) ? " is-active" : ""}`}
                       onClick={() => {
                         setActiveGroupId(group.id);
                         setActiveGroupOverrideId(group.id);

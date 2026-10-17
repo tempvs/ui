@@ -109,7 +109,7 @@ function StashPage({ intl }: StashPageProps) {
     (group: { id: Id; name?: string | null } | null) => {
       setActiveGroup((previousState) => {
         if (
-          previousState?.id === group?.id &&
+          String(previousState?.id ?? "") === String(group?.id ?? "") &&
           previousState?.name === group?.name
         ) {
           return previousState;
@@ -117,26 +117,19 @@ function StashPage({ intl }: StashPageProps) {
 
         return group;
       });
+
+      // The collection panel is the authority for resolving a requested
+      // collection (including a stale/missing id).  Update the URL here,
+      // rather than in a second effect that can race a breadcrumb navigation.
+      if (!profile || !group || requestedGroupId === String(group.id)) {
+        return;
+      }
+      navigate(`/stash/${profile.alias || profile.id}?group=${group.id}`, {
+        replace: true,
+      });
     },
-    [],
+    [navigate, profile, requestedGroupId],
   );
-
-  useEffect(() => {
-    if (!profile || !activeGroup) {
-      return;
-    }
-
-    const currentGroupId = searchParams.get("group");
-    const nextGroupId = String(activeGroup.id);
-
-    if (currentGroupId === nextGroupId) {
-      return;
-    }
-
-    navigate(`/stash/${profile.alias || profile.id}?group=${nextGroupId}`, {
-      replace: true,
-    });
-  }, [activeGroup, navigate, profile, searchParams]);
 
   if (!loaded) {
     return (
@@ -229,11 +222,7 @@ function StashPage({ intl }: StashPageProps) {
             getPeriodLabel={getPeriodLabel}
             embedded={false}
             initialGroupId={requestedGroupId}
-            onActiveGroupChange={(group) =>
-              handleActiveGroupChange(
-                group ? { id: group.id, name: group.name } : null,
-              )
-            }
+            onActiveGroupChange={handleActiveGroupChange}
             onGroupsChange={setGroups}
           />
         </PageColumn>
