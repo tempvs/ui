@@ -228,6 +228,9 @@
   min-width: 0;
 }
 .event-search-results {
+  /* Search results live in the wide column.  Keep each tile readable instead
+     of letting a large viewport squeeze three or more cards into a row. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 1rem;
 }
 .event-detail-photo {
@@ -324,6 +327,9 @@
   .event-date-grid,
   .event-recurrence-grid,
   .event-search-layout {
+    grid-template-columns: 1fr;
+  }
+  .event-search-results {
     grid-template-columns: 1fr;
   }
   .event-heading {

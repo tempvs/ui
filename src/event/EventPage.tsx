@@ -284,8 +284,10 @@ export default function EventPage() {
     const current = eventRef.current;
     if (!current) return;
     if (
+      current.schedule.startsAt &&
+      current.schedule.endsAt &&
       new Date(current.schedule.endsAt).getTime() <=
-      new Date(current.schedule.startsAt).getTime()
+        new Date(current.schedule.startsAt).getTime()
     ) {
       setFieldStatuses((statuses) => ({ ...statuses, endsAt: "error" }));
       return;

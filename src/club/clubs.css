@@ -99,6 +99,9 @@
 .club-search-query {
   min-width: 0;
 }
+.club-search-results {
+  margin-top: 1rem;
+}
 .club-search select {
   max-width: 18rem;
 }

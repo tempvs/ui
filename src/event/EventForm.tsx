@@ -9,6 +9,7 @@ import { useIntl } from "react-intl";
 import { EventDraft, TempvsEvent } from "./eventApi";
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
+import { browserTimeZone, EVENT_TIME_ZONES } from "./timeZones";
 
 type Props = {
   profiles: Profile[];
@@ -81,7 +82,9 @@ export default function EventForm({
     localInput(initial?.schedule.startsAt),
   );
   const [endsAt, setEndsAt] = useState(localInput(initial?.schedule.endsAt));
-  const [timeZone, setTimeZone] = useState(initial?.schedule.timeZone || "UTC");
+  const [timeZone, setTimeZone] = useState(
+    initial?.schedule.timeZone || browserTimeZone(),
+  );
   const [kind, setKind] = useState<"ONE_TIME" | "RECURRING">(
     initial?.schedule.kind || "ONE_TIME",
   );
@@ -100,24 +103,31 @@ export default function EventForm({
     if (
       !ownerProfileId ||
       !name.trim() ||
-      periods.length === 0 ||
-      !startsAt ||
-      !endsAt
+      periods.length === 0
     ) {
-      setError("Owner, name, period, start, and end are required.");
+      setError("Owner, name, and at least one period are required.");
       return;
     }
-    const start = new Date(startsAt);
-    const end = new Date(endsAt);
-    if (end <= start) {
+    if (Boolean(startsAt) !== Boolean(endsAt)) {
+      setError("Enter both start and end, or leave both dates to be announced.");
+      return;
+    }
+    if (kind === "RECURRING" && !startsAt) {
+      setError("A recurring event needs a start and end date.");
+      return;
+    }
+    const start = startsAt ? new Date(startsAt) : null;
+    const end = endsAt ? new Date(endsAt) : null;
+    if (start && end && end <= start) {
       setError("End date must be after start date.");
       return;
     }
     const schedule: EventDraft["schedule"] = {
       kind,
-      startsAt: start.toISOString(),
-      endsAt: end.toISOString(),
       timeZone,
+      ...(start && end
+        ? { startsAt: start.toISOString(), endsAt: end.toISOString() }
+        : {}),
       ...(kind === "RECURRING"
         ? { recurrence: { frequency, interval, count } }
         : {}),
@@ -236,7 +246,7 @@ export default function EventForm({
             type="datetime-local"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
-            required
+            aria-describedby="event-date-help"
           />
         </Form.Group>
         <Form.Group>
@@ -245,7 +255,7 @@ export default function EventForm({
             type="datetime-local"
             value={endsAt}
             onChange={(event) => setEndsAt(event.target.value)}
-            required
+            aria-describedby="event-date-help"
           />
         </Form.Group>
         <Form.Group>
@@ -254,14 +264,17 @@ export default function EventForm({
             value={timeZone}
             onChange={(event) => setTimeZone(event.target.value)}
           >
-            <option value="UTC">UTC</option>
-            <option value="America/New_York">America/New_York</option>
-            <option value="Europe/London">Europe/London</option>
-            <option value="Europe/Prague">Europe/Prague</option>
-            <option value="Europe/Warsaw">Europe/Warsaw</option>
+            {EVENT_TIME_ZONES.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
           </Form.Select>
         </Form.Group>
       </div>
+      <Form.Text id="event-date-help" className="d-block mt-2 text-muted">
+        Dates and times are optional for a one-time event. You can announce them later.
+      </Form.Text>
       {kind === "RECURRING" && (
         <div className="event-recurrence-grid mt-3">
           <Form.Group>

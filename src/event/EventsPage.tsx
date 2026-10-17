@@ -238,8 +238,9 @@ export default function EventsPage() {
                     <Link to={`/events/${event.id}`}>{event.name}</Link>
                   </h2>
                   <time>
-                    {new Date(event.schedule.startsAt).toLocaleString()} ·{" "}
-                    {event.schedule.timeZone}
+                    {event.schedule.startsAt
+                      ? `${new Date(event.schedule.startsAt).toLocaleString()} · ${event.schedule.timeZone}`
+                      : "Dates to be announced"}
                   </time>
                   {event.description && <p>{event.description}</p>}
                 </div>

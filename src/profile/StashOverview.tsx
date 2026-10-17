@@ -445,7 +445,10 @@ export default function StashOverview({
     [],
   );
 
-  useEffect(() => {
+  // Keep the URL-selected collection in sync before parent effects publish an
+  // active collection.  This avoids a stale selection navigating back to the
+  // previous collection when a breadcrumb menu item is chosen.
+  useLayoutEffect(() => {
     if (initialGroupId != null) {
       setActiveGroupId(initialGroupId);
     }

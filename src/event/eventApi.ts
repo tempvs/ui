@@ -4,8 +4,8 @@ export type RecurrenceFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export type EventSchedule = {
   kind: "ONE_TIME" | "RECURRING";
-  startsAt: string;
-  endsAt: string;
+  startsAt?: string;
+  endsAt?: string;
   timeZone: string;
   recurrence?: {
     frequency: RecurrenceFrequency;

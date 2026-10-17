@@ -837,9 +837,9 @@ export default function SearchDialog() {
                                 </Link>
                               </Card.Title>
                               <small>
-                                {new Date(
-                                  item.schedule.startsAt,
-                                ).toLocaleDateString()}
+                                {item.schedule.startsAt
+                                  ? new Date(item.schedule.startsAt).toLocaleDateString()
+                                  : "Dates to be announced"}
                               </small>
                             </div>
                           </Card.Body>

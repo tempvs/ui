@@ -276,38 +276,38 @@ export default function ClubsPage() {
                 disabled={unavailable}
                 onChange={(e) => setQuery(e.target.value)}
               />
+              <div className="club-card-grid club-search-results">
+                {clubs.map((club) => (
+                  <article key={club.id} className="club-panel">
+                    <PeriodBadge period={club.period} />
+                    <h2 className="mt-3">
+                      <Link
+                        className="club-thumbnail-link"
+                        to={`/clubs/${club.alias || club.id}`}
+                      >
+                        <RefreshingImage
+                          image={{
+                            id: club.photoImageId,
+                            resourceType: "club",
+                            resourceId: club.id,
+                            url: club.photoUrl,
+                            thumbnailUrl: club.photoThumbnailUrl,
+                          }}
+                          variant="thumbnail"
+                          fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
+                          className="club-list-thumbnail"
+                          alt=""
+                          loading="lazy"
+                        />
+                        <span>{club.name}</span>
+                      </Link>
+                    </h2>
+                    {club.location && <p className="text-muted">{club.location}</p>}
+                    <p className="club-card-description">{club.description}</p>
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="club-card-grid">
-            {clubs.map((club) => (
-              <article key={club.id} className="club-panel">
-                <PeriodBadge period={club.period} />
-                <h2 className="mt-3">
-                  <Link
-                    className="club-thumbnail-link"
-                    to={`/clubs/${club.alias || club.id}`}
-                  >
-                    <RefreshingImage
-                      image={{
-                        id: club.photoImageId,
-                        resourceType: "club",
-                        resourceId: club.id,
-                        url: club.photoUrl,
-                        thumbnailUrl: club.photoThumbnailUrl,
-                      }}
-                      variant="thumbnail"
-                      fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-                      className="club-list-thumbnail"
-                      alt=""
-                      loading="lazy"
-                    />
-                    <span>{club.name}</span>
-                  </Link>
-                </h2>
-                {club.location && <p className="text-muted">{club.location}</p>}
-                <p className="club-card-description">{club.description}</p>
-              </article>
-            ))}
           </div>
           {loading && <p role="status">{t("searching", "Searching clubs…")}</p>}
           {searchError && (

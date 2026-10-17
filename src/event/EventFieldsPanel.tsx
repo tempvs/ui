@@ -14,6 +14,7 @@ import PlacePickerField, {
 import type { MapPlace } from "../map/mapApi";
 import { loadEventRelatedMapContent } from "../map/ownedMapContent";
 import { TempvsEvent } from "./eventApi";
+import { EVENT_TIME_ZONES } from "./timeZones";
 
 export type EventField =
   | "name"
@@ -46,13 +47,15 @@ type Props = {
   onHistoricalSiteChange?: (place: MapPlace | null) => void;
 };
 
-function localDateTimeInput(iso: string) {
+function localDateTimeInput(iso?: string) {
+  if (!iso) return "";
   const date = new Date(iso);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
 }
 
-function displayDateTime(iso: string) {
+function displayDateTime(iso?: string) {
+  if (!iso) return "To be announced";
   return new Date(iso).toLocaleString();
 }
 
@@ -210,6 +213,7 @@ export default function EventFieldsPanel({
         type="datetime-local"
         value={localDateTimeInput(event.schedule.startsAt)}
         readOnlyValue={displayDateTime(event.schedule.startsAt)}
+        placeholder="To be announced"
         onChange={(input) => onChange("startsAt", input.target.value)}
         onBlur={() => onBlur("startsAt")}
         status={statuses.startsAt}
@@ -220,6 +224,7 @@ export default function EventFieldsPanel({
         type="datetime-local"
         value={localDateTimeInput(event.schedule.endsAt)}
         readOnlyValue={displayDateTime(event.schedule.endsAt)}
+        placeholder="To be announced"
         onChange={(input) => onChange("endsAt", input.target.value)}
         onBlur={() => onBlur("endsAt")}
         status={statuses.endsAt}
@@ -230,13 +235,7 @@ export default function EventFieldsPanel({
         editable={editable}
         value={event.schedule.timeZone}
         readOnlyValue={event.schedule.timeZone}
-        options={[
-          "UTC",
-          "America/New_York",
-          "Europe/London",
-          "Europe/Prague",
-          "Europe/Warsaw",
-        ].map((value) => ({ value, label: value }))}
+        options={EVENT_TIME_ZONES.map((value) => ({ value, label: value }))}
         onChange={(input) => onChange("timeZone", input.target.value)}
         onBlur={() => onBlur("timeZone")}
         status={statuses.timeZone}

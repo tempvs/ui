@@ -621,8 +621,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
   return (
     <PageLayout
       header={{
-        title: "ITEM",
-        rightContent: (
+        title: (
           <SectionBreadcrumb
             items={[
               ownerUserProfile
