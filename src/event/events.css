@@ -310,10 +310,38 @@
 }
 .event-application-or::before,
 .event-application-or::after {
-  content: '';
+  content: "";
   height: 1px;
   flex: 1 1 auto;
   background: rgba(87, 102, 98, 0.22);
+}
+.event-time-zone-picker {
+  position: relative;
+}
+.event-time-zone-options {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border: 1px solid rgba(87, 102, 98, 0.24);
+  border-radius: 0.35rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1rem rgba(31, 38, 35, 0.14);
+}
+.event-time-zone-options button {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.event-time-zone-options button:hover,
+.event-time-zone-options button[aria-selected="true"] {
+  background: rgba(232, 222, 191, 0.58);
 }
 .event-participation-list > .club-member-list {
   margin-top: 0;

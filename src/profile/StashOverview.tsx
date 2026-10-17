@@ -328,6 +328,10 @@ export default function StashOverview({
   const [stash, setStash] = useState<Stash | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<Id | null>(null);
+  // Holds a direct tab choice until the matching URL update reaches us.
+  const [activeGroupOverrideId, setActiveGroupOverrideId] = useState<Id | null>(
+    null,
+  );
   const [itemsByGroup, setItemsByGroup] = useState<IdRecord<StashItem[]>>({});
   const [groupImages, setGroupImages] = useState<IdRecord<EntityImage>>({});
   const [itemImages, setItemImages] = useState<IdRecord<EntityImage>>({});
@@ -468,6 +472,7 @@ export default function StashOverview({
     if (initialGroupId != null) {
       setActiveGroupId(initialGroupId);
     }
+    setActiveGroupOverrideId(null);
   }, [initialGroupId]);
 
   useEffect(() => {
@@ -479,7 +484,13 @@ export default function StashOverview({
   }, [loadStash, profileId, profile?.type]);
 
   const groups = stash?.groups || [];
+  const urlSelectedGroup =
+    initialGroupId == null
+      ? null
+      : groups.find((group) => idsEqual(group.id, initialGroupId)) || null;
   const activeGroup =
+    groups.find((group) => idsEqual(group.id, activeGroupOverrideId)) ||
+    urlSelectedGroup ||
     groups.find((group) => idsEqual(group.id, activeGroupId)) ||
     groups[0] ||
     null;
@@ -1177,9 +1188,8 @@ export default function StashOverview({
   }
 
   function getNormalizedMarkerPosition(event: React.MouseEvent<HTMLElement>) {
-    const imageElement = imageShellRef.current?.querySelector(
-      ".stash-hero-image",
-    );
+    const imageElement =
+      imageShellRef.current?.querySelector(".stash-hero-image");
     const bounds = (
       imageElement || event.currentTarget
     ).getBoundingClientRect();
@@ -1202,8 +1212,14 @@ export default function StashOverview({
     setMarkerPreviewPosition(getNormalizedMarkerPosition(event));
   }
 
-  async function handleImageClick(event: React.MouseEvent<HTMLElement>) {
-    if ((event.target as Element).closest("button, input, textarea")) {
+  async function handleImageClick(
+    event: React.MouseEvent<HTMLElement>,
+    fromImagePreview = false,
+  ) {
+    if (
+      !fromImagePreview &&
+      (event.target as Element).closest("button, input, textarea")
+    ) {
       return;
     }
     if (
@@ -1215,8 +1231,8 @@ export default function StashOverview({
       return;
     }
 
-    const { x, y } =
-      markerPreviewPosition || getNormalizedMarkerPosition(event);
+    // A shell-level mousemove can be stale.  Store the exact point clicked.
+    const { x, y } = getNormalizedMarkerPosition(event);
 
     setMarkerBusy(true);
     setFeedback(null);
@@ -1352,6 +1368,7 @@ export default function StashOverview({
                       className={`stash-collection-tab${group.id === activeGroup?.id ? " is-active" : ""}`}
                       onClick={() => {
                         setActiveGroupId(group.id);
+                        setActiveGroupOverrideId(group.id);
                         setMarkerPlacement(null);
                         setMarkerPreviewPosition(null);
                       }}
@@ -1516,7 +1533,7 @@ export default function StashOverview({
                       onPreviewClick={
                         markerPlacement
                           ? (event) => {
-                              void handleImageClick(event);
+                              void handleImageClick(event, true);
                               return false;
                             }
                           : undefined
@@ -1543,18 +1560,24 @@ export default function StashOverview({
                           className={`stash-marker-dot${markerPlacement?.markerId === marker.id ? " is-active" : ""}${hoveredMarkerItemId === marker.itemId ? " is-highlighted" : ""}`}
                           style={{
                             left: imageOverlayBounds
-                              ? `${imageOverlayBounds.left +
+                              ? `${
+                                  imageOverlayBounds.left +
                                   (markerPlacement?.markerId === marker.id &&
                                   activePreviewMarker
                                     ? activePreviewMarker.x
-                                    : marker.x) * imageOverlayBounds.width}px`
+                                    : marker.x) *
+                                    imageOverlayBounds.width
+                                }px`
                               : "50%",
                             top: imageOverlayBounds
-                              ? `${imageOverlayBounds.top +
+                              ? `${
+                                  imageOverlayBounds.top +
                                   (markerPlacement?.markerId === marker.id &&
                                   activePreviewMarker
                                     ? activePreviewMarker.y
-                                    : marker.y) * imageOverlayBounds.height}px`
+                                    : marker.y) *
+                                    imageOverlayBounds.height
+                                }px`
                               : "50%",
                             pointerEvents:
                               markerPlacement?.markerId === marker.id

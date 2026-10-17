@@ -4,6 +4,7 @@ import EditableDescriptionField from "../component/EditableDescriptionField";
 import EditablePeriodSelectorField from "../component/EditablePeriodSelectorField";
 import { SaveStatus } from "../component/EditableFieldRow";
 import EditableSelectFieldRow from "../component/EditableSelectFieldRow";
+import EditableFieldRow from "../component/EditableFieldRow";
 import EditableTextFieldRow from "../component/EditableTextFieldRow";
 import InlineEditableText from "../component/InlineEditableText";
 import { HistoricalYearInput } from "../component/HistoricalRangeFilter";
@@ -14,7 +15,7 @@ import PlacePickerField, {
 import type { MapPlace } from "../map/mapApi";
 import { loadEventRelatedMapContent } from "../map/ownedMapContent";
 import { TempvsEvent } from "./eventApi";
-import { EVENT_TIME_ZONES } from "./timeZones";
+import TimeZonePicker from "./TimeZonePicker";
 
 export type EventField =
   | "name"
@@ -159,7 +160,9 @@ export default function EventFieldsPanel({
         editable={editable}
         value={event.venueVisibility || "PUBLIC"}
         readOnlyValue={
-          event.venueVisibility === "PARTICIPANTS" ? "Participants only" : "Public"
+          event.venueVisibility === "PARTICIPANTS"
+            ? "Participants only"
+            : "Public"
         }
         options={[
           { value: "PUBLIC", label: "Public" },
@@ -230,15 +233,18 @@ export default function EventFieldsPanel({
         status={statuses.endsAt}
         errorTitle="Can't be before Starts"
       />
-      <EditableSelectFieldRow
+      <EditableFieldRow
         label="Time zone"
         editable={editable}
-        value={event.schedule.timeZone}
         readOnlyValue={event.schedule.timeZone}
-        options={EVENT_TIME_ZONES.map((value) => ({ value, label: value }))}
-        onChange={(input) => onChange("timeZone", input.target.value)}
-        onBlur={() => onBlur("timeZone")}
         status={statuses.timeZone}
+        control={
+          <TimeZonePicker
+            value={event.schedule.timeZone}
+            onChange={(value) => onChange("timeZone", value)}
+            onCommit={() => onBlur("timeZone")}
+          />
+        }
       />
       {event.schedule.kind === "RECURRING" && (
         <>

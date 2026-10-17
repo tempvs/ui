@@ -12,6 +12,7 @@ const event: TempvsEvent = {
   name: "Lantern Festival",
   description: "An evening gathering.",
   periods: ["MODERN"],
+  autoApproveParticipation: false,
   schedule: {
     kind: "ONE_TIME" as const,
     startsAt: "2026-10-03T18:00:00.000Z",

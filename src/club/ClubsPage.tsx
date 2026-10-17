@@ -139,7 +139,8 @@ export default function ClubsPage() {
               (club) =>
                 !ids.has(club.id) &&
                 matchesRange(club) &&
-                (!selectedPeriods.length || selectedPeriods.includes(club.period)),
+                (!selectedPeriods.length ||
+                  selectedPeriods.includes(club.period)),
             ),
           ];
         });
@@ -214,16 +215,15 @@ export default function ClubsPage() {
       className={`clubs-page${unavailable ? " club-service-unavailable" : ""}`}
       header={{
         title: <SectionBreadcrumb items={[{ label: t("title", "Clubs") }]} />,
-        rightContent:
-          signedIn ? (
-            <Button
-              variant="secondary"
-              disabled={unavailable}
-              onClick={() => setCreating(true)}
-            >
-              {t("create", "Create club")}
-            </Button>
-          ) : null,
+        rightContent: signedIn ? (
+          <Button
+            variant="secondary"
+            disabled={unavailable}
+            onClick={() => setCreating(true)}
+          >
+            {t("create", "Create club")}
+          </Button>
+        ) : null,
       }}
     >
       <div className="club-page-heading">
@@ -234,92 +234,95 @@ export default function ClubsPage() {
       </div>
       {error && !creating && <Alert variant="danger">{error}</Alert>}
       <>
-          <div className="club-search-layout">
-            <aside className="club-search-filters">
-              <HistoricalRangeFilter
-                enabled={rangeEnabled}
-                from={from}
-                to={to}
-                onEnabledChange={setRangeEnabled}
-                onFromChange={setFrom}
-                onToChange={setTo}
-                onValueEntered={() => setRangeEnabled(true)}
-                label="Years"
-                alwaysShowFields
-                compact
-                inlineToggle
-              />
-              <PeriodMultiSelect
-                ariaLabel={t("period", "Period")}
-                selected={selectedPeriods}
-                onChange={setSelectedPeriods}
-                disabled={unavailable}
-              />
-            </aside>
-            <div className="club-search-query">
-              <Form.Control
-                aria-label={t("searchClubs", "Search clubs")}
-                placeholder={t("searchClubs", "Search clubs")}
-                maxLength={120}
-                value={query}
-                disabled={unavailable}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <div className="club-card-grid club-search-results">
-                {clubs.map((club) => (
-                  <article key={club.id} className="club-panel">
-                    <PeriodBadge period={club.period} />
-                    <h2 className="mt-3">
-                      <Link
-                        className="club-thumbnail-link"
-                        to={`/clubs/${club.alias || club.id}`}
-                      >
-                        <RefreshingImage
-                          image={{
-                            id: club.photoImageId,
-                            resourceType: "club",
-                            resourceId: club.id,
-                            url: club.photoUrl,
-                            thumbnailUrl: club.photoThumbnailUrl,
-                          }}
-                          variant="thumbnail"
-                          fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-                          className="club-list-thumbnail"
-                          alt=""
-                          loading="lazy"
-                        />
-                        <span>{club.name}</span>
-                      </Link>
-                    </h2>
-                    {club.location && <p className="text-muted">{club.location}</p>}
-                    <p className="club-card-description">{club.description}</p>
-                  </article>
-                ))}
-              </div>
+        <div className="club-search-layout">
+          <aside className="club-search-filters">
+            <HistoricalRangeFilter
+              enabled={rangeEnabled}
+              from={from}
+              to={to}
+              onEnabledChange={setRangeEnabled}
+              onFromChange={setFrom}
+              onToChange={setTo}
+              onValueEntered={() => setRangeEnabled(true)}
+              label="Years"
+              alwaysShowFields
+              compact
+              inlineToggle
+            />
+            <PeriodMultiSelect
+              ariaLabel={t("period", "Period")}
+              selected={selectedPeriods}
+              onChange={setSelectedPeriods}
+              disabled={unavailable}
+              display="checkboxes"
+            />
+          </aside>
+          <div className="club-search-query">
+            <Form.Control
+              aria-label={t("searchClubs", "Search clubs")}
+              placeholder={t("searchClubs", "Search clubs")}
+              maxLength={120}
+              value={query}
+              disabled={unavailable}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <div className="club-card-grid club-search-results">
+              {clubs.map((club) => (
+                <article key={club.id} className="club-panel">
+                  <PeriodBadge period={club.period} />
+                  <h2 className="mt-3">
+                    <Link
+                      className="club-thumbnail-link"
+                      to={`/clubs/${club.alias || club.id}`}
+                    >
+                      <RefreshingImage
+                        image={{
+                          id: club.photoImageId,
+                          resourceType: "club",
+                          resourceId: club.id,
+                          url: club.photoUrl,
+                          thumbnailUrl: club.photoThumbnailUrl,
+                        }}
+                        variant="thumbnail"
+                        fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
+                        className="club-list-thumbnail"
+                        alt=""
+                        loading="lazy"
+                      />
+                      <span>{club.name}</span>
+                    </Link>
+                  </h2>
+                  {club.location && (
+                    <p className="text-muted">{club.location}</p>
+                  )}
+                  <p className="club-card-description">{club.description}</p>
+                </article>
+              ))}
             </div>
           </div>
-          {loading && <p role="status">{t("searching", "Searching clubs…")}</p>}
-          {searchError && (
-            <Alert variant="danger">
-              {searchError}{" "}
-              <Button variant="link" onClick={() => loadMore.current()}>
-                {t("retry", "Retry")}
-              </Button>
-            </Alert>
-          )}
-          {!loading && !unavailable && !searchError && clubs.length === 0 && (
-            <p className="club-panel">
-              {t(
-                "empty",
-                "No clubs found. Start one for your reenactment group.",
-              )}
-            </p>
-          )}
-          <div
-            ref={sentinel}
-            className="clubs-load-sentinel"
-            aria-hidden="true"
-          />
+        </div>
+        {loading && <p role="status">{t("searching", "Searching clubs…")}</p>}
+        {searchError && (
+          <Alert variant="danger">
+            {searchError}{" "}
+            <Button variant="link" onClick={() => loadMore.current()}>
+              {t("retry", "Retry")}
+            </Button>
+          </Alert>
+        )}
+        {!loading && !unavailable && !searchError && clubs.length === 0 && (
+          <p className="club-panel">
+            {t(
+              "empty",
+              "No clubs found. Start one for your reenactment group.",
+            )}
+          </p>
+        )}
+        <div
+          ref={sentinel}
+          className="clubs-load-sentinel"
+          aria-hidden="true"
+        />
       </>
       <Modal
         show={creating}

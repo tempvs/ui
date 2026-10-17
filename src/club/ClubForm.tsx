@@ -33,7 +33,9 @@ export default function ClubForm({
       location: null,
       contactEmail: null,
       period: "OTHER",
-      ownerProfileId: ownerProfiles[0] ? String(ownerProfiles[0].id) : undefined,
+      ownerProfileId: ownerProfiles[0]
+        ? String(ownerProfiles[0].id)
+        : undefined,
     },
   );
   const ownerOptions = ownerProfiles.map<ProfilePickerOption>((profile) => ({
@@ -54,7 +56,7 @@ export default function ClubForm({
     >
       <fieldset disabled={busy}>
         <Form.Group controlId="club-name" className="mb-3">
-          <Form.Label>{t("name", "Club name")}</Form.Label>
+          <Form.Label>{t("name", "Name")}</Form.Label>
           <Form.Control
             required
             maxLength={120}
@@ -87,12 +89,12 @@ export default function ClubForm({
             }
           />
         </Form.Group>
-        <div className="club-form-grid">
+        <div className="club-form-picker-fields">
           {ownerOptions.length > 0 && (
-            <Form.Group controlId="club-owner">
-              <Form.Label>{t("owner", "Owner")}</Form.Label>
+            <Form.Group controlId="club-owner" className="club-form-picker-row">
+              <Form.Label>{t("owner", "Profile")}</Form.Label>
               <ProfilePicker
-                ariaLabel={t("owner", "Owner")}
+                ariaLabel={t("owner", "Profile")}
                 options={ownerOptions}
                 value={draft.ownerProfileId || ownerOptions[0]?.value || null}
                 onChange={(ownerProfileId) =>
@@ -101,7 +103,7 @@ export default function ClubForm({
               />
             </Form.Group>
           )}
-          <Form.Group controlId="club-period">
+          <Form.Group controlId="club-period" className="club-form-picker-row">
             <Form.Label>{t("period", "Period")}</Form.Label>
             <Form.Select
               required
@@ -120,7 +122,7 @@ export default function ClubForm({
         </div>
         <div className="club-actions mt-4">
           <Button variant="secondary" type="submit">
-            {t("save", "Save club")}
+            {t("create", "Create club")}
           </Button>
           <Button variant="outline-secondary" onClick={onCancel}>
             {t("cancel", "Cancel")}

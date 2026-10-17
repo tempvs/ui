@@ -1,28 +1,51 @@
-import React from 'react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { IntlProvider } from 'react-intl';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import ClubPage from './ClubPage';
-import ClubAdminPage from './ClubAdminPage';
-import ClubsPage from './ClubsPage';
-import ProfileClubPanel from './ProfileClubPanel';
-import ProfileFollowedClubsPanel from './ProfileFollowedClubsPanel';
-import JoinClubModal from './JoinClubModal';
-import ClubPhotoPanel from './ClubPhotoPanel';
-import * as api from './clubApi';
-import * as profileApi from '../profile/profileApi';
-import * as eventApi from '../event/eventApi';
+import React from "react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import ClubPage from "./ClubPage";
+import ClubAdminPage from "./ClubAdminPage";
+import ClubsPage from "./ClubsPage";
+import ProfileClubPanel from "./ProfileClubPanel";
+import ProfileFollowedClubsPanel from "./ProfileFollowedClubsPanel";
+import JoinClubModal from "./JoinClubModal";
+import ClubPhotoPanel from "./ClubPhotoPanel";
+import * as api from "./clubApi";
+import * as profileApi from "../profile/profileApi";
+import * as eventApi from "../event/eventApi";
 
-jest.mock('./clubApi', () => ({
-  ...jest.requireActual('./clubApi'),
-  getClub: jest.fn(), getParticipants: jest.fn(), listClubs: jest.fn(), getProfileClubs: jest.fn(),
-  getJoinOptions: jest.fn(), requestJoin: jest.fn(), getJoinRequests: jest.fn(), decideJoinRequest: jest.fn(),
-  attachProfile: jest.fn(), detachProfile: jest.fn(), updateClub: jest.fn(), deleteClub: jest.fn(),
-  addAdmin: jest.fn(), removeAdmin: jest.fn(), createClub: jest.fn(),
-  getClubFollowers: jest.fn(), getClubFollowState: jest.fn(), followClub: jest.fn(), unfollowClub: jest.fn(), getFollowedClubs: jest.fn(),
-  uploadClubPhoto: jest.fn(), removeClubPhoto: jest.fn(),
+jest.mock("./clubApi", () => ({
+  ...jest.requireActual("./clubApi"),
+  getClub: jest.fn(),
+  getParticipants: jest.fn(),
+  listClubs: jest.fn(),
+  getProfileClubs: jest.fn(),
+  getJoinOptions: jest.fn(),
+  requestJoin: jest.fn(),
+  getJoinRequests: jest.fn(),
+  decideJoinRequest: jest.fn(),
+  attachProfile: jest.fn(),
+  detachProfile: jest.fn(),
+  updateClub: jest.fn(),
+  deleteClub: jest.fn(),
+  addAdmin: jest.fn(),
+  removeAdmin: jest.fn(),
+  createClub: jest.fn(),
+  getClubFollowers: jest.fn(),
+  getClubFollowState: jest.fn(),
+  followClub: jest.fn(),
+  unfollowClub: jest.fn(),
+  getFollowedClubs: jest.fn(),
+  uploadClubPhoto: jest.fn(),
+  removeClubPhoto: jest.fn(),
 }));
-jest.mock('../profile/profileApi', () => ({
+jest.mock("../profile/profileApi", () => ({
   fetchCurrentUserInfo: jest.fn(),
   fetchClubProfiles: jest.fn(),
   fetchProfileById: jest.fn(),
@@ -30,414 +53,917 @@ jest.mock('../profile/profileApi', () => ({
   getUserProfileByUserId: jest.fn(),
   searchProfiles: jest.fn(),
 }));
-jest.mock('../event/eventApi', () => ({
-  ...jest.requireActual('../event/eventApi'),
+jest.mock("../event/eventApi", () => ({
+  ...jest.requireActual("../event/eventApi"),
   getClubEventParticipationRequests: jest.fn(),
   getEvent: jest.fn(),
   decideClubApplication: jest.fn(),
 }));
 
-const club: api.Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
-  period: 'HIGH_MIDDLE_AGES', creatorUserId: 'user-10', adminUserIds: ['user-20'], canManage: false, canManageAdmins: false };
-const mock = <T extends (...args: any[]) => any>(fn: T) => fn as jest.MockedFunction<T>;
+const club: api.Club = {
+  id: 1,
+  name: "Longbow Company",
+  description: "Living history",
+  location: "York",
+  contactEmail: null,
+  period: "HIGH_MIDDLE_AGES",
+  creatorUserId: "user-10",
+  adminUserIds: ["user-20"],
+  canManage: false,
+  canManageAdmins: false,
+};
+const mock = <T extends (...args: any[]) => any>(fn: T) =>
+  fn as jest.MockedFunction<T>;
 
-function wrap(child: React.ReactNode, path = '/') {
-  return render(<IntlProvider locale="en" messages={{}}><MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{child}</MemoryRouter></IntlProvider>);
+function wrap(child: React.ReactNode, path = "/") {
+  return render(
+    <IntlProvider locale="en" messages={{}}>
+      <MemoryRouter
+        initialEntries={[path]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        {child}
+      </MemoryRouter>
+    </IntlProvider>,
+  );
 }
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: null, oauthProfile: null }));
-  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([]));
-  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) => handlers.onMissing?.());
-  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess(null));
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: null, oauthProfile: null }),
+  );
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) =>
+    handlers.onSuccess([]),
+  );
+  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) =>
+    handlers.onMissing?.(),
+  );
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation(
+    (_userId, handlers) => handlers.onSuccess(null),
+  );
   mock(profileApi.getUserProfileByUserId).mockResolvedValue(null);
   mock(profileApi.searchProfiles).mockResolvedValue([]);
   mock(api.getClub).mockResolvedValue(club);
-  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer', alias: 'alex-archer' }], hasMore: false });
+  mock(api.getParticipants).mockResolvedValue({
+    content: [
+      { id: "5", firstName: "Alex", lastName: "Archer", alias: "alex-archer" },
+    ],
+    hasMore: false,
+  });
   mock(api.listClubs).mockResolvedValue({ content: [club], hasMore: false });
   mock(api.getJoinRequests).mockResolvedValue({ content: [], hasMore: false });
-  mock(api.getJoinOptions).mockResolvedValue({ content: [{ club, status: null }], hasMore: false });
+  mock(api.getJoinOptions).mockResolvedValue({
+    content: [{ club, status: null }],
+    hasMore: false,
+  });
   mock(api.getClubFollowers).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getFollowedClubs).mockResolvedValue([]);
   mock(api.getClubFollowState).mockResolvedValue(false);
-  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({ content: [] });
+  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({
+    content: [],
+  });
 });
 
-test('visitors see participants linked to profiles and no management controls', async () => {
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  expect(await screen.findByRole('link', { name: 'Alex Archer' })).toHaveAttribute('href', '/profile/alex-archer');
-  expect(screen.getByRole('region', { name: 'Members' }).querySelector('.profile-thumbnail-link-image')).toHaveAttribute('src', 'default-image.png');
-  expect(screen.getByRole('searchbox', { name: 'Filter members' })).toBeInTheDocument();
-  expect(screen.getByRole('searchbox', { name: 'Filter followers' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Apply for membership' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Follow' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
-  expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+test("visitors see participants linked to profiles and no management controls", async () => {
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  expect(
+    await screen.findByRole("link", { name: "Alex Archer" }),
+  ).toHaveAttribute("href", "/profile/alex-archer");
+  expect(
+    screen
+      .getByRole("region", { name: "Members" })
+      .querySelector(".profile-thumbnail-link-image"),
+  ).toHaveAttribute("src", "default-image.png");
+  expect(
+    screen.getByRole("searchbox", { name: "Filter members" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("searchbox", { name: "Filter followers" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Apply for membership" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Follow" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Edit club" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("Assign an admin")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Previous" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Next" }),
+  ).not.toBeInTheDocument();
 });
 
-test('club admins can remove a follower after confirming', async () => {
+test("club admins can remove a follower after confirming", async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
-  mock(api.getClubFollowers).mockResolvedValue({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
+  mock(api.getClubFollowers).mockResolvedValue({
+    content: [{ id: "6", firstName: "Robin", lastName: "Hood" }],
+    hasMore: false,
+  });
   mock(api.unfollowClub).mockResolvedValue(undefined);
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  fireEvent.click(await screen.findByRole('button', { name: 'Remove follower' }));
-  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
-  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, '6'));
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Remove follower" }),
+  );
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Remove",
+    }),
+  );
+  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, "6"));
 });
 
-test('alias club pages load members and followers using the resolved club id', async () => {
-  mock(api.getClub).mockResolvedValue({ ...club, id: 'club-uuid', alias: 'longbow-company' });
-  mock(api.getClubFollowers).mockResolvedValue({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/longbow-company');
-  expect(await screen.findByRole('link', { name: 'Alex Archer' })).toBeInTheDocument();
-  expect(await screen.findByRole('link', { name: 'Robin Hood' })).toBeInTheDocument();
-  expect(api.getParticipants).toHaveBeenCalledWith('club-uuid', undefined);
-  expect(api.getClubFollowers).toHaveBeenCalledWith('club-uuid', undefined);
+test("alias club pages load members and followers using the resolved club id", async () => {
+  mock(api.getClub).mockResolvedValue({
+    ...club,
+    id: "club-uuid",
+    alias: "longbow-company",
+  });
+  mock(api.getClubFollowers).mockResolvedValue({
+    content: [{ id: "6", firstName: "Robin", lastName: "Hood" }],
+    hasMore: false,
+  });
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/longbow-company",
+  );
+  expect(
+    await screen.findByRole("link", { name: "Alex Archer" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Robin Hood" }),
+  ).toBeInTheDocument();
+  expect(api.getParticipants).toHaveBeenCalledWith("club-uuid", undefined);
+  expect(api.getClubFollowers).toHaveBeenCalledWith("club-uuid", undefined);
 });
 
-test('a signed-in user can follow and unfollow a club through any owned profile', async () => {
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-42', oauthProfile: null }));
-  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess({ id: 'personal-1', firstName: 'Alex', lastName: 'Archer', type: 'USER' }));
-  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) => handlers.onSuccess([{ id: 'club-1', firstName: 'Longbow', lastName: 'Company', type: 'CLUB' }]));
+test("a signed-in user can follow and unfollow a club through any owned profile", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-42", oauthProfile: null }),
+  );
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation(
+    (_userId, handlers) =>
+      handlers.onSuccess({
+        id: "personal-1",
+        firstName: "Alex",
+        lastName: "Archer",
+        type: "USER",
+      }),
+  );
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) =>
+    handlers.onSuccess([
+      { id: "club-1", firstName: "Longbow", lastName: "Company", type: "CLUB" },
+    ]),
+  );
   mock(api.followClub).mockResolvedValue(undefined);
   mock(api.unfollowClub).mockResolvedValue(undefined);
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
-  const modal = await screen.findByRole('dialog');
-  expect(within(modal).getByText('Alex Archer')).toBeInTheDocument();
-  expect(within(modal).getByText('Longbow Company')).toBeInTheDocument();
-  fireEvent.click(within(modal).getAllByRole('button', { name: 'Follow' })[0]);
-  await waitFor(() => expect(api.followClub).toHaveBeenCalledWith(1, 'personal-1'));
-  expect(await within(modal).findByRole('button', { name: 'Unfollow' })).toBeInTheDocument();
-  fireEvent.click(within(modal).getByRole('button', { name: 'Unfollow' }));
-  await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(2));
-  const confirmUnfollow = screen.getAllByRole('dialog')[1];
-  fireEvent.click(within(confirmUnfollow).getByRole('button', { name: 'Unfollow' }));
-  await waitFor(() => expect(api.unfollowClub).toHaveBeenCalledWith(1, 'personal-1'));
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Follow" }));
+  const modal = await screen.findByRole("dialog");
+  expect(within(modal).getByText("Alex Archer")).toBeInTheDocument();
+  expect(within(modal).getByText("Longbow Company")).toBeInTheDocument();
+  fireEvent.click(within(modal).getAllByRole("button", { name: "Follow" })[0]);
+  await waitFor(() =>
+    expect(api.followClub).toHaveBeenCalledWith(1, "personal-1"),
+  );
+  expect(
+    await within(modal).findByRole("button", { name: "Unfollow" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole("button", { name: "Unfollow" }));
+  await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
+  const confirmUnfollow = screen.getAllByRole("dialog")[1];
+  fireEvent.click(
+    within(confirmUnfollow).getByRole("button", { name: "Unfollow" }),
+  );
+  await waitFor(() =>
+    expect(api.unfollowClub).toHaveBeenCalledWith(1, "personal-1"),
+  );
 });
 
-test('profile owners can leave from the scrollable club participant list', async () => {
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-42', oauthProfile: null }));
-  mock(api.getParticipants).mockResolvedValue({ content: [{ id: '5', userId: 'user-42', firstName: 'Alex', lastName: 'Archer' }], hasMore: false });
+test("profile owners can leave from the scrollable club participant list", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-42", oauthProfile: null }),
+  );
+  mock(api.getParticipants).mockResolvedValue({
+    content: [
+      { id: "5", userId: "user-42", firstName: "Alex", lastName: "Archer" },
+    ],
+    hasMore: false,
+  });
   mock(api.detachProfile).mockResolvedValue(undefined);
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  const leave = await screen.findByRole('button', { name: 'Leave club' });
-  expect(screen.getByRole('region', { name: 'Members' })).toHaveClass('club-scroll-list');
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  const leave = await screen.findByRole("button", { name: "Leave club" });
+  expect(screen.getByRole("region", { name: "Members" })).toHaveClass(
+    "club-scroll-list",
+  );
   fireEvent.click(leave);
-  const confirmLeave = await screen.findByRole('dialog');
-  fireEvent.click(within(confirmLeave).getByRole('button', { name: 'Leave club' }));
-  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith(1, '5'));
+  const confirmLeave = await screen.findByRole("dialog");
+  fireEvent.click(
+    within(confirmLeave).getByRole("button", { name: "Leave club" }),
+  );
+  await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith(1, "5"));
 });
 
-test('scrolling participants appends the next page without pagination buttons', async () => {
+test("scrolling participants appends the next page without pagination buttons", async () => {
   mock(api.getParticipants)
-    .mockResolvedValueOnce({ content: [{ id: '5', firstName: 'Alex', lastName: 'Archer' }], hasMore: true, nextToken: 'participants-2' })
-    .mockResolvedValueOnce({ content: [{ id: '6', firstName: 'Robin', lastName: 'Hood' }], hasMore: false });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  await screen.findByRole('link', { name: 'Alex Archer' });
-  const region = screen.getByRole('region', { name: 'Members' });
+    .mockResolvedValueOnce({
+      content: [{ id: "5", firstName: "Alex", lastName: "Archer" }],
+      hasMore: true,
+      nextToken: "participants-2",
+    })
+    .mockResolvedValueOnce({
+      content: [{ id: "6", firstName: "Robin", lastName: "Hood" }],
+      hasMore: false,
+    });
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  await screen.findByRole("link", { name: "Alex Archer" });
+  const region = screen.getByRole("region", { name: "Members" });
   Object.defineProperties(region, {
     scrollTop: { value: 260, configurable: true },
     clientHeight: { value: 100, configurable: true },
     scrollHeight: { value: 320, configurable: true },
   });
   fireEvent.scroll(region);
-  expect(await screen.findByRole('link', { name: 'Robin Hood' })).toBeInTheDocument();
-  expect(api.getParticipants).toHaveBeenLastCalledWith(1, 'participants-2');
-  expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Robin Hood" }),
+  ).toBeInTheDocument();
+  expect(api.getParticipants).toHaveBeenLastCalledWith(1, "participants-2");
+  expect(
+    screen.queryByRole("button", { name: "Previous" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Next" }),
+  ).not.toBeInTheDocument();
 });
 
-test('admins edit Club fields inline and manage participants but cannot assign admins or delete clubs', async () => {
+test("admins edit Club fields inline and manage participants but cannot assign admins or delete clubs", async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  const name = await screen.findByDisplayValue('Longbow Company');
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  const name = await screen.findByDisplayValue("Longbow Company");
   fireEvent.click(name);
-  expect(name).not.toHaveAttribute('readonly');
-  expect(screen.queryByRole('button', { name: 'Edit club' })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Admin actions' })).toHaveAttribute('href', '/clubs/1/admin');
-  expect(screen.queryByText('Join requests')).not.toBeInTheDocument();
-  expect(screen.queryByText('Assign an admin')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Delete club' })).not.toBeInTheDocument();
+  expect(name).not.toHaveAttribute("readonly");
+  expect(
+    screen.queryByRole("button", { name: "Edit club" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Admin actions" })).toHaveAttribute(
+    "href",
+    "/clubs/1/admin",
+  );
+  expect(screen.queryByText("Join requests")).not.toBeInTheDocument();
+  expect(screen.queryByText("Assign an admin")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Delete club" }),
+  ).not.toBeInTheDocument();
 });
 
-test('the signed-in creator can edit an alias even when an initial club read is public', async () => {
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-10', oauthProfile: null }));
-  mock(api.getClub).mockResolvedValue({ ...club, alias: 'longbow-company' });
-  wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/longbow-company');
+test("the signed-in creator can edit an alias even when an initial club read is public", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-10", oauthProfile: null }),
+  );
+  mock(api.getClub).mockResolvedValue({ ...club, alias: "longbow-company" });
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/longbow-company",
+  );
 
-  const alias = await screen.findByDisplayValue('longbow-company');
+  const alias = await screen.findByDisplayValue("longbow-company");
   fireEvent.click(alias);
-  expect(alias).not.toHaveAttribute('readonly');
+  expect(alias).not.toHaveAttribute("readonly");
 });
 
-test('creator can revoke admin access and sees refreshed management', async () => {
-  mock(api.getClub).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true });
+test("creator can revoke admin access and sees refreshed management", async () => {
+  mock(api.getClub).mockResolvedValue({
+    ...club,
+    canManage: true,
+    canManageAdmins: true,
+  });
   mock(api.removeAdmin).mockResolvedValue({ ...club, adminUserIds: [] });
-  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
-  expect(await screen.findByText('Assign an admin')).toBeInTheDocument();
-  const adminLink = screen.getByRole('link', { name: 'View profile #user-20' });
-  fireEvent.click(adminLink.closest('li')!.querySelector('button')!);
-  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
-  await waitFor(() => expect(api.removeAdmin).toHaveBeenCalledWith(1, 'user-20'));
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+    </Routes>,
+    "/clubs/1/admin",
+  );
+  expect(await screen.findByText("Assign an admin")).toBeInTheDocument();
+  const adminLink = screen.getByRole("link", { name: "View profile #user-20" });
+  fireEvent.click(adminLink.closest("li")!.querySelector("button")!);
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Remove",
+    }),
+  );
+  await waitFor(() =>
+    expect(api.removeAdmin).toHaveBeenCalledWith(1, "user-20"),
+  );
 });
 
-test('club admins can review club event participation requests from the admin page', async () => {
-  mock(profileApi.fetchCurrentUserInfo).mockImplementation(onResult => onResult({ currentUserId: 'user-10', oauthProfile: null }));
-  mock(profileApi.fetchOwnerUserProfile).mockImplementation((_userId, handlers) => handlers.onSuccess({ id: 'reviewer-1', userId: 'user-10', firstName: 'Alex', lastName: 'Archer', type: 'USER' }));
-  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) => handlers.onSuccess({ id: 'applicant-1', firstName: 'Robin', lastName: 'Hood', type: 'CLUB' }));
+test("club admins can review club event participation requests from the admin page", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-10", oauthProfile: null }),
+  );
+  mock(profileApi.fetchOwnerUserProfile).mockImplementation(
+    (_userId, handlers) =>
+      handlers.onSuccess({
+        id: "reviewer-1",
+        userId: "user-10",
+        firstName: "Alex",
+        lastName: "Archer",
+        type: "USER",
+      }),
+  );
+  mock(profileApi.fetchProfileById).mockImplementation((_profileId, handlers) =>
+    handlers.onSuccess({
+      id: "applicant-1",
+      firstName: "Robin",
+      lastName: "Hood",
+      type: "CLUB",
+    }),
+  );
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
-  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({ content: [{
-    id: 'occ-1:applicant-1', eventId: 'event-1', occurrenceId: 'occ-1', applicantType: 'CLUB', clubId: '1', profileId: 'applicant-1', status: 'CLUB_PENDING', attendees: [],
-  }] });
+  mock(eventApi.getClubEventParticipationRequests).mockResolvedValue({
+    content: [
+      {
+        id: "occ-1:applicant-1",
+        eventId: "event-1",
+        occurrenceId: "occ-1",
+        applicantType: "CLUB",
+        clubId: "1",
+        profileId: "applicant-1",
+        status: "CLUB_PENDING",
+        attendees: [],
+      },
+    ],
+  });
   mock(eventApi.getEvent).mockResolvedValue({
-    id: 'event-1', ownerProfileId: 'owner-1', adminProfileIds: [], name: 'Autumn muster', description: null, periods: ['OTHER'],
-    schedule: { kind: 'ONE_TIME', startsAt: '2026-10-10T12:00:00.000Z', endsAt: '2026-10-10T15:00:00.000Z', timeZone: 'UTC' },
-    image: null, isActive: true, createdAt: '', updatedAt: '', version: 1,
+    id: "event-1",
+    ownerProfileId: "owner-1",
+    adminProfileIds: [],
+    name: "Autumn muster",
+    description: null,
+    periods: ["OTHER"],
+    autoApproveParticipation: false,
+    schedule: {
+      kind: "ONE_TIME",
+      startsAt: "2026-10-10T12:00:00.000Z",
+      endsAt: "2026-10-10T15:00:00.000Z",
+      timeZone: "UTC",
+    },
+    image: null,
+    isActive: true,
+    createdAt: "",
+    updatedAt: "",
+    version: 1,
   });
   mock(eventApi.decideClubApplication).mockResolvedValue({
-    id: 'occ-1:applicant-1', eventId: 'event-1', occurrenceId: 'occ-1', applicantType: 'CLUB', clubId: '1', profileId: 'applicant-1', status: 'PENDING', attendees: [],
+    id: "occ-1:applicant-1",
+    eventId: "event-1",
+    occurrenceId: "occ-1",
+    applicantType: "CLUB",
+    clubId: "1",
+    profileId: "applicant-1",
+    status: "PENDING",
+    attendees: [],
   });
 
-  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+    </Routes>,
+    "/clubs/1/admin",
+  );
 
-  expect(await screen.findByRole('link', { name: 'Autumn muster' })).toHaveAttribute('href', '/events/event-1');
-  expect(screen.getByRole('link', { name: 'Robin Hood' })).toHaveAttribute('href', '/profile/applicant-1');
-  fireEvent.click(screen.getByRole('button', { name: 'Approve event participation request' }));
-  await waitFor(() => expect(eventApi.decideClubApplication).toHaveBeenCalledWith('event-1', 'occ-1:applicant-1', 'approve', 'reviewer-1'));
-  expect(await screen.findByText('No event participation requests are waiting for club approval.')).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Autumn muster" }),
+  ).toHaveAttribute("href", "/events/event-1");
+  expect(screen.getByRole("link", { name: "Robin Hood" })).toHaveAttribute(
+    "href",
+    "/profile/applicant-1",
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Approve event participation request" }),
+  );
+  await waitFor(() =>
+    expect(eventApi.decideClubApplication).toHaveBeenCalledWith(
+      "event-1",
+      "occ-1:applicant-1",
+      "approve",
+      "reviewer-1",
+    ),
+  );
+  expect(
+    await screen.findByText(
+      "No event participation requests are waiting for club approval.",
+    ),
+  ).toBeInTheDocument();
 });
 
-test('creator administration searches matching club profiles while typing', async () => {
-  mock(api.getClub).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true });
-  mock(profileApi.searchProfiles).mockResolvedValue([{
-    id: 'club-profile-1', userId: 'user-30', type: 'CLUB', firstName: 'York', lastName: 'Archers', period: 'HIGH_MIDDLE_AGES',
-  }]);
-  mock(api.addAdmin).mockResolvedValue({ ...club, canManage: true, canManageAdmins: true, adminUserIds: ['user-30'] });
-  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
-  fireEvent.change(await screen.findByRole('textbox', { name: 'Search profiles by name or alias' }), { target: { value: 'york' } });
-  await waitFor(() => expect(profileApi.searchProfiles).toHaveBeenCalledWith({
-    query: 'york', type: 'CLUB', period: 'HIGH_MIDDLE_AGES', size: 20,
-  }));
-  expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
-  fireEvent.click(await screen.findByRole('button', { name: 'Assign' }));
-  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith(1, 'user-30'));
+test("creator administration searches matching club profiles while typing", async () => {
+  mock(api.getClub).mockResolvedValue({
+    ...club,
+    canManage: true,
+    canManageAdmins: true,
+  });
+  mock(profileApi.searchProfiles).mockResolvedValue([
+    {
+      id: "club-profile-1",
+      userId: "user-30",
+      type: "CLUB",
+      firstName: "York",
+      lastName: "Archers",
+      period: "HIGH_MIDDLE_AGES",
+    },
+  ]);
+  mock(api.addAdmin).mockResolvedValue({
+    ...club,
+    canManage: true,
+    canManageAdmins: true,
+    adminUserIds: ["user-30"],
+  });
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+    </Routes>,
+    "/clubs/1/admin",
+  );
+  fireEvent.change(
+    await screen.findByRole("textbox", {
+      name: "Search profiles by name or alias",
+    }),
+    { target: { value: "york" } },
+  );
+  await waitFor(() =>
+    expect(profileApi.searchProfiles).toHaveBeenCalledWith({
+      query: "york",
+      type: "CLUB",
+      period: "HIGH_MIDDLE_AGES",
+      size: 20,
+    }),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Search" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: "Assign" }));
+  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith(1, "user-30"));
 });
 
-test('club membership uses the shared panel without an add control', async () => {
+test("club membership uses the shared panel without an add control", async () => {
   mock(api.getProfileClubs).mockResolvedValue([]);
   wrap(<ProfileClubPanel profileId={5} editable />);
-  expect(await screen.findByRole('heading', { name: 'Clubs' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: "Clubs" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Join club" }),
+  ).not.toBeInTheDocument();
 });
 
-test('profile visitors see club references without join or leave controls', async () => {
-  mock(api.getProfileClubs).mockResolvedValue([{ ...club, photoUrl: '/club-photo' }, { ...club, id: 2, name: 'Second club' }]);
+test("profile visitors see club references without join or leave controls", async () => {
+  mock(api.getProfileClubs).mockResolvedValue([
+    { ...club, photoUrl: "/club-photo" },
+    { ...club, id: 2, name: "Second club" },
+  ]);
   const view = wrap(<ProfileClubPanel profileId={5} editable={false} />);
-  expect(await screen.findByRole('link', { name: 'Longbow Company' })).toHaveAttribute('href', '/clubs/1');
-  expect(screen.queryByRole('button', { name: 'Leave club' })).not.toBeInTheDocument();
-  expect(screen.queryByText('HIGH_MIDDLE_AGES')).not.toBeInTheDocument();
-  expect(view.container.querySelector('.club-list-thumbnail')).toHaveAttribute('src', '/club-photo');
-  expect(screen.getByRole('link', { name: 'Second club' })).toHaveAttribute('href', '/clubs/2');
-  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Longbow Company" }),
+  ).toHaveAttribute("href", "/clubs/1");
+  expect(
+    screen.queryByRole("button", { name: "Leave club" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("HIGH_MIDDLE_AGES")).not.toBeInTheDocument();
+  expect(view.container.querySelector(".club-list-thumbnail")).toHaveAttribute(
+    "src",
+    "/club-photo",
+  );
+  expect(screen.getByRole("link", { name: "Second club" })).toHaveAttribute(
+    "href",
+    "/clubs/2",
+  );
+  expect(
+    screen.queryByRole("button", { name: "Join club" }),
+  ).not.toBeInTheDocument();
 });
 
-test('unattached profiles show an empty membership section without owner controls', async () => {
+test("unattached profiles show an empty membership section without owner controls", async () => {
   mock(api.getProfileClubs).mockResolvedValue([]);
   wrap(<ProfileClubPanel profileId={5} editable={false} />);
   await waitFor(() => expect(api.getProfileClubs).toHaveBeenCalledWith(5));
-  expect(screen.getByRole('heading', { name: 'Clubs' })).toBeInTheDocument();
-  expect(screen.getByText('No club memberships yet.')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Clubs" })).toBeInTheDocument();
+  expect(screen.getByText("No club memberships yet.")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Join club" }),
+  ).not.toBeInTheDocument();
 });
 
-test('club memberships do not render an add button for owners', async () => {
+test("club memberships do not render an add button for owners", async () => {
   mock(api.getProfileClubs).mockResolvedValue([club]);
   wrap(<ProfileClubPanel profileId={5} editable />);
-  expect(await screen.findByRole('link', { name: 'Longbow Company' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Longbow Company" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Join club" }),
+  ).not.toBeInTheDocument();
 });
 
-test.each(['accept', 'reject'] as const)('club admins can %s a pending request from the admin page', async decision => {
-  mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
-  const request: api.JoinRequest = { id: 9, clubId: 1, profileId: '6', status: 'PENDING', requestedDate: '', profile: { id: '6', firstName: 'Robin', lastName: 'Hood' } };
-  mock(api.getJoinRequests).mockResolvedValueOnce({ content: [request], hasMore: false })
-    .mockResolvedValue({ content: [], hasMore: false });
-  mock(api.decideJoinRequest).mockResolvedValue({ ...request, status: decision === 'accept' ? 'ACCEPTED' : 'REJECTED' });
-  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
-  fireEvent.click(await screen.findByRole('button', { name: decision === 'accept' ? 'Accept' : 'Reject' }));
-  await waitFor(() => expect(api.decideJoinRequest).toHaveBeenCalledWith(1, 9, decision));
-  expect(await screen.findByText('No pending join requests.')).toBeInTheDocument();
-});
+test.each(["accept", "reject"] as const)(
+  "club admins can %s a pending request from the admin page",
+  async (decision) => {
+    mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
+    const request: api.JoinRequest = {
+      id: 9,
+      clubId: 1,
+      profileId: "6",
+      status: "PENDING",
+      requestedDate: "",
+      profile: { id: "6", firstName: "Robin", lastName: "Hood" },
+    };
+    mock(api.getJoinRequests)
+      .mockResolvedValueOnce({ content: [request], hasMore: false })
+      .mockResolvedValue({ content: [], hasMore: false });
+    mock(api.decideJoinRequest).mockResolvedValue({
+      ...request,
+      status: decision === "accept" ? "ACCEPTED" : "REJECTED",
+    });
+    wrap(
+      <Routes>
+        <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+      </Routes>,
+      "/clubs/1/admin",
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: decision === "accept" ? "Accept" : "Reject",
+      }),
+    );
+    await waitFor(() =>
+      expect(api.decideJoinRequest).toHaveBeenCalledWith(1, 9, decision),
+    );
+    expect(
+      await screen.findByText("No pending join requests."),
+    ).toBeInTheDocument();
+  },
+);
 
-test('profile club memberships use the shared text filter', async () => {
-  mock(api.getProfileClubs).mockResolvedValue([club, { ...club, id: 2, name: 'Sherwood Foresters', alias: 'sherwood' }]);
+test("profile club memberships use the shared text filter", async () => {
+  mock(api.getProfileClubs).mockResolvedValue([
+    club,
+    { ...club, id: 2, name: "Sherwood Foresters", alias: "sherwood" },
+  ]);
   wrap(<ProfileClubPanel profileId={5} editable />);
 
-  fireEvent.change(await screen.findByRole('searchbox', { name: 'Filter club memberships' }), { target: { value: 'sherwood' } });
+  fireEvent.change(
+    await screen.findByRole("searchbox", { name: "Filter club memberships" }),
+    { target: { value: "sherwood" } },
+  );
 
-  expect(screen.getByRole('link', { name: 'Sherwood Foresters' })).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'Longbow Company' })).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "Sherwood Foresters" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: "Longbow Company" }),
+  ).not.toBeInTheDocument();
 });
 
-test('followed clubs use the shared text filter', async () => {
-  mock(api.getFollowedClubs).mockResolvedValue([club, { ...club, id: 2, name: 'Sherwood Foresters', alias: 'sherwood' }]);
+test("followed clubs use the shared text filter", async () => {
+  mock(api.getFollowedClubs).mockResolvedValue([
+    club,
+    { ...club, id: 2, name: "Sherwood Foresters", alias: "sherwood" },
+  ]);
   wrap(<ProfileFollowedClubsPanel profileId={5} />);
 
-  fireEvent.change(await screen.findByRole('searchbox', { name: 'Filter followed clubs' }), { target: { value: 'sherwood' } });
+  fireEvent.change(
+    await screen.findByRole("searchbox", { name: "Filter followed clubs" }),
+    { target: { value: "sherwood" } },
+  );
 
-  expect(screen.getByRole('link', { name: 'Sherwood Foresters' })).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'Longbow Company' })).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "Sherwood Foresters" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: "Longbow Company" }),
+  ).not.toBeInTheDocument();
 });
 
-test('non-admins cannot see membership applications on the admin page', async () => {
-  wrap(<Routes><Route path="/clubs/:id/admin" element={<ClubAdminPage />} /></Routes>, '/clubs/1/admin');
-  expect(await screen.findByText('Club administration is available only to club admins.')).toBeInTheDocument();
+test("non-admins cannot see membership applications on the admin page", async () => {
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
+    </Routes>,
+    "/clubs/1/admin",
+  );
+  expect(
+    await screen.findByText(
+      "Club administration is available only to club admins.",
+    ),
+  ).toBeInTheDocument();
   expect(api.getJoinRequests).not.toHaveBeenCalled();
 });
 
-test('club browsing searches as the user types and changes period', async () => {
-  mock(api.listClubs).mockResolvedValue({ content: [{ ...club, photoUrl: '/club-photo' }], hasMore: false });
+test("club browsing searches as the user types and changes period", async () => {
+  mock(api.listClubs).mockResolvedValue({
+    content: [{ ...club, photoUrl: "/club-photo" }],
+    hasMore: false,
+  });
   const view = wrap(<ClubsPage />);
-  expect(await screen.findByRole('link', { name: 'Longbow Company' })).toHaveAttribute('href', '/clubs/1');
-  expect(view.container.querySelector('.club-list-thumbnail')).toHaveAttribute('src', '/club-photo');
-  fireEvent.change(screen.getByLabelText('Search clubs'), { target: { value: 'longbow' } });
-  expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
-  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', '', undefined, expect.any(AbortSignal)));
-  fireEvent.click(screen.getByLabelText('Period'));
-  fireEvent.click(screen.getByLabelText('HIGH_MIDDLE_AGES'));
-  await waitFor(() => expect(api.listClubs).toHaveBeenLastCalledWith('longbow', 'HIGH_MIDDLE_AGES', undefined, expect.any(AbortSignal)));
+  expect(
+    await screen.findByRole("link", { name: "Longbow Company" }),
+  ).toHaveAttribute("href", "/clubs/1");
+  expect(view.container.querySelector(".club-list-thumbnail")).toHaveAttribute(
+    "src",
+    "/club-photo",
+  );
+  fireEvent.change(screen.getByLabelText("Search clubs"), {
+    target: { value: "longbow" },
+  });
+  expect(
+    screen.queryByRole("button", { name: "Search" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Previous" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Next" }),
+  ).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(api.listClubs).toHaveBeenLastCalledWith(
+      "longbow",
+      "",
+      undefined,
+      expect.any(AbortSignal),
+    ),
+  );
+  fireEvent.click(screen.getByLabelText("HIGH_MIDDLE_AGES"));
+  await waitFor(() =>
+    expect(api.listClubs).toHaveBeenLastCalledWith(
+      "longbow",
+      "HIGH_MIDDLE_AGES",
+      undefined,
+      expect.any(AbortSignal),
+    ),
+  );
 });
 
-test('scrolling the clubs page appends another page and stops at the end', async () => {
-  mock(api.listClubs).mockResolvedValueOnce({ content: [club], hasMore: true, nextToken: 'clubs-2' })
-    .mockResolvedValueOnce({ content: [{ ...club, id: 2, name: 'Second club' }], hasMore: false });
+test("scrolling the clubs page appends another page and stops at the end", async () => {
+  mock(api.listClubs)
+    .mockResolvedValueOnce({
+      content: [club],
+      hasMore: true,
+      nextToken: "clubs-2",
+    })
+    .mockResolvedValueOnce({
+      content: [{ ...club, id: 2, name: "Second club" }],
+      hasMore: false,
+    });
   const view = wrap(<ClubsPage />);
-  await screen.findByRole('link', { name: 'Longbow Company' });
-  const sentinel = view.container.querySelector('.clubs-load-sentinel')!;
-  jest.spyOn(sentinel, 'getClientRects').mockReturnValue([{ top: 0 }] as unknown as DOMRectList);
+  await screen.findByRole("link", { name: "Longbow Company" });
+  const sentinel = view.container.querySelector(".clubs-load-sentinel")!;
+  jest
+    .spyOn(sentinel, "getClientRects")
+    .mockReturnValue([{ top: 0 }] as unknown as DOMRectList);
   fireEvent.scroll(window);
-  await screen.findByRole('link', { name: 'Second club' });
-  expect(screen.getByRole('link', { name: 'Longbow Company' })).toBeInTheDocument();
-  expect(api.listClubs).toHaveBeenLastCalledWith('', '', 'clubs-2', expect.any(AbortSignal));
+  await screen.findByRole("link", { name: "Second club" });
+  expect(
+    screen.getByRole("link", { name: "Longbow Company" }),
+  ).toBeInTheDocument();
+  expect(api.listClubs).toHaveBeenLastCalledWith(
+    "",
+    "",
+    "clubs-2",
+    expect.any(AbortSignal),
+  );
   fireEvent.scroll(window);
   expect(api.listClubs).toHaveBeenCalledTimes(2);
 });
 
-test('managers upload a club photo and see the saved image', async () => {
+test("managers upload a club photo and see the saved image", async () => {
   const onChange = jest.fn();
   const saved = {
     ...club,
     canManage: true,
     hasPhoto: true,
-    photoImageId: 'image-id',
-    photoUrl: 'https://s3/photo',
+    photoImageId: "image-id",
+    photoUrl: "https://s3/photo",
     photoThumbnailUrl: null,
   };
   mock(api.uploadClubPhoto).mockResolvedValue(saved);
-  wrap(<ClubPhotoPanel club={{ ...club, canManage: true }} onChange={onChange} />);
-  const file = new File(['photo'], 'club.png', { type: 'image/png' });
-  fireEvent.change(screen.getByLabelText('Upload club photo'), { target: { files: [file] } });
-  await waitFor(() => expect(api.uploadClubPhoto).toHaveBeenCalledWith(1, file));
+  wrap(
+    <ClubPhotoPanel club={{ ...club, canManage: true }} onChange={onChange} />,
+  );
+  const file = new File(["photo"], "club.png", { type: "image/png" });
+  fireEvent.change(screen.getByLabelText("Upload club photo"), {
+    target: { files: [file] },
+  });
+  await waitFor(() =>
+    expect(api.uploadClubPhoto).toHaveBeenCalledWith(1, file),
+  );
   await waitFor(() => expect(onChange).toHaveBeenCalledWith(saved));
 });
 
-test('photo uploads reject unsupported files and visitors cannot upload', async () => {
-  const view = wrap(<ClubPhotoPanel club={{ ...club, canManage: true }} onChange={() => {}} />);
-  fireEvent.change(screen.getByLabelText('Upload club photo'), { target: { files: [new File(['text'], 'file.txt', { type: 'text/plain' })] } });
-  expect(await screen.findByRole('alert')).toHaveTextContent('JPEG or PNG');
+test("photo uploads reject unsupported files and visitors cannot upload", async () => {
+  const view = wrap(
+    <ClubPhotoPanel club={{ ...club, canManage: true }} onChange={() => {}} />,
+  );
+  fireEvent.change(screen.getByLabelText("Upload club photo"), {
+    target: { files: [new File(["text"], "file.txt", { type: "text/plain" })] },
+  });
+  expect(await screen.findByRole("alert")).toHaveTextContent("JPEG or PNG");
   expect(api.uploadClubPhoto).not.toHaveBeenCalled();
   view.unmount();
-  wrap(<ClubPhotoPanel club={{ ...club, photoUrl: '/photo' }} onChange={() => {}} />);
-  expect(screen.getByRole('img', { name: club.name })).toHaveAttribute('src', '/photo');
-  expect(screen.queryByLabelText('Replace club photo')).not.toBeInTheDocument();
+  wrap(
+    <ClubPhotoPanel
+      club={{ ...club, photoUrl: "/photo" }}
+      onChange={() => {}}
+    />,
+  );
+  expect(screen.getByRole("img", { name: club.name })).toHaveAttribute(
+    "src",
+    "/photo",
+  );
+  expect(screen.queryByLabelText("Replace club photo")).not.toBeInTheDocument();
 });
 
-test('club search and profile tiles resolve migrated image IDs through the image API', async () => {
-  const photoClub = { ...club, hasPhoto: true, photoImageId: 'club-image-id' };
+test("club search and profile tiles resolve migrated image IDs through the image API", async () => {
+  const photoClub = { ...club, hasPhoto: true, photoImageId: "club-image-id" };
   mock(api.getJoinOptions).mockResolvedValue({
     content: [{ club: photoClub, status: null }],
     hasMore: false,
   });
-  const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
     ok: true,
-    json: async () => ({ content: [{ id: 'club-image-id', url: '/signed-club-photo' }] }),
+    json: async () => ({
+      content: [{ id: "club-image-id", url: "/signed-club-photo" }],
+    }),
   } as Response);
   const view = wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
   await waitFor(() => {
-    expect(document.querySelector('.join-club-photo')).toHaveAttribute('src', '/signed-club-photo');
+    expect(document.querySelector(".join-club-photo")).toHaveAttribute(
+      "src",
+      "/signed-club-photo",
+    );
   });
-  expect(fetchMock).toHaveBeenCalledWith('/api/images/club/1?limit=1&imageIds=club-image-id');
+  expect(fetchMock).toHaveBeenCalledWith(
+    "/api/images/club/1?limit=1&imageIds=club-image-id",
+  );
   fetchMock.mockRestore();
   view.unmount();
 });
 
-test('join modal searches as typing settles, with no search, pagination, or close buttons', async () => {
+test("join modal searches as typing settles, with no search, pagination, or close buttons", async () => {
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
-  await screen.findByRole('link', { name: 'Longbow Company' });
-  for (const name of ['Search', 'Previous', 'Next', 'Close']) {
-    expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  await screen.findByRole("link", { name: "Longbow Company" });
+  for (const name of ["Search", "Previous", "Next", "Close"]) {
+    expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
   }
-  const input = screen.getByRole('textbox', { name: 'Search clubs' });
-  fireEvent.change(input, { target: { value: 'l' } });
-  fireEvent.change(input, { target: { value: 'long' } });
-  fireEvent.change(input, { target: { value: 'longbow' } });
-  await waitFor(() => expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, 'longbow', undefined, expect.any(AbortSignal)));
+  const input = screen.getByRole("textbox", { name: "Search clubs" });
+  fireEvent.change(input, { target: { value: "l" } });
+  fireEvent.change(input, { target: { value: "long" } });
+  fireEvent.change(input, { target: { value: "longbow" } });
+  await waitFor(() =>
+    expect(api.getJoinOptions).toHaveBeenLastCalledWith(
+      5,
+      "longbow",
+      undefined,
+      expect.any(AbortSignal),
+    ),
+  );
   expect(api.getJoinOptions).toHaveBeenCalledTimes(2);
 });
 
-test('join tiles append the next server page once and stop when hasMore is false', async () => {
-  const firstPage = Array.from({ length: 20 }, (_, index) => ({ club: { ...club, id: index + 1, name: `Club ${index + 1}` }, status: null }));
+test("join tiles append the next server page once and stop when hasMore is false", async () => {
+  const firstPage = Array.from({ length: 20 }, (_, index) => ({
+    club: { ...club, id: index + 1, name: `Club ${index + 1}` },
+    status: null,
+  }));
   let resolveNext!: (page: api.JoinOptionsPage) => void;
-  mock(api.getJoinOptions).mockResolvedValueOnce({ content: firstPage, hasMore: true, nextToken: 'join-2' })
-    .mockImplementationOnce(() => new Promise(resolve => { resolveNext = resolve; }));
+  mock(api.getJoinOptions)
+    .mockResolvedValueOnce({
+      content: firstPage,
+      hasMore: true,
+      nextToken: "join-2",
+    })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveNext = resolve;
+        }),
+    );
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
-  await screen.findByRole('link', { name: 'Club 20' });
-  const region = screen.getByRole('region', { name: 'Club search results' });
-  Object.defineProperties(region, { scrollHeight: { value: 1000 }, clientHeight: { value: 300 }, scrollTop: { value: 750, writable: true } });
+  await screen.findByRole("link", { name: "Club 20" });
+  const region = screen.getByRole("region", { name: "Club search results" });
+  Object.defineProperties(region, {
+    scrollHeight: { value: 1000 },
+    clientHeight: { value: 300 },
+    scrollTop: { value: 750, writable: true },
+  });
   fireEvent.scroll(region);
   fireEvent.scroll(region);
   expect(api.getJoinOptions).toHaveBeenCalledTimes(2);
-  expect(api.getJoinOptions).toHaveBeenLastCalledWith(5, '', 'join-2', expect.any(AbortSignal));
-  await act(async () => resolveNext({ content: [{ club: { ...club, id: 21, name: 'Club 21' }, status: null }], hasMore: false }));
-  expect(screen.getByRole('link', { name: 'Club 1' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Club 21' })).toBeInTheDocument();
+  expect(api.getJoinOptions).toHaveBeenLastCalledWith(
+    5,
+    "",
+    "join-2",
+    expect.any(AbortSignal),
+  );
+  await act(async () =>
+    resolveNext({
+      content: [{ club: { ...club, id: 21, name: "Club 21" }, status: null }],
+      hasMore: false,
+    }),
+  );
+  expect(screen.getByRole("link", { name: "Club 1" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Club 21" })).toBeInTheDocument();
   fireEvent.scroll(region);
   expect(api.getJoinOptions).toHaveBeenCalledTimes(2);
 });
 
-test('a late response from an old search cannot overwrite the latest tiles', async () => {
+test("a late response from an old search cannot overwrite the latest tiles", async () => {
   let resolveOld!: (page: api.JoinOptionsPage) => void;
-  mock(api.getJoinOptions).mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }))
-    .mockResolvedValueOnce({ content: [{ club: { ...club, id: 2, name: 'New result' }, status: null }], hasMore: false });
+  mock(api.getJoinOptions)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        }),
+    )
+    .mockResolvedValueOnce({
+      content: [{ club: { ...club, id: 2, name: "New result" }, status: null }],
+      hasMore: false,
+    });
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
   await waitFor(() => expect(api.getJoinOptions).toHaveBeenCalledTimes(1));
   const oldSignal = mock(api.getJoinOptions).mock.calls[0][3];
-  fireEvent.change(screen.getByRole('textbox', { name: 'Search clubs' }), { target: { value: 'new' } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Search clubs" }), {
+    target: { value: "new" },
+  });
   expect(oldSignal?.aborted).toBe(true);
-  await screen.findByRole('link', { name: 'New result' });
-  await act(async () => resolveOld({ content: [{ club, status: null }], hasMore: true }));
-  expect(screen.queryByRole('link', { name: 'Longbow Company' })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'New result' })).toBeInTheDocument();
+  await screen.findByRole("link", { name: "New result" });
+  await act(async () =>
+    resolveOld({ content: [{ club, status: null }], hasMore: true }),
+  );
+  expect(
+    screen.queryByRole("link", { name: "Longbow Company" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "New result" })).toBeInTheDocument();
 });
 
-test('failed pages can be retried without skipping results', async () => {
-  mock(api.getJoinOptions).mockRejectedValueOnce(new Error('Unable to load clubs'))
-    .mockResolvedValueOnce({ content: [{ club, status: null }], hasMore: false });
+test("failed pages can be retried without skipping results", async () => {
+  mock(api.getJoinOptions)
+    .mockRejectedValueOnce(new Error("Unable to load clubs"))
+    .mockResolvedValueOnce({
+      content: [{ club, status: null }],
+      hasMore: false,
+    });
   wrap(<JoinClubModal profileId={5} onClose={() => {}} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
-  await screen.findByRole('link', { name: 'Longbow Company' });
-  expect(mock(api.getJoinOptions).mock.calls.map(call => call[2])).toEqual([undefined, undefined]);
+  fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
+  await screen.findByRole("link", { name: "Longbow Company" });
+  expect(mock(api.getJoinOptions).mock.calls.map((call) => call[2])).toEqual([
+    undefined,
+    undefined,
+  ]);
 });
 
-test('clicking outside the modal content closes it', async () => {
+test("clicking outside the modal content closes it", async () => {
   const onClose = jest.fn();
   wrap(<JoinClubModal profileId={5} onClose={onClose} />);
-  fireEvent.click(await screen.findByRole('dialog'));
+  fireEvent.click(await screen.findByRole("dialog"));
   expect(onClose).toHaveBeenCalledTimes(1);
 });

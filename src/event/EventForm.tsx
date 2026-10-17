@@ -1,39 +1,29 @@
 import React, { FormEvent, useMemo, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { Button, Form } from "react-bootstrap";
+
+import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import ProfilePicker, {
   ProfilePickerOption,
 } from "../profile/components/ProfilePicker";
 import { Profile } from "../profile/profileTypes";
-import { PERIODS, Period, getPeriodLabel } from "../util/periods";
-import { useIntl } from "react-intl";
-import { EventDraft, TempvsEvent } from "./eventApi";
-import PlacePickerField from "../component/PlacePickerField";
-import type { MapPlace } from "../map/mapApi";
-import { browserTimeZone, EVENT_TIME_ZONES } from "./timeZones";
+import { Period } from "../util/periods";
+import { EventDraft } from "./eventApi";
+import { browserTimeZone } from "./timeZones";
 
 type Props = {
   profiles: Profile[];
-  initial?: TempvsEvent;
   busy?: boolean;
   onSave: (draft: EventDraft) => Promise<void> | void;
   onCancel: () => void;
 };
 
-function localInput(iso?: string) {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
+/** The deliberately compact creation form. Event details are added inline later. */
 export default function EventForm({
   profiles,
-  initial,
   busy = false,
   onSave,
   onCancel,
 }: Props) {
-  const intl = useIntl();
   const profileOptions = useMemo<ProfilePickerOption[]>(
     () =>
       profiles.map((profile) => ({
@@ -48,115 +38,49 @@ export default function EventForm({
     [profiles],
   );
   const [ownerProfileId, setOwnerProfileId] = useState(
-    initial?.ownerProfileId || profileOptions[0]?.value || "",
+    profileOptions[0]?.value || "",
   );
-  const [name, setName] = useState(initial?.name || "");
-  const [description, setDescription] = useState(initial?.description || "");
-  const [periods, setPeriods] = useState<Period[]>(initial?.periods || []);
-  const [venue, setVenue] = useState<Pick<
-    MapPlace,
-    "id" | "canonicalName" | "matchedName"
-  > | null>(
-    initial?.venuePlaceId
-      ? {
-          id: initial.venuePlaceId,
-          canonicalName: initial.venuePlaceName || "",
-        }
-      : null,
-  );
-  const [historicalSite, setHistoricalSite] = useState<Pick<
-    MapPlace,
-    "id" | "canonicalName" | "matchedName"
-  > | null>(
-    initial?.historicalSitePlaceId
-      ? {
-          id: initial.historicalSitePlaceId,
-          canonicalName: initial.historicalSitePlaceName || "",
-        }
-      : null,
-  );
-  const [venueVisibility, setVenueVisibility] = useState<"PUBLIC" | "PARTICIPANTS">(
-    initial?.venueVisibility || "PUBLIC",
-  );
-  const [startsAt, setStartsAt] = useState(
-    localInput(initial?.schedule.startsAt),
-  );
-  const [endsAt, setEndsAt] = useState(localInput(initial?.schedule.endsAt));
-  const [timeZone, setTimeZone] = useState(
-    initial?.schedule.timeZone || browserTimeZone(),
-  );
-  const [kind, setKind] = useState<"ONE_TIME" | "RECURRING">(
-    initial?.schedule.kind || "ONE_TIME",
-  );
-  const [frequency, setFrequency] = useState(
-    initial?.schedule.recurrence?.frequency || "WEEKLY",
-  );
-  const [interval, setInterval] = useState(
-    initial?.schedule.recurrence?.interval || 1,
-  );
-  const [count, setCount] = useState(initial?.schedule.recurrence?.count || 4);
+  const [name, setName] = useState("");
+  const [periods, setPeriods] = useState<Period[]>([]);
   const [error, setError] = useState("");
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!name.trim() || !ownerProfileId || periods.length === 0) {
+      setError("Name, owner, and at least one period are required.");
+      return;
+    }
     setError("");
-    if (
-      !ownerProfileId ||
-      !name.trim() ||
-      periods.length === 0
-    ) {
-      setError("Owner, name, and at least one period are required.");
-      return;
-    }
-    if (Boolean(startsAt) !== Boolean(endsAt)) {
-      setError("Enter both start and end, or leave both dates to be announced.");
-      return;
-    }
-    if (kind === "RECURRING" && !startsAt) {
-      setError("A recurring event needs a start and end date.");
-      return;
-    }
-    const start = startsAt ? new Date(startsAt) : null;
-    const end = endsAt ? new Date(endsAt) : null;
-    if (start && end && end <= start) {
-      setError("End date must be after start date.");
-      return;
-    }
-    const schedule: EventDraft["schedule"] = {
-      kind,
-      timeZone,
-      ...(start && end
-        ? { startsAt: start.toISOString(), endsAt: end.toISOString() }
-        : {}),
-      ...(kind === "RECURRING"
-        ? { recurrence: { frequency, interval, count } }
-        : {}),
-    };
-    onSave({
+    void onSave({
       ownerProfileId,
       name: name.trim(),
-      description: description.trim() || null,
+      description: null,
       periods,
-      venuePlaceId: venue?.id || null,
-      venuePlaceName: venue?.matchedName || venue?.canonicalName || null,
-      venueVisibility,
-      historicalSitePlaceId: historicalSite?.id || null,
-      historicalSitePlaceName:
-        historicalSite?.matchedName || historicalSite?.canonicalName || null,
-      schedule,
+      autoApproveParticipation: false,
+      from: null,
+      to: null,
+      venuePlaceId: null,
+      venuePlaceName: null,
+      venueVisibility: "PUBLIC",
+      historicalSitePlaceId: null,
+      historicalSitePlaceName: null,
+      schedule: { kind: "ONE_TIME", timeZone: browserTimeZone() },
     });
   };
 
-  const togglePeriod = (period: Period) =>
-    setPeriods((current) =>
-      current.includes(period)
-        ? current.filter((value) => value !== period)
-        : [...current, period],
-    );
-
   return (
     <Form className="event-form" onSubmit={submit}>
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <p className="text-danger small mb-3">{error}</p>}
+      <Form.Group className="mb-3">
+        <Form.Label>Name</Form.Label>
+        <Form.Control
+          value={name}
+          maxLength={200}
+          autoFocus
+          disabled={busy}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </Form.Group>
       <Form.Group className="mb-3">
         <Form.Label>Owner</Form.Label>
         <ProfilePicker
@@ -164,165 +88,29 @@ export default function EventForm({
           value={ownerProfileId}
           onChange={setOwnerProfileId}
           ariaLabel="Event owner profile"
-          disabled={Boolean(initial)}
-        />
-      </Form.Group>
-      <Form.Group className="mb-3">
-        <Form.Label>Name</Form.Label>
-        <Form.Control
-          value={name}
-          maxLength={200}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-      </Form.Group>
-      <Form.Group className="mb-3">
-        <Form.Label>Description</Form.Label>
-        <Form.Control
-          as="textarea"
-          rows={4}
-          value={description}
-          maxLength={10000}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </Form.Group>
-      <fieldset className="mb-3">
-        <legend className="form-label">Periods</legend>
-        <div className="event-period-options">
-          {PERIODS.map((period) => (
-            <Form.Check
-              key={period}
-              type="checkbox"
-              id={`event-period-${period}`}
-              checked={periods.includes(period)}
-              label={getPeriodLabel(intl, period)}
-              onChange={() => togglePeriod(period)}
-            />
-          ))}
-        </div>
-      </fieldset>
-      <PlacePickerField
-        label="Venue"
-        editable
-        value={venue}
-        readOnlyLabel={initial?.venuePlaceName}
-        onChange={setVenue}
-      />
-      <Form.Group className="mb-3">
-        <Form.Label>Venue visibility</Form.Label>
-        <Form.Select
-          value={venueVisibility}
-          onChange={(event) =>
-            setVenueVisibility(event.target.value as "PUBLIC" | "PARTICIPANTS")
-          }
-        >
-          <option value="PUBLIC">Public</option>
-          <option value="PARTICIPANTS">Participants only</option>
-        </Form.Select>
-      </Form.Group>
-      <PlacePickerField
-        label="Historical site"
-        editable
-        value={historicalSite}
-        readOnlyLabel={initial?.historicalSitePlaceName}
-        onChange={setHistoricalSite}
-      />
-      <Form.Group className="mb-3">
-        <Form.Label>Schedule</Form.Label>
-        <Form.Select
-          value={kind}
-          onChange={(event) =>
-            setKind(event.target.value as "ONE_TIME" | "RECURRING")
-          }
-        >
-          <option value="ONE_TIME">One-time event</option>
-          <option value="RECURRING">Recurring event</option>
-        </Form.Select>
-      </Form.Group>
-      <div className="event-date-grid">
-        <Form.Group>
-          <Form.Label>Starts</Form.Label>
-          <Form.Control
-            type="datetime-local"
-            value={startsAt}
-            onChange={(event) => setStartsAt(event.target.value)}
-            aria-describedby="event-date-help"
-          />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Ends</Form.Label>
-          <Form.Control
-            type="datetime-local"
-            value={endsAt}
-            onChange={(event) => setEndsAt(event.target.value)}
-            aria-describedby="event-date-help"
-          />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Time zone</Form.Label>
-          <Form.Select
-            value={timeZone}
-            onChange={(event) => setTimeZone(event.target.value)}
-          >
-            {EVENT_TIME_ZONES.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
-      </div>
-      <Form.Text id="event-date-help" className="d-block mt-2 text-muted">
-        Dates and times are optional for a one-time event. You can announce them later.
-      </Form.Text>
-      {kind === "RECURRING" && (
-        <div className="event-recurrence-grid mt-3">
-          <Form.Group>
-            <Form.Label>Repeat</Form.Label>
-            <Form.Select
-              value={frequency}
-              onChange={(event) =>
-                setFrequency(event.target.value as typeof frequency)
-              }
-            >
-              <option value="DAILY">Daily</option>
-              <option value="WEEKLY">Weekly</option>
-              <option value="MONTHLY">Monthly</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Every</Form.Label>
-            <Form.Control
-              type="number"
-              min={1}
-              max={12}
-              value={interval}
-              onChange={(event) => setInterval(Number(event.target.value))}
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Number of dates</Form.Label>
-            <Form.Control
-              type="number"
-              min={1}
-              max={365}
-              value={count}
-              onChange={(event) => setCount(Number(event.target.value))}
-            />
-          </Form.Group>
-        </div>
-      )}
-      <div className="event-form-actions">
-        <Button
-          type="button"
-          variant="outline-secondary"
-          onClick={onCancel}
           disabled={busy}
+        />
+      </Form.Group>
+      <Form.Group className="mb-4">
+        <Form.Label>Periods</Form.Label>
+        <PeriodMultiSelect
+          ariaLabel="Event periods"
+          selected={periods}
+          onChange={setPeriods}
+          disabled={busy}
+        />
+      </Form.Group>
+      <div className="d-flex justify-content-end gap-2">
+        <Button
+          variant="outline-secondary"
+          type="button"
+          disabled={busy}
+          onClick={onCancel}
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Save event"}
+        <Button variant="dark" type="submit" disabled={busy}>
+          Create event
         </Button>
       </div>
     </Form>

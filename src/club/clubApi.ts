@@ -13,6 +13,7 @@ export type Club = {
   from?: { year: number; era: "BC" | "AD" } | null;
   to?: { year: number; era: "BC" | "AD" } | null;
   creatorUserId: string;
+  ownerProfileId?: string | null;
   adminUserIds: string[];
   canManage: boolean;
   canManageAdmins: boolean;
@@ -342,10 +343,10 @@ export const saveClubPrivatePin = (id: Id, pin: PrivateClubPin) =>
 export const deleteClubPrivatePin = (id: Id) =>
   request<void>(`/clubs/${id}/private-pin`, "DELETE");
 export const deleteClub = (id: Id) => request<void>(`/clubs/${id}`, "DELETE");
-export const transferClubOwnership = async (id: Id, userId: Id) =>
+export const transferClubOwnership = async (id: Id, profileId: Id) =>
   clubValue(
     await request<unknown>(
-      `/clubs/${encodeURIComponent(String(id))}/owner/${encodeURIComponent(String(userId))}`,
+      `/clubs/${encodeURIComponent(String(id))}/owner/${encodeURIComponent(String(profileId))}`,
       "PUT",
     ),
   );

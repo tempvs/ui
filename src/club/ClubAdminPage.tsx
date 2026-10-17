@@ -12,6 +12,7 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
+  fetchProfileById,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import ProfileList from "../profile/components/ProfileList";
@@ -45,6 +46,7 @@ export default function ClubAdminPage() {
   const [deleting, setDeleting] = useState(false);
   const [removingAdmin, setRemovingAdmin] = useState<string | null>(null);
   const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
+  const [ownerProfile, setOwnerProfile] = useState<Profile | null>(null);
   const [reviewerProfile, setReviewerProfile] = useState<Profile | null>(null);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [transferTarget, setTransferTarget] = useState<Profile | null>(null);
@@ -147,6 +149,30 @@ export default function ClubAdminPage() {
     };
   }, [club?.adminUserIds]);
 
+  useEffect(() => {
+    if (!club) {
+      setOwnerProfile(null);
+      return undefined;
+    }
+    let active = true;
+    const options = {
+      onSuccess: (profile: Profile | null) => {
+        if (active) setOwnerProfile(profile);
+      },
+      onMissing: () => {
+        if (active) setOwnerProfile(null);
+      },
+      onError: () => {
+        if (active) setOwnerProfile(null);
+      },
+    };
+    if (club.ownerProfileId) fetchProfileById(club.ownerProfileId, options);
+    else fetchOwnerUserProfile(club.creatorUserId, options);
+    return () => {
+      active = false;
+    };
+  }, [club]);
+
   const viewerUserId = currentUserId == null ? null : String(currentUserId);
   const canManage =
     club != null &&
@@ -226,8 +252,17 @@ export default function ClubAdminPage() {
               reviewerProfile ? String(reviewerProfile.id) : undefined
             }
           />
-          {canManageAdmins && (
+          {canManage && (
             <section className="club-panel">
+              <h2>{t("owner", "Owner")}</h2>
+              {ownerProfile ? (
+                <ProfileList
+                  profiles={[ownerProfile]}
+                  className="club-member-list"
+                />
+              ) : (
+                <p>{t("ownerUnavailable", "Owner profile is unavailable.")}</p>
+              )}
               <h2>{t("adminManagement", "Administrators")}</h2>
               {club.adminUserIds.length === 0 && (
                 <p>{t("noAdmins", "No additional admins.")}</p>
@@ -236,7 +271,7 @@ export default function ClubAdminPage() {
                 profiles={adminProfiles}
                 className="club-member-list"
                 renderActions={(profile) =>
-                  profile.userId != null ? (
+                  canManageAdmins && profile.userId != null ? (
                     <Button
                       size="sm"
                       variant="outline-danger"
@@ -263,59 +298,66 @@ export default function ClubAdminPage() {
                         <Link to={`/profile/user/${userId}`}>
                           {t("viewProfile", "View profile")} #{userId}
                         </Link>
-                        <Button
-                          size="sm"
-                          variant="outline-danger"
-                          disabled={busy}
-                          onClick={() => setRemovingAdmin(userId)}
-                        >
-                          {t("remove", "Remove")}
-                        </Button>
+                        {canManageAdmins && (
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            disabled={busy}
+                            onClick={() => setRemovingAdmin(userId)}
+                          >
+                            {t("remove", "Remove")}
+                          </Button>
+                        )}
                       </li>
                     ))}
                 </ul>
               )}
-              <h3 className="h6 mt-4">{t("assignAdmin", "Assign an admin")}</h3>
-              <p className="text-muted">
-                {t(
-                  "adminHint",
-                  "Choose a club profile from this period. Its owner becomes a club administrator.",
-                )}
-              </p>
-              <ProfilePicker
-                type="CLUB"
-                period={club.period}
-                busy={busy}
-                onSelect={(profile) => {
-                  if (profile.userId)
-                    void act(() => addAdmin(club.id, profile.userId!));
-                }}
-              />
-              <h3 className="h6 mt-4">
-                {t("transferOwnership", "Transfer ownership")}
-              </h3>
-              <p className="text-muted">
-                {t(
-                  "transferOwnershipHint",
-                  "Choose a profile. Its user will become the club owner; you will remain an administrator.",
-                )}
-              </p>
-              <ProfilePicker
-                type="USER"
-                busy={busy}
-                ownedProfiles={ownedProfiles}
-                selectLabel={t("transfer", "Transfer")}
-            placeholder={t("findNewOwner", "Find a new owner")}
-                onSelect={setTransferTarget}
-              />
-              <Button
-                variant="outline-danger"
-                className="mt-4"
-                disabled={busy}
-                onClick={() => setDeleting(true)}
-              >
-                {t("delete", "Delete club")}
-              </Button>
+              {canManageAdmins && (
+                <>
+                  <h3 className="h6 mt-4">
+                    {t("assignAdmin", "Assign an admin")}
+                  </h3>
+                  <p className="text-muted">
+                    {t(
+                      "adminHint",
+                      "Choose a club profile from this period. Its owner becomes a club administrator.",
+                    )}
+                  </p>
+                  <ProfilePicker
+                    type="CLUB"
+                    period={club.period}
+                    busy={busy}
+                    onSelect={(profile) => {
+                      if (profile.userId)
+                        void act(() => addAdmin(club.id, profile.userId!));
+                    }}
+                  />
+                  <h3 className="h6 mt-4">
+                    {t("transferOwnership", "Transfer ownership")}
+                  </h3>
+                  <p className="text-muted">
+                    {t(
+                      "transferOwnershipHint",
+                      "Choose the profile that will represent the club owner. You will remain an administrator when ownership moves to another user.",
+                    )}
+                  </p>
+                  <ProfilePicker
+                    busy={busy}
+                    ownedProfiles={ownedProfiles}
+                    selectLabel={t("transfer", "Transfer")}
+                    placeholder={t("findNewOwner", "Find a new owner")}
+                    onSelect={setTransferTarget}
+                  />
+                  <Button
+                    variant="outline-danger"
+                    className="mt-4"
+                    disabled={busy}
+                    onClick={() => setDeleting(true)}
+                  >
+                    {t("delete", "Delete club")}
+                  </Button>
+                </>
+              )}
             </section>
           )}
         </>
@@ -325,7 +367,7 @@ export default function ClubAdminPage() {
         title={t("transferOwnership", "Transfer ownership")}
         message={t(
           "transferOwnershipConfirm",
-          "Transfer this club to the selected profile owner? You will remain an administrator.",
+          "Transfer this club to the selected owner profile? You will remain an administrator when ownership moves to another user.",
         )}
         confirmLabel={t("transfer", "Transfer")}
         cancelLabel={t("cancel", "Cancel")}
@@ -334,10 +376,14 @@ export default function ClubAdminPage() {
           if (!busy) setTransferTarget(null);
         }}
         onConfirm={() => {
-          if (!club || !transferTarget?.userId) return;
-          const userId = transferTarget.userId;
+          if (!club || !transferTarget) return;
+          const profile = transferTarget;
           setTransferTarget(null);
-          void act(() => transferClubOwnership(club.id, userId));
+          void act(async () => {
+            const saved = await transferClubOwnership(club.id, profile.id);
+            setOwnerProfile(profile);
+            return saved;
+          });
         }}
       />
       <ConfirmationModal

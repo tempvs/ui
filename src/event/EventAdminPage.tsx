@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
@@ -13,7 +13,13 @@ import {
 import { Profile } from "../profile/profileTypes";
 import EventManagers from "./EventManagers";
 import EventPeoplePanels from "./EventPeoplePanels";
-import { deleteEvent, getEvent, TempvsEvent } from "./eventApi";
+import {
+  deleteEvent,
+  EventDraft,
+  getEvent,
+  TempvsEvent,
+  updateEvent,
+} from "./eventApi";
 import "./events.css";
 
 export default function EventAdminPage() {
@@ -104,6 +110,36 @@ export default function EventAdminPage() {
     }
   };
 
+  const setAutoApproveParticipation = async (
+    autoApproveParticipation: boolean,
+  ) => {
+    if (!event) return;
+    setBusy(true);
+    setError("");
+    try {
+      const draft: EventDraft = {
+        ownerProfileId: event.ownerProfileId,
+        name: event.name,
+        description: event.description,
+        periods: event.periods,
+        autoApproveParticipation,
+        from: event.from || null,
+        to: event.to || null,
+        venuePlaceId: event.venuePlaceId || null,
+        venuePlaceName: event.venuePlaceName || null,
+        venueVisibility: event.venueVisibility || "PUBLIC",
+        historicalSitePlaceId: event.historicalSitePlaceId || null,
+        historicalSitePlaceName: event.historicalSitePlaceName || null,
+        schedule: event.schedule,
+      };
+      setEvent(await updateEvent(event.id, draft, event.version));
+    } catch (caught) {
+      setError((caught as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <PageLayout
       className="events-page"
@@ -145,6 +181,23 @@ export default function EventAdminPage() {
               </p>
             </div>
           </div>
+          <section className="club-panel event-approval-settings">
+            <h2>Participation</h2>
+            <Form.Check
+              id="event-auto-approve-participation"
+              type="checkbox"
+              label="Automatically approve participation"
+              checked={event.autoApproveParticipation === true}
+              disabled={!canManage || busy}
+              onChange={(input) =>
+                void setAutoApproveParticipation(input.target.checked)
+              }
+            />
+            <p className="text-muted mb-0">
+              Club participation still requires approval from that club. Once
+              approved by the club, event approval is skipped.
+            </p>
+          </section>
           <EventPeoplePanels
             eventId={event.id}
             canManage
@@ -158,6 +211,7 @@ export default function EventAdminPage() {
             canManageAdmins={isOwner}
             ownedProfiles={ownedProfiles}
             onChange={setEvent}
+            onOwnerChange={setOwner}
           />
           {isOwner && (
             <Button

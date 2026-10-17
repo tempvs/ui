@@ -113,9 +113,6 @@ export default function EventPage() {
         item.adminProfileIds.includes(String(profile.id)),
     ),
   );
-  const canManageAdmins = Boolean(
-    item && ownedProfiles.some((profile) => String(profile.id) === item.ownerProfileId),
-  );
   const restrictedVenueEventId =
     item?.venueVisibility === "PARTICIPANTS" ? item.id : null;
   const privatePinEventId = canManage ? item?.id : undefined;
@@ -306,6 +303,7 @@ export default function EventPage() {
           name: current.name,
           description: current.description,
           periods: current.periods,
+          autoApproveParticipation: current.autoApproveParticipation || false,
           from: current.from || null,
           to: current.to || null,
           venuePlaceId: current.venuePlaceId || null,
@@ -484,7 +482,7 @@ export default function EventPage() {
             <EventManagers
               event={item}
               owner={owner}
-              canManageAdmins={canManageAdmins}
+              canManageAdmins={false}
               ownedProfiles={ownedProfiles}
               onChange={replaceItem}
             />
@@ -544,19 +542,24 @@ export default function EventPage() {
           <Modal.Title>Apply for event</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {occurrence && <EventApplicationActions
-            eventId={item.id}
-            occurrenceId={occurrence.id}
-            profiles={applicantProfiles}
-            applications={applications}
-            busy={busy}
-            onBusy={setBusy}
-            onError={setError}
-            onChange={(profileId, application) =>
-              setApplications((current) => ({ ...current, [profileId]: application }))
-            }
-            onChanged={() => setPeopleRevision((value) => value + 1)}
-          />}
+          {occurrence && (
+            <EventApplicationActions
+              eventId={item.id}
+              occurrenceId={occurrence.id}
+              profiles={applicantProfiles}
+              applications={applications}
+              busy={busy}
+              onBusy={setBusy}
+              onError={setError}
+              onChange={(profileId, application) =>
+                setApplications((current) => ({
+                  ...current,
+                  [profileId]: application,
+                }))
+              }
+              onChanged={() => setPeopleRevision((value) => value + 1)}
+            />
+          )}
         </Modal.Body>
       </Modal>
       <Modal

@@ -59,6 +59,7 @@ export type TempvsEvent = {
   name: string;
   description: string | null;
   periods: Period[];
+  autoApproveParticipation: boolean;
   from?: { year: number; era: "BC" | "AD" } | null;
   to?: { year: number; era: "BC" | "AD" } | null;
   venuePlaceId?: string | null;
@@ -87,6 +88,7 @@ export type EventDraft = Pick<
   | "name"
   | "description"
   | "periods"
+  | "autoApproveParticipation"
   | "from"
   | "to"
   | "venuePlaceId"

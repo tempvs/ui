@@ -19,6 +19,7 @@ type Props = {
   canManageAdmins: boolean;
   ownedProfiles: Profile[];
   onChange: (event: TempvsEvent) => void;
+  onOwnerChange?: (profile: Profile) => void;
 };
 
 export default function EventManagers({
@@ -27,6 +28,7 @@ export default function EventManagers({
   canManageAdmins,
   ownedProfiles,
   onChange,
+  onOwnerChange,
 }: Props) {
   const [admins, setAdmins] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
@@ -122,6 +124,7 @@ export default function EventManagers({
       onChange(
         await transferEventOwnership(event.id, String(transferTarget.id)),
       );
+      onOwnerChange?.(transferTarget);
       setTransferTarget(null);
     } catch (error) {
       setError((error as Error).message);
@@ -192,7 +195,6 @@ export default function EventManagers({
             administrator.
           </p>
           <ProfileSearchPicker
-            type="USER"
             busy={busy}
             ownedProfiles={ownedProfiles}
             onSelect={setTransferTarget}
