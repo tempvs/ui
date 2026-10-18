@@ -168,7 +168,7 @@ test("visitors see participants linked to profiles and no management controls", 
   ).not.toBeInTheDocument();
 });
 
-test("club admins can remove a follower after confirming", async () => {
+test("club admins remove followers only from the administration panel", async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
   mock(api.getClubFollowers).mockResolvedValue({
     content: [{ id: "6", firstName: "Robin", lastName: "Hood" }],
@@ -177,10 +177,14 @@ test("club admins can remove a follower after confirming", async () => {
   mock(api.unfollowClub).mockResolvedValue(undefined);
   wrap(
     <Routes>
-      <Route path="/clubs/:id" element={<ClubPage />} />
+      <Route path="/clubs/:id/admin" element={<ClubAdminPage />} />
     </Routes>,
-    "/clubs/1",
+    "/clubs/1/admin",
   );
+  expect(
+    screen.queryByRole("button", { name: "Remove follower" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("tab", { name: "Followers" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Remove follower" }),
   );
@@ -445,7 +449,7 @@ test("scrolling participants appends the next page without pagination buttons", 
   ).not.toBeInTheDocument();
 });
 
-test("admins edit Club fields inline and manage participants but cannot assign admins or delete clubs", async () => {
+test("admins edit Club fields inline but manage people from administration", async () => {
   mock(api.getClub).mockResolvedValue({ ...club, canManage: true });
   wrap(
     <Routes>
@@ -467,6 +471,9 @@ test("admins edit Club fields inline and manage participants but cannot assign a
   expect(screen.queryByText("Assign an admin")).not.toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Delete club" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Remove member" }),
   ).not.toBeInTheDocument();
 });
 

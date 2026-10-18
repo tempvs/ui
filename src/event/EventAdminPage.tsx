@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { Alert, Button, Form, Tab, Tabs } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
@@ -33,6 +33,7 @@ export default function EventAdminPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("requests");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -198,13 +199,46 @@ export default function EventAdminPage() {
               approved by the club, event approval is skipped.
             </p>
           </section>
-          <EventPeoplePanels
-            eventId={event.id}
-            canManage
-            revision={revision}
-            showPeople={false}
-            onChanged={() => setRevision((value) => value + 1)}
-          />
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(key) => setActiveTab(key || "requests")}
+            className="mb-3"
+            mountOnEnter
+            unmountOnExit
+          >
+            <Tab eventKey="requests" title="Requests">
+              <EventPeoplePanels
+                eventId={event.id}
+                canManage
+                revision={revision}
+                showPeople={false}
+                showApprovals
+                onChanged={() => setRevision((value) => value + 1)}
+              />
+            </Tab>
+            <Tab eventKey="members" title="Members">
+              <EventPeoplePanels
+                eventId={event.id}
+                canManage
+                revision={revision}
+                showPeople={false}
+                showApprovals={false}
+                showParticipants
+                onChanged={() => setRevision((value) => value + 1)}
+              />
+            </Tab>
+            <Tab eventKey="followers" title="Followers">
+              <EventPeoplePanels
+                eventId={event.id}
+                canManage
+                revision={revision}
+                showPeople={false}
+                showApprovals={false}
+                showFollowers
+                onChanged={() => setRevision((value) => value + 1)}
+              />
+            </Tab>
+          </Tabs>
           <EventManagers
             event={event}
             owner={owner}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, Tab, Tabs } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -24,7 +24,10 @@ import {
   isClubServiceUnavailable,
   removeAdmin,
   transferClubOwnership,
+  unfollowClub,
 } from "./clubApi";
+import ClubFollowersPanel from "./ClubFollowersPanel";
+import ClubMembersAdminPanel from "./ClubMembersAdminPanel";
 import JoinRequestsPanel from "./JoinRequestsPanel";
 import ProfilePicker from "./ProfilePicker";
 import "./clubs.css";
@@ -50,6 +53,8 @@ export default function ClubAdminPage() {
   const [reviewerProfile, setReviewerProfile] = useState<Profile | null>(null);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [transferTarget, setTransferTarget] = useState<Profile | null>(null);
+  const [peopleRevision, setPeopleRevision] = useState(0);
+  const [activeTab, setActiveTab] = useState("requests");
 
   useEffect(() => {
     let active = true;
@@ -245,13 +250,41 @@ export default function ClubAdminPage() {
               "Review membership applications and manage other club administration tasks here.",
             )}
           </p>
-          <JoinRequestsPanel clubId={club.id} onDecision={() => {}} />
-          <ClubEventRequestsPanel
-            clubId={club.id}
-            reviewerProfileId={
-              reviewerProfile ? String(reviewerProfile.id) : undefined
-            }
-          />
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(key) => setActiveTab(key || "requests")}
+            className="mb-3"
+            mountOnEnter
+            unmountOnExit
+          >
+            <Tab eventKey="requests" title={t("requests", "Requests")}>
+              <JoinRequestsPanel clubId={club.id} onDecision={() => {}} />
+              <ClubEventRequestsPanel
+                clubId={club.id}
+                reviewerProfileId={
+                  reviewerProfile ? String(reviewerProfile.id) : undefined
+                }
+              />
+            </Tab>
+            <Tab eventKey="members" title={t("members", "Members")}>
+              <ClubMembersAdminPanel
+                clubId={club.id}
+                revision={peopleRevision}
+                onChanged={() => setPeopleRevision((value) => value + 1)}
+              />
+            </Tab>
+            <Tab eventKey="followers" title={t("followers", "Followers")}>
+              <ClubFollowersPanel
+                clubId={String(club.id)}
+                revision={peopleRevision}
+                canManage
+                onRemove={async (profile) => {
+                  await unfollowClub(club.id, profile.id);
+                  setPeopleRevision((value) => value + 1);
+                }}
+              />
+            </Tab>
+          </Tabs>
           {canManage && (
             <section className="club-panel">
               <h2>{t("owner", "Owner")}</h2>

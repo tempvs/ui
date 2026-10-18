@@ -25,6 +25,8 @@ type Props = {
   onChanged: () => void;
   showPeople?: boolean;
   showApprovals?: boolean;
+  showFollowers?: boolean;
+  showParticipants?: boolean;
 };
 type Removal = { kind: 'follower'; profile: Profile } | { kind: 'participant'; profile: Profile; application: EventApplication };
 type ClubRemoval = { club: Club; applications: EventApplication[] };
@@ -36,7 +38,7 @@ function loadProfile(profileId: string): Promise<Profile | null> {
   return new Promise(resolve => fetchProfileById(profileId, { onSuccess: resolve, onMissing: () => resolve(null), onError: () => resolve(null) }));
 }
 
-export default function EventPeoplePanels({ eventId, canManage, revision, onChanged, showPeople = true, showApprovals = true }: Props) {
+export default function EventPeoplePanels({ eventId, canManage, revision, onChanged, showPeople = true, showApprovals = true, showFollowers = showPeople, showParticipants = showPeople }: Props) {
   const [followers, setFollowers] = useState<Profile[]>([]);
   const [participantApplications, setParticipantApplications] = useState<EventApplication[]>([]);
   const [pending, setPending] = useState<EventApplication[]>([]);
@@ -55,8 +57,8 @@ export default function EventPeoplePanels({ eventId, canManage, revision, onChan
       try {
         let queueError = '';
         const [followerPage, participantPage, applicationPage] = await Promise.all([
-          showPeople ? getEventFollowers(eventId) : Promise.resolve({ content: [] }),
-          showPeople ? getEventParticipants(eventId) : Promise.resolve({ content: [] }),
+          showFollowers ? getEventFollowers(eventId) : Promise.resolve({ content: [] }),
+          showParticipants ? getEventParticipants(eventId) : Promise.resolve({ content: [] }),
           showApprovals && canManage ? getEventApplications(eventId).catch(caught => { queueError = (caught as Error).message; return { content: [] }; }) : Promise.resolve({ content: [] }),
         ]);
         const applications = [...participantPage.content, ...applicationPage.content];
@@ -79,7 +81,7 @@ export default function EventPeoplePanels({ eventId, canManage, revision, onChan
       finally { if (active) setLoading(false); }
     };
     void load(); return () => { active = false; };
-  }, [canManage, eventId, revision, showApprovals, showPeople]);
+  }, [canManage, eventId, revision, showApprovals, showFollowers, showParticipants]);
 
   const decide = async (application: EventApplication, decision: 'approve' | 'reject') => {
     setBusy(true); setError('');
@@ -112,11 +114,11 @@ export default function EventPeoplePanels({ eventId, canManage, revision, onChan
   return <div className="event-people-panels">
     {error && <Alert variant="danger">{error}</Alert>}
     <div className="event-people-grid">
-      {showPeople && <ProfileCollectionPanel title="Followers" profiles={followers} filterPlaceholder="Filter followers" emptyText="No followers yet." loading={loading} renderActions={profile => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove follower" title="Remove follower" onClick={() => setRemoval({ kind: 'follower', profile })}><RemoveIcon aria-hidden="true" /></Button> : null} />}
-      {showPeople && <EventParticipationCollectionPanel title="Participants" applications={participantApplications} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter participants" emptyText="No approved participants yet." loading={loading} renderActions={(application, profile) => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove participant" title="Remove participant" onClick={() => setRemoval({ kind: 'participant', profile, application })}><RemoveIcon aria-hidden="true" /></Button> : null} renderClubActions={canManage ? (club, applications) => <Button className="club-icon-action" size="sm" variant="outline-danger" aria-label="Remove club participation" title="Remove club participation" onClick={() => setClubRemoval({ club, applications })}><RemoveIcon aria-hidden="true" /></Button> : undefined} />}
+      {showFollowers && <ProfileCollectionPanel title="Followers" profiles={followers} filterPlaceholder="Filter followers" emptyText="No followers yet." loading={loading} renderActions={profile => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove follower" title="Remove follower" onClick={() => setRemoval({ kind: 'follower', profile })}><RemoveIcon aria-hidden="true" /></Button> : null} />}
+      {showParticipants && <EventParticipationCollectionPanel title="Members" applications={participantApplications} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter members" emptyText="No approved members yet." loading={loading} renderActions={(application, profile) => canManage ? <Button size="sm" variant="outline-danger" aria-label="Remove member" title="Remove member" onClick={() => setRemoval({ kind: 'participant', profile, application })}><RemoveIcon aria-hidden="true" /></Button> : null} renderClubActions={canManage ? (club, applications) => <Button className="club-icon-action" size="sm" variant="outline-danger" aria-label="Remove club participation" title="Remove club participation" onClick={() => setClubRemoval({ club, applications })}><RemoveIcon aria-hidden="true" /></Button> : undefined} />}
       {showApprovals && canManage && <EventParticipationCollectionPanel title="Participation applications" applications={pending} profilesById={profilesById} clubsById={clubsById} filterPlaceholder="Filter applications" emptyText="No applications are waiting for event approval." loading={loading} renderActions={application => <div className="event-review-actions"><Button size="sm" variant="outline-success" disabled={busy} aria-label="Approve application" onClick={() => void decide(application, 'approve')}><ApproveIcon aria-hidden="true" /></Button><Button size="sm" variant="outline-danger" disabled={busy} aria-label="Reject application" onClick={() => void decide(application, 'reject')}><RejectIcon aria-hidden="true" /></Button></div>} />}
     </div>
-    <ConfirmationModal show={removal != null} title={removal?.kind === 'follower' ? 'Remove follower' : 'Remove participant'} message={removal ? <>Remove <strong>{buildProfileLabel(removal.profile)}</strong> from this event?</> : ''} confirmLabel="Remove" busy={busy} onHide={() => { if (!busy) setRemoval(null); }} onConfirm={() => void confirmRemoval()} />
+    <ConfirmationModal show={removal != null} title={removal?.kind === 'follower' ? 'Remove follower' : 'Remove member'} message={removal ? <>Remove <strong>{buildProfileLabel(removal.profile)}</strong> from this event?</> : ''} confirmLabel="Remove" busy={busy} onHide={() => { if (!busy) setRemoval(null); }} onConfirm={() => void confirmRemoval()} />
     <Modal show={clubRemoval != null} onHide={() => { if (!busy) setClubRemoval(null); }} centered>
       <Modal.Header closeButton={!busy}><Modal.Title>Remove club participation</Modal.Title></Modal.Header>
       <Modal.Body>Do you want to remove <strong>{clubRemoval?.club.name}</strong> together with all its participants, or remove only the club and keep those profiles as individual participants?</Modal.Body>

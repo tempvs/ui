@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { FaSignOutAlt, FaUserMinus } from "react-icons/fa";
+import { FaSignOutAlt } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
@@ -50,9 +50,6 @@ import "./clubs.css";
 const LeaveIcon = FaSignOutAlt as React.ComponentType<{
   "aria-hidden"?: string;
 }>;
-const RemoveMemberIcon = FaUserMinus as React.ComponentType<{
-  "aria-hidden"?: string;
-}>;
 const FOLLOW_STATE_RETRY_DELAY_MS = 300;
 
 function wait(delayMs: number) {
@@ -88,19 +85,15 @@ function clubDraft(club: Club): ClubDraft {
 
 type ClubMembersPanelProps = {
   members: Profile[];
-  visibleMembers: Profile[];
   memberFilter: string;
   onMemberFilterChange: (value: string) => void;
   participantsError: string;
   participantsLoading: boolean;
   onRetry: () => void;
-  onScroll: React.UIEventHandler<HTMLDivElement>;
   onReachEnd?: () => void;
   currentUserId: string | number | null;
-  canManage: boolean;
   busy: boolean;
   unavailable: boolean;
-  onRemove: (profile: Profile) => void;
   onLeave: (profile: Profile) => void;
   t: (key: string, defaultMessage: string) => string;
 };
@@ -116,10 +109,8 @@ type ClubMembersPanelProps = {
   onReachEnd,
   onScroll,
   currentUserId,
-  canManage,
   busy,
   unavailable,
-  onRemove,
   onLeave,
   t,
 }: ClubMembersPanelProps) {
@@ -219,10 +210,8 @@ function ClubMembersPanel({
   onRetry,
   onReachEnd,
   currentUserId,
-  canManage,
   busy,
   unavailable,
-  onRemove,
   onLeave,
   t,
 }: ClubMembersPanelProps) {
@@ -255,18 +244,6 @@ function ClubMembersPanel({
             onClick={() => onLeave(profile)}
           >
             <LeaveIcon aria-hidden="true" />
-          </Button>
-        ) : canManage ? (
-          <Button
-            size="sm"
-            variant="outline-danger"
-            className="club-icon-action"
-            title={t("removeMember", "Remove member")}
-            aria-label={t("removeMember", "Remove member")}
-            disabled={busy || unavailable}
-            onClick={() => onRemove(profile)}
-          >
-            <RemoveMemberIcon aria-hidden="true" />
           </Button>
         ) : null;
       }}
@@ -758,25 +735,6 @@ export default function ClubPage() {
   const allClubProfilesAreMembers =
     ownedClubProfiles.length > 0 &&
     ownedClubProfiles.every(isClubProfileMember);
-  const visibleMembers = useMemo(() => {
-    const query = memberFilter.trim().toLocaleLowerCase();
-    if (!query) return members;
-    return members.filter((profile) =>
-      buildProfileLabel(profile).toLocaleLowerCase().includes(query),
-    );
-  }, [memberFilter, members]);
-  const handleParticipantScroll: React.UIEventHandler<HTMLDivElement> = (
-    event,
-  ) => {
-    const element = event.currentTarget;
-    if (
-      hasMore &&
-      !participantsLoading &&
-      element.scrollTop + element.clientHeight >= element.scrollHeight - 80
-    ) {
-      loadMoreParticipants.current();
-    }
-  };
   const viewerUserId = currentUserId == null ? null : String(currentUserId);
   // The API remains the authority for mutations. This client-side fallback
   // keeps the management controls available when a cached/public club read
@@ -885,24 +843,18 @@ export default function ClubPage() {
                 />
                 <ClubMembersPanel
                   members={members}
-                  visibleMembers={visibleMembers}
                   memberFilter={memberFilter}
                   onMemberFilterChange={setMemberFilter}
                   participantsError={participantsError}
                   participantsLoading={participantsLoading}
                   onRetry={() => setRevision((value) => value + 1)}
-                  onScroll={handleParticipantScroll}
                   onReachEnd={() => {
                     if (hasMore && !participantsLoading)
                       loadMoreParticipants.current();
                   }}
                   currentUserId={currentUserId}
-                  canManage={canManage}
                   busy={busy}
                   unavailable={unavailable}
-                  onRemove={(profile) =>
-                    setMemberRemoval({ profile, leave: false })
-                  }
                   onLeave={(profile) =>
                     setMemberRemoval({ profile, leave: true })
                   }
@@ -911,15 +863,6 @@ export default function ClubPage() {
                 <ClubFollowersPanel
                   clubId={String(club.id)}
                   revision={followersRevision}
-                  canManage={canManage}
-                  onRemove={async (profile) => {
-                    await unfollowClub(club.id, profile.id);
-                    setFollowingProfileIds((current) => {
-                      const next = new Set(current);
-                      next.delete(String(profile.id));
-                      return next;
-                    });
-                  }}
                 />
               </PageColumn>
               <PageColumn>

@@ -424,7 +424,7 @@ export default function EventPage() {
             />
             <EventPeoplePanels
               eventId={item.id}
-              canManage={canManage}
+              canManage={false}
               revision={peopleRevision}
               showApprovals={false}
               onChanged={() => setPeopleRevision((value) => value + 1)}
