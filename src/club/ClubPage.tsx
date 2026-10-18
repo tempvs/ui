@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { FaSignOutAlt } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import { SaveStatus } from "../component/EditableFieldRow";
@@ -47,9 +46,6 @@ import type { MapPlace } from "../map/mapApi";
 import PostPanel from "../post/PostPanel";
 import "./clubs.css";
 
-const LeaveIcon = FaSignOutAlt as React.ComponentType<{
-  "aria-hidden"?: string;
-}>;
 const FOLLOW_STATE_RETRY_DELAY_MS = 300;
 
 function wait(delayMs: number) {
@@ -91,10 +87,6 @@ type ClubMembersPanelProps = {
   participantsLoading: boolean;
   onRetry: () => void;
   onReachEnd?: () => void;
-  currentUserId: string | number | null;
-  busy: boolean;
-  unavailable: boolean;
-  onLeave: (profile: Profile) => void;
   t: (key: string, defaultMessage: string) => string;
 };
 
@@ -108,10 +100,6 @@ type ClubMembersPanelProps = {
   onRetry,
   onReachEnd,
   onScroll,
-  currentUserId,
-  busy,
-  unavailable,
-  onLeave,
   t,
 }: ClubMembersPanelProps) {
   return (
@@ -209,10 +197,6 @@ function ClubMembersPanel({
   participantsLoading,
   onRetry,
   onReachEnd,
-  currentUserId,
-  busy,
-  unavailable,
-  onLeave,
   t,
 }: ClubMembersPanelProps) {
   return (
@@ -228,25 +212,6 @@ function ClubMembersPanel({
       error={participantsError}
       onRetry={onRetry}
       onReachEnd={onReachEnd}
-      renderActions={(profile) => {
-        const owned =
-          currentUserId != null &&
-          profile.userId != null &&
-          String(profile.userId) === String(currentUserId);
-        return owned ? (
-          <Button
-            className="club-icon-action"
-            size="sm"
-            variant="outline-secondary"
-            title={t("leave", "Leave club")}
-            aria-label={t("leave", "Leave club")}
-            disabled={busy || unavailable}
-            onClick={() => onLeave(profile)}
-          >
-            <LeaveIcon aria-hidden="true" />
-          </Button>
-        ) : null;
-      }}
     />
   );
 }
@@ -852,12 +817,6 @@ export default function ClubPage() {
                     if (hasMore && !participantsLoading)
                       loadMoreParticipants.current();
                   }}
-                  currentUserId={currentUserId}
-                  busy={busy}
-                  unavailable={unavailable}
-                  onLeave={(profile) =>
-                    setMemberRemoval({ profile, leave: true })
-                  }
                   t={t}
                 />
                 <ClubFollowersPanel
