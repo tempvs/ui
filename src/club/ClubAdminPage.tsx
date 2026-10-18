@@ -382,6 +382,7 @@ export default function ClubAdminPage() {
           void act(async () => {
             const saved = await transferClubOwnership(club.id, profile.id);
             setOwnerProfile(profile);
+            navigate(`/clubs/${saved.alias || saved.id}`);
             return saved;
           });
         }}
