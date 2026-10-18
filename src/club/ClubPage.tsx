@@ -1096,6 +1096,7 @@ export default function ClubPage() {
             profiles={ownedClubProfiles}
             showPeriod
             className="club-member-list mb-0"
+            actionPosition="start"
             renderActions={(profile) => (
               isClubProfileMember(profile) ? (
                 <Button

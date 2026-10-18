@@ -9,6 +9,7 @@ type ProfileListProps = {
   className?: string;
   showPeriod?: boolean;
   renderActions?: (profile: Profile) => React.ReactNode;
+  actionPosition?: 'start' | 'end';
 };
 
 /** Shared thumbnail profile list. Missing avatars use the default hourglass via ProfileThumbnailLink. */
@@ -17,14 +18,16 @@ export default function ProfileList({
   className,
   showPeriod = false,
   renderActions,
+  actionPosition = 'end',
 }: ProfileListProps) {
   return <ul className={['profile-list', className].filter(Boolean).join(' ')}>
     {profiles.map(profile => <li key={String(profile.id)}>
+      {actionPosition === 'start' && renderActions?.(profile)}
       <div className="profile-list-entry">
         <ProfileThumbnailLink profile={profile} />
         {showPeriod && <PeriodBadge period={profile.period} />}
       </div>
-      {renderActions?.(profile)}
+      {actionPosition === 'end' && renderActions?.(profile)}
     </li>)}
   </ul>;
 }
