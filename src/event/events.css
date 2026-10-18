@@ -293,17 +293,17 @@
 }
 .event-application-row .profile-picker,
 .event-application-row select {
-  min-width: 11rem;
+  width: 13rem;
+  min-width: 13rem;
 }
 .event-application-row .event-application-club-picker {
-  flex: 0 1 10rem;
-  min-width: 0;
-  width: 10rem;
+  flex: 0 0 13rem;
 }
 .event-application-row .profile-picker {
-  width: 14rem;
+  flex: 0 0 13rem;
 }
 .event-application-row .btn {
+  min-width: 12.5rem;
   white-space: nowrap;
 }
 .event-application-row .text-muted {

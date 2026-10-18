@@ -426,6 +426,14 @@ export const requestJoin = async (clubId: Id, profileId: Id) =>
       "POST",
     ),
   );
+export const getMembershipRequest = async (clubId: Id, profileId: Id) => {
+  const value = await request<unknown>(
+    `/clubs/${clubId}/join-requests/${profileId}`,
+  );
+  return value == null ? null : joinRequestValue(value);
+};
+export const withdrawMembershipRequest = async (clubId: Id, profileId: Id) =>
+  request<void>(`/clubs/${clubId}/join-requests/${profileId}`, "DELETE");
 export const getJoinRequests = async (
   clubId: Id,
   nextToken?: string,

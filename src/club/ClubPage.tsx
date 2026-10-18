@@ -28,11 +28,13 @@ import {
   getClub,
   getClubPrivatePin,
   getClubFollowState,
+  getMembershipRequest,
   getParticipants,
   isClubServiceUnavailable,
   requestJoin,
   unfollowClub,
   updateClub,
+  withdrawMembershipRequest,
   saveClubPrivatePin,
 } from "./clubApi";
 import ClubFollowModal from "./ClubFollowModal";
@@ -311,7 +313,10 @@ export default function ClubPage() {
     leave: boolean;
   } | null>(null);
   const [applyingForMembership, setApplyingForMembership] = useState(false);
-  const [membershipMessage, setMembershipMessage] = useState("");
+  const [pendingMembershipProfile, setPendingMembershipProfile] =
+    useState<Profile | null>(null);
+  const [membershipWithdrawal, setMembershipWithdrawal] =
+    useState<Profile | null>(null);
   const [followingClub, setFollowingClub] = useState(false);
   const [unfollowTarget, setUnfollowTarget] = useState<Profile | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -557,6 +562,30 @@ export default function ClubPage() {
       active = false;
     };
   }, [revision, loadedClubId]);
+  useEffect(() => {
+    if (!loadedClubId || ownedClubProfiles.length === 0) {
+      setPendingMembershipProfile(null);
+      return undefined;
+    }
+    let active = true;
+    void (async () => {
+      for (const profile of ownedClubProfiles) {
+        try {
+          if (await getMembershipRequest(loadedClubId, profile.id)) {
+            if (active) setPendingMembershipProfile(profile);
+            return;
+          }
+        } catch {
+          // A pending request is supplementary action state; retry on the
+          // next page load rather than blocking the club page.
+        }
+      }
+      if (active) setPendingMembershipProfile(null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [loadedClubId, ownedClubProfiles]);
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setError("");
@@ -619,19 +648,36 @@ export default function ClubPage() {
   };
   const applyForMembership = async (profile: Profile) => {
     setBusy(true);
-    setMembershipMessage("");
     setError("");
     try {
       await requestJoin(club!.id, profile.id);
-      setMembershipMessage(
-        t("membershipRequested", "Membership application sent."),
-      );
+      setPendingMembershipProfile(profile);
+      setApplyingForMembership(false);
     } catch (e) {
       setError(
         (e as Error).message ||
           t(
             "membershipFailed",
             "Unable to submit membership application right now.",
+          ),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const withdrawMembership = async (profile: Profile) => {
+    setBusy(true);
+    setError("");
+    try {
+      await withdrawMembershipRequest(club!.id, profile.id);
+      setPendingMembershipProfile(null);
+      setMembershipWithdrawal(null);
+    } catch (e) {
+      setError(
+        (e as Error).message ||
+          t(
+            "membershipWithdrawFailed",
+            "Unable to cancel the membership request.",
           ),
       );
     } finally {
@@ -721,7 +767,11 @@ export default function ClubPage() {
             {currentUserId != null && (
               <>
                 <Button
-                  variant={memberProfile ? "outline-secondary" : "outline-dark"}
+                  variant={
+                    memberProfile || pendingMembershipProfile
+                      ? "outline-secondary"
+                      : "outline-dark"
+                  }
                   disabled={unavailable}
                   aria-label={
                     memberProfile
@@ -731,15 +781,21 @@ export default function ClubPage() {
                   onClick={() => {
                     if (memberProfile)
                       setMemberRemoval({ profile: memberProfile, leave: true });
+                    else if (pendingMembershipProfile)
+                      setMembershipWithdrawal(pendingMembershipProfile);
                     else {
-                      setMembershipMessage("");
                       setApplyingForMembership(true);
                     }
                   }}
                 >
                   {memberProfile
                     ? t("leave", "Leave club")
-                    : t("applyForMembership", "Apply for membership")}
+                    : pendingMembershipProfile
+                      ? t(
+                          "cancelMembershipRequest",
+                          "Cancel membership request",
+                        )
+                      : t("applyForMembership", "Apply for membership")}
                 </Button>
                 <Button
                   variant={
@@ -986,9 +1042,6 @@ export default function ClubPage() {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {membershipMessage && (
-            <Alert variant="success">{membershipMessage}</Alert>
-          )}
           <p className="text-muted">
             {t(
               "chooseProfileToApply",
@@ -1033,6 +1086,24 @@ export default function ClubPage() {
           </Button>
         </Modal.Footer>
       </Modal>
+      <ConfirmationModal
+        show={membershipWithdrawal != null}
+        title={t("cancelMembershipRequest", "Cancel membership request")}
+        message={t(
+          "cancelMembershipRequestConfirm",
+          "Are you sure you want to cancel this membership request?",
+        )}
+        confirmLabel={t("cancelMembershipRequest", "Cancel membership request")}
+        cancelLabel={t("cancel", "Cancel")}
+        busy={busy}
+        onHide={() => {
+          if (!busy) setMembershipWithdrawal(null);
+        }}
+        onConfirm={() => {
+          if (membershipWithdrawal)
+            void withdrawMembership(membershipWithdrawal);
+        }}
+      />
       <ClubFollowModal
         show={followingClub}
         profiles={ownedProfiles}
