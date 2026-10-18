@@ -28,6 +28,8 @@ jest.mock("./clubApi", () => ({
   getProfileClubs: jest.fn(),
   getJoinOptions: jest.fn(),
   requestJoin: jest.fn(),
+  getMembershipRequest: jest.fn(),
+  withdrawMembershipRequest: jest.fn(),
   getJoinRequests: jest.fn(),
   decideJoinRequest: jest.fn(),
   attachProfile: jest.fn(),
@@ -117,6 +119,8 @@ beforeEach(() => {
     content: [{ club, status: null }],
     hasMore: false,
   });
+  mock(api.getProfileClubs).mockResolvedValue([]);
+  mock(api.getMembershipRequest).mockResolvedValue(null);
   mock(api.getClubFollowers).mockResolvedValue({ content: [], hasMore: false });
   mock(api.getFollowedClubs).mockResolvedValue([]);
   mock(api.getClubFollowState).mockResolvedValue(false);
@@ -279,7 +283,9 @@ test("profile owners can leave from the scrollable club participant list", async
     </Routes>,
     "/clubs/1",
   );
-  const leave = await screen.findByRole("button", { name: "Leave club" });
+  const leave = await screen.findByRole("button", {
+    name: "Leave this club",
+  });
   expect(screen.getByRole("region", { name: "Members" })).toHaveClass(
     "club-scroll-list",
   );
@@ -289,6 +295,117 @@ test("profile owners can leave from the scrollable club participant list", async
     within(confirmLeave).getByRole("button", { name: "Leave club" }),
   );
   await waitFor(() => expect(api.detachProfile).toHaveBeenCalledWith(1, "5"));
+});
+
+test("membership actions are shown for every owned club profile", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-42", oauthProfile: null }),
+  );
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) =>
+    handlers.onSuccess([
+      {
+        id: "member-profile",
+        firstName: "Existing",
+        lastName: "Member",
+        type: "CLUB",
+        period: "HIGH_MIDDLE_AGES",
+      },
+      {
+        id: "apply-profile",
+        firstName: "New",
+        lastName: "Applicant",
+        type: "CLUB",
+        period: "HIGH_MIDDLE_AGES",
+      },
+    ]),
+  );
+  mock(api.getParticipants).mockResolvedValue({
+    content: [
+      {
+        id: "member-profile",
+        firstName: "Existing",
+        lastName: "Member",
+        type: "CLUB",
+      },
+    ],
+    hasMore: false,
+  });
+  mock(api.getProfileClubs).mockImplementation(async (profileId) =>
+    String(profileId) === "member-profile" ? [club] : [],
+  );
+  mock(api.requestJoin).mockResolvedValue({
+    id: "request-1",
+    clubId: 1,
+    profileId: "apply-profile",
+    status: "PENDING",
+    requestedDate: "2026-10-18T00:00:00.000Z",
+    profile: null,
+  });
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  const applyForMembership = await screen.findByRole("button", {
+    name: "Apply for membership",
+  });
+  fireEvent.click(applyForMembership);
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    within(dialog).getByRole("button", { name: "Leave club" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+  await waitFor(() =>
+    expect(api.requestJoin).toHaveBeenCalledWith(1, "apply-profile"),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+});
+
+test("the primary membership action becomes Leave club once all owned club profiles belong", async () => {
+  mock(profileApi.fetchCurrentUserInfo).mockImplementation((onResult) =>
+    onResult({ currentUserId: "user-42", oauthProfile: null }),
+  );
+  mock(profileApi.fetchClubProfiles).mockImplementation((_userId, handlers) =>
+    handlers.onSuccess([
+      {
+        id: "member-profile",
+        firstName: "Existing",
+        lastName: "Member",
+        type: "CLUB",
+        period: "HIGH_MIDDLE_AGES",
+      },
+    ]),
+  );
+  mock(api.getParticipants).mockResolvedValue({
+    content: [
+      {
+        id: "member-profile",
+        firstName: "Existing",
+        lastName: "Member",
+        type: "CLUB",
+      },
+    ],
+    hasMore: false,
+  });
+  mock(api.getProfileClubs).mockResolvedValue([club]);
+  wrap(
+    <Routes>
+      <Route path="/clubs/:id" element={<ClubPage />} />
+    </Routes>,
+    "/clubs/1",
+  );
+  const leave = await screen.findByRole("button", {
+    name: "Leave this club",
+  });
+  fireEvent.click(leave);
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByText("Existing Member")).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole("button", { name: "Leave club" }),
+  ).toBeInTheDocument();
 });
 
 test("scrolling participants appends the next page without pagination buttons", async () => {

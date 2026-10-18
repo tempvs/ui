@@ -29,6 +29,7 @@ import {
   getClubPrivatePin,
   getClubFollowState,
   getMembershipRequest,
+  getProfileClubs,
   getParticipants,
   isClubServiceUnavailable,
   requestJoin,
@@ -313,8 +314,11 @@ export default function ClubPage() {
     leave: boolean;
   } | null>(null);
   const [applyingForMembership, setApplyingForMembership] = useState(false);
-  const [pendingMembershipProfile, setPendingMembershipProfile] =
-    useState<Profile | null>(null);
+  const [pendingMembershipProfileIds, setPendingMembershipProfileIds] =
+    useState<Set<string>>(new Set());
+  const [memberClubProfileIds, setMemberClubProfileIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [membershipWithdrawal, setMembershipWithdrawal] =
     useState<Profile | null>(null);
   const [followingClub, setFollowingClub] = useState(false);
@@ -564,28 +568,41 @@ export default function ClubPage() {
   }, [revision, loadedClubId]);
   useEffect(() => {
     if (!loadedClubId || ownedClubProfiles.length === 0) {
-      setPendingMembershipProfile(null);
+      setPendingMembershipProfileIds(new Set());
+      setMemberClubProfileIds(new Set());
       return undefined;
     }
     let active = true;
-    void (async () => {
-      for (const profile of ownedClubProfiles) {
-        try {
-          if (await getMembershipRequest(loadedClubId, profile.id)) {
-            if (active) setPendingMembershipProfile(profile);
-            return;
-          }
-        } catch {
-          // A pending request is supplementary action state; retry on the
-          // next page load rather than blocking the club page.
-        }
-      }
-      if (active) setPendingMembershipProfile(null);
-    })();
+    void Promise.allSettled(
+      ownedClubProfiles.map(async (profile) => {
+        const [request, clubs] = await Promise.all([
+          getMembershipRequest(loadedClubId, profile.id),
+          getProfileClubs(profile.id),
+        ]);
+        return {
+          profileId: String(profile.id),
+          pending: request != null,
+          member: clubs.some((candidate) =>
+            String(candidate.id) === String(loadedClubId),
+          ),
+        };
+      }),
+    ).then((results) => {
+      if (!active) return;
+      const pending = new Set<string>();
+      const members = new Set<string>();
+      results.forEach((result) => {
+        if (result.status !== "fulfilled") return;
+        if (result.value.pending) pending.add(result.value.profileId);
+        if (result.value.member) members.add(result.value.profileId);
+      });
+      setPendingMembershipProfileIds(pending);
+      setMemberClubProfileIds(members);
+    });
     return () => {
       active = false;
     };
-  }, [loadedClubId, ownedClubProfiles]);
+  }, [loadedClubId, ownedClubProfiles, revision]);
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setError("");
@@ -651,7 +668,11 @@ export default function ClubPage() {
     setError("");
     try {
       await requestJoin(club!.id, profile.id);
-      setPendingMembershipProfile(profile);
+      setPendingMembershipProfileIds((current) => {
+        const next = new Set(current);
+        next.add(String(profile.id));
+        return next;
+      });
       setApplyingForMembership(false);
     } catch (e) {
       setError(
@@ -670,7 +691,11 @@ export default function ClubPage() {
     setError("");
     try {
       await withdrawMembershipRequest(club!.id, profile.id);
-      setPendingMembershipProfile(null);
+      setPendingMembershipProfileIds((current) => {
+        const next = new Set(current);
+        next.delete(String(profile.id));
+        return next;
+      });
       setMembershipWithdrawal(null);
     } catch (e) {
       setError(
@@ -712,13 +737,27 @@ export default function ClubPage() {
     (profile): profile is Profile => profile !== null,
   );
   const memberProfile =
-    currentUserId == null
+    members.find((profile) =>
+      ownedProfiles.some(
+        (owned) => String(owned.id) === String(profile.id),
+      ),
+    ) ??
+    (currentUserId == null
       ? undefined
       : members.find(
           (profile) =>
             profile.userId != null &&
             String(profile.userId) === String(currentUserId),
-        );
+        ));
+  const memberProfileIds = new Set(
+    members.map((profile) => String(profile.id)),
+  );
+  const isClubProfileMember = (profile: Profile) =>
+    memberClubProfileIds.has(String(profile.id)) ||
+    memberProfileIds.has(String(profile.id));
+  const allClubProfilesAreMembers =
+    ownedClubProfiles.length > 0 &&
+    ownedClubProfiles.every(isClubProfileMember);
   const visibleMembers = useMemo(() => {
     const query = memberFilter.trim().toLocaleLowerCase();
     if (!query) return members;
@@ -768,7 +807,7 @@ export default function ClubPage() {
               <>
                 <Button
                   variant={
-                    memberProfile || pendingMembershipProfile
+                    allClubProfilesAreMembers || memberProfile
                       ? "outline-secondary"
                       : "outline-dark"
                   }
@@ -779,23 +818,18 @@ export default function ClubPage() {
                       : undefined
                   }
                   onClick={() => {
-                    if (memberProfile)
+                    if (ownedClubProfiles.length > 0) {
+                      setApplyingForMembership(true);
+                    } else if (memberProfile)
                       setMemberRemoval({ profile: memberProfile, leave: true });
-                    else if (pendingMembershipProfile)
-                      setMembershipWithdrawal(pendingMembershipProfile);
                     else {
                       setApplyingForMembership(true);
                     }
                   }}
                 >
-                  {memberProfile
+                  {allClubProfilesAreMembers || memberProfile
                     ? t("leave", "Leave club")
-                    : pendingMembershipProfile
-                      ? t(
-                          "cancelMembershipRequest",
-                          "Cancel membership request",
-                        )
-                      : t("applyForMembership", "Apply for membership")}
+                    : t("applyForMembership", "Apply for membership")}
                 </Button>
                 <Button
                   variant={
@@ -1038,14 +1072,16 @@ export default function ClubPage() {
       >
         <Modal.Header closeButton>
           <Modal.Title>
-            {t("applyForMembership", "Apply for membership")}
+            {allClubProfilesAreMembers
+              ? t("leave", "Leave club")
+              : t("applyForMembership", "Apply for membership")}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p className="text-muted">
             {t(
-              "chooseProfileToApply",
-              "Choose one of your club profiles to apply for membership.",
+              "manageClubMembership",
+              "Manage membership for each of your club profiles.",
             )}
           </p>
           {ownedClubProfiles.length === 0 && (
@@ -1061,18 +1097,40 @@ export default function ClubPage() {
             showPeriod
             className="club-member-list mb-0"
             renderActions={(profile) => (
-              <Button
-                size="sm"
-                variant="dark"
-                disabled={
-                  busy || unavailable || profile.period !== club?.period
-                }
-                onClick={() => void applyForMembership(profile)}
-              >
-                {profile.period !== club?.period
-                  ? t("periodDoesNotMatch", "Period does not match")
-                  : t("apply", "Apply")}
-              </Button>
+              isClubProfileMember(profile) ? (
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={busy || unavailable}
+                  onClick={() =>
+                    setMemberRemoval({ profile, leave: true })
+                  }
+                >
+                  {t("leave", "Leave club")}
+                </Button>
+              ) : pendingMembershipProfileIds.has(String(profile.id)) ? (
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={busy || unavailable}
+                  onClick={() => setMembershipWithdrawal(profile)}
+                >
+                  {t("cancelMembershipRequest", "Cancel membership request")}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="dark"
+                  disabled={
+                    busy || unavailable || profile.period !== club?.period
+                  }
+                  onClick={() => void applyForMembership(profile)}
+                >
+                  {profile.period !== club?.period
+                    ? t("periodDoesNotMatch", "Period does not match")
+                    : t("apply", "Apply")}
+                </Button>
+              )
             )}
           />
         </Modal.Body>
