@@ -295,8 +295,16 @@
 .event-application-row select {
   min-width: 11rem;
 }
+.event-application-row .event-application-club-picker {
+  flex: 0 1 10rem;
+  min-width: 0;
+  width: 10rem;
+}
 .event-application-row .profile-picker {
   width: 14rem;
+}
+.event-application-row .btn {
+  white-space: nowrap;
 }
 .event-application-row .text-muted {
   margin-left: auto;
