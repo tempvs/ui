@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button } from "react-bootstrap";
 import { FaPlus, FaUserMinus } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
 import TextFilterInput from "../component/TextFilterInput";
 import ProfileList from "../profile/components/ProfileList";
@@ -30,6 +31,7 @@ export default function EventManagers({
   onChange,
   onOwnerChange,
 }: Props) {
+  const navigate = useNavigate();
   const [admins, setAdmins] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
@@ -121,11 +123,14 @@ export default function EventManagers({
     setBusy(true);
     setError("");
     try {
-      onChange(
-        await transferEventOwnership(event.id, String(transferTarget.id)),
+      const saved = await transferEventOwnership(
+        event.id,
+        String(transferTarget.id),
       );
+      onChange(saved);
       onOwnerChange?.(transferTarget);
       setTransferTarget(null);
+      navigate(`/events/${saved.id}`);
     } catch (error) {
       setError((error as Error).message);
     } finally {
