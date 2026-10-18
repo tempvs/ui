@@ -39,7 +39,7 @@ test('HTML fallback greys and disables the clubs page without an error alert', a
   await waitFor(() => expect(screen.getByLabelText('Search clubs')).toBeDisabled());
   expect(view.container.querySelector('.clubs-page')).toHaveClass('club-service-unavailable');
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Clubs' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Clubs' })).not.toBeInTheDocument();
 });
 
 test('a failed optional members read leaves the Club page usable and shows a local retry error', async () => {
