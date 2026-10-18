@@ -20,7 +20,7 @@ import EventFieldsPanel, { EventField } from "./EventFieldsPanel";
 import type { MapPlace } from "../map/mapApi";
 import EventApplicationActions from "./EventApplicationActions";
 import EventPeoplePanels from "./EventPeoplePanels";
-import ProfileList from "../profile/components/ProfileList";
+import ClubFollowModal from "../club/ClubFollowModal";
 import PostPanel from "../post/PostPanel";
 import {
   EventApplication,
@@ -152,6 +152,7 @@ export default function EventPage() {
     };
   }, [restrictedVenueEventId]);
   const occurrence = item?.upcomingOccurrences?.[0];
+  const applicationOccurrenceId = occurrence?.id || "unscheduled";
   const applicantProfiles = useMemo(
     () => ownedProfiles.filter((profile) => profile.type === "CLUB"),
     [ownedProfiles],
@@ -172,28 +173,27 @@ export default function EventPage() {
         if (active) setFollowing(Object.fromEntries(values));
       })
       .catch(() => undefined);
-    if (occurrence)
-      Promise.all(
-        applicantProfiles.map(
-          async (profile) =>
-            [
+    Promise.all(
+      applicantProfiles.map(
+        async (profile) =>
+          [
+            String(profile.id),
+            await getEventApplication(
+              item.id,
+              applicationOccurrenceId,
               String(profile.id),
-              await getEventApplication(
-                item.id,
-                occurrence.id,
-                String(profile.id),
-              ),
-            ] as const,
-        ),
-      )
-        .then((values) => {
-          if (active) setApplications(Object.fromEntries(values));
-        })
-        .catch(() => undefined);
+            ),
+          ] as const,
+      ),
+    )
+      .then((values) => {
+        if (active) setApplications(Object.fromEntries(values));
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [item, occurrence, ownedProfiles, applicantProfiles]);
+  }, [item, applicationOccurrenceId, ownedProfiles, applicantProfiles]);
 
   const toggleFollow = async (profile: Profile) => {
     const profileId = String(profile.id);
@@ -384,11 +384,7 @@ export default function EventPage() {
         rightContent: (
           <div className="event-actions mt-0">
             {applicantProfiles.length > 0 && (
-              <Button
-                variant="outline-dark"
-                disabled={!occurrence}
-                onClick={() => setApplyOpen(true)}
-              >
+              <Button variant="outline-dark" onClick={() => setApplyOpen(true)}>
                 Apply for event
               </Button>
             )}
@@ -542,54 +538,42 @@ export default function EventPage() {
           <Modal.Title>Apply for event</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {occurrence && (
-            <EventApplicationActions
-              eventId={item.id}
-              occurrenceId={occurrence.id}
-              profiles={applicantProfiles}
-              applications={applications}
-              busy={busy}
-              onBusy={setBusy}
-              onError={setError}
-              onChange={(profileId, application) =>
-                setApplications((current) => ({
-                  ...current,
-                  [profileId]: application,
-                }))
-              }
-              onChanged={() => setPeopleRevision((value) => value + 1)}
-            />
-          )}
-        </Modal.Body>
-      </Modal>
-      <Modal
-        show={followOpen}
-        onHide={() => {
-          if (!busy) setFollowOpen(false);
-        }}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Follow event</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <ProfileList
-            profiles={ownedProfiles}
-            renderActions={(profile) => (
-              <Button
-                size="sm"
-                variant={
-                  following[String(profile.id)] ? "outline-danger" : "dark"
-                }
-                disabled={busy}
-                onClick={() => toggleFollow(profile)}
-              >
-                {following[String(profile.id)] ? "Unfollow" : "Follow"}
-              </Button>
-            )}
+          <EventApplicationActions
+            eventId={item.id}
+            occurrenceId={applicationOccurrenceId}
+            profiles={applicantProfiles}
+            applications={applications}
+            busy={busy}
+            onBusy={setBusy}
+            onError={setError}
+            onChange={(profileId, application) =>
+              setApplications((current) => ({
+                ...current,
+                [profileId]: application,
+              }))
+            }
+            onChanged={() => setPeopleRevision((value) => value + 1)}
           />
         </Modal.Body>
       </Modal>
+      <ClubFollowModal
+        show={followOpen}
+        profiles={ownedProfiles}
+        followingProfileIds={
+          new Set(
+            Object.entries(following)
+              .filter(([, isFollowing]) => isFollowing)
+              .map(([profileId]) => profileId),
+          )
+        }
+        busy={busy}
+        error={error}
+        title="Follow event"
+        chooseHint="Choose which of your profiles follows this event."
+        emptyText="Create a profile before following this event."
+        onHide={() => setFollowOpen(false)}
+        onToggle={(profile) => void toggleFollow(profile)}
+      />
     </PageLayout>
   );
 }

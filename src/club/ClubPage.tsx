@@ -13,6 +13,7 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
+  fetchProfileById,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import ProfileList from "../profile/components/ProfileList";
@@ -452,13 +453,13 @@ export default function ClubPage() {
     };
   }, [club?.id, club?.canManage]);
   useEffect(() => {
-    if (!club?.creatorUserId) {
+    if (!club) {
       setOwnerProfile(null);
       return undefined;
     }
     let active = true;
-    fetchOwnerUserProfile(club.creatorUserId, {
-      onSuccess: (profile) => {
+    const callbacks = {
+      onSuccess: (profile: Profile | null) => {
         if (active) setOwnerProfile(profile);
       },
       onMissing: () => {
@@ -467,11 +468,13 @@ export default function ClubPage() {
       onError: () => {
         if (active) setOwnerProfile(null);
       },
-    });
+    };
+    if (club.ownerProfileId) fetchProfileById(club.ownerProfileId, callbacks);
+    else fetchOwnerUserProfile(club.creatorUserId, callbacks);
     return () => {
       active = false;
     };
-  }, [club?.creatorUserId]);
+  }, [club]);
   useEffect(() => {
     const adminUserIds = club?.adminUserIds ?? [];
     let active = true;
@@ -843,7 +846,9 @@ export default function ClubPage() {
                           if (!club) return false;
                           try {
                             if (pin) {
-                              setPrivatePin(await saveClubPrivatePin(club.id, pin));
+                              setPrivatePin(
+                                await saveClubPrivatePin(club.id, pin),
+                              );
                             } else {
                               await deleteClubPrivatePin(club.id);
                               setPrivatePin(null);
