@@ -226,12 +226,6 @@ export default function ClubsPage() {
         ) : null,
       }}
     >
-      <div className="club-page-heading">
-        <div>
-          <h1>{t("title", "Clubs")}</h1>
-          <p>{t("intro", "Find the people who bring your period to life.")}</p>
-        </div>
-      </div>
       {error && !creating && <Alert variant="danger">{error}</Alert>}
       <>
         <div className="club-search-layout">
