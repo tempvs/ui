@@ -507,6 +507,7 @@ test("creator can revoke admin access and sees refreshed management", async () =
     </Routes>,
     "/clubs/1/admin",
   );
+  fireEvent.click(await screen.findByRole("tab", { name: "Administration" }));
   expect(await screen.findByText("Assign an admin")).toBeInTheDocument();
   const adminLink = screen.getByRole("link", { name: "View profile #user-20" });
   fireEvent.click(adminLink.closest("li")!.querySelector("button")!);
@@ -648,6 +649,7 @@ test("creator administration searches matching club profiles while typing", asyn
     </Routes>,
     "/clubs/1/admin",
   );
+  fireEvent.click(await screen.findByRole("tab", { name: "Administration" }));
   fireEvent.change(
     await screen.findByRole("textbox", {
       name: "Search profiles by name or alias",
