@@ -8,6 +8,7 @@ import SourceChangesetProposalCard from "../components/SourceChangesetProposalCa
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import {
   approveSourceChangeset,
+  overrideApproveSourceChangeset,
   getLibraryViewer,
   getSource,
   getSourceChangesets,
@@ -40,6 +41,7 @@ export default function LibrarySourceProposalsPage() {
     () => new Set(),
   );
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [canOverrideApprovals, setCanOverrideApprovals] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export default function LibrarySourceProposalsPage() {
       }
       setSource(sourceResult.data);
       setViewerId(viewer?.userId || null);
+      setCanOverrideApprovals(Boolean(viewer?.roles?.includes("TEMPVS_ADMIN")));
       const loadedSourceId = sourceResult.data.id;
       const content = changesetsResult.data?.content || [];
       setChangesets(content);
@@ -102,14 +105,20 @@ export default function LibrarySourceProposalsPage() {
     void load();
   }, [load]);
 
-  const approve = async (changeset: SourceChangeset) => {
+  const approve = async (changeset: SourceChangeset, override = false) => {
     setBusy(changeset.id);
     try {
-      const result = await approveSourceChangeset(
-        sourceId,
-        changeset.id,
-        changeset.version,
-      );
+      const result = override
+        ? await overrideApproveSourceChangeset(
+            sourceId,
+            changeset.id,
+            changeset.version,
+          )
+        : await approveSourceChangeset(
+            sourceId,
+            changeset.id,
+            changeset.version,
+          );
       if (!result.ok) throw new Error("Unable to approve the changeset.");
       navigate(
         changeset.kind === "DELETE"
@@ -276,6 +285,15 @@ export default function LibrarySourceProposalsPage() {
                       Approve
                     </Button>
                   </>
+                ) : pending && own && canOverrideApprovals ? (
+                  <Button
+                    size="sm"
+                    variant="warning"
+                    disabled={busy !== null}
+                    onClick={() => void approve(changeset, true)}
+                  >
+                    Approve as Tempvs Admin
+                  </Button>
                 ) : null
               }
             />

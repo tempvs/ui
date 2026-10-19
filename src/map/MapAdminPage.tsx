@@ -101,6 +101,7 @@ export default function MapAdminPage() {
     () => canAdministerMapRoles(viewer ?? null),
     [viewer],
   );
+  const mayOverrideApprovals = Boolean(viewer?.roles.includes("TEMPVS_ADMIN"));
   const visibleProposals = useMemo(() => {
     const normalized = filter.trim().toLocaleLowerCase();
     if (!normalized) return proposals;
@@ -190,10 +191,7 @@ export default function MapAdminPage() {
       header={{
         title: (
           <SectionBreadcrumb
-            items={[
-              { label: "Map", to: "/map" },
-              { label: "Administration" },
-            ]}
+            items={[{ label: "Map", to: "/map" }, { label: "Administration" }]}
           />
         ),
         rightContent: (
@@ -236,184 +234,198 @@ export default function MapAdminPage() {
         ]}
       />
       {activeTab === "proposals" && (
-      <section className="club-panel" aria-label="Pending place proposals">
-        <h1>Place proposals</h1>
-        <p className="text-muted">
-          Approve a proposed point only after checking that it is useful,
-          accurately located, and not a duplicate of an approved place.
-        </p>
-        {mayReview && proposals.length > 0 && (
-          <div className="d-flex align-items-center gap-2 mb-3">
-            <TextFilterInput
-              value={filter}
-              onChange={setFilter}
-              placeholder="Filter loaded proposals"
-              ariaLabel="Filter loaded place proposals"
-              className="map-admin-filter"
-            />
-            <small className="text-muted text-nowrap">
-              {visibleProposals.length} of {proposals.length} loaded
-            </small>
-          </div>
-        )}
-        {viewer === undefined && <Spinner size="sm" />}
-        {viewer !== undefined && !mayReview && (
-          <Alert className="mb-0" variant="warning">
-            Map reviewer access is required to view place proposals.
-          </Alert>
-        )}
-        {error && (
-          <Alert variant="danger" role="alert">
-            {error}
-          </Alert>
-        )}
-        {mayReview && loading && <Spinner size="sm" />}
-        {mayReview && !loading && proposals.length === 0 && !error && (
-          <p className="text-muted mb-0">There are no pending proposals.</p>
-        )}
-        {mayReview && proposals.length > 0 && (
-          <>
-            <ul className="list-unstyled mb-0">
-              {visibleProposals.map((proposal) => (
-                <li key={proposal.id} className="border-top py-3">
-                  <div className="d-flex justify-content-between gap-3 flex-wrap">
-                    <div>
-                      <strong>{proposal.canonicalName}</strong>
-                      <span className="text-muted ms-2">
-                        {proposal.featureType} · {proposal.latitude.toFixed(4)},{" "}
-                        {proposal.longitude.toFixed(4)}
-                      </span>
-                      {(proposal.createdByUserId ||
-                        submittedLabel(proposal.createdAt)) && (
-                        <p className="small text-muted mb-1">
-                          {proposal.createdByUserId
-                            ? `Submitted by ${proposal.createdByUserId}`
-                            : "Submitted"}
-                          {submittedLabel(proposal.createdAt)
-                            ? ` on ${submittedLabel(proposal.createdAt)}`
-                            : ""}
-                        </p>
-                      )}
-                      {proposal.names?.filter((name) => !name.preferred)
-                        .length ? (
-                        <p className="small text-muted mb-1">
-                          Also known as:{" "}
-                          {proposal.names
-                            .filter((name) => !name.preferred)
-                            .map((name) => name.value)
-                            .join(", ")}
-                        </p>
-                      ) : null}
-                      {proposal.description ? (
-                        <p className="mb-0">{proposal.description}</p>
-                      ) : null}
-                      {proposal.proposalNote ? (
-                        <p className="small mb-0 mt-1">
-                          <strong>Why:</strong> {proposal.proposalNote}
-                        </p>
-                      ) : null}
-                      {proposal.citationUrl ? (
-                        <p className="small mb-0 mt-1">
-                          <a
-                            href={proposal.citationUrl}
-                            target="_blank"
-                            rel="noreferrer"
+        <section className="club-panel" aria-label="Pending place proposals">
+          <h1>Place proposals</h1>
+          <p className="text-muted">
+            Approve a proposed point only after checking that it is useful,
+            accurately located, and not a duplicate of an approved place.
+          </p>
+          {mayReview && proposals.length > 0 && (
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <TextFilterInput
+                value={filter}
+                onChange={setFilter}
+                placeholder="Filter loaded proposals"
+                ariaLabel="Filter loaded place proposals"
+                className="map-admin-filter"
+              />
+              <small className="text-muted text-nowrap">
+                {visibleProposals.length} of {proposals.length} loaded
+              </small>
+            </div>
+          )}
+          {viewer === undefined && <Spinner size="sm" />}
+          {viewer !== undefined && !mayReview && (
+            <Alert className="mb-0" variant="warning">
+              Map reviewer access is required to view place proposals.
+            </Alert>
+          )}
+          {error && (
+            <Alert variant="danger" role="alert">
+              {error}
+            </Alert>
+          )}
+          {mayReview && loading && <Spinner size="sm" />}
+          {mayReview && !loading && proposals.length === 0 && !error && (
+            <p className="text-muted mb-0">There are no pending proposals.</p>
+          )}
+          {mayReview && proposals.length > 0 && (
+            <>
+              <ul className="list-unstyled mb-0">
+                {visibleProposals.map((proposal) => (
+                  <li key={proposal.id} className="border-top py-3">
+                    <div className="d-flex justify-content-between gap-3 flex-wrap">
+                      <div>
+                        <strong>{proposal.canonicalName}</strong>
+                        <span className="text-muted ms-2">
+                          {proposal.featureType} ·{" "}
+                          {proposal.latitude.toFixed(4)},{" "}
+                          {proposal.longitude.toFixed(4)}
+                        </span>
+                        {(proposal.createdByUserId ||
+                          submittedLabel(proposal.createdAt)) && (
+                          <p className="small text-muted mb-1">
+                            {proposal.createdByUserId
+                              ? `Submitted by ${proposal.createdByUserId}`
+                              : "Submitted"}
+                            {submittedLabel(proposal.createdAt)
+                              ? ` on ${submittedLabel(proposal.createdAt)}`
+                              : ""}
+                          </p>
+                        )}
+                        {proposal.names?.filter((name) => !name.preferred)
+                          .length ? (
+                          <p className="small text-muted mb-1">
+                            Also known as:{" "}
+                            {proposal.names
+                              .filter((name) => !name.preferred)
+                              .map((name) => name.value)
+                              .join(", ")}
+                          </p>
+                        ) : null}
+                        {proposal.description ? (
+                          <p className="mb-0">{proposal.description}</p>
+                        ) : null}
+                        {proposal.proposalNote ? (
+                          <p className="small mb-0 mt-1">
+                            <strong>Why:</strong> {proposal.proposalNote}
+                          </p>
+                        ) : null}
+                        {proposal.citationUrl ? (
+                          <p className="small mb-0 mt-1">
+                            <a
+                              href={proposal.citationUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Submitted evidence
+                            </a>
+                          </p>
+                        ) : null}
+                        <ProposalDetails proposal={proposal} />
+                      </div>
+                      {mayDecide && (
+                        <div className="d-flex gap-2 align-items-end flex-wrap">
+                          <Form.Control
+                            aria-label={`Review rationale for ${proposal.canonicalName}`}
+                            value={notes[proposal.id] || ""}
+                            onChange={(event) =>
+                              setNotes((current) => ({
+                                ...current,
+                                [proposal.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Optional for approval; required for other decisions"
+                            maxLength={2000}
+                          />
+                          {proposal.createdByUserId === viewer?.userId &&
+                          mayOverrideApprovals ? (
+                            <Button
+                              variant="warning"
+                              disabled={reviewingId === proposal.id}
+                              onClick={() => void review(proposal, "approve")}
+                            >
+                              {reviewingId === proposal.id
+                                ? "Reviewing…"
+                                : "Approve as Tempvs Admin"}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="dark"
+                              disabled={reviewingId === proposal.id}
+                              onClick={() => void review(proposal, "approve")}
+                            >
+                              {reviewingId === proposal.id
+                                ? "Reviewing…"
+                                : "Approve"}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline-danger"
+                            disabled={
+                              reviewingId === proposal.id ||
+                              !notes[proposal.id]?.trim()
+                            }
+                            title={
+                              notes[proposal.id]?.trim()
+                                ? undefined
+                                : "Add a review rationale before rejecting"
+                            }
+                            onClick={() => void review(proposal, "reject")}
                           >
-                            Submitted evidence
-                          </a>
-                        </p>
-                      ) : null}
-                      <ProposalDetails proposal={proposal} />
+                            Reject
+                          </Button>
+                          <Button
+                            variant="outline-secondary"
+                            disabled={
+                              reviewingId === proposal.id ||
+                              !notes[proposal.id]?.trim()
+                            }
+                            title={
+                              notes[proposal.id]?.trim()
+                                ? undefined
+                                : "Add a review rationale before requesting changes"
+                            }
+                            onClick={() =>
+                              void review(proposal, "request changes")
+                            }
+                          >
+                            Request changes
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     {mayDecide && (
-                      <div className="d-flex gap-2 align-items-end flex-wrap">
-                        <Form.Control
-                          aria-label={`Review rationale for ${proposal.canonicalName}`}
-                          value={notes[proposal.id] || ""}
-                          onChange={(event) =>
-                            setNotes((current) => ({
-                              ...current,
-                              [proposal.id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Optional for approval; required for other decisions"
-                          maxLength={2000}
-                        />
-                        <Button
-                          variant="dark"
-                          disabled={reviewingId === proposal.id}
-                          onClick={() => void review(proposal, "approve")}
-                        >
-                          {reviewingId === proposal.id
-                            ? "Reviewing…"
-                            : "Approve"}
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          disabled={
-                            reviewingId === proposal.id ||
-                            !notes[proposal.id]?.trim()
-                          }
-                          title={
-                            notes[proposal.id]?.trim()
-                              ? undefined
-                              : "Add a review rationale before rejecting"
-                          }
-                          onClick={() => void review(proposal, "reject")}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          variant="outline-secondary"
-                          disabled={
-                            reviewingId === proposal.id ||
-                            !notes[proposal.id]?.trim()
-                          }
-                          title={
-                            notes[proposal.id]?.trim()
-                              ? undefined
-                              : "Add a review rationale before requesting changes"
-                          }
-                          onClick={() =>
-                            void review(proposal, "request changes")
-                          }
-                        >
-                          Request changes
-                        </Button>
-                      </div>
+                      <DuplicateMergeActions
+                        proposal={proposal}
+                        disabled={
+                          reviewingId === proposal.id ||
+                          !notes[proposal.id]?.trim()
+                        }
+                        onMerge={(target) => void merge(proposal, target)}
+                      />
                     )}
-                  </div>
-                  {mayDecide && (
-                    <DuplicateMergeActions
-                      proposal={proposal}
-                      disabled={
-                        reviewingId === proposal.id ||
-                        !notes[proposal.id]?.trim()
-                      }
-                      onMerge={(target) => void merge(proposal, target)}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-            {visibleProposals.length === 0 && (
-              <p className="text-muted mb-0">
-                No loaded proposal matches this filter.
-              </p>
-            )}
-            {nextCursor && (
-              <Button
-                className="mt-3"
-                variant="outline-dark"
-                disabled={loading}
-                onClick={() => void loadMore()}
-              >
-                {loading ? "Loading…" : "Load more"}
-              </Button>
-            )}
-          </>
-        )}
-      </section>
+                  </li>
+                ))}
+              </ul>
+              {visibleProposals.length === 0 && (
+                <p className="text-muted mb-0">
+                  No loaded proposal matches this filter.
+                </p>
+              )}
+              {nextCursor && (
+                <Button
+                  className="mt-3"
+                  variant="outline-dark"
+                  disabled={loading}
+                  onClick={() => void loadMore()}
+                >
+                  {loading ? "Loading…" : "Load more"}
+                </Button>
+              )}
+            </>
+          )}
+        </section>
       )}
       {mayAdministerRoles && activeTab !== "proposals" && (
         <MapRoleAdminPanel
@@ -554,120 +566,127 @@ function MapRoleAdminPanel({
         <>
           {activeTab === "role-requests" && (
             <>
-          <h2 className="h5">Role requests</h2>
-          <p className="text-muted small">
-            Review requests for Map contributor, reviewer, and editor access.
-            Map administrator access itself is managed through the global role.
-          </p>
-          {requests.length === 0 ? (
-            <p className="text-muted small">No pending Map role requests.</p>
-          ) : (
-            <>
-              <ul className="list-unstyled mb-2">
-                {requests.map((request) => (
-                  <li
-                    key={request.id}
-                    className="border-top py-2 d-flex justify-content-between gap-3 flex-wrap"
-                  >
-                    <div>
-                      <strong>{formatMapRole(request.role)}</strong>
-                      <span className="text-muted ms-2 small">
-                        {request.userId}
-                      </span>
-                      {request.note && (
-                        <p className="small text-muted mb-0">{request.note}</p>
-                      )}
-                    </div>
-                    <div className="d-flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="dark"
-                        disabled={processingId === request.id}
-                        onClick={() => void decide(request, "approve")}
+              <h2 className="h5">Role requests</h2>
+              <p className="text-muted small">
+                Review requests for Map contributor, reviewer, and editor
+                access. Map administrator access itself is managed through the
+                global role.
+              </p>
+              {requests.length === 0 ? (
+                <p className="text-muted small">
+                  No pending Map role requests.
+                </p>
+              ) : (
+                <>
+                  <ul className="list-unstyled mb-2">
+                    {requests.map((request) => (
+                      <li
+                        key={request.id}
+                        className="border-top py-2 d-flex justify-content-between gap-3 flex-wrap"
                       >
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        disabled={processingId === request.id}
-                        onClick={() => void decide(request, "reject")}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {nextRequestCursor && (
-                <Button
-                  size="sm"
-                  variant="outline-dark"
-                  disabled={loadingMoreRequests}
-                  onClick={() => void loadMoreRequests()}
-                >
-                  {loadingMoreRequests ? "Loading…" : "Load more requests"}
-                </Button>
+                        <div>
+                          <strong>{formatMapRole(request.role)}</strong>
+                          <span className="text-muted ms-2 small">
+                            {request.userId}
+                          </span>
+                          {request.note && (
+                            <p className="small text-muted mb-0">
+                              {request.note}
+                            </p>
+                          )}
+                        </div>
+                        <div className="d-flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="dark"
+                            disabled={processingId === request.id}
+                            onClick={() => void decide(request, "approve")}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            disabled={processingId === request.id}
+                            onClick={() => void decide(request, "reject")}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {nextRequestCursor && (
+                    <Button
+                      size="sm"
+                      variant="outline-dark"
+                      disabled={loadingMoreRequests}
+                      onClick={() => void loadMoreRequests()}
+                    >
+                      {loadingMoreRequests ? "Loading…" : "Load more requests"}
+                    </Button>
+                  )}
+                </>
               )}
-            </>
-          )}
             </>
           )}
           {activeTab === "members" && (
             <>
-          <h2 className="h5">Map members</h2>
-          <p className="text-muted small">
-            Remove a role when a member should no longer administer or review
-            Map data.
-          </p>
-          {members.length === 0 ? (
-            <p className="text-muted small mb-0">No assigned Map roles.</p>
-          ) : (
-            <ul className="list-unstyled mb-0">
-              {members.map((member) => (
-                <li
-                  key={member.userId}
-                  className="border-top py-2 small d-flex justify-content-between gap-3 flex-wrap"
-                >
-                  <div>
-                    <strong>
-                      {member.name || member.email || member.userId}
-                    </strong>
-                    <span className="text-muted ms-2">
-                      {member.roles.map(formatMapRole).join(", ")}
-                    </span>
-                  </div>
-                  <div className="d-flex gap-1 flex-wrap">
-                    {member.roles
-                      .filter(
-                        (
-                          role,
-                        ): role is Exclude<
-                          MapRoleMember["roles"][number],
-                          "MAP_ADMIN"
-                        > => role !== "MAP_ADMIN",
-                      )
-                      .map((role) => {
-                        const key = `${member.userId}:${role}`;
-                        return (
-                          <Button
-                            key={role}
-                            size="sm"
-                            variant="outline-danger"
-                            disabled={removingRole === key}
-                            onClick={() => setRoleToRemove({ member, role })}
-                          >
-                            {removingRole === key
-                              ? "Removing…"
-                              : `Remove ${formatMapRole(role)}`}
-                          </Button>
-                        );
-                      })}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+              <h2 className="h5">Map members</h2>
+              <p className="text-muted small">
+                Remove a role when a member should no longer administer or
+                review Map data.
+              </p>
+              {members.length === 0 ? (
+                <p className="text-muted small mb-0">No assigned Map roles.</p>
+              ) : (
+                <ul className="list-unstyled mb-0">
+                  {members.map((member) => (
+                    <li
+                      key={member.userId}
+                      className="border-top py-2 small d-flex justify-content-between gap-3 flex-wrap"
+                    >
+                      <div>
+                        <strong>
+                          {member.name || member.email || member.userId}
+                        </strong>
+                        <span className="text-muted ms-2">
+                          {member.roles.map(formatMapRole).join(", ")}
+                        </span>
+                      </div>
+                      <div className="d-flex gap-1 flex-wrap">
+                        {member.roles
+                          .filter(
+                            (
+                              role,
+                            ): role is Exclude<
+                              MapRoleMember["roles"][number],
+                              "MAP_ADMIN"
+                            > => role !== "MAP_ADMIN",
+                          )
+                          .map((role) => {
+                            const key = `${member.userId}:${role}`;
+                            return (
+                              <Button
+                                key={role}
+                                size="sm"
+                                variant="outline-danger"
+                                disabled={removingRole === key}
+                                onClick={() =>
+                                  setRoleToRemove({ member, role })
+                                }
+                              >
+                                {removingRole === key
+                                  ? "Removing…"
+                                  : `Remove ${formatMapRole(role)}`}
+                              </Button>
+                            );
+                          })}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </>

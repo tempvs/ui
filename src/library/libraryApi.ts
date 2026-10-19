@@ -546,6 +546,28 @@ export function approveSourceChangeset(
   });
 }
 
+/** Explicit TEMPVS_ADMIN exception for approving the caller's own changeset. */
+export function overrideApproveSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+  comment?: string,
+) {
+  return fetchJson<
+    { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
+  >(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/approve-override`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${version}"`,
+      },
+      body: JSON.stringify(comment ? { comment } : {}),
+    },
+  );
+}
+
 export function rejectSourceChangeset(
   sourceId: string | undefined,
   changesetId: string,

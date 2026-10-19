@@ -10,6 +10,7 @@ import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   approveSourceChangeset,
+  overrideApproveSourceChangeset,
   getLibraryViewer,
   getSource,
   getSourceChangeset,
@@ -48,6 +49,7 @@ export default function LibrarySourceChangesetPage() {
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changeset, setChangeset] = useState<SourceChangeset | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [canOverrideApprovals, setCanOverrideApprovals] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,7 @@ export default function LibrarySourceChangesetPage() {
       setSource(sourceResult.data);
       setChangeset(changesetResult.data);
       setViewerId(viewer?.userId || null);
+      setCanOverrideApprovals(Boolean(viewer?.roles?.includes("TEMPVS_ADMIN")));
       const [published, staged] = await Promise.all([
         getSourceImages(sourceResult.data.id).catch(() => null),
         getSourceChangesetImages(
@@ -99,7 +102,42 @@ export default function LibrarySourceChangesetPage() {
     void load();
   }, [load]);
 
-  const perform = async (operation: "approve" | "reject" | "withdraw") => {
+  // Source image processing is asynchronous. A reviewer commonly opens the
+  // proposal immediately after it is submitted, before S3 processing has
+  // produced the signed thumbnail. Refresh the private staged records briefly
+  // so the proposal shows the actual image rather than a permanent placeholder.
+  useEffect(() => {
+    if (!source || !changeset) return;
+    const stagedIds = changeset.imageOperations.flatMap((operation) =>
+      operation.kind === "ADD" || operation.kind === "REPLACE"
+        ? [operation.stagedImageId]
+        : [],
+    );
+    if (!stagedIds.length) return;
+    let active = true;
+    let attempts = 0;
+    const refresh = async () => {
+      const result = await getSourceChangesetImages(source.id, changeset.id);
+      if (!active || !result.ok) return;
+      setStagedImages(result.data || []);
+      const ready = stagedIds.every((id) =>
+        result.data?.some(
+          (image) =>
+            image.id === id && Boolean(image.thumbnailUrl || image.url),
+        ),
+      );
+      attempts += 1;
+      if (!ready && attempts < 10 && active) window.setTimeout(refresh, 1000);
+    };
+    void refresh();
+    return () => {
+      active = false;
+    };
+  }, [changeset, source]);
+
+  const perform = async (
+    operation: "approve" | "override" | "reject" | "withdraw",
+  ) => {
     if (!changeset) return;
     setBusy(true);
     setError(null);
@@ -112,23 +150,30 @@ export default function LibrarySourceChangesetPage() {
               changeset.version,
               comment.trim() || undefined,
             )
-          : operation === "reject"
-            ? await rejectSourceChangeset(
+          : operation === "override"
+            ? await overrideApproveSourceChangeset(
                 sourceId,
                 changeset.id,
                 changeset.version,
-                comment.trim(),
+                comment.trim() || undefined,
               )
-            : await withdrawSourceChangeset(
-                sourceId,
-                changeset.id,
-                changeset.version,
-              );
+            : operation === "reject"
+              ? await rejectSourceChangeset(
+                  sourceId,
+                  changeset.id,
+                  changeset.version,
+                  comment.trim(),
+                )
+              : await withdrawSourceChangeset(
+                  sourceId,
+                  changeset.id,
+                  changeset.version,
+                );
       if (!result.ok) throw new Error(`Unable to ${operation} this changeset.`);
       setShowReject(false);
       setShowWithdraw(false);
       setComment("");
-      if (operation === "approve") {
+      if (operation === "approve" || operation === "override") {
         navigate(
           changeset.kind === "DELETE"
             ? source?.period
@@ -304,6 +349,15 @@ export default function LibrarySourceChangesetPage() {
                   >
                     Withdraw
                   </Button>
+                  {canOverrideApprovals && (
+                    <Button
+                      variant="warning"
+                      disabled={busy}
+                      onClick={() => void perform("override")}
+                    >
+                      Approve as Tempvs Admin
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
