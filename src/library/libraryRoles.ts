@@ -40,7 +40,13 @@ const ROLE_META: Record<LibraryRole, RoleMeta> = {
 };
 
 export function getRoles(userInfo: LibraryUserInfo): Set<string> {
-  return new Set(userInfo?.roles || []);
+  const roles = new Set(userInfo?.roles || []);
+  // TEMPVS_ADMIN is the account-wide administrator role. Cognito has no
+  // nested-group support, so each domain maps that signed group to its own
+  // highest local permission. Mirror the Library API's mapping here so the
+  // UI never hides controls that the API will authorize.
+  if (roles.has("TEMPVS_ADMIN")) roles.add("ROLE_ADMIN");
+  return roles;
 }
 
 export function hasAnyRole(

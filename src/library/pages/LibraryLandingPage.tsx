@@ -34,7 +34,7 @@ export default function LibraryLandingPage() {
     try {
       // Refreshing role claims must finish before the welcome request is sent,
       // otherwise a just-granted administrator sees the stale public panel.
-      const viewer = await getLibraryViewer();
+      const viewer = await getLibraryViewer({ refreshRoles: true });
       const result = await getWelcome();
       if (!result.ok) {
         throw new Error("Unable to load the library welcome panel.");

@@ -179,10 +179,10 @@ export default function LibraryAdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [result, viewer] = await Promise.all([
-        getAdminMembers(),
-        getLibraryViewer(),
-      ]);
+      // Refresh Cognito group claims before calling the protected endpoint.
+      // A role can be granted while this browser session is alive.
+      const viewer = await getLibraryViewer({ refreshRoles: true });
+      const result = await getAdminMembers();
       if (!result.ok)
         throw new Error(
           result.status === 403

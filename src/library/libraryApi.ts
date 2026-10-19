@@ -225,11 +225,13 @@ async function fetchJson<TData = unknown>(
   return parseResponse<TData>(response);
 }
 
-export function getLibraryViewer(): Promise<LibraryViewer> {
+export function getLibraryViewer(options?: {
+  refreshRoles?: boolean;
+}): Promise<LibraryViewer> {
   // A source view must never force a Cognito refresh. A forced refresh can
   // fail independently of an otherwise valid opaque session and used to make
   // simply opening a public source appear to log the visitor out.
-  return getViewer();
+  return getViewer(options);
 }
 
 export function buildSearchQuery(
