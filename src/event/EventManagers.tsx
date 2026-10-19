@@ -21,6 +21,7 @@ type Props = {
   ownedProfiles: Profile[];
   onChange: (event: TempvsEvent) => void;
   onOwnerChange?: (profile: Profile) => void;
+  mode?: "administration" | "danger";
 };
 
 export default function EventManagers({
@@ -30,6 +31,7 @@ export default function EventManagers({
   ownedProfiles,
   onChange,
   onOwnerChange,
+  mode = "administration",
 }: Props) {
   const navigate = useNavigate();
   const [admins, setAdmins] = useState<Profile[]>([]);
@@ -140,9 +142,13 @@ export default function EventManagers({
 
   return (
     <section className="club-panel event-managers">
-      <h2>Owner</h2>
-      {owner && <ProfileList profiles={[owner]} />}
-      {admins.length > 0 && (
+      {mode === "administration" && (
+        <>
+          <h2>Owner</h2>
+          {owner && <ProfileList profiles={[owner]} />}
+        </>
+      )}
+      {mode === "administration" && admins.length > 0 && (
         <>
           <h2>Admins</h2>
           <ProfileList
@@ -163,7 +169,7 @@ export default function EventManagers({
           />
         </>
       )}
-      {canManageAdmins && (
+      {mode === "administration" && canManageAdmins && (
         <div className="event-admin-search">
           <h2>Add admin</h2>
           <TextFilterInput
@@ -192,7 +198,7 @@ export default function EventManagers({
           )}
         </div>
       )}
-      {canManageAdmins && (
+      {mode === "danger" && canManageAdmins && (
         <div className="event-admin-search mt-4">
           <h2>Transfer ownership</h2>
           <p className="text-muted">

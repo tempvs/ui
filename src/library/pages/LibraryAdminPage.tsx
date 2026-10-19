@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Button, Card, Form, Modal } from "react-bootstrap";
 import { FaPlus, FaTrash } from "react-icons/fa";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import IconActionButton from "../../component/IconActionButton";
 import ConfirmationModal from "../../component/ConfirmationModal";
+import AdministrationTabs from "../../component/AdministrationTabs";
 import SectionBreadcrumb from "../../component/SectionBreadcrumb";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
@@ -78,6 +79,7 @@ function ProfileThumbnail({
 
 export default function LibraryAdminPage() {
   const { tab: tabParam } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
   const tab: AdminTab =
     tabParam === "requests" || tabParam === "proposals" ? tabParam : "members";
   const [loading, setLoading] = useState(true);
@@ -422,30 +424,16 @@ export default function LibraryAdminPage() {
           />
         }
       />
-      <div
-        className="d-flex gap-2 mb-4"
-        role="tablist"
-        aria-label="Library administration"
-      >
-        <Link
-          className={`btn btn-${tab === "members" ? "dark" : "outline-dark"}`}
-          to="/library/admin/members"
-        >
-          Members
-        </Link>
-        <Link
-          className={`btn btn-${tab === "requests" ? "dark" : "outline-dark"}`}
-          to="/library/admin/requests"
-        >
-          Role requests
-        </Link>
-        <Link
-          className={`btn btn-${tab === "proposals" ? "dark" : "outline-dark"}`}
-          to="/library/admin/proposals"
-        >
-          Pending proposals
-        </Link>
-      </div>
+      <AdministrationTabs
+        ariaLabel="Library administration"
+        activeTab={tab}
+        onSelect={(next) => navigate(`/library/admin/${next}`)}
+        tabs={[
+          { id: "members", label: "Members" },
+          { id: "requests", label: "Role requests" },
+          { id: "proposals", label: "Pending proposals" },
+        ]}
+      />
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {notice && (
         <div className="tempvs-plain-message text-muted" role="status">

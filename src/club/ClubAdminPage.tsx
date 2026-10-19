@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, Tab, Tabs } from "react-bootstrap";
+import { Alert, Button } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import Spinner from "../component/Spinner";
+import AdministrationTabs from "../component/AdministrationTabs";
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -250,14 +251,24 @@ export default function ClubAdminPage() {
               "Review membership applications and manage other club administration tasks here.",
             )}
           </p>
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(key) => setActiveTab(key || "requests")}
-            className="mb-3"
-            mountOnEnter
-            unmountOnExit
-          >
-            <Tab eventKey="requests" title={t("requests", "Requests")}>
+          <AdministrationTabs
+            ariaLabel="Club administration"
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            tabs={[
+              { id: "requests", label: t("requests", "Requests") },
+              { id: "members", label: t("members", "Members") },
+              { id: "followers", label: t("followers", "Followers") },
+              { id: "settings", label: "Administration" },
+              {
+                id: "danger",
+                label: "Danger zone",
+                disabled: !canManageAdmins,
+              },
+            ]}
+          />
+          {activeTab === "requests" && (
+            <>
               <JoinRequestsPanel clubId={club.id} onDecision={() => {}} />
               <ClubEventRequestsPanel
                 clubId={club.id}
@@ -265,15 +276,19 @@ export default function ClubAdminPage() {
                   reviewerProfile ? String(reviewerProfile.id) : undefined
                 }
               />
-            </Tab>
-            <Tab eventKey="members" title={t("members", "Members")}>
+            </>
+          )}
+          {activeTab === "members" && (
+            <>
               <ClubMembersAdminPanel
                 clubId={club.id}
                 revision={peopleRevision}
                 onChanged={() => setPeopleRevision((value) => value + 1)}
               />
-            </Tab>
-            <Tab eventKey="followers" title={t("followers", "Followers")}>
+            </>
+          )}
+          {activeTab === "followers" && (
+            <>
               <ClubFollowersPanel
                 clubId={String(club.id)}
                 revision={peopleRevision}
@@ -283,9 +298,9 @@ export default function ClubAdminPage() {
                   setPeopleRevision((value) => value + 1);
                 }}
               />
-            </Tab>
-          </Tabs>
-          {canManage && (
+            </>
+          )}
+          {activeTab === "settings" && canManage && (
             <section className="club-panel">
               <h2>{t("owner", "Owner")}</h2>
               {ownerProfile ? (
@@ -365,32 +380,40 @@ export default function ClubAdminPage() {
                         void act(() => addAdmin(club.id, profile.userId!));
                     }}
                   />
-                  <h3 className="h6 mt-4">
-                    {t("transferOwnership", "Transfer ownership")}
-                  </h3>
-                  <p className="text-muted">
-                    {t(
-                      "transferOwnershipHint",
-                      "Choose the profile that will represent the club owner. You will remain an administrator when ownership moves to another user.",
-                    )}
-                  </p>
-                  <ProfilePicker
-                    busy={busy}
-                    ownedProfiles={ownedProfiles}
-                    selectLabel={t("transfer", "Transfer")}
-                    placeholder={t("findNewOwner", "Find a new owner")}
-                    onSelect={setTransferTarget}
-                  />
-                  <Button
-                    variant="outline-danger"
-                    className="mt-4"
-                    disabled={busy}
-                    onClick={() => setDeleting(true)}
-                  >
-                    {t("delete", "Delete club")}
-                  </Button>
                 </>
               )}
+            </section>
+          )}
+          {activeTab === "danger" && canManageAdmins && (
+            <section className="club-panel border-danger">
+              <h2>Danger zone</h2>
+              <p className="text-muted">
+                Ownership and deletion are irreversible administration actions.
+              </p>
+              <h3 className="h6 mt-4">
+                {t("transferOwnership", "Transfer ownership")}
+              </h3>
+              <p className="text-muted">
+                {t(
+                  "transferOwnershipHint",
+                  "Choose the profile that will represent the club owner. You will remain an administrator when ownership moves to another user.",
+                )}
+              </p>
+              <ProfilePicker
+                busy={busy}
+                ownedProfiles={ownedProfiles}
+                selectLabel={t("transfer", "Transfer")}
+                placeholder={t("findNewOwner", "Find a new owner")}
+                onSelect={setTransferTarget}
+              />
+              <Button
+                variant="outline-danger"
+                className="mt-4"
+                disabled={busy}
+                onClick={() => setDeleting(true)}
+              >
+                {t("delete", "Delete club")}
+              </Button>
             </section>
           )}
         </>

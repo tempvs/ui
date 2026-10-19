@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, Form, Tab, Tabs } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
+import AdministrationTabs from "../component/AdministrationTabs";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import {
@@ -182,31 +183,20 @@ export default function EventAdminPage() {
               </p>
             </div>
           </div>
-          <section className="club-panel event-approval-settings">
-            <h2>Participation</h2>
-            <Form.Check
-              id="event-auto-approve-participation"
-              type="checkbox"
-              label="Automatically approve participation"
-              checked={event.autoApproveParticipation === true}
-              disabled={!canManage || busy}
-              onChange={(input) =>
-                void setAutoApproveParticipation(input.target.checked)
-              }
-            />
-            <p className="text-muted mb-0">
-              Club participation still requires approval from that club. Once
-              approved by the club, event approval is skipped.
-            </p>
-          </section>
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(key) => setActiveTab(key || "requests")}
-            className="mb-3"
-            mountOnEnter
-            unmountOnExit
-          >
-            <Tab eventKey="requests" title="Requests">
+          <AdministrationTabs
+            ariaLabel="Event administration"
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            tabs={[
+              { id: "requests", label: "Requests" },
+              { id: "members", label: "Members" },
+              { id: "followers", label: "Followers" },
+              { id: "settings", label: "Administration" },
+              { id: "danger", label: "Danger zone", disabled: !isOwner },
+            ]}
+          />
+          {activeTab === "requests" && (
+            <>
               <EventPeoplePanels
                 eventId={event.id}
                 canManage
@@ -215,8 +205,10 @@ export default function EventAdminPage() {
                 showApprovals
                 onChanged={() => setRevision((value) => value + 1)}
               />
-            </Tab>
-            <Tab eventKey="members" title="Members">
+            </>
+          )}
+          {activeTab === "members" && (
+            <>
               <EventPeoplePanels
                 eventId={event.id}
                 canManage
@@ -226,8 +218,10 @@ export default function EventAdminPage() {
                 showParticipants
                 onChanged={() => setRevision((value) => value + 1)}
               />
-            </Tab>
-            <Tab eventKey="followers" title="Followers">
+            </>
+          )}
+          {activeTab === "followers" && (
+            <>
               <EventPeoplePanels
                 eventId={event.id}
                 canManage
@@ -237,25 +231,63 @@ export default function EventAdminPage() {
                 showFollowers
                 onChanged={() => setRevision((value) => value + 1)}
               />
-            </Tab>
-          </Tabs>
-          <EventManagers
-            event={event}
-            owner={owner}
-            canManageAdmins={isOwner}
-            ownedProfiles={ownedProfiles}
-            onChange={setEvent}
-            onOwnerChange={setOwner}
-          />
-          {isOwner && (
-            <Button
-              variant="outline-danger"
-              className="mt-4"
-              disabled={busy}
-              onClick={() => setDeleting(true)}
-            >
-              Delete event
-            </Button>
+            </>
+          )}
+          {activeTab === "settings" && (
+            <>
+              <section className="club-panel event-approval-settings">
+                <h2>Participation</h2>
+                <Form.Check
+                  id="event-auto-approve-participation"
+                  type="checkbox"
+                  label="Automatically approve participation"
+                  checked={event.autoApproveParticipation === true}
+                  disabled={!canManage || busy}
+                  onChange={(input) =>
+                    void setAutoApproveParticipation(input.target.checked)
+                  }
+                />
+                <p className="text-muted mb-0">
+                  Club participation still requires approval from that club.
+                  Once approved by the club, event approval is skipped.
+                </p>
+              </section>
+              <EventManagers
+                event={event}
+                owner={owner}
+                canManageAdmins={isOwner}
+                ownedProfiles={ownedProfiles}
+                onChange={setEvent}
+                onOwnerChange={setOwner}
+                mode="administration"
+              />
+            </>
+          )}
+          {activeTab === "danger" && isOwner && (
+            <>
+              <EventManagers
+                event={event}
+                owner={owner}
+                canManageAdmins={isOwner}
+                ownedProfiles={ownedProfiles}
+                onChange={setEvent}
+                onOwnerChange={setOwner}
+                mode="danger"
+              />
+              <section className="club-panel border-danger mt-3">
+                <h2>Danger zone</h2>
+                <p className="text-muted">
+                  Deleting an event is permanent and cannot be undone.
+                </p>
+                <Button
+                  variant="outline-danger"
+                  disabled={busy}
+                  onClick={() => setDeleting(true)}
+                >
+                  Delete event
+                </Button>
+              </section>
+            </>
           )}
         </article>
       )}

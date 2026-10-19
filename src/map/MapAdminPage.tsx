@@ -6,6 +6,7 @@ import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import ConfirmationModal from "../component/ConfirmationModal";
+import AdministrationTabs from "../component/AdministrationTabs";
 import TextFilterInput from "../component/TextFilterInput";
 import Spinner from "../component/Spinner";
 import {
@@ -78,6 +79,7 @@ export default function MapAdminPage() {
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [showRoleRequestModal, setShowRoleRequestModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("proposals");
 
   useEffect(() => {
     // Map administration is frequently opened immediately after a global or
@@ -211,6 +213,29 @@ export default function MapAdminPage() {
         ),
       }}
     >
+      <AdministrationTabs
+        ariaLabel="Map administration"
+        activeTab={activeTab}
+        onSelect={setActiveTab}
+        tabs={[
+          {
+            id: "proposals",
+            label: "Pending proposals",
+            disabled: !mayReview,
+          },
+          {
+            id: "role-requests",
+            label: "Role requests",
+            disabled: !mayAdministerRoles,
+          },
+          {
+            id: "members",
+            label: "Map members",
+            disabled: !mayAdministerRoles,
+          },
+        ]}
+      />
+      {activeTab === "proposals" && (
       <section className="club-panel" aria-label="Pending place proposals">
         <h1>Place proposals</h1>
         <p className="text-muted">
@@ -389,7 +414,12 @@ export default function MapAdminPage() {
           </>
         )}
       </section>
-      {mayAdministerRoles && <MapRoleAdminPanel />}
+      )}
+      {mayAdministerRoles && activeTab !== "proposals" && (
+        <MapRoleAdminPanel
+          activeTab={activeTab as "role-requests" | "members"}
+        />
+      )}
       <MapRoleRequestModal
         show={showRoleRequestModal}
         onHide={() => setShowRoleRequestModal(false)}
@@ -401,7 +431,11 @@ export default function MapAdminPage() {
 /** Role approvals are intentionally separate from place review. The role
  * panel only renders for Map/global admins; reviewers and editors can never
  * accidentally escalate membership through this page. */
-function MapRoleAdminPanel() {
+function MapRoleAdminPanel({
+  activeTab,
+}: {
+  activeTab: "role-requests" | "members";
+}) {
   const [requests, setRequests] = useState<MapRoleRequest[]>([]);
   const [members, setMembers] = useState<MapRoleMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -512,19 +546,19 @@ function MapRoleAdminPanel() {
   };
 
   return (
-    <section className="club-panel mt-3" aria-label="Map role management">
-      <h2 className="h5">Map roles</h2>
-      <p className="text-muted small">
-        Map administrators review role requests and maintain Map contributor,
-        reviewer, and editor access. Map admin access itself is managed outside
-        this panel.
-      </p>
+    <section className="club-panel" aria-label="Map role management">
       {error && <Alert variant="danger">{error}</Alert>}
       {loading ? (
         <Spinner size="sm" />
       ) : (
         <>
-          <h3 className="h6">Pending requests</h3>
+          {activeTab === "role-requests" && (
+            <>
+          <h2 className="h5">Role requests</h2>
+          <p className="text-muted small">
+            Review requests for Map contributor, reviewer, and editor access.
+            Map administrator access itself is managed through the global role.
+          </p>
           {requests.length === 0 ? (
             <p className="text-muted small">No pending Map role requests.</p>
           ) : (
@@ -577,7 +611,15 @@ function MapRoleAdminPanel() {
               )}
             </>
           )}
-          <h3 className="h6">Current members</h3>
+            </>
+          )}
+          {activeTab === "members" && (
+            <>
+          <h2 className="h5">Map members</h2>
+          <p className="text-muted small">
+            Remove a role when a member should no longer administer or review
+            Map data.
+          </p>
           {members.length === 0 ? (
             <p className="text-muted small mb-0">No assigned Map roles.</p>
           ) : (
@@ -625,6 +667,8 @@ function MapRoleAdminPanel() {
                 </li>
               ))}
             </ul>
+          )}
+            </>
           )}
         </>
       )}

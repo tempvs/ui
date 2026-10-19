@@ -394,6 +394,9 @@ test("paginates Map role requests and confirms operational-role removal", async 
   renderAdmin();
 
   fireEvent.click(
+    await screen.findByRole("tab", { name: "Role requests" }),
+  );
+  fireEvent.click(
     await screen.findByRole("button", { name: "Load more requests" }),
   );
   await waitFor(() =>
@@ -401,6 +404,7 @@ test("paginates Map role requests and confirms operational-role removal", async 
   );
   expect(await screen.findByText("user-2")).toBeInTheDocument();
 
+  fireEvent.click(screen.getByRole("tab", { name: "Map members" }));
   fireEvent.click(screen.getByRole("button", { name: "Remove Contributor" }));
   expect(await screen.findByText("Remove Map role")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Remove role" }));
