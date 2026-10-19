@@ -85,6 +85,8 @@ export type ProfileField =
 export type ProfilePageProps = {
   id?: string | null;
   userId?: string | null;
+  /** Changes action controls without changing the viewed profile route. */
+  currentProfileValue?: string;
   intl: IntlShape;
 };
 

@@ -20,6 +20,7 @@ import MapReferenceAttachment, {
 import {
   buildProfileLabel,
   resolveCurrentOwnedProfileId,
+  useCurrentProfileValue,
 } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
@@ -76,6 +77,7 @@ export default function PostPanel({
   targetId,
   canCreate = false,
 }: PostPanelProps) {
+  const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -141,6 +143,15 @@ export default function PostPanel({
       active = false;
     };
   }, []);
+
+  // Keep the composer on the page that is already open, but immediately use
+  // the newly selected profile as its default author.
+  useEffect(() => {
+    if (!ownedProfiles.length) return;
+    const currentId = resolveCurrentOwnedProfileId(ownedProfiles);
+    setCurrentProfileId(currentId);
+    setSelectedAuthorProfileId(currentId);
+  }, [currentProfileValue, ownedProfiles]);
 
   useEffect(() => {
     let active = true;

@@ -47,8 +47,8 @@ type HeaderState = {
 };
 
 type HeaderProps = {
-  navigate: NavigateFunction;
   locationPath: string;
+  navigate: NavigateFunction;
 };
 
 class HeaderContent extends Component<HeaderProps, HeaderState> {
@@ -168,9 +168,6 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         currentProfileValue: nextValue,
         currentProfilePath: selectedOption?.path || "/profile",
       },
-      () => {
-        this.props.navigate(selectedOption?.path || "/profile");
-      },
     );
   }
 
@@ -255,5 +252,6 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
 
 export default function Header() {
   const location = useLocation();
-  return <HeaderContent navigate={useNavigate()} locationPath={location.pathname} />;
+  const navigate = useNavigate();
+  return <HeaderContent locationPath={location.pathname} navigate={navigate} />;
 }

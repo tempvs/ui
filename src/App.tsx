@@ -15,6 +15,7 @@ import { PageShellContext } from "./component/PageHeader";
 import AppNotice from "./component/AppNotice";
 import Header from "./header/Header";
 import ProfilePage from "./profile/ProfilePage";
+import { useCurrentProfileValue } from "./profile/currentProfile";
 import ProfileAdminPage from "./profile/ProfileAdminPage";
 import StashPage from "./profile/StashPage";
 import StashItemPage from "./profile/StashItemPage";
@@ -34,7 +35,14 @@ import MapPage from "./map/MapPage";
 
 function ProfilePageWithParam() {
   const { id } = useParams();
-  return <ProfilePage key={`profile:${id || ""}`} id={id} />;
+  const currentProfileValue = useCurrentProfileValue();
+  return (
+    <ProfilePage
+      key={`profile:${id || ""}`}
+      id={id}
+      currentProfileValue={currentProfileValue}
+    />
+  );
 }
 
 function ProfileAdminPageWithParam() {
@@ -44,7 +52,19 @@ function ProfileAdminPageWithParam() {
 
 function UserProfilePageWithParam() {
   const { userId } = useParams();
-  return <ProfilePage key={`user-profile:${userId || ""}`} userId={userId} />;
+  const currentProfileValue = useCurrentProfileValue();
+  return (
+    <ProfilePage
+      key={`user-profile:${userId || ""}`}
+      userId={userId}
+      currentProfileValue={currentProfileValue}
+    />
+  );
+}
+
+function CurrentProfilePage() {
+  const currentProfileValue = useCurrentProfileValue();
+  return <ProfilePage currentProfileValue={currentProfileValue} />;
 }
 
 function LibraryPeriodPage() {
@@ -116,7 +136,7 @@ function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile" element={<CurrentProfilePage />} />
             <Route
               path="/profile/user/:userId"
               element={<UserProfilePageWithParam />}

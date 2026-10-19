@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
+
 import { Id, Profile } from './profileTypes';
 
 const STORAGE_KEY = 'TEMPVS_CURRENT_PROFILE';
+const PROFILE_CHANGE_EVENT = "tempvs:current-profile-change";
 
 export const DEFAULT_CURRENT_PROFILE_VALUE = 'user-profile';
 
@@ -28,7 +31,15 @@ export function setStoredCurrentProfileValue(value: string) {
     return;
   }
 
+  const previous = getStoredCurrentProfileValue();
   window.localStorage.setItem(STORAGE_KEY, value);
+  // `storage` does not fire in the same browser tab. This local event lets
+  // only profile-aware controls refresh while the current route stays put.
+  if (previous !== value) {
+    window.dispatchEvent(
+      new CustomEvent<string>(PROFILE_CHANGE_EVENT, { detail: value }),
+    );
+  }
 }
 
 export function clearStoredCurrentProfileValue() {
@@ -37,6 +48,34 @@ export function clearStoredCurrentProfileValue() {
   }
 
   window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(
+    new CustomEvent<string>(PROFILE_CHANGE_EVENT, {
+      detail: DEFAULT_CURRENT_PROFILE_VALUE,
+    }),
+  );
+}
+
+/** Subscribe a mounted component to active-profile changes without routing. */
+export function useCurrentProfileValue(): string {
+  const [value, setValue] = useState(getStoredCurrentProfileValue);
+
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const next = (event as CustomEvent<string>).detail;
+      setValue(next || getStoredCurrentProfileValue());
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) setValue(getStoredCurrentProfileValue());
+    };
+    window.addEventListener(PROFILE_CHANGE_EVENT, onChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(PROFILE_CHANGE_EVENT, onChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  return value;
 }
 
 export function buildProfileLabel(profile: Profile | null | undefined, fallback = 'My profile') {

@@ -209,15 +209,34 @@ h3 {
   box-shadow: 0 0.2rem 0.8rem rgba(31, 38, 35, 0.05);
   /* Reserve the height of the standard action row before page permissions
      and data arrive, so a page's content never jumps when buttons appear. */
+  height: 4.4rem;
   min-height: 4.4rem;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .tempvs-section-header-row {
+  height: 2.1rem;
+  min-height: 2.1rem;
+}
+
+.tempvs-section-header-actions {
+  align-items: center;
   min-height: 2.1rem;
 }
 
 .tempvs-section-header-actions > * {
   min-height: 2.1rem;
+}
+
+/* A permission check may briefly occupy the action slot. Keep its hourglass
+   within the reserved action-row height, rather than letting an inline 50px
+   spinner stretch the persistent page jumbo. */
+.tempvs-section-header-actions .tempvs-hourglass-spinner {
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: 0 0 2.1rem;
+  font-size: 14px !important;
 }
 
 .header-icon-button {

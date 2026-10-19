@@ -6,7 +6,10 @@ import PageLayout from "../component/PageLayout";
 import Spinner from "../component/Spinner";
 import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
 import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
-import { resolveCurrentOwnedProfileId } from "../profile/currentProfile";
+import {
+  resolveCurrentOwnedProfileId,
+  useCurrentProfileValue,
+} from "../profile/currentProfile";
 import {
   fetchClubProfiles,
   getFollowingProfiles,
@@ -93,6 +96,7 @@ async function targetsFor(profileId: string): Promise<WallTarget[]> {
 }
 
 export default function WallPage({ userId }: { userId: string }) {
+  const currentProfileValue = useCurrentProfileValue();
   const [profileId, setProfileId] = useState<string | null>(null);
   const [targets, setTargets] = useState<WallTarget[]>([]);
   const [activities, setActivities] = useState<WallActivity[]>([]);
@@ -181,7 +185,7 @@ export default function WallPage({ userId }: { userId: string }) {
     return () => {
       active = false;
     };
-  }, [load, userId]);
+  }, [currentProfileValue, load, userId]);
 
   const loadMore = async () => {
     if (!profileId || !nextToken) return;

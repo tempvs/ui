@@ -108,6 +108,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         this.loadCurrentUserInfo();
         this.loadRequestedProfile();
       });
+      return;
+    }
+    if (
+      prevProps.currentProfileValue !== this.props.currentProfileValue &&
+      this.state.currentUserId
+    ) {
+      // Preserve the viewed profile and its loaded content; only recompute
+      // controls whose permission/follow state depends on the active profile.
+      this.fetchCurrentOwnedProfiles(this.state.currentUserId);
     }
   }
 

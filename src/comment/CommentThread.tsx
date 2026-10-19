@@ -7,7 +7,11 @@ import IconActionButton from "../component/IconActionButton";
 import { fetchClubProfiles, fetchCurrentUserInfo, fetchProfileById, getUserProfileByUserId } from "../profile/profileApi";
 import ProfilePicker from "../profile/components/ProfilePicker";
 import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
-import { buildProfileLabel, resolveCurrentOwnedProfileId } from "../profile/currentProfile";
+import {
+  buildProfileLabel,
+  resolveCurrentOwnedProfileId,
+  useCurrentProfileValue,
+} from "../profile/currentProfile";
 import type { Profile } from "../profile/profileTypes";
 import { createComment, deleteComment, listComments, type Comment, type CommentTargetType, updateComment } from "./commentApi";
 import "./comments.css";
@@ -26,6 +30,7 @@ function clubProfiles(userId: string) {
 }
 
 export default function CommentThread({ targetType, targetId }: { targetType: CommentTargetType; targetId: string | number }) {
+  const currentProfileValue = useCurrentProfileValue();
   const [comments, setComments] = useState<Comment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile | null>>({});
   const [owned, setOwned] = useState<Profile[]>([]);
@@ -39,6 +44,9 @@ export default function CommentThread({ targetType, targetId }: { targetType: Co
 
   useEffect(() => { let active = true; listComments(targetType, targetId).then(page => { if (active) setComments(page.content); }).catch(() => { if (active) setError("Unable to load comments right now."); }); return () => { active = false; }; }, [targetId, targetType]);
   useEffect(() => { let active = true; fetchCurrentUserInfo(result => { if (!active || !result.currentUserId) return; Promise.all([getUserProfileByUserId(result.currentUserId), clubProfiles(result.currentUserId)]).then(([personal, clubs]) => { if (!active) return; const available = [...(personal ? [personal] : []), ...clubs]; setOwned(available); setSelectedProfile(resolveCurrentOwnedProfileId(available)); }); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    if (owned.length) setSelectedProfile(resolveCurrentOwnedProfileId(owned));
+  }, [currentProfileValue, owned]);
   const ids = useMemo(() => Array.from(new Set(comments.map(comment => comment.authorProfileId))), [comments]);
   useEffect(() => { let active = true; const missing = ids.filter(id => !(id in profiles)); if (!missing.length) return () => { active = false; }; Promise.all(missing.map(async id => [id, await profileById(id)] as const)).then(items => { if (active) setProfiles(current => ({ ...current, ...Object.fromEntries(items) })); }); return () => { active = false; }; }, [ids, profiles]);
   const options = useMemo(() => owned.map(profile => ({ value: String(profile.id), label: buildProfileLabel(profile), profile })), [owned]);
