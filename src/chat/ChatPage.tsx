@@ -9,6 +9,7 @@ import Spinner from "../component/Spinner";
 import {
   clearStoredCurrentProfileValue,
   resolveCurrentOwnedProfileId,
+  useCurrentProfileValue,
 } from "../profile/currentProfile";
 import {
   fetchClubProfiles,
@@ -140,6 +141,7 @@ export default function ChatPage() {
   const intl = useIntl();
   const navigate = useNavigate();
   const { conversationId } = useParams();
+  const currentProfileValue = useCurrentProfileValue();
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
@@ -257,6 +259,16 @@ export default function ChatPage() {
       cancelled = true;
     };
   }, [currentUserId, intl]);
+
+  // The header selector deliberately preserves the current route.  On Chat,
+  // update only the active sender and let the existing data effects refresh
+  // that sender's conversations instead of remounting the page.
+  useEffect(() => {
+    if (!senderProfiles.length) return;
+    const selectedProfileId = resolveCurrentOwnedProfileId(senderProfiles);
+    setCurrentProfileId(selectedProfileId);
+    setSelectedSenderId(selectedProfileId);
+  }, [currentProfileValue, senderProfiles]);
 
   useEffect(() => {
     if (!senderProfiles.length || currentProfileId == null) {
