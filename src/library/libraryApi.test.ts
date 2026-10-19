@@ -5,6 +5,7 @@ import {
   patchSourceField,
   removeSource,
   createSource,
+  uploadSourceChangesetImage,
 } from "./libraryApi";
 
 function response(body: unknown, status = 200) {
@@ -97,4 +98,42 @@ test("source profiles are read from the stash usage endpoint", async () => {
     "/api/stash/source/source-uuid/profiles",
     {},
   );
+});
+
+test("staged changeset images use the collection POST contract with their stable image ID", async () => {
+  const file = new File(["image"], "detail.png", { type: "image/png" });
+  const fetchMock = jest
+    .spyOn(window, "fetch")
+    .mockResolvedValueOnce(
+      response({
+        image: { id: "018f0000-0000-7000-8000-000000000001" },
+        upload: {
+          method: "PUT",
+          url: "https://uploads.example.test/staged-image",
+          headers: { "content-type": "image/png" },
+        },
+      }, 201),
+    )
+    .mockResolvedValueOnce(response({}, 200));
+
+  await expect(
+    uploadSourceChangesetImage(
+      "source-uuid",
+      "changeset-uuid",
+      "018f0000-0000-7000-8000-000000000001",
+      file,
+      "Detail image",
+    ),
+  ).resolves.toMatchObject({ ok: true, status: 201 });
+
+  expect(fetchMock.mock.calls[0]?.[0]).toBe(
+    "/api/images/source-changeset/source-uuid/changeset-uuid",
+  );
+  expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
+  expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+    imageId: "018f0000-0000-7000-8000-000000000001",
+    fileName: "detail.png",
+    contentType: "image/png",
+    description: "Detail image",
+  });
 });
