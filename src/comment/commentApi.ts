@@ -30,9 +30,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export function listComments(
   targetType: CommentTargetType,
   targetId: string | number,
+  nextToken?: string | null,
 ) {
-  return request<{ content: Comment[] }>(
-    `/comments?${new URLSearchParams({ targetType, targetId: String(targetId) })}`,
+  const query = new URLSearchParams({
+    targetType,
+    targetId: String(targetId),
+  });
+  if (nextToken) query.set("nextToken", nextToken);
+  return request<{ content: Comment[]; nextToken?: string | null }>(
+    `/comments?${query}`,
   );
 }
 
