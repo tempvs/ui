@@ -14,7 +14,6 @@ import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
 import ProfilePicker from "../profile/components/ProfilePicker";
 import CommentThread from "../comment/CommentThread";
 import MapReferenceAttachment, {
-  publicMapReferenceFromUrl,
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
 import {
@@ -87,7 +86,6 @@ export default function PostPanel({
     string | null
   >(null);
   const [draft, setDraft] = useState("");
-  const [mapReferenceUrl, setMapReferenceUrl] = useState("");
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editAuthorProfileId, setEditAuthorProfileId] = useState<string | null>(
@@ -97,14 +95,6 @@ export default function PostPanel({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const parsedMapReference = useMemo(
-    () => publicMapReferenceFromUrl(mapReferenceUrl),
-    [mapReferenceUrl],
-  );
-  const hasInvalidMapReference = Boolean(
-    mapReferenceUrl.trim() && !parsedMapReference,
-  );
-
   useEffect(() => {
     let active = true;
     fetchCurrentUserInfo((result) => {
@@ -246,7 +236,6 @@ export default function PostPanel({
     setError("");
     try {
       if (!selectedAuthorProfileId) throw new Error();
-      if (hasInvalidMapReference) throw new Error();
       const response = await fetch("/api/post/posts", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -255,14 +244,12 @@ export default function PostPanel({
           targetId: String(targetId),
           authorProfileId: selectedAuthorProfileId,
           content: draft,
-          ...(parsedMapReference ? { mapReference: parsedMapReference } : {}),
         }),
       });
       if (!response.ok) throw new Error();
       const post = (await response.json()) as Post;
       setPosts((current) => [post, ...current]);
       setDraft("");
-      setMapReferenceUrl("");
     } catch {
       setError("Unable to publish this post right now.");
     } finally {
@@ -349,20 +336,6 @@ export default function PostPanel({
             placeholder="Write a post"
             onChange={(event) => setDraft(event.target.value)}
           />
-          <Form.Control
-            className="post-map-reference-input"
-            value={mapReferenceUrl}
-            onChange={(event) => setMapReferenceUrl(event.target.value)}
-            placeholder="Optional: paste a public Map link"
-            aria-label="Attach public map link"
-            isInvalid={hasInvalidMapReference}
-          />
-          {hasInvalidMapReference && (
-            <Form.Control.Feedback type="invalid">
-              Paste a public map link with a location and radius. Personal
-              relationship-map links cannot be attached.
-            </Form.Control.Feedback>
-          )}
           <div className="post-composer-actions">
             <div className="post-author-select">
               <span>Send as</span>
@@ -376,12 +349,7 @@ export default function PostPanel({
             </div>
             <IconActionButton
               title="Publish post"
-              disabled={
-                busy ||
-                hasInvalidMapReference ||
-                !draft.trim() ||
-                !selectedAuthorProfileId
-              }
+              disabled={busy || !draft.trim() || !selectedAuthorProfileId}
               onClick={() => void publish()}
               size="2rem"
               fontSize="0.8rem"

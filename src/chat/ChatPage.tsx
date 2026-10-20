@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form, Modal } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -18,9 +18,7 @@ import {
   searchProfiles,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import MapReferenceAttachment, {
-  publicMapReferenceFromUrl,
-} from "../map/MapReferenceAttachment";
+import MapReferenceAttachment from "../map/MapReferenceAttachment";
 import {
   activeProfileNotFoundId,
   createConversation,
@@ -162,7 +160,6 @@ export default function ChatPage() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [messageDraft, setMessageDraft] = useState("");
-  const [mapReferenceUrl, setMapReferenceUrl] = useState("");
   const [participantQuery, setParticipantQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<Profile[]>([]);
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -180,12 +177,6 @@ export default function ChatPage() {
   const sendRequestRef = useRef<{ fingerprint: string; key: string } | null>(
     null,
   );
-  const mapReference = useMemo(
-    () => publicMapReferenceFromUrl(mapReferenceUrl),
-    [mapReferenceUrl],
-  );
-  const invalidMapReference = Boolean(mapReferenceUrl.trim() && !mapReference);
-
   useEffect(() => {
     fetchCurrentUserInfo((result) => {
       if (!result.currentUserId) {
@@ -670,8 +661,7 @@ export default function ChatPage() {
     if (
       !selectedConversation ||
       selectedSenderId == null ||
-      !messageDraft.trim() ||
-      invalidMapReference
+      !messageDraft.trim()
     ) {
       return;
     }
@@ -680,7 +670,6 @@ export default function ChatPage() {
       const payload = {
         senderProfileId: selectedSenderId,
         text: messageDraft,
-        ...(mapReference ? { mapReference } : {}),
       };
       const fingerprint = JSON.stringify({
         conversationId: selectedConversation.id,
@@ -698,7 +687,6 @@ export default function ChatPage() {
       );
       sendRequestRef.current = null;
       setMessageDraft("");
-      setMapReferenceUrl("");
       setSelectedConversation(details);
       setFeedback(null);
       await refreshConversations(details.id);
@@ -998,21 +986,6 @@ export default function ChatPage() {
                   })}
                   disabled={!canSend}
                 />
-                <Form.Control
-                  className="chat-form-input"
-                  value={mapReferenceUrl}
-                  onChange={(event) => setMapReferenceUrl(event.target.value)}
-                  placeholder="Optional: paste a public Map link"
-                  aria-label="Attach public map link"
-                  isInvalid={invalidMapReference}
-                  disabled={!canSend}
-                />
-                {invalidMapReference && (
-                  <Form.Control.Feedback type="invalid">
-                    Paste a public map link with a location and radius. Personal
-                    relationship-map links cannot be attached.
-                  </Form.Control.Feedback>
-                )}
                 <div className="chat-composer-actions">
                   {!canSend && (
                     <span className="chat-composer-hint">
@@ -1025,9 +998,7 @@ export default function ChatPage() {
                   <Button
                     className="chat-action-button"
                     type="submit"
-                    disabled={
-                      !canSend || invalidMapReference || !messageDraft.trim()
-                    }
+                    disabled={!canSend || !messageDraft.trim()}
                   >
                     <FormattedMessage
                       id="chat.sendButton"
