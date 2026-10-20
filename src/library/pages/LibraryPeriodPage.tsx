@@ -307,12 +307,18 @@ export default function LibraryPeriodPage() {
         throw new Error(message || "Unable to create the source.");
       }
 
-      if (!result.data || !("id" in result.data)) {
+      if (
+        !result.data ||
+        !("source" in result.data) ||
+        !("changeset" in result.data)
+      ) {
         throw new Error("Unable to create the source.");
       }
 
       setShowCreateModal(false);
-      navigate(`/library/source/${(result.data as LibrarySource).id}`);
+      navigate(
+        `/library/source/${result.data.source.id}/changesets/${result.data.changeset.id}`,
+      );
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {

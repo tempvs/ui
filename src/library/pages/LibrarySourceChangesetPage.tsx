@@ -12,7 +12,6 @@ import {
   approveSourceChangeset,
   overrideApproveSourceChangeset,
   getLibraryViewer,
-  getSource,
   getSourceChangeset,
   getSourceChangesetImages,
   getSourceImages,
@@ -65,29 +64,28 @@ export default function LibrarySourceChangesetPage() {
     setLoading(true);
     setError(null);
     try {
-      const [sourceResult, viewer, changesetResult] = await Promise.all([
-        getSource(sourceId),
+      const [viewer, changesetResult] = await Promise.all([
         getLibraryViewer(),
         getSourceChangeset(sourceId, changesetId),
       ]);
-      if (!sourceResult.ok || !sourceResult.data)
-        throw new Error("Unable to load the source.");
       if (!canEditSource(viewer))
         throw new Error(
           "Library editor access is required to view this changeset.",
         );
       if (!changesetResult.ok || !changesetResult.data)
         throw responseError(changesetResult, "Unable to load this changeset.");
-      setSource(sourceResult.data);
-      setChangeset(changesetResult.data);
+      const detail = changesetResult.data;
+      if (!("source" in detail) || !("changeset" in detail))
+        throw new Error("Unable to load this changeset.");
+      setSource(detail.source);
+      setChangeset(detail.changeset);
       setViewerId(viewer?.userId || null);
       setCanOverrideApprovals(Boolean(viewer?.roles?.includes("TEMPVS_ADMIN")));
       const [published, staged] = await Promise.all([
-        getSourceImages(sourceResult.data.id).catch(() => null),
-        getSourceChangesetImages(
-          sourceResult.data.id,
-          changesetResult.data.id,
-        ).catch(() => null),
+        getSourceImages(detail.source.id).catch(() => null),
+        getSourceChangesetImages(detail.source.id, detail.changeset.id).catch(
+          () => null,
+        ),
       ]);
       setPublishedImages(published?.data || []);
       setStagedImages(staged?.data || []);

@@ -11,7 +11,7 @@ type Props = {
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
   compact?: boolean;
-  kind?: "UPDATE" | "DELETE";
+  kind?: "CREATE" | "UPDATE" | "DELETE";
   imageOperations?: SourceImageOperation[];
   imagePreviews?: {
     published?: LibrarySourceImage[];
@@ -54,8 +54,9 @@ export function summarizeSourceChangeset(
   base: SourceChangesetSnapshot,
   proposed: SourceChangesetSnapshot,
   imageOperations: SourceImageOperation[] = [],
-  kind: "UPDATE" | "DELETE" = "UPDATE",
+  kind: "CREATE" | "UPDATE" | "DELETE" = "UPDATE",
 ) {
+  if (kind === "CREATE") return ["New source"];
   if (kind === "DELETE") return ["Deletes the source and its images"];
   const values = {
     name: [base.name, proposed.name],
@@ -223,6 +224,40 @@ export default function SourceChangesetDiff({
         <div className="source-changeset-diff-before">
           This proposal deletes the source and its images after review approval.
         </div>
+      </div>
+    );
+  }
+  if (kind === "CREATE") {
+    const values = {
+      name: proposed.name,
+      description: proposed.description,
+      period: proposed.period,
+      type: proposed.type,
+      years: { from: proposed.from, to: proposed.to },
+      discoveredAtPlaceName: proposed.discoveredAtPlaceName,
+      heldAtPlaceName: proposed.heldAtPlaceName,
+    } as const;
+    return (
+      <div className={compact ? "small" : ""}>
+        <div className="source-changeset-diff-row">
+          <div className="fw-semibold small text-uppercase text-muted">
+            Source
+          </div>
+          <div className="source-changeset-diff-after">
+            + New source proposed for review
+          </div>
+        </div>
+        {Object.entries(values).map(([field, value]) => (
+          <div className="source-changeset-diff-row" key={field}>
+            <div className="fw-semibold small text-uppercase text-muted">
+              {fieldLabels[field]}
+            </div>
+            <div className="source-changeset-diff-after">
+              <span aria-hidden="true">+ </span>
+              {formatValue(field, value)}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

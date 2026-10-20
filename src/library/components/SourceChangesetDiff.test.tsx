@@ -33,3 +33,20 @@ test("summarizes and renders location changes in a source proposal", () => {
   expect(screen.getByText("Discovered at")).toBeInTheDocument();
   expect(screen.getByText("Castra Regina")).toBeInTheDocument();
 });
+
+test("renders an initial source submission as additions", () => {
+  const proposed = source({
+    name: "New source",
+    description: "Submitted for review",
+  });
+  expect(summarizeSourceChangeset(source(), proposed, [], "CREATE")).toEqual([
+    "New source",
+  ]);
+  render(
+    <SourceChangesetDiff base={source()} proposed={proposed} kind="CREATE" />,
+  );
+  expect(
+    screen.getByText(/New source proposed for review/),
+  ).toBeInTheDocument();
+  expect(screen.getByText("New source")).toBeInTheDocument();
+});

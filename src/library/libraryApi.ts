@@ -101,7 +101,7 @@ export type SourceChangeset = {
   sourceId: string;
   proposerId: string;
   baseVersion: number;
-  kind?: "UPDATE" | "DELETE";
+  kind?: "CREATE" | "UPDATE" | "DELETE";
   status: SourceChangesetStatus;
   base: SourceChangesetSnapshot;
   proposed: SourceChangesetSnapshot;
@@ -313,7 +313,9 @@ export async function createSource(payload: SourcePayload) {
     body: JSON.stringify(payload),
   });
 
-  return parseResponse<LibrarySource | ApiErrorPayload>(response);
+  return parseResponse<
+    { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
+  >(response);
 }
 
 export function getAdminRoleRequests({
@@ -462,7 +464,7 @@ export function getSourceChangeset(
   sourceId: string | undefined,
   changesetId: string | undefined,
 ) {
-  return fetchJson<SourceChangeset>(
+  return fetchJson<{ source: LibrarySource; changeset: SourceChangeset }>(
     `/api/library/source/${sourceId}/changesets/${changesetId}`,
   );
 }
@@ -472,18 +474,17 @@ export function createSourceChangeset(
   draft: SourceChangesetDraft,
   baseVersion: number,
 ) {
-  return fetchJson<SourceChangeset | ApiErrorPayload>(
-    `/api/library/source/${sourceId}/changesets`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "If-Match": `"${baseVersion}"`,
-        "Idempotency-Key": newIdempotencyKey(),
-      },
-      body: JSON.stringify(draft),
+  return fetchJson<
+    { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
+  >(`/api/library/source/${sourceId}/changesets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "If-Match": `"${baseVersion}"`,
+      "Idempotency-Key": newIdempotencyKey(),
     },
-  );
+    body: JSON.stringify(draft),
+  });
 }
 
 export function amendSourceChangeset(
