@@ -36,6 +36,7 @@ import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
+import SourceChangeLogDiffModal from "../components/SourceChangeLogDiffModal";
 import {
   formatSourceChangeValue,
   sourceChangeFieldLabel,
@@ -63,6 +64,8 @@ export default function LibrarySourcePage() {
   const [profileFilter, setProfileFilter] = useState("");
   const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [changeLog, setChangeLog] = useState<SourceChangeLogEntry[]>([]);
+  const [selectedChange, setSelectedChange] =
+    useState<SourceChangeLogEntry | null>(null);
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -436,12 +439,13 @@ export default function LibrarySourcePage() {
                     {entry.changesetId && (
                       <>
                         <span className="text-muted"> · </span>
-                        <Link
+                        <button
+                          type="button"
                           className="source-change-details-link"
-                          to={`/library/source/${source.id}/changesets/${entry.changesetId}`}
+                          onClick={() => setSelectedChange(entry)}
                         >
                           View changes
-                        </Link>
+                        </button>
                       </>
                     )}
                   </div>
@@ -460,6 +464,10 @@ export default function LibrarySourcePage() {
           </ol>
         )}
       </section>
+      <SourceChangeLogDiffModal
+        entry={selectedChange}
+        onHide={() => setSelectedChange(null)}
+      />
     </PageLayout>
   );
 }

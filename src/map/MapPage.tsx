@@ -40,6 +40,7 @@ import {
 import { appendSharedMapScope, parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
 import { matchingPlaceName } from "./placeNames";
+import { preferSourceDiscoveryLocations } from "./sourceLocationPreference";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -603,8 +604,16 @@ export default function MapPage() {
     }
   };
 
+  // A source's discovery site is its primary public map location. An explicit
+  // advanced source-role filter still permits inspecting holding locations.
+  const visibleEntities = useMemo(
+    () =>
+      sourceRoles.length ? entities : preferSourceDiscoveryLocations(entities),
+    [entities, sourceRoles.length],
+  );
+
   const focus = useMemo(() => {
-    const selected = entities.find(
+    const selected = visibleEntities.find(
       (entity) => entityKey(entity) === selectedEntityKey,
     );
     if (selected)
@@ -618,7 +627,7 @@ export default function MapPage() {
     const first = items[0];
     if (first) return { latitude: first.latitude, longitude: first.longitude };
     return null;
-  }, [entities, items, latitude, longitude, selectedEntityKey]);
+  }, [visibleEntities, items, latitude, longitude, selectedEntityKey]);
 
   // A shared graph may span several places. Once it is available, fitting its
   // markers is more useful than centering on the focal location encoded in
@@ -834,7 +843,7 @@ export default function MapPage() {
       <section className="club-panel mt-3" aria-label="Interactive map">
         <MapCanvas
           places={items}
-          entities={entities}
+          entities={visibleEntities}
           ownedMarkers={ownedMarkers}
           ownedConnections={ownedConnections}
           focus={mapFocus}
@@ -911,13 +920,13 @@ export default function MapPage() {
       {(latitude || longitude) && (
         <section className="club-panel mt-3" aria-label="Nearby content">
           <h2 className="h5">Nearby content</h2>
-          {!loading && !error && entities.length === 0 && (
+          {!loading && !error && visibleEntities.length === 0 && (
             <p className="text-muted mb-0">
               No matching public content in this radius.
             </p>
           )}
           <ul className="list-unstyled mb-0">
-            {entities.map((entity) => (
+            {visibleEntities.map((entity) => (
               <li
                 key={`${entity.entityType}:${entity.entityId}:${entity.locationRole}`}
                 className={`border-top py-2 ${selectedEntityKey === entityKey(entity) ? "map-result-selected" : ""}`}
