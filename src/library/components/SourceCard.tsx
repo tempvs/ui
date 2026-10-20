@@ -3,11 +3,7 @@ import { Badge, Card } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
-import {
-  getClassificationLabel,
-  getTypeLabel,
-  PeriodBadge,
-} from "../libraryShared";
+import { getTypeLabel, PeriodBadge } from "../libraryShared";
 import RefreshingImage from "../../image/RefreshingImage";
 import PlaceNamePopover from "../../component/PlaceNamePopover";
 
@@ -15,7 +11,6 @@ type SourceCardSource = {
   id: string | number;
   name?: string | null;
   description?: string | null;
-  classification?: string | null;
   type?: string | null;
   period?: string | null;
   discoveredAtPlaceId?: string | null;
@@ -87,9 +82,6 @@ export default function SourceCard({
             {source.description || "-"}
           </Card.Text>
           <div className="d-flex gap-2 flex-wrap mb-3">
-            <Badge bg="secondary">
-              {getClassificationLabel(intl, source.classification)}
-            </Badge>
             <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
           </div>
           {(source.discoveredAtPlaceId || source.heldAtPlaceId) && (
@@ -103,15 +95,17 @@ export default function SourceCard({
                   />
                 </span>
               )}
-              {source.heldAtPlaceId && source.heldAtPlaceName && (
-                <span>
-                  Held at:{" "}
-                  <PlaceNamePopover
-                    placeId={source.heldAtPlaceId}
-                    displayName={source.heldAtPlaceName}
-                  />
-                </span>
-              )}
+              {!source.discoveredAtPlaceId &&
+                source.heldAtPlaceId &&
+                source.heldAtPlaceName && (
+                  <span>
+                    Held at:{" "}
+                    <PlaceNamePopover
+                      placeId={source.heldAtPlaceId}
+                      displayName={source.heldAtPlaceName}
+                    />
+                  </span>
+                )}
             </div>
           )}
         </div>

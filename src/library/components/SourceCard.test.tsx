@@ -12,7 +12,7 @@ jest.mock("../../component/PlaceNamePopover", () => ({
 
 import SourceCard from "./SourceCard";
 
-test("keeps selected historical discovery and holding names visible on a source tile", () => {
+test("prefers a discovery place over a holding place on a source tile", () => {
   render(
     <IntlProvider locale="en" messages={{}}>
       <MemoryRouter>
@@ -20,7 +20,6 @@ test("keeps selected historical discovery and holding names visible on a source 
           source={{
             id: "source-1",
             name: "Roman find",
-            classification: "ARTIFACT",
             type: "OBJECT",
             period: "ROMAN",
             discoveredAtPlaceId: "seed:regensburg",
@@ -37,6 +36,8 @@ test("keeps selected historical discovery and holding names visible on a source 
   expect(
     screen.getByRole("button", { name: "Castra Regina" }),
   ).toBeInTheDocument();
-  expect(screen.getByText("Held at:")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Roma" })).toBeInTheDocument();
+  expect(screen.queryByText("Held at:")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Roma" }),
+  ).not.toBeInTheDocument();
 });

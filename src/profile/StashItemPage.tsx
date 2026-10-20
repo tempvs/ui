@@ -540,6 +540,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         ...buildFirstImageMap(images),
       }));
     }
+    closeSourceLinkModal();
   }
 
   function closeSourceLinkModal() {

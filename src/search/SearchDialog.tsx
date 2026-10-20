@@ -23,7 +23,6 @@ import {
   LibrarySourceImage,
 } from "../library/libraryApi";
 import SourceCard from "../library/components/SourceCard";
-import { ClassificationFacet } from "../library/components/ClassificationFacet";
 import {
   getPeriodLabel,
   getTypeLabel,
@@ -77,9 +76,6 @@ export default function SearchDialog() {
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState("");
   const [profileType, setProfileType] = useState<ProfileTypeFilter>("");
-  const [selectedClassifications, setSelectedClassifications] = useState<
-    string[]
-  >([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -233,7 +229,6 @@ export default function SearchDialog() {
         const result = await findSources({
           query,
           period: period || null,
-          classifications: selectedClassifications,
           types: selectedTypes,
           ...(rangeEnabled ? range : {}),
           nextToken: append ? pagingRef.current.sourceNextToken : undefined,
@@ -287,15 +282,7 @@ export default function SearchDialog() {
         setLoading(false);
       }
     },
-    [
-      period,
-      profileType,
-      query,
-      selectedClassifications,
-      selectedTypes,
-      rangeEnabled,
-      range,
-    ],
+    [period, profileType, query, selectedTypes, rangeEnabled, range],
   );
 
   useEffect(() => {
@@ -319,7 +306,6 @@ export default function SearchDialog() {
     query,
     runSearch,
     searched,
-    selectedClassifications,
     selectedTypes,
     rangeEnabled,
     from,
@@ -559,17 +545,6 @@ export default function SearchDialog() {
 
                   {activeTab === "sources" && (
                     <>
-                      <Form.Label className="library-source-filter-heading">
-                        Classification
-                      </Form.Label>
-                      <div className="mb-4">
-                        <ClassificationFacet
-                          idPrefix="search-classification"
-                          selected={selectedClassifications}
-                          onChange={setSelectedClassifications}
-                        />
-                      </div>
-
                       <Form.Label className="library-source-filter-heading">
                         Type
                       </Form.Label>
@@ -838,7 +813,9 @@ export default function SearchDialog() {
                               </Card.Title>
                               <small>
                                 {item.schedule.startsAt
-                                  ? new Date(item.schedule.startsAt).toLocaleDateString()
+                                  ? new Date(
+                                      item.schedule.startsAt,
+                                    ).toLocaleDateString()
                                   : "Dates to be announced"}
                               </small>
                             </div>

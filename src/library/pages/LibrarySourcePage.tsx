@@ -775,22 +775,24 @@ export default function LibrarySourcePage() {
                 className="mt-2 mb-0"
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
-              <PlacePickerField
-                label="Held at"
-                value={
-                  source.heldAtPlaceId && source.heldAtPlaceName
-                    ? {
-                        id: source.heldAtPlaceId,
-                        canonicalName: source.heldAtPlaceName,
-                      }
-                    : null
-                }
-                readOnlyLabel={source.heldAtPlaceName}
-                editable={false}
-                onChange={() => undefined}
-                className="mt-2 mb-0"
-                relatedMapScope={{ type: "SOURCE", id: source.id }}
-              />
+              {!source.discoveredAtPlaceId && (
+                <PlacePickerField
+                  label="Held at"
+                  value={
+                    source.heldAtPlaceId && source.heldAtPlaceName
+                      ? {
+                          id: source.heldAtPlaceId,
+                          canonicalName: source.heldAtPlaceName,
+                        }
+                      : null
+                  }
+                  readOnlyLabel={source.heldAtPlaceName}
+                  editable={false}
+                  onChange={() => undefined}
+                  className="mt-2 mb-0"
+                  relatedMapScope={{ type: "SOURCE", id: source.id }}
+                />
+              )}
             </div>
           </div>
           <PostPanel

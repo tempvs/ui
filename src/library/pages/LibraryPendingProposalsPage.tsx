@@ -6,7 +6,6 @@ import { Link, useParams } from "react-router-dom";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { getErrorMessage } from "../../util/errors";
-import { ClassificationSelect } from "../components/ClassificationSelect";
 import SourceChangesetProposalCard from "../components/SourceChangesetProposalCard";
 import {
   getLibraryViewer,
@@ -21,7 +20,6 @@ import {
   PAGE_SIZE,
   PERIODS,
   TYPES,
-  getClassificationLabel,
   getPeriodLabel,
   getTypeLabel,
 } from "../libraryShared";
@@ -49,7 +47,6 @@ export function LibraryPendingProposalsContent({
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("");
-  const [selectedClassification, setSelectedClassification] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(
     () => new Set(),
@@ -71,10 +68,9 @@ export function LibraryPendingProposalsContent({
     () => ({
       query: query.trim() || undefined,
       period: period?.toUpperCase() || selectedPeriod || undefined,
-      classification: selectedClassification || undefined,
       type: selectedType || undefined,
     }),
-    [period, query, selectedClassification, selectedPeriod, selectedType],
+    [period, query, selectedPeriod, selectedType],
   );
 
   const load = useCallback(
@@ -225,13 +221,6 @@ export function LibraryPendingProposalsContent({
             </option>
           ))}
         </Form.Select>
-        <ClassificationSelect
-          ariaLabel="Filter pending proposals by classification"
-          value={selectedClassification}
-          onChange={setSelectedClassification}
-          placeholder="All classifications"
-          style={{ width: "auto", minWidth: "12rem" }}
-        />
       </div>
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
       {loading && <Spinner />}
@@ -261,11 +250,6 @@ export function LibraryPendingProposalsContent({
                   )}
                   {source.type && (
                     <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
-                  )}
-                  {source.classification && (
-                    <Badge bg="secondary">
-                      {getClassificationLabel(intl, source.classification)}
-                    </Badge>
                   )}
                 </div>
               }

@@ -15,7 +15,6 @@ import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
 import { PERIODS } from "../../util/periods";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
-import { ClassificationSelect } from "../components/ClassificationSelect";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   amendSourceChangeset,
@@ -40,7 +39,6 @@ type Draft = {
   name: string;
   description: string;
   period: string;
-  classification: string;
   type: string;
   from: HistoricalYearInput;
   to: HistoricalYearInput;
@@ -77,7 +75,6 @@ function asDraft(source: LibrarySource): Draft {
     name: source.name || "",
     description: source.description || "",
     period: source.period || "",
-    classification: source.classification || "",
     type: source.type || "",
     from: {
       year: source.from ? String(source.from.year) : "",
@@ -99,7 +96,6 @@ function asDraftSnapshot(source: SourceChangesetSnapshot): Draft {
     name: source.name || "",
     description: source.description || "",
     period: source.period || "",
-    classification: source.classification || "",
     type: source.type || "",
     from: {
       year: source.from ? String(source.from.year) : "",
@@ -121,8 +117,6 @@ function snapshot(draft: Draft): SourceChangesetSnapshot {
     name: draft.name.trim(),
     description: draft.description.trim() || null,
     period: draft.period as SourceChangesetSnapshot["period"],
-    classification:
-      draft.classification as SourceChangesetSnapshot["classification"],
     type: draft.type as SourceChangesetSnapshot["type"],
     from: draft.from.year
       ? { year: Number(draft.from.year), era: draft.from.era }
@@ -242,7 +236,6 @@ export default function LibrarySourceEditPage() {
     proposed &&
     proposed.name &&
     proposed.period &&
-    proposed.classification &&
     proposed.type &&
     isRangeValid(draft!),
   );
@@ -611,17 +604,6 @@ export default function LibrarySourceEditPage() {
                 </Form.Select>
               </Form.Group>
               <Form.Group className="col-md-4">
-                <Form.Label>Classification</Form.Label>
-                <ClassificationSelect
-                  required
-                  value={draft.classification}
-                  onChange={(classification) =>
-                    update("classification", classification)
-                  }
-                  placeholder="Choose classification"
-                />
-              </Form.Group>
-              <Form.Group className="col-md-4">
                 <Form.Label>Type</Form.Label>
                 <Form.Select
                   required
@@ -906,7 +888,6 @@ export default function LibrarySourceEditPage() {
               name: source.name || "",
               description: source.description || null,
               period: source.period || null,
-              classification: source.classification || null,
               type: source.type || null,
               from: source.from || null,
               to: source.to || null,

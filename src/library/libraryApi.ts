@@ -24,7 +24,6 @@ export type LibrarySource = {
   name?: string | null;
   description?: string | null;
   period?: string | null;
-  classification?: string | null;
   type?: string | null;
   from?: HistoricalYear | null;
   to?: HistoricalYear | null;
@@ -87,10 +86,7 @@ export type SourceChangesetStatus =
   "PENDING" | "APPLIED" | "REJECTED" | "WITHDRAWN" | "SUPERSEDED";
 
 export type SourceChangesetSnapshot = Required<
-  Pick<
-    LibrarySource,
-    "name" | "description" | "period" | "classification" | "type"
-  >
+  Pick<LibrarySource, "name" | "description" | "period" | "type">
 > & {
   from: HistoricalYear | null;
   to: HistoricalYear | null;
@@ -183,7 +179,6 @@ type FetchJsonOptions = RequestInit;
 type SourceSearchParams = {
   query?: string;
   period?: string | null;
-  classifications?: string[];
   types?: string[];
   from?: HistoricalYear | null;
   to?: HistoricalYear | null;
@@ -237,7 +232,6 @@ export function getLibraryViewer(options?: {
 export function buildSearchQuery(
   query?: string,
   period?: string | null,
-  classifications?: string[],
   types?: string[],
   from?: HistoricalYear | null,
   to?: HistoricalYear | null,
@@ -249,7 +243,6 @@ export function buildSearchQuery(
       JSON.stringify({
         query,
         period,
-        classifications,
         types,
         from,
         to,
@@ -273,7 +266,6 @@ export function updateRoleRequest(role: string, method: string) {
 export async function findSources({
   query,
   period,
-  classifications,
   types,
   from,
   to,
@@ -288,7 +280,6 @@ export async function findSources({
   const encodedQuery = buildSearchQuery(
     query,
     period,
-    classifications,
     types,
     from,
     to,
@@ -591,14 +582,12 @@ export function getPendingSourceChangesets({
   query,
   period,
   type,
-  classification,
   nextToken,
   limit = 40,
 }: {
   query?: string;
   period?: string;
   type?: string;
-  classification?: string;
   nextToken?: string;
   limit?: number;
 }) {
@@ -607,7 +596,6 @@ export function getPendingSourceChangesets({
     query,
     period,
     type,
-    classification,
     nextToken,
   })) {
     if (value) params.set(key, value);

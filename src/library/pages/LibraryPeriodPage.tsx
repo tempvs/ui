@@ -21,8 +21,6 @@ import {
   LibrarySourceImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
-import { ClassificationFacet } from "../components/ClassificationFacet";
-import { ClassificationSelect } from "../components/ClassificationSelect";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import SourceCard from "../components/SourceCard";
 import {
@@ -54,9 +52,6 @@ export default function LibraryPeriodPage() {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [selectedClassifications, setSelectedClassifications] = useState<
-    string[]
-  >([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -71,7 +66,6 @@ export default function LibraryPeriodPage() {
   const [draftSource, setDraftSource] = useState({
     name: "",
     description: "",
-    classification: "",
     type: "",
   });
   const [draftRangeEnabled, setDraftRangeEnabled] = useState(false);
@@ -130,7 +124,6 @@ export default function LibraryPeriodPage() {
         findSources({
           query,
           period: periodCode,
-          classifications: selectedClassifications,
           types: selectedTypes,
           ...(rangeEnabled && sourceRange.from
             ? { from: sourceRange.from }
@@ -178,7 +171,6 @@ export default function LibraryPeriodPage() {
   }, [
     periodCode,
     query,
-    selectedClassifications,
     selectedTypes,
     rangeEnabled,
     sourceRange,
@@ -193,7 +185,6 @@ export default function LibraryPeriodPage() {
       const result = await findSources({
         query,
         period: periodCode,
-        classifications: selectedClassifications,
         types: selectedTypes,
         ...(rangeEnabled && sourceRange.from ? { from: sourceRange.from } : {}),
         ...(rangeEnabled && sourceRange.to ? { to: sourceRange.to } : {}),
@@ -413,16 +404,6 @@ export default function LibraryPeriodPage() {
                 </div>
                 <Form.Group className="mb-3">
                   <Form.Label className="library-source-filter-heading">
-                    Classification
-                  </Form.Label>
-                  <ClassificationFacet
-                    idPrefix="classification"
-                    selected={selectedClassifications}
-                    onChange={setSelectedClassifications}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="library-source-filter-heading">
                     Type
                   </Form.Label>
                   <div className="d-flex flex-column gap-2">
@@ -462,7 +443,6 @@ export default function LibraryPeriodPage() {
                         setDraftSource({
                           name: "",
                           description: "",
-                          classification: "",
                           type: "",
                         });
                         setDraftRangeEnabled(false);
@@ -553,20 +533,6 @@ export default function LibraryPeriodPage() {
                       description: event.target.value,
                     }))
                   }
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Classification</Form.Label>
-                <ClassificationSelect
-                  required
-                  value={draftSource.classification}
-                  onChange={(classification) =>
-                    setDraftSource((prev) => ({
-                      ...prev,
-                      classification,
-                    }))
-                  }
-                  placeholder="Choose classification"
                 />
               </Form.Group>
               <Form.Group>

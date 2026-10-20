@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import SourceChangesetDiff, { summarizeSourceChangeset } from "./SourceChangesetDiff";
+import SourceChangesetDiff, {
+  summarizeSourceChangeset,
+} from "./SourceChangesetDiff";
 import type { SourceChangesetSnapshot } from "../libraryApi";
 
 const source = (
@@ -10,7 +12,6 @@ const source = (
   name: "Test source",
   description: null,
   period: "ROMAN",
-  classification: "ARCHAEOLOGICAL",
   type: "OBJECT",
   from: null,
   to: null,

@@ -44,7 +44,6 @@ const fieldLabels: Record<string, string> = {
   name: "Name",
   description: "Description",
   period: "Period",
-  classification: "Classification",
   type: "Type",
   years: "Years",
   discoveredAtPlaceName: "Discovered at",
@@ -62,7 +61,6 @@ export function summarizeSourceChangeset(
     name: [base.name, proposed.name],
     description: [base.description, proposed.description],
     period: [base.period, proposed.period],
-    classification: [base.classification, proposed.classification],
     type: [base.type, proposed.type],
     years: [
       { from: base.from, to: base.to },
@@ -232,7 +230,6 @@ export default function SourceChangesetDiff({
     name: [base.name, proposed.name],
     description: [base.description, proposed.description],
     period: [base.period, proposed.period],
-    classification: [base.classification, proposed.classification],
     type: [base.type, proposed.type],
     years: [
       { from: base.from, to: base.to },
