@@ -45,7 +45,9 @@ export default function HistoricalRangeFilter({
   const validRange = isValidHistoricalRange(from, to);
   const rangeOrderInvalid = !isChronologicalHistoricalRange(from, to);
   const yearFields = (
-    <div className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}>
+    <div
+      className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}
+    >
       <HistoricalYearControl
         label={compact ? null : "From"}
         placeholder={compact ? "From" : "Year"}
@@ -56,7 +58,11 @@ export default function HistoricalRangeFilter({
         isInvalid={rangeOrderInvalid}
         inputClassName="historical-year-from"
       />
-      {!stacked && !compact && <span className="pb-2 text-muted" aria-hidden="true">–</span>}
+      {!stacked && !compact && (
+        <span className="pb-2 text-muted" aria-hidden="true">
+          –
+        </span>
+      )}
       <HistoricalYearControl
         label={compact ? null : "To"}
         placeholder={compact ? "To" : "Year"}
@@ -80,10 +86,14 @@ export default function HistoricalRangeFilter({
             className="mb-0 text-nowrap"
           />
           {showFields && editable && yearFields}
-          {showFields && !editable && <span>{formatHistoricalRange(
-            from.year ? { year: Number(from.year), era: from.era } : null,
-            to.year ? { year: Number(to.year), era: to.era } : null,
-          )}</span>}
+          {showFields && !editable && (
+            <span>
+              {formatHistoricalRange(
+                from.year ? { year: Number(from.year), era: from.era } : null,
+                to.year ? { year: Number(to.year), era: to.era } : null,
+              )}
+            </span>
+          )}
         </div>
       ) : showToggle ? (
         <Form.Check
@@ -98,13 +108,17 @@ export default function HistoricalRangeFilter({
         </Form.Label>
       ) : null}
       {showFields && !editable && (
-        <div className={compact ? "pb-2" : "mt-1"}>{formatHistoricalRange(
-          from.year ? { year: Number(from.year), era: from.era } : null,
-          to.year ? { year: Number(to.year), era: to.era } : null,
-        )}</div>
+        <div className={compact ? "pb-2" : "mt-1"}>
+          {formatHistoricalRange(
+            from.year ? { year: Number(from.year), era: from.era } : null,
+            to.year ? { year: Number(to.year), era: to.era } : null,
+          )}
+        </div>
       )}
       {showFields && editable && !inlineToggle && (
-        <div className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}>
+        <div
+          className={`${stacked ? "d-flex flex-column align-items-start gap-2" : "d-flex align-items-end gap-2"} ${compact ? "" : "mt-2"}`}
+        >
           <HistoricalYearControl
             label={compact ? null : "From"}
             value={from}
@@ -114,7 +128,11 @@ export default function HistoricalRangeFilter({
             isInvalid={rangeOrderInvalid}
             inputClassName="historical-year-from"
           />
-          {!stacked && <span className="pb-2 text-muted" aria-hidden="true">–</span>}
+          {!stacked && (
+            <span className="pb-2 text-muted" aria-hidden="true">
+              –
+            </span>
+          )}
           <HistoricalYearControl
             label={compact ? null : "To"}
             value={to}
@@ -168,7 +186,10 @@ export function HistoricalYearControl({
           readOnly={readOnly}
           tabIndex={readOnly ? -1 : undefined}
           className={`${inputClassName} ${readOnly && !value.year ? "description-placeholder" : ""}`.trim()}
-          isInvalid={isInvalid || (value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year))}
+          isInvalid={
+            isInvalid ||
+            (value.year.length > 0 && !/^[1-9][0-9]*$/.test(value.year))
+          }
           aria-label={label ? `${label} year` : "Year"}
           onChange={(event) => {
             onChange({
@@ -198,9 +219,13 @@ export function HistoricalYearControl({
           </button>
         ) : showEraLabel ? (
           <span className="historical-year-era" aria-label={`${value.era} era`}>
-            {value.year && (value.era === "BC" || Number(value.year) < 100) ? value.era : ""}
+            {value.year && (value.era === "BC" || Number(value.year) < 100)
+              ? value.era
+              : ""}
           </span>
-        ) : <span className="historical-year-era" aria-hidden="true" />}
+        ) : (
+          <span className="historical-year-era" aria-hidden="true" />
+        )}
       </div>
     </div>
   );
@@ -226,16 +251,22 @@ export function isValidHistoricalRange(
   from: HistoricalYearInput,
   to: HistoricalYearInput,
 ): boolean {
-  return isValidHistoricalYear(from)
-    && isValidHistoricalYear(to)
-    && isChronologicalHistoricalRange(from, to);
+  return (
+    isValidHistoricalYear(from) &&
+    isValidHistoricalYear(to) &&
+    isChronologicalHistoricalRange(from, to)
+  );
 }
 
 export function formatHistoricalRange(
   from?: { year: number; era: "BC" | "AD" } | null,
   to?: { year: number; era: "BC" | "AD" } | null,
 ): string {
-  const format = (value?: { year: number; era: "BC" | "AD" } | null) => formatHistoricalYear(value);
+  const format = (value?: { year: number; era: "BC" | "AD" } | null) =>
+    formatHistoricalYear(value);
+  if (from && to && from.year === to.year && from.era === to.era) {
+    return format(from);
+  }
   if (!from && !to) return "—";
   return `${format(from)} – ${format(to)}`;
 }

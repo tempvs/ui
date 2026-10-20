@@ -41,6 +41,7 @@ import {
   updateStashGroupName,
   updateStashGroupImageDescription,
   updateStashItemMarker,
+  uploadStashItemImage,
   uploadStashGroupImage,
 } from "./stashApi";
 import {
@@ -350,6 +351,7 @@ export default function StashOverview({
     null,
   );
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
+  const [itemCreateImage, setItemCreateImage] = useState<File | null>(null);
   const [itemFilter, setItemFilter] = useState("");
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [itemForm, setItemForm] = useState(emptyItemForm);
@@ -1031,7 +1033,12 @@ export default function StashOverview({
         ...itemForm,
         period: profile.period,
       });
+      if (itemCreateImage) {
+        const preparedImage = await prepareImageFile(itemCreateImage);
+        await uploadStashItemImage(createdItem.id, preparedImage);
+      }
       setItemForm(emptyItemForm);
+      setItemCreateImage(null);
       setItemCreateTarget(null);
       navigate(`/stash/${profile.alias || profile.id}/items/${createdItem.id}`);
     } catch (error) {
@@ -1708,7 +1715,10 @@ export default function StashOverview({
                         type="button"
                         className="stash-inline-icon-button"
                         title={t("profile.stash.itemCreate", "Add item")}
-                        onClick={() => setItemCreateTarget(activeGroup)}
+                        onClick={() => {
+                          setItemCreateImage(null);
+                          setItemCreateTarget(activeGroup);
+                        }}
                       >
                         <PlusIcon />
                       </button>
@@ -1729,7 +1739,10 @@ export default function StashOverview({
                         <Button
                           variant="outline-secondary"
                           size="sm"
-                          onClick={() => setItemCreateTarget(activeGroup)}
+                          onClick={() => {
+                            setItemCreateImage(null);
+                            setItemCreateTarget(activeGroup);
+                          }}
                         >
                           {t("profile.stash.itemCreateFirst", "Add first item")}
                         </Button>
@@ -2012,7 +2025,12 @@ export default function StashOverview({
 
       <Modal
         show={Boolean(itemCreateTarget)}
-        onHide={() => !itemCreateSubmitting && setItemCreateTarget(null)}
+        onHide={() => {
+          if (!itemCreateSubmitting) {
+            setItemCreateImage(null);
+            setItemCreateTarget(null);
+          }
+        }}
         centered
       >
         <Modal.Header closeButton={!itemCreateSubmitting}>
@@ -2069,11 +2087,42 @@ export default function StashOverview({
               )}
               : {getPeriodLabel(profile?.period)}
             </div>
+            <Form.Group className="mt-3 mb-0">
+              <Form.Label>Picture</Form.Label>
+              <Form.Control
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                disabled={itemCreateSubmitting}
+                onChange={(event) => {
+                  const input = event.target as HTMLInputElement;
+                  setItemCreateImage(input.files?.[0] || null);
+                  input.value = "";
+                }}
+              />
+              {itemCreateImage && (
+                <div className="d-flex align-items-center justify-content-between gap-2 small text-muted mt-2">
+                  <span className="text-truncate">{itemCreateImage.name}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="link"
+                    className="p-0 text-danger"
+                    disabled={itemCreateSubmitting}
+                    onClick={() => setItemCreateImage(null)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </Form.Group>
           </Modal.Body>
           <Modal.Footer>
             <Button
               variant="outline-secondary"
-              onClick={() => setItemCreateTarget(null)}
+              onClick={() => {
+                setItemCreateImage(null);
+                setItemCreateTarget(null);
+              }}
               disabled={itemCreateSubmitting}
             >
               {t("profile.action.cancel", "Cancel")}

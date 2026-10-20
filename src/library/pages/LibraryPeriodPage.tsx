@@ -11,7 +11,9 @@ import HistoricalRangeFilter, {
 import PlacePickerField from "../../component/PlacePickerField";
 import type { MapPlace } from "../../map/mapApi";
 import { getErrorMessage } from "../../util/errors";
+import { prepareImageFile } from "../../util/fileUtils";
 import {
+  amendSourceChangeset,
   createSource,
   findSources,
   getSourceImages,
@@ -19,6 +21,7 @@ import {
   getLibraryViewer,
   LibrarySource,
   LibrarySourceImage,
+  uploadSourceChangesetImage,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
@@ -68,7 +71,7 @@ export default function LibraryPeriodPage() {
     description: "",
     type: "",
   });
-  const [draftRangeEnabled, setDraftRangeEnabled] = useState(false);
+  const [draftImages, setDraftImages] = useState<File[]>([]);
   const [draftFrom, setDraftFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -293,10 +296,10 @@ export default function LibraryPeriodPage() {
       const result = await createSource({
         ...draftSource,
         period: periodCode,
-        ...(draftRangeEnabled && draftFrom.year
+        ...(draftFrom.year
           ? { from: { year: Number(draftFrom.year), era: draftFrom.era } }
           : {}),
-        ...(draftRangeEnabled && draftTo.year
+        ...(draftTo.year
           ? { to: { year: Number(draftTo.year), era: draftTo.era } }
           : {}),
       });
@@ -315,6 +318,46 @@ export default function LibraryPeriodPage() {
         throw new Error("Unable to create the source.");
       }
 
+      const created = result.data;
+      if (draftImages.length) {
+        const stagedImages = await Promise.all(
+          draftImages.map(async (file) => ({
+            id: crypto.randomUUID(),
+            file: await prepareImageFile(file),
+          })),
+        );
+        const amended = await amendSourceChangeset(
+          created.source.id,
+          created.changeset.id,
+          {
+            proposed: created.changeset.proposed,
+            imageOperations: stagedImages.map((image) => ({
+              kind: "ADD" as const,
+              stagedImageId: image.id,
+              description: null,
+            })),
+          },
+          created.changeset.version,
+        );
+        if (!amended.ok) {
+          throw new Error("Unable to add images to the source proposal.");
+        }
+        for (const image of stagedImages) {
+          const upload = await uploadSourceChangesetImage(
+            created.source.id,
+            created.changeset.id,
+            image.id,
+            image.file,
+            null,
+          );
+          if (!upload.ok) {
+            throw new Error(
+              "Unable to upload an image for the source proposal.",
+            );
+          }
+        }
+      }
+      setDraftImages([]);
       setShowCreateModal(false);
       navigate(
         `/library/source/${result.data.source.id}/changesets/${result.data.changeset.id}`,
@@ -451,7 +494,7 @@ export default function LibraryPeriodPage() {
                           description: "",
                           type: "",
                         });
-                        setDraftRangeEnabled(false);
+                        setDraftImages([]);
                         setDraftFrom({ year: "", era: "AD" });
                         setDraftTo({ year: "", era: "AD" });
                         setShowCreateModal(true);
@@ -497,6 +540,7 @@ export default function LibraryPeriodPage() {
           show={showCreateModal}
           onHide={() => {
             if (!submitting) {
+              setDraftImages([]);
               setShowCreateModal(false);
             }
           }}
@@ -521,13 +565,14 @@ export default function LibraryPeriodPage() {
                 />
               </Form.Group>
               <HistoricalRangeFilter
-                enabled={draftRangeEnabled}
+                enabled
                 from={draftFrom}
                 to={draftTo}
-                onEnabledChange={setDraftRangeEnabled}
+                onEnabledChange={() => undefined}
                 onFromChange={setDraftFrom}
                 onToChange={setDraftTo}
-                label="Set year range"
+                label="Years"
+                showToggle={false}
               />
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
@@ -561,12 +606,60 @@ export default function LibraryPeriodPage() {
                   ))}
                 </Form.Select>
               </Form.Group>
+              <Form.Group className="mt-3 mb-0">
+                <Form.Label>Pictures</Form.Label>
+                <Form.Control
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  disabled={submitting}
+                  onChange={(event) => {
+                    const input = event.target as HTMLInputElement;
+                    const selected = Array.from(input.files || []);
+                    input.value = "";
+                    setDraftImages((current) =>
+                      [...current, ...selected].slice(0, 50),
+                    );
+                  }}
+                />
+                {draftImages.length > 0 && (
+                  <ul className="list-unstyled small text-muted mt-2 mb-0">
+                    {draftImages.map((image, index) => (
+                      <li
+                        key={`${image.name}-${index}`}
+                        className="d-flex justify-content-between gap-2 py-1"
+                      >
+                        <span className="text-truncate">{image.name}</span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="p-0 text-danger"
+                          disabled={submitting}
+                          onClick={() =>
+                            setDraftImages((current) =>
+                              current.filter(
+                                (_, candidateIndex) => candidateIndex !== index,
+                              ),
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Form.Group>
             </Modal.Body>
             <Modal.Footer>
               <Button
                 type="button"
                 variant="outline-secondary"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setDraftImages([]);
+                  setShowCreateModal(false);
+                }}
                 disabled={submitting}
               >
                 Cancel

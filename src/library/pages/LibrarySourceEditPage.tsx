@@ -147,6 +147,7 @@ export default function LibrarySourceEditPage() {
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [ownPending, setOwnPending] = useState<SourceChangeset | null>(null);
+  const [isUnpublishedCreation, setIsUnpublishedCreation] = useState(false);
   const [otherPendingCount, setOtherPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -180,8 +181,6 @@ export default function LibrarySourceEditPage() {
           getSourceChangesets(sourceId).catch(() => null),
           getSourceImages(sourceId).catch(() => null),
         ]);
-      if (!sourceResult.ok || !sourceResult.data)
-        throw new Error("Unable to load the source.");
       if (!canEditSource(viewer))
         throw new Error("Library editor access is required to edit a source.");
       if (changesetsResult && !changesetsResult.ok)
@@ -189,11 +188,31 @@ export default function LibrarySourceEditPage() {
           changesetsResult,
           "Unable to load source changesets.",
         );
-      setSource(sourceResult.data);
-      setImages(imageResult?.data || []);
+      const changesets = changesetsResult?.data?.content || [];
+      const pendingCreation = changesets.find(
+        (changeset) =>
+          changeset.kind === "CREATE" && changeset.status === "PENDING",
+      );
+      // A creation proposal has no public source projection yet. The review
+      // API still exposes its immutable snapshot to Library editors, which is
+      // the authoritative base for an amendment.
+      const editableSource =
+        sourceResult.ok && sourceResult.data
+          ? sourceResult.data
+          : pendingCreation
+            ? {
+                id: sourceId || pendingCreation.sourceId,
+                version: pendingCreation.baseVersion,
+                ...pendingCreation.proposed,
+              }
+            : null;
+      if (!editableSource) throw new Error("Unable to load the source.");
+      setSource(editableSource);
+      setIsUnpublishedCreation(Boolean(pendingCreation && !sourceResult.ok));
+      setImages(sourceResult.ok ? imageResult?.data || [] : []);
       const ownUserId = viewer?.userId;
       const pending =
-        changesetsResult?.data?.content.find(
+        changesets.find(
           (changeset) =>
             changeset.status === "PENDING" &&
             changeset.proposerId === ownUserId,
@@ -201,18 +220,16 @@ export default function LibrarySourceEditPage() {
       setOwnPending(pending);
       if (pending?.kind === "DELETE") {
         navigate(
-          `/library/source/${sourceResult.data.id}/changesets/${pending.id}`,
+          `/library/source/${editableSource.id}/changesets/${pending.id}`,
           { replace: true },
         );
         return;
       }
       setDraft(
-        pending
-          ? asDraftSnapshot(pending.proposed)
-          : asDraft(sourceResult.data),
+        pending ? asDraftSnapshot(pending.proposed) : asDraft(editableSource),
       );
       setOtherPendingCount(
-        (changesetsResult?.data?.content || []).filter(
+        changesets.filter(
           (changeset) =>
             changeset.status === "PENDING" &&
             changeset.proposerId !== ownUserId,
@@ -506,7 +523,7 @@ export default function LibrarySourceEditPage() {
         ),
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        rightContent: (
+        rightContent: !isUnpublishedCreation ? (
           <Button
             type="button"
             size="sm"
@@ -516,7 +533,7 @@ export default function LibrarySourceEditPage() {
           >
             Delete source
           </Button>
-        ),
+        ) : null,
       }}
     >
       <div className="page-layout-content px-4 px-xl-5 pb-4">
