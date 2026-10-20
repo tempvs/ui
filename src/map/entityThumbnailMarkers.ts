@@ -15,6 +15,21 @@ export function entityThumbnailMarkers(
           `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
         ),
     )
+    .filter(
+      (entity, _index, all) =>
+        !(
+          entity.entityType === "SOURCE" &&
+          entity.locationRole === "HELD_AT" &&
+          all.some(
+            (candidate) =>
+              candidate.entityType === "SOURCE" &&
+              candidate.entityId === entity.entityId &&
+              candidate.locationRole === "DISCOVERED_AT" &&
+              Math.abs(candidate.latitude - entity.latitude) < 0.00001 &&
+              Math.abs(candidate.longitude - entity.longitude) < 0.00001,
+          )
+        ),
+    )
     .map((entity) => ({
       key: `${entity.entityType}:${entity.entityId}:${entity.locationRole}`,
       entityType: entity.entityType,

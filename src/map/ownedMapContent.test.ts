@@ -185,6 +185,28 @@ test("composes profile, membership club, and club-stash source markers", async (
   ).toHaveLength(1);
 });
 
+test("uses one source marker when discovery and holding records resolve to one town", async () => {
+  jest.mocked(getSource).mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: {
+      id: "source",
+      version: 1,
+      name: "Roman find",
+      discoveredAtPlaceId: "rome-settlement",
+      discoveredAtPlaceName: "Rome",
+      heldAtPlaceId: "rome-historic-settlement",
+      heldAtPlaceName: "Rome",
+    },
+  });
+
+  const content = await loadOwnedMapContent("viewer");
+
+  expect(
+    content.markers.filter((marker) => marker.entityId === "source"),
+  ).toEqual([expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" })]);
+});
+
 test("loads the club avatar when the club catalogue row has an image id but no signed URL", async () => {
   jest.mocked(getProfileClubs).mockResolvedValue([
     {

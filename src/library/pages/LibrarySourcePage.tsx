@@ -749,6 +749,10 @@ export default function LibrarySourcePage() {
               errorTitle="Save failed"
             />
             <div className="mt-3 text-start">
+              <div className="d-flex align-items-baseline gap-2 mb-2">
+                <span className="editable-field-row-label">Type</span>
+                <span>{formatSourceType(source.type)}</span>
+              </div>
               <EditableHistoricalRangeField
                 label="Years"
                 editable={false}
@@ -775,24 +779,22 @@ export default function LibrarySourcePage() {
                 className="mt-2 mb-0"
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
-              {!source.discoveredAtPlaceId && (
-                <PlacePickerField
-                  label="Held at"
-                  value={
-                    source.heldAtPlaceId && source.heldAtPlaceName
-                      ? {
-                          id: source.heldAtPlaceId,
-                          canonicalName: source.heldAtPlaceName,
-                        }
-                      : null
-                  }
-                  readOnlyLabel={source.heldAtPlaceName}
-                  editable={false}
-                  onChange={() => undefined}
-                  className="mt-2 mb-0"
-                  relatedMapScope={{ type: "SOURCE", id: source.id }}
-                />
-              )}
+              <PlacePickerField
+                label="Held at"
+                value={
+                  source.heldAtPlaceId && source.heldAtPlaceName
+                    ? {
+                        id: source.heldAtPlaceId,
+                        canonicalName: source.heldAtPlaceName,
+                      }
+                    : null
+                }
+                readOnlyLabel={source.heldAtPlaceName}
+                editable={false}
+                onChange={() => undefined}
+                className="mt-2 mb-0"
+                relatedMapScope={{ type: "SOURCE", id: source.id }}
+              />
             </div>
           </div>
           <PostPanel
@@ -827,6 +829,13 @@ export default function LibrarySourcePage() {
               emptyText="No images uploaded for this source yet."
               previewSize="compact"
               previewStyle={{ width: "100%" }}
+              previewImageStyle={{
+                width: "auto",
+                maxWidth: "100%",
+                height: "auto",
+                maxHeight: "24rem",
+                margin: "0 auto",
+              }}
               fitPreviewHeightToImage
               editable={false}
               canAddImage={false}
@@ -924,14 +933,7 @@ export default function LibrarySourcePage() {
                 : entry.proposerId
                   ? `/profile/user/${entry.proposerId}`
                   : null;
-              const action =
-                entry.action === "CREATED"
-                  ? "created this source"
-                  : entry.action === "PROPOSAL_APPLIED"
-                    ? "approved and applied a proposal"
-                    : entry.action === "PROPOSAL_SUPERSEDED"
-                      ? "superseded an outdated proposal"
-                      : "rejected a proposal";
+              const action = sourceChangeActionLabel(entry.action);
               return (
                 <li key={entry.id} className="border-bottom pb-2">
                   <div>
@@ -954,6 +956,17 @@ export default function LibrarySourcePage() {
                     <time className="text-muted">
                       {new Date(entry.createdAt).toLocaleString()}
                     </time>
+                    {entry.changesetId && (
+                      <>
+                        <span className="text-muted"> · </span>
+                        <Link
+                          className="source-change-details-link"
+                          to={`/library/source/${source.id}/changesets/${entry.changesetId}`}
+                        >
+                          View changes
+                        </Link>
+                      </>
+                    )}
                   </div>
                   <ul className="small text-muted mt-1 mb-0">
                     {Object.entries(entry.changes).map(([field, change]) => (
@@ -983,4 +996,26 @@ export default function LibrarySourcePage() {
       )}
     </PageLayout>
   );
+}
+
+function sourceChangeActionLabel(
+  action: SourceChangeLogEntry["action"],
+): string {
+  return (
+    {
+      CREATED: "created this source",
+      PROPOSAL_APPLIED: "approved and applied a proposal",
+      PROPOSAL_REJECTED: "rejected a proposal",
+      PROPOSAL_SUPERSEDED: "superseded an outdated proposal",
+      CHANGESET_APPLIED: "approved and applied a changeset",
+      CHANGESET_REJECTED: "rejected a changeset",
+      CHANGESET_WITHDRAWN: "withdrew a changeset",
+      CHANGESET_SUPERSEDED: "superseded an outdated changeset",
+    } satisfies Record<SourceChangeLogEntry["action"], string>
+  )[action];
+}
+
+function formatSourceType(value: string | null | undefined): string {
+  if (!value) return "Other";
+  return `${value.slice(0, 1)}${value.slice(1).toLocaleLowerCase()}`;
 }

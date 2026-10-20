@@ -23,6 +23,9 @@ export default function NotificationsPage() {
   const [nextToken, setNextToken] = useState<string>();
   const [filter, setFilter] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [category, setCategory] = useState<
+    Notification["category"] | undefined
+  >();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,6 +36,7 @@ export default function NotificationsPage() {
       const page = await listNotifications(
         unreadOnly ? "unread" : "all",
         append ? nextToken : undefined,
+        category,
       );
       setItems((current) =>
         append ? [...current, ...page.content] : page.content,
@@ -46,7 +50,7 @@ export default function NotificationsPage() {
   };
   useEffect(() => {
     void load();
-  }, [unreadOnly]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [unreadOnly, category]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = async (notification: Notification) => {
     if (!notification.readAt) {
@@ -121,6 +125,25 @@ export default function NotificationsPage() {
         placeholder="Filter notifications"
         ariaLabel="Filter notifications"
       />
+      <nav className="nav nav-tabs mt-3" aria-label="Notification categories">
+        {(["ALL", "CLUB", "EVENT", "LIBRARY", "MAP", "PROFILE"] as const).map(
+          (tab) => {
+            const selected = (tab === "ALL" && !category) || tab === category;
+            return (
+              <button
+                key={tab}
+                type="button"
+                className={`nav-link${selected ? " active" : ""}`}
+                onClick={() => setCategory(tab === "ALL" ? undefined : tab)}
+              >
+                {tab === "ALL"
+                  ? "All"
+                  : `${tab[0]}${tab.slice(1).toLowerCase()}`}
+              </button>
+            );
+          },
+        )}
+      </nav>
       {error && (
         <Alert variant="danger" className="mt-3">
           {error}

@@ -450,9 +450,44 @@ async function sourceMapMarkers(
     async ({ source, location }) =>
       sourceMarker(source, location, resolvePlace, resolveSourceImage),
   );
-  return markers
-    .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
-    .filter((value): value is OwnedMapMarker => Boolean(value));
+  return deduplicateEquivalentSourceMarkers(
+    markers
+      .flatMap((result) =>
+        result.status === "fulfilled" ? [result.value] : [],
+      )
+      .filter((value): value is OwnedMapMarker => Boolean(value)),
+  );
+}
+
+/**
+ * A source may use two catalogue records for one town (for example a modern
+ * settlement and its historical-settlement record). Those roles remain
+ * independently stored, but a pair with the same resolved coordinate is one
+ * visual location. Discovery wins because it is the primary source location.
+ */
+function deduplicateEquivalentSourceMarkers(
+  markers: OwnedMapMarker[],
+): OwnedMapMarker[] {
+  return markers.filter((marker) => {
+    if (marker.locationRole !== "HELD_AT") return true;
+    return !markers.some(
+      (candidate) =>
+        candidate.entityId === marker.entityId &&
+        candidate.locationRole === "DISCOVERED_AT" &&
+        sameCoordinates(candidate, marker),
+    );
+  });
+}
+
+function sameCoordinates(
+  left: Pick<OwnedMapMarker, "latitude" | "longitude">,
+  right: Pick<OwnedMapMarker, "latitude" | "longitude">,
+): boolean {
+  // Imported locations can differ by insignificant floating-point precision.
+  return (
+    Math.abs(left.latitude - right.latitude) < 0.00001 &&
+    Math.abs(left.longitude - right.longitude) < 0.00001
+  );
 }
 
 type SourceLocation = {

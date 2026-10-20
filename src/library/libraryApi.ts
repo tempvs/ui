@@ -142,10 +142,15 @@ export type SourceChangeLogEntry = {
     | "CREATED"
     | "PROPOSAL_APPLIED"
     | "PROPOSAL_REJECTED"
-    | "PROPOSAL_SUPERSEDED";
+    | "PROPOSAL_SUPERSEDED"
+    | "CHANGESET_APPLIED"
+    | "CHANGESET_REJECTED"
+    | "CHANGESET_WITHDRAWN"
+    | "CHANGESET_SUPERSEDED";
   actorId: string;
   proposerId?: string;
   proposalId?: string;
+  changesetId?: string;
   changes: Record<string, { before: unknown; after: unknown }>;
   createdAt: string;
 };

@@ -36,9 +36,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export function listNotifications(
   status: "all" | "unread" = "all",
   nextToken?: string,
+  category?: Notification["category"],
 ) {
   const query = new URLSearchParams({ status, limit: "30" });
   if (nextToken) query.set("nextToken", nextToken);
+  if (category) query.set("category", category);
   return request<{ content: Notification[]; nextToken?: string }>(`?${query}`);
 }
 

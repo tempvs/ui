@@ -86,7 +86,6 @@ export type MapEntityLocation = {
   latitude: number;
   longitude: number;
   sourcePeriod?: string;
-  sourceClassification?: string;
   sourceType?: string;
   sourceFrom?: number;
   sourceTo?: number;
@@ -110,7 +109,6 @@ export type MapEntityLocationPage = {
 export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
 export type MapSourceFilters = {
   period?: string;
-  classifications?: string[];
   types?: string[];
   from?: number;
   to?: number;
@@ -713,9 +711,6 @@ export async function nearbyMapEntitiesPage(
       ...(query?.trim() ? { search: query.trim() } : {}),
       ...(sourceRoles.length ? { sourceRoles: sourceRoles.join(",") } : {}),
       ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
-      ...(sourceFilters.classifications?.length
-        ? { sourceClassifications: sourceFilters.classifications.join(",") }
-        : {}),
       ...(sourceFilters.types?.length
         ? { sourceTypes: sourceFilters.types.join(",") }
         : {}),

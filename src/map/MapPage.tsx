@@ -9,10 +9,7 @@ import {
   isValidHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
-import {
-  getClubProfiles,
-  getUserProfileByUserId,
-} from "../profile/profileApi";
+import { getClubProfiles, getUserProfileByUserId } from "../profile/profileApi";
 import {
   buildOwnedProfileOptions,
   resolveCurrentProfileOption,
@@ -88,9 +85,6 @@ export default function MapPage() {
       params.get("eventPeriod") ||
       params.get("profilePeriod") ||
       "",
-  );
-  const [sourceClassification, setSourceClassification] = useState(
-    params.get("sourceClassification") || "",
   );
   const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
   const [from, setFrom] = useState<HistoricalYearInput>(() =>
@@ -285,9 +279,6 @@ export default function MapPage() {
 
   const sourceFilters: MapSourceFilters = {
     ...(period ? { period } : {}),
-    ...(sourceClassification
-      ? { classifications: [sourceClassification] }
-      : {}),
     ...(sourceType ? { types: [sourceType] } : {}),
     ...(toAstronomicalYear(from) !== undefined
       ? { from: toAstronomicalYear(from) }
@@ -548,17 +539,12 @@ export default function MapPage() {
         setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
       } else {
         setItems(
-          (
-            await searchPlacesWithNameRange(
-              trimmed,
-              undefined,
-              from,
-              to,
-            )
-          ).map((place) => ({
-            ...place,
-            matchedName: matchingPlaceName(place, trimmed),
-          })),
+          (await searchPlacesWithNameRange(trimmed, undefined, from, to)).map(
+            (place) => ({
+              ...place,
+              matchedName: matchingPlaceName(place, trimmed),
+            }),
+          ),
         );
         setEntities([]);
         setEntityNextCursor(null);
@@ -665,7 +651,10 @@ export default function MapPage() {
         ) : null,
       }}
     >
-      <section className="club-panel map-discovery-panel" aria-label="Map place search">
+      <section
+        className="club-panel map-discovery-panel"
+        aria-label="Map place search"
+      >
         <div className="map-discovery-heading">
           <h1>Discover places</h1>
           <p className="text-muted mb-0">
@@ -707,8 +696,6 @@ export default function MapPage() {
             onToChange={setTo}
             sourceRoles={sourceRoles}
             onSourceRolesChange={setSourceRoles}
-            sourceClassification={sourceClassification}
-            onSourceClassificationChange={setSourceClassification}
             sourceType={sourceType}
             onSourceTypeChange={setSourceType}
             eventRoles={eventRoles}
@@ -723,14 +710,18 @@ export default function MapPage() {
                     id="map-modern-borders"
                     label="Show modern borders"
                     checked={showModernBorders}
-                    onChange={(event) => setShowModernBorders(event.target.checked)}
+                    onChange={(event) =>
+                      setShowModernBorders(event.target.checked)
+                    }
                   />
                   {selectedPlaceId && (
                     <Form.Check
                       id="map-include-descendants"
                       label="Include child places"
                       checked={includeDescendants}
-                      onChange={(event) => setIncludeDescendants(event.target.checked)}
+                      onChange={(event) =>
+                        setIncludeDescendants(event.target.checked)
+                      }
                     />
                   )}
                   <Form.Group>
@@ -768,7 +759,9 @@ export default function MapPage() {
                         type="button"
                         variant="outline-dark"
                         size="sm"
-                        onClick={() => void search({ useCurrentCoordinates: true })}
+                        onClick={() =>
+                          void search({ useCurrentCoordinates: true })
+                        }
                         disabled={loading}
                       >
                         Show area
@@ -1095,8 +1088,6 @@ function appendSourceFilters(
   parameters: URLSearchParams,
   filters: MapSourceFilters,
 ): void {
-  if (filters.classifications?.length)
-    parameters.set("sourceClassification", filters.classifications[0]);
   if (filters.types?.length) parameters.set("sourceType", filters.types[0]);
 }
 
