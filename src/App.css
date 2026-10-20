@@ -2766,7 +2766,7 @@ button.stash-item-media-empty:disabled {
   background: #f2fbf3;
 }
 
-.source-changeset-image-thumbnail img,
+.source-changeset-image-thumbnail .source-changeset-image-preview img,
 .source-changeset-image-thumbnail-empty {
   display: block;
   width: 100%;

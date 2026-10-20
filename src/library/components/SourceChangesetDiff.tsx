@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import StackedImageGallery from "../../component/StackedImageGallery";
+
 import {
   type HistoricalYear,
   type LibrarySourceImage,
@@ -113,9 +115,17 @@ function ImageThumbnail({
     >
       <div className="source-changeset-image-thumbnail-label">{label}</div>
       {url ? (
-        <img
-          src={url}
-          alt={`${label}: ${image?.description || image?.fileName || "source image"}`}
+        <StackedImageGallery
+          images={image ? [image] : []}
+          title={label}
+          mode="single"
+          previewSize="compact"
+          editable={false}
+          editableDescription={false}
+          canAddImage={false}
+          showComments={false}
+          wrapperClassName="source-changeset-image-preview"
+          previewStyle={{ height: "5.5rem", objectFit: "contain" }}
         />
       ) : (
         <div className="source-changeset-image-thumbnail-empty">

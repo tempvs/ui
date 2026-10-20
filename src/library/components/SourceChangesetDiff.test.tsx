@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import SourceChangesetDiff, {
   summarizeSourceChangeset,
@@ -49,4 +49,31 @@ test("renders an initial source submission as additions", () => {
     screen.getByText(/New source proposed for review/),
   ).toBeInTheDocument();
   expect(screen.getByText("New source")).toBeInTheDocument();
+});
+
+test("opens a staged source image in the shared image viewer", () => {
+  render(
+    <SourceChangesetDiff
+      base={source()}
+      proposed={source()}
+      imageOperations={[
+        { kind: "ADD", stagedImageId: "staged-image", description: null },
+      ]}
+      imagePreviews={{
+        staged: [
+          {
+            id: "staged-image",
+            url: "https://example.test/proposed-image.jpg",
+            fileName: "Proposed image",
+          },
+        ],
+      }}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Proposed image" }));
+
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(screen.getAllByText("New image")).not.toHaveLength(0);
+  expect(document.querySelector(".carousel")).not.toBeInTheDocument();
 });

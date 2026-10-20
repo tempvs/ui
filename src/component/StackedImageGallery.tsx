@@ -59,6 +59,9 @@ type StackedImageGalleryProps = {
   previewImageStyle?: React.CSSProperties;
   fitPreviewHeightToImage?: boolean;
   modalSize?: "sm" | "lg" | "xl";
+  /** Disable discussion for temporary/review-only images without creating a
+   * second lightbox implementation. */
+  showComments?: boolean;
   showInlineDescription?: boolean;
   /** Return false to consume a preview click without opening the lightbox. */
   onPreviewClick?: (
@@ -104,6 +107,7 @@ export default function StackedImageGallery({
   previewImageStyle,
   fitPreviewHeightToImage = false,
   modalSize = "xl",
+  showComments = true,
   showInlineDescription = false,
   onPreviewClick,
 }: StackedImageGalleryProps) {
@@ -250,7 +254,7 @@ export default function StackedImageGallery({
   const modalImageDetails = (image: GalleryImage) => (
     <>
       {descriptionContent(image, "border-top mt-3 px-5 py-3")}
-      <CommentThread targetType="IMAGE" targetId={image.id} />
+      {showComments && <CommentThread targetType="IMAGE" targetId={image.id} />}
     </>
   );
 

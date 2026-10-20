@@ -219,11 +219,6 @@ export default function LibrarySourceChangesetPage() {
     );
   const pending = changeset.status === "PENDING";
   const own = changeset.proposerId === viewerId;
-  const publishedById = new Map(
-    publishedImages.map((image) => [image.id, image]),
-  );
-  const stagedById = new Map(stagedImages.map((image) => [image.id, image]));
-
   return (
     <PageLayout
       header={{
@@ -268,77 +263,15 @@ export default function LibrarySourceChangesetPage() {
             proposed={changeset.proposed}
             kind={changeset.kind}
             imageOperations={changeset.imageOperations}
+            imagePreviews={{
+              published: publishedImages,
+              staged: stagedImages,
+            }}
           />
           <CommentThread
             targetType="SOURCE_CHANGESET"
             targetId={`${source.id}:${changeset.id}`}
           />
-          {changeset.imageOperations.length > 0 && (
-            <section className="mt-4">
-              <h2 className="h5">Image changes</h2>
-              <div className="row g-3">
-                {changeset.imageOperations.map((operation) => {
-                  const image =
-                    operation.kind === "ADD" || operation.kind === "REPLACE"
-                      ? stagedById.get(operation.stagedImageId)
-                      : publishedById.get(operation.imageId);
-                  const prior =
-                    operation.kind === "REPLACE" || operation.kind === "REMOVE"
-                      ? publishedById.get(operation.imageId)
-                      : null;
-                  return (
-                    <div
-                      className="col-md-6"
-                      key={
-                        operation.kind === "ADD"
-                          ? operation.stagedImageId
-                          : `${operation.kind}-${operation.imageId}`
-                      }
-                    >
-                      <div className="border rounded p-2 h-100">
-                        <div className="small fw-semibold mb-2">
-                          {operation.kind === "ADD"
-                            ? "Added"
-                            : operation.kind === "REMOVE"
-                              ? "Removed"
-                              : operation.kind === "REPLACE"
-                                ? "Replaced"
-                                : "Description changed"}
-                        </div>
-                        {prior && (
-                          <ImagePreview
-                            image={prior}
-                            className="source-changeset-image-removed"
-                            label="Previous image"
-                          />
-                        )}
-                        {image && (
-                          <ImagePreview
-                            image={image}
-                            className={
-                              operation.kind === "REMOVE"
-                                ? "source-changeset-image-removed"
-                                : "source-changeset-image-added"
-                            }
-                            label={
-                              operation.kind === "REMOVE"
-                                ? "Removed image"
-                                : "Proposed image"
-                            }
-                          />
-                        )}
-                        {!image && operation.kind !== "REMOVE" && (
-                          <div className="small text-muted">
-                            Image upload is still processing.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
           {changeset.reviewComment && (
             <div className="border rounded p-3 mt-3 text-start">
               <div className="fw-semibold">Review comment</div>
@@ -444,32 +377,5 @@ export default function LibrarySourceChangesetPage() {
         </Modal.Footer>
       </Modal>
     </PageLayout>
-  );
-}
-
-function ImagePreview({
-  image,
-  className,
-  label,
-}: {
-  image: LibrarySourceImage;
-  className: string;
-  label: string;
-}) {
-  return (
-    <div className={`${className} p-2 rounded mb-2`}>
-      <div className="small fw-semibold">{label}</div>
-      {image.thumbnailUrl || image.url ? (
-        <img
-          src={image.thumbnailUrl || image.url || undefined}
-          alt={image.description || label}
-          className="img-fluid rounded mt-1"
-          style={{ maxHeight: "10rem" }}
-        />
-      ) : (
-        <div className="small text-muted mt-1">{image.fileName || "Image"}</div>
-      )}
-      <div className="small mt-1">{image.description || "No description"}</div>
-    </div>
   );
 }
