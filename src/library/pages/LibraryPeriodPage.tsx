@@ -8,6 +8,7 @@ import Spinner from "../../component/Spinner";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
+import MultiImageFilePicker from "../../component/MultiImageFilePicker";
 import PlacePickerField from "../../component/PlacePickerField";
 import type { MapPlace } from "../../map/mapApi";
 import { getErrorMessage } from "../../util/errors";
@@ -641,51 +642,11 @@ export default function LibraryPeriodPage() {
                   ))}
                 </Form.Select>
               </Form.Group>
-              <Form.Group className="mt-3 mb-0">
-                <Form.Label>Pictures</Form.Label>
-                <Form.Control
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  multiple
-                  disabled={submitting}
-                  onChange={(event) => {
-                    const input = event.target as HTMLInputElement;
-                    const selected = Array.from(input.files || []);
-                    input.value = "";
-                    setDraftImages((current) =>
-                      [...current, ...selected].slice(0, 50),
-                    );
-                  }}
-                />
-                {draftImages.length > 0 && (
-                  <ul className="list-unstyled small text-muted mt-2 mb-0">
-                    {draftImages.map((image, index) => (
-                      <li
-                        key={`${image.name}-${index}`}
-                        className="d-flex justify-content-between gap-2 py-1"
-                      >
-                        <span className="text-truncate">{image.name}</span>
-                        <Button
-                          type="button"
-                          variant="link"
-                          size="sm"
-                          className="p-0 text-danger"
-                          disabled={submitting}
-                          onClick={() =>
-                            setDraftImages((current) =>
-                              current.filter(
-                                (_, candidateIndex) => candidateIndex !== index,
-                              ),
-                            )
-                          }
-                        >
-                          Remove
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Form.Group>
+              <MultiImageFilePicker
+                files={draftImages}
+                onFilesChange={setDraftImages}
+                disabled={submitting}
+              />
             </Modal.Body>
             <Modal.Footer>
               <Button

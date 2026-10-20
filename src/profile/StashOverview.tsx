@@ -16,6 +16,7 @@ import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import InlineEditableText from "../component/InlineEditableText";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
+import MultiImageFilePicker from "../component/MultiImageFilePicker";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
@@ -351,7 +352,7 @@ export default function StashOverview({
     null,
   );
   const [itemCreateSubmitting, setItemCreateSubmitting] = useState(false);
-  const [itemCreateImage, setItemCreateImage] = useState<File | null>(null);
+  const [itemCreateImages, setItemCreateImages] = useState<File[]>([]);
   const [itemFilter, setItemFilter] = useState("");
   const [groupForm, setGroupForm] = useState(emptyGroupForm);
   const [itemForm, setItemForm] = useState(emptyItemForm);
@@ -1033,12 +1034,18 @@ export default function StashOverview({
         ...itemForm,
         period: profile.period,
       });
-      if (itemCreateImage) {
-        const preparedImage = await prepareImageFile(itemCreateImage);
-        await uploadStashItemImage(createdItem.id, preparedImage);
+      if (itemCreateImages.length) {
+        const preparedImages = await Promise.all(
+          itemCreateImages.map((image) => prepareImageFile(image)),
+        );
+        await Promise.all(
+          preparedImages.map((image) =>
+            uploadStashItemImage(createdItem.id, image),
+          ),
+        );
       }
       setItemForm(emptyItemForm);
-      setItemCreateImage(null);
+      setItemCreateImages([]);
       setItemCreateTarget(null);
       navigate(`/stash/${profile.alias || profile.id}/items/${createdItem.id}`);
     } catch (error) {
@@ -1716,7 +1723,7 @@ export default function StashOverview({
                         className="stash-inline-icon-button"
                         title={t("profile.stash.itemCreate", "Add item")}
                         onClick={() => {
-                          setItemCreateImage(null);
+                          setItemCreateImages([]);
                           setItemCreateTarget(activeGroup);
                         }}
                       >
@@ -1740,7 +1747,7 @@ export default function StashOverview({
                           variant="outline-secondary"
                           size="sm"
                           onClick={() => {
-                            setItemCreateImage(null);
+                            setItemCreateImages([]);
                             setItemCreateTarget(activeGroup);
                           }}
                         >
@@ -2027,7 +2034,7 @@ export default function StashOverview({
         show={Boolean(itemCreateTarget)}
         onHide={() => {
           if (!itemCreateSubmitting) {
-            setItemCreateImage(null);
+            setItemCreateImages([]);
             setItemCreateTarget(null);
           }
         }}
@@ -2087,40 +2094,17 @@ export default function StashOverview({
               )}
               : {getPeriodLabel(profile?.period)}
             </div>
-            <Form.Group className="mt-3 mb-0">
-              <Form.Label>Picture</Form.Label>
-              <Form.Control
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                disabled={itemCreateSubmitting}
-                onChange={(event) => {
-                  const input = event.target as HTMLInputElement;
-                  setItemCreateImage(input.files?.[0] || null);
-                  input.value = "";
-                }}
-              />
-              {itemCreateImage && (
-                <div className="d-flex align-items-center justify-content-between gap-2 small text-muted mt-2">
-                  <span className="text-truncate">{itemCreateImage.name}</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="link"
-                    className="p-0 text-danger"
-                    disabled={itemCreateSubmitting}
-                    onClick={() => setItemCreateImage(null)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              )}
-            </Form.Group>
+            <MultiImageFilePicker
+              files={itemCreateImages}
+              onFilesChange={setItemCreateImages}
+              disabled={itemCreateSubmitting}
+            />
           </Modal.Body>
           <Modal.Footer>
             <Button
               variant="outline-secondary"
               onClick={() => {
-                setItemCreateImage(null);
+                setItemCreateImages([]);
                 setItemCreateTarget(null);
               }}
               disabled={itemCreateSubmitting}
