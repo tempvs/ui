@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 
 type MultiImageFilePickerProps = {
@@ -22,6 +22,20 @@ export default function MultiImageFilePicker({
   maxFiles = 50,
 }: MultiImageFilePickerProps) {
   const remaining = Math.max(0, maxFiles - files.length);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof URL === "undefined" || !URL.createObjectURL) {
+      setPreviewUrls([]);
+      return undefined;
+    }
+
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [files]);
 
   return (
     <Form.Group className="mt-3 mb-0">
@@ -53,9 +67,20 @@ export default function MultiImageFilePicker({
             {files.map((image, index) => (
               <li
                 key={`${image.name}-${image.lastModified}-${index}`}
-                className="d-flex justify-content-between gap-2 py-1"
+                className="d-flex align-items-center justify-content-between gap-2 py-1"
               >
-                <span className="text-truncate">{image.name}</span>
+                <div className="d-flex align-items-center gap-2 overflow-hidden">
+                  {previewUrls[index] && (
+                    <img
+                      src={previewUrls[index]}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="rounded border object-fit-cover flex-shrink-0"
+                    />
+                  )}
+                  <span className="text-truncate">{image.name}</span>
+                </div>
                 <Button
                   type="button"
                   variant="link"
