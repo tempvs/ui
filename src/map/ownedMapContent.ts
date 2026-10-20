@@ -83,7 +83,7 @@ export async function loadProfileRelatedMapContent(
   );
   const [clubMarkers, sourceMarkers] = await Promise.all([
     clubMapMarkers(clubs, resolvePlace),
-    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage),
+    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage, true),
   ]);
   const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
   return {
@@ -293,6 +293,7 @@ export async function loadOwnedMapContent(
     sourceIds,
     resolvePlace,
     resolveSourceImage,
+    true,
   );
   const clubMarkers = await clubMarkersPromise;
   // Club locations usually resolve before all stash-linked sources. Fit those
@@ -432,6 +433,7 @@ async function sourceMapMarkers(
   sourceIds: string[],
   resolvePlace: PlaceResolver,
   resolveSourceImage: SourceImageResolver,
+  primaryLocationOnly = false,
 ): Promise<OwnedMapMarker[]> {
   const sources = await inBatches(sourceIds, 8, async (sourceId) => {
     const result = await getSource(sourceId);
@@ -442,7 +444,10 @@ async function sourceMapMarkers(
       result.status === "fulfilled" && result.value ? [result.value] : [],
     )
     .flatMap((source) =>
-      sourceLocations(source).map((location) => ({ source, location })),
+      sourceLocations(source, primaryLocationOnly).map((location) => ({
+        source,
+        location,
+      })),
     );
   const markers = await inBatches(
     sourceLocationsToResolve,
@@ -496,7 +501,10 @@ type SourceLocation = {
   role: "DISCOVERED_AT" | "HELD_AT";
 };
 
-function sourceLocations(source: LibrarySource): SourceLocation[] {
+function sourceLocations(
+  source: LibrarySource,
+  primaryLocationOnly = false,
+): SourceLocation[] {
   const discovered = source.discoveredAtPlaceId
     ? {
         placeId: source.discoveredAtPlaceId,
@@ -514,6 +522,7 @@ function sourceLocations(source: LibrarySource): SourceLocation[] {
   // Discovery is the primary historical association. A second marker at the
   // same approved place only stacks duplicate thumbnails without conveying
   // new information, so retain one discovery marker in that case.
+  if (discovered && primaryLocationOnly) return [discovered];
   return [
     discovered,
     held && held.placeId !== discovered?.placeId ? held : null,

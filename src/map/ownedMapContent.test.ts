@@ -207,6 +207,32 @@ test("uses one source marker when discovery and holding records resolve to one t
   ).toEqual([expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" })]);
 });
 
+test("uses discovery only for a source on the general owned map", async () => {
+  jest.mocked(getSource).mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: {
+      id: "source",
+      version: 1,
+      name: "Roman find",
+      discoveredAtPlaceId: "rome",
+      discoveredAtPlaceName: "Rome",
+      heldAtPlaceId: "museum",
+      heldAtPlaceName: "Museum",
+    },
+  });
+  jest.mocked(getMapPlace).mockImplementation(async (placeId) => ({
+    ...place,
+    id: placeId,
+  }));
+
+  const content = await loadOwnedMapContent("viewer");
+
+  expect(
+    content.markers.filter((marker) => marker.entityId === "source"),
+  ).toEqual([expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" })]);
+});
+
 test("loads the club avatar when the club catalogue row has an image id but no signed URL", async () => {
   jest.mocked(getProfileClubs).mockResolvedValue([
     {
