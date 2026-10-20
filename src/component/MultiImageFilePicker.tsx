@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, Form } from "react-bootstrap";
+
+import StackedImageGallery from "./StackedImageGallery";
 
 type MultiImageFilePickerProps = {
   files: File[];
@@ -10,9 +12,9 @@ type MultiImageFilePickerProps = {
 };
 
 /**
- * A creation-form image picker. Selecting files again appends them instead of
- * replacing the existing selection, which makes multi-image uploads explicit
- * without requiring a separate staging screen.
+ * Creation-form counterpart to the staged-image cards on source proposals.
+ * It uses browser object URLs only: no file is uploaded until the containing
+ * form is submitted.
  */
 export default function MultiImageFilePicker({
   files,
@@ -21,6 +23,7 @@ export default function MultiImageFilePicker({
   label = "Pictures",
   maxFiles = 50,
 }: MultiImageFilePickerProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const remaining = Math.max(0, maxFiles - files.length);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
@@ -37,71 +40,96 @@ export default function MultiImageFilePicker({
     };
   }, [files]);
 
+  const addFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!selected.length) return;
+    onFilesChange([...files, ...selected].slice(0, maxFiles));
+  };
+
+  const removeFile = (index: number) => {
+    onFilesChange(
+      files.filter((_, candidateIndex) => candidateIndex !== index),
+    );
+  };
+
   return (
     <Form.Group className="mt-3 mb-0">
       <Form.Label>{label}</Form.Label>
       <Form.Text className="d-block text-muted mb-2">
-        Choose one or more pictures. Select more files again to add them.
+        Choose one or more pictures. They stay only in this browser until you
+        create the item or source.
       </Form.Text>
       <Form.Control
+        ref={inputRef}
+        className="d-none"
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp"
         multiple
         disabled={disabled || remaining === 0}
         aria-label={`${label}: choose one or more images`}
-        onChange={(event) => {
-          const input = event.target as HTMLInputElement;
-          const selected = Array.from(input.files || []);
-          input.value = "";
-          if (!selected.length) return;
-          onFilesChange([...files, ...selected].slice(0, maxFiles));
-        }}
+        onChange={addFiles}
       />
       {files.length > 0 && (
         <>
-          <Form.Text className="d-block text-muted mt-2">
+          <div className="small text-muted mb-2">
             {files.length} {files.length === 1 ? "picture" : "pictures"}{" "}
-            selected{remaining > 0 ? ` — you can add ${remaining} more.` : "."}
-          </Form.Text>
-          <ul className="list-unstyled small text-muted mt-2 mb-0">
+            selected
+            {remaining > 0 ? ` — you can add ${remaining} more.` : "."}
+          </div>
+          <div className="row g-3 mb-3">
             {files.map((image, index) => (
-              <li
+              <div
+                className="col-md-6"
                 key={`${image.name}-${image.lastModified}-${index}`}
-                className="d-flex align-items-center justify-content-between gap-2 py-1"
               >
-                <div className="d-flex align-items-center gap-2 overflow-hidden">
-                  {previewUrls[index] && (
-                    <img
-                      src={previewUrls[index]}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="rounded border object-fit-cover flex-shrink-0"
-                    />
-                  )}
-                  <span className="text-truncate">{image.name}</span>
+                <div className="source-edit-image-card border border-success rounded p-2 h-100 bg-success-subtle">
+                  <div className="small text-success fw-semibold mb-1">
+                    New image
+                  </div>
+                  <StackedImageGallery
+                    mode="single"
+                    title={image.name}
+                    images={[
+                      {
+                        id: `${image.name}-${image.lastModified}-${index}`,
+                        url: previewUrls[index],
+                        thumbnailUrl: previewUrls[index],
+                        fileName: image.name,
+                      },
+                    ]}
+                    editable
+                    editableDescription={false}
+                    showComments={false}
+                    onDeleteImage={() => removeFile(index)}
+                    deleteTitle="Remove image"
+                    deleteConfirmTitle="Remove image"
+                    deleteConfirmMessage="Remove this picture from the creation form?"
+                    deleteLabel="Remove"
+                    previewStyle={{
+                      height: "9rem",
+                      objectFit: "contain",
+                      backgroundColor: "#f8faf8",
+                    }}
+                  />
+                  <div className="small fw-semibold text-truncate mt-2">
+                    {image.name}
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="p-0 text-danger"
-                  disabled={disabled}
-                  onClick={() =>
-                    onFilesChange(
-                      files.filter(
-                        (_, candidateIndex) => candidateIndex !== index,
-                      ),
-                    )
-                  }
-                >
-                  Remove
-                </Button>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </>
       )}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline-dark"
+        disabled={disabled || remaining === 0}
+        onClick={() => inputRef.current?.click()}
+      >
+        {files.length ? "Add more pictures" : "Add pictures"}
+      </Button>
     </Form.Group>
   );
 }
