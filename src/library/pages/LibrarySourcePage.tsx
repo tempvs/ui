@@ -203,6 +203,9 @@ export default function LibrarySourcePage() {
   const sourceDescription = source.description || "";
   const sourceDescriptionMissing = !sourceDescription;
   const sourceDescriptionDisplay = sourceDescription || "No description";
+  const imagesById = Object.fromEntries(
+    images.map((image) => [image.id, image]),
+  );
   return (
     <PageLayout
       header={{
@@ -458,6 +461,32 @@ export default function LibrarySourcePage() {
                       </li>
                     ))}
                   </ul>
+                  {entry.addedImageIds?.length ? (
+                    <div className="source-change-log-images mt-2">
+                      {entry.addedImageIds
+                        .map((id) => imagesById[id])
+                        .filter((image): image is LibrarySourceImage =>
+                          Boolean(image),
+                        )
+                        .map((image) => (
+                          <StackedImageGallery
+                            key={image.id}
+                            images={[image]}
+                            title={image.fileName || "Added source image"}
+                            mode="single"
+                            previewSize="compact"
+                            editable={false}
+                            editableDescription={false}
+                            canAddImage={false}
+                            wrapperClassName="source-change-log-image"
+                            previewStyle={{
+                              height: "4.75rem",
+                              objectFit: "contain",
+                            }}
+                          />
+                        ))}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
@@ -466,6 +495,7 @@ export default function LibrarySourcePage() {
       </section>
       <SourceChangeLogDiffModal
         entry={selectedChange}
+        imagesById={imagesById}
         onHide={() => setSelectedChange(null)}
       />
     </PageLayout>

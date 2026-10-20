@@ -151,6 +151,7 @@ export type SourceChangeLogEntry = {
   proposerId?: string;
   proposalId?: string;
   changesetId?: string;
+  addedImageIds?: string[];
   changes: Record<string, { before: unknown; after: unknown }>;
   createdAt: string;
 };

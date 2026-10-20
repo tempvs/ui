@@ -1,6 +1,7 @@
 import { Modal } from "react-bootstrap";
 
-import type { SourceChangeLogEntry } from "../libraryApi";
+import StackedImageGallery from "../../component/StackedImageGallery";
+import type { LibrarySourceImage, SourceChangeLogEntry } from "../libraryApi";
 import {
   formatSourceChangeValue,
   sourceChangeFieldLabel,
@@ -8,11 +9,19 @@ import {
 
 type Props = {
   entry: SourceChangeLogEntry | null;
+  imagesById?: Record<string, LibrarySourceImage>;
   onHide: () => void;
 };
 
 /** Public audit-record diff. It deliberately renders only persisted changes. */
-export default function SourceChangeLogDiffModal({ entry, onHide }: Props) {
+export default function SourceChangeLogDiffModal({
+  entry,
+  imagesById = {},
+  onHide,
+}: Props) {
+  const addedImages = (entry?.addedImageIds || [])
+    .map((id) => imagesById[id])
+    .filter((image): image is LibrarySourceImage => Boolean(image));
   return (
     <Modal show={Boolean(entry)} onHide={onHide} centered scrollable>
       <Modal.Header closeButton>
@@ -57,6 +66,32 @@ export default function SourceChangeLogDiffModal({ entry, onHide }: Props) {
                   </div>
                 ))}
               </div>
+            )}
+            {addedImages.length > 0 && (
+              <section
+                className="mt-3"
+                aria-label="Images added by this changeset"
+              >
+                <div className="fw-semibold small text-uppercase text-muted mb-2">
+                  Added images
+                </div>
+                <div className="source-change-log-images">
+                  {addedImages.map((image) => (
+                    <StackedImageGallery
+                      key={image.id}
+                      images={[image]}
+                      title={image.fileName || "Added source image"}
+                      mode="single"
+                      previewSize="compact"
+                      editable={false}
+                      editableDescription={false}
+                      canAddImage={false}
+                      wrapperClassName="source-change-log-image"
+                      previewStyle={{ height: "5.5rem", objectFit: "contain" }}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
           </>
         )}

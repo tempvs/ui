@@ -2801,6 +2801,20 @@ button.stash-item-media-empty:disabled {
   margin-top: 0;
 }
 
+.source-change-log-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.source-change-log-image {
+  width: 7rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(57, 130, 77, 0.35);
+  border-radius: 0.3rem;
+  background: #f2fbf3;
+}
+
 .source-changeset-card {
   text-align: left;
 }
