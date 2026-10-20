@@ -80,6 +80,11 @@ export default function LibraryPeriodPage() {
     year: "",
     era: "AD",
   });
+  const [draftDiscoveredAtPlace, setDraftDiscoveredAtPlace] =
+    useState<MapPlace | null>(null);
+  const [draftHeldAtPlace, setDraftHeldAtPlace] = useState<MapPlace | null>(
+    null,
+  );
   const [pendingProposalCount, setPendingProposalCount] = useState<
     number | null
   >(null);
@@ -302,6 +307,10 @@ export default function LibraryPeriodPage() {
         ...(draftTo.year
           ? { to: { year: Number(draftTo.year), era: draftTo.era } }
           : {}),
+        ...(draftDiscoveredAtPlace
+          ? { discoveredAtPlaceId: draftDiscoveredAtPlace.id }
+          : {}),
+        ...(draftHeldAtPlace ? { heldAtPlaceId: draftHeldAtPlace.id } : {}),
       });
 
       if (!result.ok) {
@@ -358,6 +367,8 @@ export default function LibraryPeriodPage() {
         }
       }
       setDraftImages([]);
+      setDraftDiscoveredAtPlace(null);
+      setDraftHeldAtPlace(null);
       setShowCreateModal(false);
       navigate(
         `/library/source/${result.data.source.id}/changesets/${result.data.changeset.id}`,
@@ -541,6 +552,8 @@ export default function LibraryPeriodPage() {
           onHide={() => {
             if (!submitting) {
               setDraftImages([]);
+              setDraftDiscoveredAtPlace(null);
+              setDraftHeldAtPlace(null);
               setShowCreateModal(false);
             }
           }}
@@ -574,6 +587,28 @@ export default function LibraryPeriodPage() {
                 label="Years"
                 showToggle={false}
               />
+              <div className="mb-3">
+                <PlacePickerField
+                  label="Discovered at"
+                  value={draftDiscoveredAtPlace}
+                  editable
+                  onChange={setDraftDiscoveredAtPlace}
+                  labelWidth="7rem"
+                  fieldMaxWidth="100%"
+                  className="mb-2"
+                  historicalRange={toMapRange(draftFrom, draftTo)}
+                />
+                <PlacePickerField
+                  label="Held at"
+                  value={draftHeldAtPlace}
+                  editable
+                  onChange={setDraftHeldAtPlace}
+                  labelWidth="7rem"
+                  fieldMaxWidth="100%"
+                  className="mb-0"
+                  historicalRange={toMapRange(draftFrom, draftTo)}
+                />
+              </div>
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control
@@ -658,6 +693,8 @@ export default function LibraryPeriodPage() {
                 variant="outline-secondary"
                 onClick={() => {
                   setDraftImages([]);
+                  setDraftDiscoveredAtPlace(null);
+                  setDraftHeldAtPlace(null);
                   setShowCreateModal(false);
                 }}
                 disabled={submitting}
@@ -673,4 +710,18 @@ export default function LibraryPeriodPage() {
       )}
     </div>
   );
+}
+
+function toMapRange(from: HistoricalYearInput, to: HistoricalYearInput) {
+  const astronomical = (value: HistoricalYearInput) => {
+    if (!/^[1-9][0-9]*$/.test(value.year)) return undefined;
+    const year = Number(value.year);
+    return value.era === "BC" ? 1 - year : year;
+  };
+  const fromYear = astronomical(from);
+  const toYear = astronomical(to);
+  return {
+    ...(fromYear !== undefined ? { from: fromYear } : {}),
+    ...(toYear !== undefined ? { to: toYear } : {}),
+  };
 }
