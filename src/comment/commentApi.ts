@@ -1,4 +1,4 @@
-export type CommentTargetType = "POST" | "IMAGE";
+export type CommentTargetType = "POST" | "IMAGE" | "SOURCE_CHANGESET";
 
 export type Comment = {
   id: string;
@@ -14,31 +14,54 @@ export type Comment = {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // The edge route represents the comments collection itself; keeping the
   // browser path singular prevents `/comments/comments` upstream paths.
-  const route = path === "/comments"
-    ? ""
-    : path.replace(/^\/comments/, "");
+  const route = path === "/comments" ? "" : path.replace(/^\/comments/, "");
   const response = await fetch(`/api/comment${route}`, {
     ...options,
     headers: { "content-type": "application/json", ...(options.headers || {}) },
   });
   if (response.status === 204) return undefined as T;
-  const body = await response.json().catch(() => undefined) as { message?: string } | undefined;
-  if (!response.ok) throw new Error(body?.message || "Unable to complete the comment request.");
+  const body = (await response.json().catch(() => undefined)) as
+    { message?: string } | undefined;
+  if (!response.ok)
+    throw new Error(body?.message || "Unable to complete the comment request.");
   return body as T;
 }
 
-export function listComments(targetType: CommentTargetType, targetId: string | number) {
-  return request<{ content: Comment[] }>(`/comments?${new URLSearchParams({ targetType, targetId: String(targetId) })}`);
+export function listComments(
+  targetType: CommentTargetType,
+  targetId: string | number,
+) {
+  return request<{ content: Comment[] }>(
+    `/comments?${new URLSearchParams({ targetType, targetId: String(targetId) })}`,
+  );
 }
 
-export function createComment(targetType: CommentTargetType, targetId: string | number, authorProfileId: string, content: string) {
-  return request<Comment>("/comments", { method: "POST", body: JSON.stringify({ targetType, targetId: String(targetId), authorProfileId, content }) });
+export function createComment(
+  targetType: CommentTargetType,
+  targetId: string | number,
+  authorProfileId: string,
+  content: string,
+) {
+  return request<Comment>("/comments", {
+    method: "POST",
+    body: JSON.stringify({
+      targetType,
+      targetId: String(targetId),
+      authorProfileId,
+      content,
+    }),
+  });
 }
 
 export function updateComment(commentId: string, content: string) {
-  return request<Comment>(`/comments/${encodeURIComponent(commentId)}`, { method: "PUT", body: JSON.stringify({ content }) });
+  return request<Comment>(`/comments/${encodeURIComponent(commentId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
 }
 
 export function deleteComment(commentId: string) {
-  return request<void>(`/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
+  return request<void>(`/comments/${encodeURIComponent(commentId)}`, {
+    method: "DELETE",
+  });
 }

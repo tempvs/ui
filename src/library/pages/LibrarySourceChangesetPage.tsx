@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../../component/ConfirmationModal";
 import PageLayout from "../../component/PageLayout";
 import Spinner from "../../component/Spinner";
+import CommentThread from "../../comment/CommentThread";
 import { getErrorMessage } from "../../util/errors";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
@@ -267,6 +268,10 @@ export default function LibrarySourceChangesetPage() {
             proposed={changeset.proposed}
             kind={changeset.kind}
             imageOperations={changeset.imageOperations}
+          />
+          <CommentThread
+            targetType="SOURCE_CHANGESET"
+            targetId={`${source.id}:${changeset.id}`}
           />
           {changeset.imageOperations.length > 0 && (
             <section className="mt-4">
