@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Form, Overlay, Popover } from "react-bootstrap";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
 import { PageColumn, PageColumns } from "../../component/PageColumns";
@@ -62,10 +62,17 @@ type ImageRecord<T> = Record<string | number, T>;
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const approvedSource = (
+    location.state as { approvedSource?: LibrarySource } | null
+  )?.approvedSource;
+  const [loading, setLoading] = useState(!approvedSource);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [source, setSource] = useState<LibrarySource | null>(null);
+  const [source, setSource] = useState<LibrarySource | null>(
+    approvedSource || null,
+  );
+  const visibleSourceRef = useRef<LibrarySource | null>(approvedSource || null);
   const [images, setImages] = useState<LibrarySourceImage[]>([]);
   const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
     [],
@@ -105,7 +112,10 @@ export default function LibrarySourcePage() {
   const replacingImageRef = useRef<LibrarySourceImage | null>(null);
 
   const loadSource = useCallback(async () => {
-    setLoading(true);
+    // A just-approved changeset gives us the authoritative source payload.
+    // Keep it visible while the auxiliary images, usage, and audit reads
+    // refresh so a React-router navigation does not visibly blink.
+    if (visibleSourceRef.current?.id !== sourceId) setLoading(true);
     setError(null);
     setNotice(null);
     setSourceProfilesLoaded(false);
@@ -122,6 +132,7 @@ export default function LibrarySourcePage() {
 
       // The source itself is public. Do not let an optional image, usage, or
       // audit request turn a successfully loaded source into “not found”.
+      visibleSourceRef.current = sourceResult.data;
       setSource(sourceResult.data);
       setDraftName(sourceResult.data?.name || "");
       setDraftDescription(sourceResult.data?.description || "");

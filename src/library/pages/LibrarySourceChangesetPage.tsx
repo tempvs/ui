@@ -174,13 +174,25 @@ export default function LibrarySourceChangesetPage() {
       setShowWithdraw(false);
       setComment("");
       if (operation === "approve" || operation === "override") {
+        const approvedSource =
+          result.data &&
+          typeof result.data === "object" &&
+          "source" in result.data
+            ? result.data.source
+            : undefined;
         navigate(
           changeset.kind === "DELETE"
             ? source?.period
               ? `/library/period/${source.period.toLowerCase()}`
               : "/library"
             : `/library/source/${sourceId}`,
-          { replace: true },
+          {
+            replace: true,
+            // Preserve the approved source in the client during the route
+            // transition. The source page refreshes related data in the
+            // background, rather than flashing an empty page and spinner.
+            state: approvedSource ? { approvedSource } : undefined,
+          },
         );
         return;
       }
