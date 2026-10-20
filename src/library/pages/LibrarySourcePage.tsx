@@ -37,10 +37,6 @@ import { Profile } from "../../profile/profileTypes";
 import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
 import SourceChangeLogDiffModal from "../components/SourceChangeLogDiffModal";
-import {
-  formatSourceChangeValue,
-  sourceChangeFieldLabel,
-} from "../sourceChangeDisplay";
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
@@ -452,41 +448,6 @@ export default function LibrarySourcePage() {
                       </>
                     )}
                   </div>
-                  <ul className="small text-muted mt-1 mb-0">
-                    {Object.entries(entry.changes).map(([field, change]) => (
-                      <li key={field}>
-                        <strong>{sourceChangeFieldLabel(field)}</strong>:{" "}
-                        {formatSourceChangeValue(change.before)} →{" "}
-                        {formatSourceChangeValue(change.after)}
-                      </li>
-                    ))}
-                  </ul>
-                  {entry.addedImageIds?.length ? (
-                    <div className="source-change-log-images mt-2">
-                      {entry.addedImageIds
-                        .map((id) => imagesById[id])
-                        .filter((image): image is LibrarySourceImage =>
-                          Boolean(image),
-                        )
-                        .map((image) => (
-                          <StackedImageGallery
-                            key={image.id}
-                            images={[image]}
-                            title={image.fileName || "Added source image"}
-                            mode="single"
-                            previewSize="compact"
-                            editable={false}
-                            editableDescription={false}
-                            canAddImage={false}
-                            wrapperClassName="source-change-log-image"
-                            previewStyle={{
-                              height: "4.75rem",
-                              objectFit: "contain",
-                            }}
-                          />
-                        ))}
-                    </div>
-                  ) : null}
                 </li>
               );
             })}
