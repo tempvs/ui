@@ -2218,6 +2218,15 @@ button.stash-item-media-empty:disabled {
   min-height: 2rem;
 }
 
+/* A viewing-only tile has no arrow controls, so do not reserve their column. */
+.stash-item-list-card:not(.has-marker-controls) .stash-item-media-column {
+  grid-template-columns: 3.5rem;
+}
+
+.stash-item-list-card:not(.has-marker-controls) .stash-item-marker-slot {
+  display: none;
+}
+
 .stash-item-marker-controls {
   display: flex;
   align-items: center;
@@ -2423,6 +2432,10 @@ button.stash-item-media-empty:disabled {
     padding: 0.2rem;
   }
 
+  .stash-item-list-card:not(.has-marker-controls) {
+    grid-template-columns: 3.3rem minmax(0, 1fr);
+  }
+
   .stash-source-card {
     position: relative;
     grid-template-columns: 3.3rem minmax(0, 1fr);
@@ -2459,6 +2472,10 @@ button.stash-item-media-empty:disabled {
     height: 100%;
     min-height: 0;
     aspect-ratio: auto;
+  }
+
+  .stash-item-list-card:not(.has-marker-controls) .stash-item-thumb-shell {
+    grid-column: 1;
   }
 
   .stash-source-thumb-shell {
@@ -2503,6 +2520,10 @@ button.stash-item-media-empty:disabled {
     grid-column: 3;
     grid-row: 1;
     padding-right: 2rem;
+  }
+
+  .stash-item-list-card:not(.has-marker-controls) .stash-item-list-copy {
+    grid-column: 2;
   }
 
   .stash-source-copy {

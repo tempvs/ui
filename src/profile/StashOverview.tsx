@@ -1773,7 +1773,7 @@ export default function StashOverview({
                             scheduleArrowRefresh(recalculateArrows);
                           }
                         }}
-                        className={`stash-item-list-card${marker ? " has-marker" : ""}${hoveredMarkerItemId === item.id ? " is-highlighted" : ""}`}
+                        className={`stash-item-list-card${marker ? " has-marker" : ""}${isEditable && hasActiveGroupImage ? " has-marker-controls" : ""}${hoveredMarkerItemId === item.id ? " is-highlighted" : ""}`}
                         role="button"
                         tabIndex={0}
                         onMouseEnter={() => {
