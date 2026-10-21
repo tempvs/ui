@@ -2406,9 +2406,9 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-thumb-shell {
     width: 100%;
-    height: auto;
-    min-height: 8rem;
-    aspect-ratio: 16 / 9;
+    height: 5rem;
+    min-height: 0;
+    aspect-ratio: auto;
   }
 
   .stash-source-thumb-shell {
