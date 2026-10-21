@@ -1034,20 +1034,33 @@ export default function StashOverview({
         ...itemForm,
         period: profile.period,
       });
+      let initialItemImages: EntityImage[] = [];
       if (itemCreateImages.length) {
         const preparedImages = await Promise.all(
           itemCreateImages.map((image) => prepareImageFile(image)),
         );
-        await Promise.all(
+        const uploadedImages = await Promise.all(
           preparedImages.map((image) =>
             uploadStashItemImage(createdItem.id, image),
           ),
         );
+        initialItemImages = uploadedImages.map((image) => ({
+          ...image,
+          entityId: createdItem.id,
+          belongsTo: "item",
+          resourceId: createdItem.id,
+          resourceType: "item",
+        }));
       }
       setItemForm(emptyItemForm);
       setItemCreateImages([]);
       setItemCreateTarget(null);
-      navigate(`/stash/${profile.alias || profile.id}/items/${createdItem.id}`);
+      navigate(
+        `/stash/${profile.alias || profile.id}/items/${createdItem.id}`,
+        {
+          state: { initialItemImages },
+        },
+      );
     } catch (error) {
       setFeedback(
         t("profile.stash.itemCreateFailed", "Unable to add this item."),

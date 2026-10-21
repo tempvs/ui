@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
 import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
@@ -60,6 +60,7 @@ type StashItemPageProps = {
 type IdRecord<T> = Record<string, T>;
 type FieldName = "name" | "description";
 type FieldStatusMap = Partial<Record<FieldName, SaveStatus>>;
+type ItemNavigationState = { initialItemImages?: EntityImage[] };
 
 const ALL_SOURCE_TYPES = ["WRITTEN", "GRAPHIC", "ARCHAEOLOGICAL", "OTHER"];
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
@@ -103,6 +104,9 @@ function truncateLabel(value?: string | null, limit = 30) {
 function StashItemPage({ intl }: StashItemPageProps) {
   const { id, itemId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationImages =
+    (location.state as ItemNavigationState | null)?.initialItemImages || [];
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(
@@ -113,6 +117,8 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [itemDrafts, setItemDrafts] = useState({ name: "", description: "" });
   const [itemStatuses, setItemStatuses] = useState<FieldStatusMap>({});
   const [itemImages, setItemImages] = useState<EntityImage[]>([]);
+  const [initialItemImages, setInitialItemImages] =
+    useState<EntityImage[]>(navigationImages);
   const [imageDrafts, setImageDrafts] = useState<IdRecord<string>>({});
   const [imageStatuses, setImageStatuses] = useState<IdRecord<SaveStatus>>({});
   const [sources, setSources] = useState<LibrarySourceSummary[]>([]);
@@ -129,6 +135,16 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const imageSaveTimersRef = useRef<Record<string, number>>({});
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const replacingImageRef = useRef<EntityImage | null>(null);
+
+  const displayedItemImages = [
+    ...itemImages,
+    ...initialItemImages.filter(
+      (initialImage) =>
+        !itemImages.some(
+          (persistedImage) => persistedImage.id === initialImage.id,
+        ),
+    ),
+  ];
 
   const t = (
     messageId: string,
@@ -170,6 +186,23 @@ function StashItemPage({ intl }: StashItemPageProps) {
       setCurrentUserId(result.currentUserId || null);
     });
   }, []);
+
+  useEffect(() => {
+    setInitialItemImages(navigationImages);
+  }, [itemId, location.key]);
+
+  useEffect(() => {
+    if (
+      initialItemImages.length > 0 &&
+      initialItemImages.every((initialImage) =>
+        itemImages.some(
+          (persistedImage) => persistedImage.id === initialImage.id,
+        ),
+      )
+    ) {
+      setInitialItemImages([]);
+    }
+  }, [initialItemImages, itemImages]);
 
   useEffect(() => {
     let active = true;
@@ -677,7 +710,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         <div className="stash-item-page-hero">
           <div className="stash-item-page-main-image-shell">
             <StackedImageGallery
-              images={itemImages}
+              images={displayedItemImages}
               title={item.name || t("profile.stash.itemName", "Item")}
               previewSize="default"
               mode="single"
