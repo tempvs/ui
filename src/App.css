@@ -2173,7 +2173,10 @@ button.stash-item-media-empty:disabled {
   grid-column: 1;
   grid-row: 1;
   display: grid;
-  grid-template-columns: 4.35rem 6rem;
+  /* Keep the marker controls in their own fixed column, but give collection
+     item photos enough room to be useful rather than reducing them to a tiny
+     square beside the item details. */
+  grid-template-columns: 4.35rem 10rem;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
@@ -2241,8 +2244,8 @@ button.stash-item-media-empty:disabled {
 
 .stash-item-thumb-shell,
 .stash-source-thumb-shell {
-  width: 6rem;
-  height: 6rem;
+  width: 10rem;
+  height: 10rem;
   overflow: hidden;
   background: rgba(247, 249, 247, 0.94);
 }
