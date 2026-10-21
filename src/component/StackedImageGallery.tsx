@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Badge, Carousel, Modal } from "react-bootstrap";
 import { FaPlus, FaUpload } from "react-icons/fa";
 
@@ -32,7 +32,9 @@ type StackedImageGalleryProps = {
   editable?: boolean;
   /** Allows metadata editing without exposing image upload/delete controls. */
   editableDescription?: boolean;
-  onDeleteImage?: (imageId: GalleryImage["id"]) => void;
+  onDeleteImage?: (
+    imageId: GalleryImage["id"],
+  ) => void | Promise<unknown>;
   onReplaceImage?: (image: GalleryImage) => void;
   onAddImage?: () => void;
   canAddImage?: boolean;
@@ -113,11 +115,39 @@ export default function StackedImageGallery({
 }: StackedImageGalleryProps) {
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [locallyRemovedImageIds, setLocallyRemovedImageIds] = useState<
+    Set<GalleryImage["id"]>
+  >(() => new Set());
   const isSingle = mode === "single";
   const displayImages = useMemo(
-    () => (isSingle ? (images || []).slice(0, 1) : images || []),
-    [images, isSingle],
+    () =>
+      (isSingle ? (images || []).slice(0, 1) : images || []).filter(
+        (image) => !locallyRemovedImageIds.has(image.id),
+      ),
+    [images, isSingle, locallyRemovedImageIds],
   );
+
+  // Parent lists can lag behind the delete request (especially while image
+  // metadata is cached). Keep the carousel on a valid image immediately.
+  useEffect(() => {
+    if (activeIndex >= displayImages.length) {
+      setActiveIndex(Math.max(0, displayImages.length - 1));
+    }
+  }, [activeIndex, displayImages.length]);
+
+  const handleDeleteImage = (imageId: GalleryImage["id"]) => {
+    setLocallyRemovedImageIds((current) => new Set(current).add(imageId));
+    const deletion = onDeleteImage?.(imageId);
+    if (deletion && typeof (deletion as Promise<unknown>).then === "function") {
+      void Promise.resolve(deletion).catch(() => {
+        setLocallyRemovedImageIds((current) => {
+          const next = new Set(current);
+          next.delete(imageId);
+          return next;
+        });
+      });
+    }
+  };
   const previewImages = useMemo(
     () => displayImages.slice(0, 3),
     [displayImages],
@@ -193,7 +223,7 @@ export default function StackedImageGallery({
           confirmMessage={deleteConfirmMessage}
           confirmLabel={deleteLabel}
           cancelLabel={cancelLabel}
-          onConfirm={() => onDeleteImage(image.id)}
+          onConfirm={() => handleDeleteImage(image.id)}
           style={{ zIndex: 4 }}
         />
       )}

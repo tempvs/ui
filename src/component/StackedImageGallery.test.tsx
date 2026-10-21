@@ -43,6 +43,27 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(document.querySelector('.modal .border-top')).toBeInTheDocument();
 });
 
+test('removes a deleted carousel image immediately without waiting for a parent refresh', () => {
+  const remove = jest.fn();
+  render(
+    <StackedImageGallery
+      images={images}
+      mode="multiple"
+      title="Item images"
+      editable
+      onDeleteImage={remove}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /2 image/ }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Delete image' })[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+  expect(remove).toHaveBeenCalledWith('image-1');
+  expect(screen.queryByAltText('One')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /1 image/ })).toBeInTheDocument();
+});
+
 test('reserves room for no more than three stacked preview images', () => {
   render(
     <StackedImageGallery

@@ -461,8 +461,24 @@ function StashItemPage({ intl }: StashItemPageProps) {
     if (!item) {
       return;
     }
-    await deleteStashItemImage(item.id, imageId);
-    await refreshItemData();
+    const deletedImage = itemImages.find((image) => image.id === imageId);
+    setItemImages((current) => current.filter((image) => image.id !== imageId));
+    setInitialItemImages((current) =>
+      current.filter((image) => image.id !== imageId),
+    );
+    setImageDrafts((current) => {
+      const next = { ...current };
+      delete next[toRecordKey(imageId)];
+      return next;
+    });
+    try {
+      await deleteStashItemImage(item.id, imageId);
+    } catch (error) {
+      if (deletedImage) {
+        setItemImages((current) => [deletedImage, ...current]);
+      }
+      throw error;
+    }
   }
 
   function handleOpenReplaceImagePicker(image: EntityImage) {
