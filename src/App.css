@@ -79,6 +79,43 @@ html {
   .page-columns {
     gap: 1rem;
   }
+
+  /* Entity pages keep the post feed beside the main details on desktop. On a
+     phone, expose the middle column's children to the shared one-column grid
+     so the feed can follow every information, people, and media section. */
+  .profile-page-columns > .page-column:nth-child(2),
+  .club-page-columns > .page-column:nth-child(2),
+  .event-page-layout > .page-column:nth-child(2),
+  .library-source-columns > .page-column:first-child {
+    display: contents;
+  }
+
+  .profile-page-columns > .page-column:first-child,
+  .club-page-columns > .page-column:first-child,
+  .event-page-layout > .page-column:first-child,
+  .library-source-columns > .page-column:first-child > :not(.post-panel) {
+    order: 1;
+  }
+
+  .profile-page-columns > .page-column:nth-child(2) > :not(.post-panel),
+  .club-page-columns > .page-column:nth-child(2) > :not(.post-panel),
+  .event-page-layout > .page-column:nth-child(2) > :not(.post-panel),
+  .library-source-columns > .page-column:nth-child(2) {
+    order: 2;
+  }
+
+  .profile-page-columns > .page-column:nth-child(3),
+  .club-page-columns > .page-column:nth-child(3),
+  .event-page-layout > .page-column:nth-child(3) {
+    order: 3;
+  }
+
+  .profile-page-columns .post-panel,
+  .club-page-columns .post-panel,
+  .event-page-layout .post-panel,
+  .library-source-columns .post-panel {
+    order: 4;
+  }
 }
 
 .App {
