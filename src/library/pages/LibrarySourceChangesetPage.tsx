@@ -16,6 +16,7 @@ import {
   getSourceChangeset,
   getSourceChangesetImages,
   getSourceImages,
+  projectApprovedSourceImages,
   rejectSourceChangeset,
   type LibrarySource,
   type LibrarySourceImage,
@@ -179,6 +180,14 @@ export default function LibrarySourceChangesetPage() {
           "source" in result.data
             ? result.data.source
             : undefined;
+        const approvedImages =
+          approvedSource && changeset
+            ? projectApprovedSourceImages(
+                publishedImages,
+                changeset,
+                stagedImages,
+              )
+            : undefined;
         navigate(
           changeset.kind === "DELETE"
             ? source?.period
@@ -190,7 +199,13 @@ export default function LibrarySourceChangesetPage() {
             // Preserve the approved source in the client during the route
             // transition. The source page refreshes related data in the
             // background, rather than flashing an empty page and spinner.
-            state: approvedSource ? { approvedSource } : undefined,
+            state: approvedSource
+              ? {
+                  approvedSource,
+                  approvedImages,
+                  approvedImageOperations: changeset.imageOperations,
+                }
+              : undefined,
           },
         );
         return;

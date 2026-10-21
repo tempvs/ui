@@ -5,6 +5,7 @@ import {
   patchSourceField,
   removeSource,
   createSource,
+  projectApprovedSourceImages,
   uploadSourceChangesetImage,
 } from "./libraryApi";
 
@@ -136,4 +137,28 @@ test("staged changeset images use the collection POST contract with their stable
     contentType: "image/png",
     description: "Detail image",
   });
+});
+
+test("projects approved staged images into the source carousel before asynchronous promotion", () => {
+  const images = projectApprovedSourceImages(
+    [{ id: "published", url: "https://example.test/published.jpg" }],
+    {
+      sourceId: "source-uuid",
+      imageOperations: [
+        { kind: "ADD", stagedImageId: "new-image", description: "New detail" },
+      ],
+    },
+    [{ id: "new-image", url: "https://example.test/new.jpg" }],
+  );
+
+  expect(images).toEqual([
+    expect.objectContaining({ id: "published" }),
+    expect.objectContaining({
+      id: "new-image",
+      url: "https://example.test/new.jpg",
+      description: "New detail",
+      resourceType: "source",
+      resourceId: "source-uuid",
+    }),
+  ]);
 });

@@ -24,6 +24,7 @@ import {
   LibrarySourceImage,
   LibrarySourceProfile,
   LibraryViewer,
+  SourceImageOperation,
   getLibraryViewer,
   SourceChangeLogEntry,
 } from "../libraryApi";
@@ -38,18 +39,29 @@ import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
 import SourceChangeLogDiffModal from "../components/SourceChangeLogDiffModal";
 
+const EMPTY_APPROVED_IMAGES: LibrarySourceImage[] = [];
+const EMPTY_APPROVED_IMAGE_OPERATIONS: SourceImageOperation[] = [];
+
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
   const location = useLocation();
-  const approvedSource = (
-    location.state as { approvedSource?: LibrarySource } | null
-  )?.approvedSource;
+  const approvalNavigation = location.state as {
+    approvedSource?: LibrarySource;
+    approvedImages?: LibrarySourceImage[];
+    approvedImageOperations?: SourceImageOperation[];
+  } | null;
+  const approvedSource = approvalNavigation?.approvedSource;
+  const approvedImages =
+    approvalNavigation?.approvedImages || EMPTY_APPROVED_IMAGES;
+  const approvedImageOperations =
+    approvalNavigation?.approvedImageOperations ||
+    EMPTY_APPROVED_IMAGE_OPERATIONS;
   const [loading, setLoading] = useState(!approvedSource);
   const [source, setSource] = useState<LibrarySource | null>(
     approvedSource || null,
   );
   const visibleSourceRef = useRef<LibrarySource | null>(approvedSource || null);
-  const [images, setImages] = useState<LibrarySourceImage[]>([]);
+  const [images, setImages] = useState<LibrarySourceImage[]>(approvedImages);
   const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
     [],
   );
@@ -121,8 +133,32 @@ export default function LibrarySourcePage() {
       );
       const imageData = imageResult?.data;
       const loadedImages = Array.isArray(imageData) ? imageData : [];
+      const expectedPublishedImageIds = approvedImageOperations.flatMap(
+        (operation) =>
+          operation.kind === "ADD"
+            ? [operation.stagedImageId]
+            : operation.kind === "REPLACE"
+              ? [operation.imageId]
+              : [],
+      );
+      const removedImageIds = new Set(
+        approvedImageOperations.flatMap((operation) =>
+          operation.kind === "REMOVE" ? [operation.imageId] : [],
+        ),
+      );
+      const publicPromotionComplete =
+        expectedPublishedImageIds.every((id) =>
+          loadedImages.some((image) => image.id === id),
+        ) &&
+        !loadedImages.some((image) => removedImageIds.has(image.id));
 
-      setImages(loadedImages);
+      // Do not briefly replace an approved staged image with an old public
+      // list while EventBridge promotion is still running.
+      setImages(
+        approvedImageOperations.length && !publicPromotionComplete
+          ? approvedImages
+          : loadedImages,
+      );
       setSourceProfiles(
         profilesUsingSource.map((profile) => ({
           ...profile,
@@ -153,7 +189,7 @@ export default function LibrarySourcePage() {
     } finally {
       setLoading(false);
     }
-  }, [sourceId]);
+  }, [approvedImageOperations, approvedImages, sourceId]);
 
   useEffect(() => {
     loadSource();

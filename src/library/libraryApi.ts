@@ -130,6 +130,45 @@ export type SourceImageOperation =
     }
   | { kind: "UPDATE_DESCRIPTION"; imageId: string; description: string | null };
 
+/**
+ * Image promotion is asynchronous. Build the source's post-approval image
+ * list from the review data so navigation can show the approved result before
+ * the image worker has copied staged metadata into the public source scope.
+ */
+export function projectApprovedSourceImages(
+  publishedImages: LibrarySourceImage[],
+  changeset: Pick<SourceChangeset, "sourceId" | "imageOperations">,
+  stagedImages: LibrarySourceImage[],
+): LibrarySourceImage[] {
+  const images = new Map(
+    publishedImages.map((image) => [image.id, { ...image }]),
+  );
+  const stagedById = new Map(stagedImages.map((image) => [image.id, image]));
+  for (const operation of changeset.imageOperations) {
+    if (operation.kind === "REMOVE") {
+      images.delete(operation.imageId);
+      continue;
+    }
+    if (operation.kind === "UPDATE_DESCRIPTION") {
+      const current = images.get(operation.imageId);
+      if (current) images.set(operation.imageId, { ...current, description: operation.description });
+      continue;
+    }
+    const staged = stagedById.get(operation.stagedImageId);
+    const id = operation.kind === "REPLACE" ? operation.imageId : operation.stagedImageId;
+    images.set(id, {
+      ...(staged || { id }),
+      id,
+      description: operation.description,
+      // The public source scope is where RefreshingImage polls until the
+      // asynchronous promotion makes this record available.
+      resourceType: "source",
+      resourceId: changeset.sourceId,
+    });
+  }
+  return Array.from(images.values());
+}
+
 export type PendingSourceChangeset = {
   source: LibrarySource;
   changeset: SourceChangeset;

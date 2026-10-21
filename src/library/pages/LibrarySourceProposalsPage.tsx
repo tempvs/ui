@@ -14,6 +14,7 @@ import {
   getSourceChangesets,
   getSourceChangesetImages,
   getSourceImages,
+  projectApprovedSourceImages,
   rejectSourceChangeset,
   type LibrarySource,
   type LibrarySourceImage,
@@ -120,13 +121,35 @@ export default function LibrarySourceProposalsPage() {
             changeset.version,
           );
       if (!result.ok) throw new Error("Unable to approve the changeset.");
+      const approvedSource =
+        result.data &&
+        typeof result.data === "object" &&
+        "source" in result.data
+          ? result.data.source
+          : undefined;
+      const approvedImages = approvedSource
+        ? projectApprovedSourceImages(
+            publishedImages,
+            changeset,
+            stagedImagesByChangeset[changeset.id] || [],
+          )
+        : undefined;
       navigate(
         changeset.kind === "DELETE"
           ? source?.period
             ? `/library/period/${source.period.toLowerCase()}`
             : "/library"
           : `/library/source/${sourceId}`,
-        { replace: true },
+        {
+          replace: true,
+          state: approvedSource
+            ? {
+                approvedSource,
+                approvedImages,
+                approvedImageOperations: changeset.imageOperations,
+              }
+            : undefined,
+        },
       );
       return;
     } catch (caught) {
