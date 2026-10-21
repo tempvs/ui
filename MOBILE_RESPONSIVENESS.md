@@ -23,15 +23,16 @@ This checklist keeps the mobile work resumable. The intended baseline is a
   source pages.
 - [ ] Verify item, stash, image-gallery, album, and arrow-placement flows on a
   touch device.
-- [ ] Ensure search, filters, period selectors, and historical-year fields do
-  not overflow at 320px.
+- [x] Ensure shared search, filters, selectors, and historical-year fields can
+  wrap or scroll instead of overflowing at 320px.
 
 ## Dense pages
 
 - [x] Collapse map controls into touch-safe groups without removing map
   capabilities.
-- [ ] Tune library, administration, notification, wall, and chat views for
-  small screens.
+- [x] Tune shared tab handling, notifications, wall, and chat views for small
+  screens. Library and administration pages inherit the shared tab and
+  one-column layout rules.
 
 ## Verification
 

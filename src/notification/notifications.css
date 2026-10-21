@@ -116,4 +116,25 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .notifications-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .notifications-heading-actions .form-control,
+  .notifications-heading-actions .btn {
+    width: 100%;
+    min-height: 2.5rem;
+  }
+
+  .notification-content {
+    padding: 0.7rem 2.65rem 0.7rem 0.7rem;
+  }
+
+  .notification-reference {
+    align-items: flex-start;
+    white-space: normal;
+  }
 }

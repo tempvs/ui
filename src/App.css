@@ -3018,6 +3018,37 @@ button.stash-item-media-empty:disabled {
     min-width: 0;
   }
 }
+
+@media (max-width: 575.98px) {
+  .chat-page {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .chat-list-panel {
+    padding: 0.65rem;
+  }
+
+  .chat-empty-workspace {
+    min-height: 18rem;
+  }
+
+  .chat-thread-panel {
+    grid-template-rows: auto minmax(14rem, 1fr) auto;
+    min-height: 28rem;
+  }
+
+  .chat-thread-header,
+  .chat-composer-actions {
+    gap: 0.55rem;
+  }
+
+  .chat-composer-actions .btn,
+  .chat-create-trigger.btn {
+    width: 100%;
+    min-height: 2.6rem;
+  }
+}
 .period-multi-select-menu {
   max-height: 20rem;
   overflow-y: auto;

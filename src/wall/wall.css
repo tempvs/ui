@@ -17,4 +17,12 @@
 .wall-changes dt { color: #56635e; text-transform: capitalize; }.wall-changes dd { margin: 0; color: #343d39; }
 .wall-loading,.wall-empty { padding: 2.5rem 1rem; border: 1px dashed rgba(107,126,113,.3); border-radius: .65rem; color: #66716d; text-align: center; }
 .wall-empty h2 { color: #394b44; font-size: 1.1rem; }
-@media (max-width: 575.98px) { .wall-page { width: calc(100% - 1.5rem); margin-top: 1rem; }.wall-activity-card { grid-template-columns: 3.2rem minmax(0,1fr); }.wall-activity-thumbnail { width: 3.2rem; height: 3.2rem; } }
+@media (max-width: 575.98px) {
+  .wall-page { width: calc(100% - 1.5rem); margin-top: 1rem; }
+  .wall-header { align-items: flex-start; flex-direction: column; gap: .45rem; }
+  .wall-activity-card { grid-template-columns: 3.2rem minmax(0,1fr); gap: .65rem; padding: .7rem; }
+  .wall-activity-thumbnail { width: 3.2rem; height: 3.2rem; }
+  .wall-activity-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }
+  .wall-changes { grid-template-columns: 1fr; gap: .1rem; }
+  .wall-changes dd { margin-bottom: .35rem; }
+}
