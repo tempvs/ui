@@ -666,6 +666,16 @@ export default function StashOverview({
       }
 
       const itemBounds = itemRowElement.getBoundingClientRect();
+      const arrowButtonBounds = itemRowElement
+        .querySelector(".stash-item-arrow-trigger")
+        ?.getBoundingClientRect();
+      const isCompactMobileLayout = window.matchMedia(
+        "(max-width: 575.98px)",
+      ).matches;
+      const arrowOriginBounds =
+        isCompactMobileLayout && arrowButtonBounds
+          ? arrowButtonBounds
+          : itemBounds;
       return [
         {
           itemId: item.id,
@@ -673,8 +683,18 @@ export default function StashOverview({
             imageBounds.left - layoutBounds.left + marker.x * imageBounds.width,
           y1:
             imageBounds.top - layoutBounds.top + marker.y * imageBounds.height,
-          x2: itemBounds.left - layoutBounds.left,
-          y2: itemBounds.top - layoutBounds.top + itemBounds.height / 2,
+          x2:
+            arrowOriginBounds.left -
+            layoutBounds.left +
+            (isCompactMobileLayout && arrowButtonBounds
+              ? arrowOriginBounds.width / 2
+              : 0),
+          y2:
+            arrowOriginBounds.top -
+            layoutBounds.top +
+            (isCompactMobileLayout && arrowButtonBounds
+              ? 0
+              : arrowOriginBounds.height / 2),
         },
       ];
     });

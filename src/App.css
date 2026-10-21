@@ -2454,6 +2454,11 @@ button.stash-item-media-empty:disabled {
     min-height: 0;
   }
 
+  .stash-item-arrow-trigger svg {
+    transform: rotate(90deg);
+    transform-origin: center;
+  }
+
   .stash-item-thumb-shell {
     grid-column: 2;
     grid-row: 1;
