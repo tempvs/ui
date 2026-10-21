@@ -3,48 +3,46 @@ import { Form } from "react-bootstrap";
 
 import Spinner from "../../component/Spinner";
 import { SaveStatus } from "../../component/EditableFieldRow";
-import StackedImageGallery from "../../component/StackedImageGallery";
-import { MessageFormatter } from "../profileTypes";
+import StackedImageGallery, { GalleryImage } from "../../component/StackedImageGallery";
+import { Avatar, Id, MessageFormatter } from "../profileTypes";
 
 type ProfileAvatarPanelProps = {
   avatarPanelWidth: string;
-  avatarVisible: boolean;
   avatarLoaded: boolean;
-  avatarUrl?: string | null;
-  avatarId?: string | null;
+  avatars: Avatar[];
   profileId?: string | number | null;
-  avatarInfo?: string | null;
   avatarUploadStatus?: string | null;
   avatarUploadMessage?: string | null;
-  avatarDescriptionDraft?: string | null;
-  avatarDescriptionStatus?: SaveStatus;
+  avatarImageDrafts?: Record<string, string>;
+  avatarImageStatuses?: Record<string, SaveStatus>;
   isEditable: boolean;
   initials?: string;
   t: MessageFormatter;
   onUploadChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onReplaceChange?: React.ChangeEventHandler<HTMLInputElement>;
   onOpenFilePicker?: () => void;
-  onDelete?: () => void;
-  onDescriptionChange?: (value: string) => void;
-  onDescriptionBlur?: () => void;
+  onReplaceImage?: (image: GalleryImage) => void;
+  onDelete?: (imageId: Id) => void;
+  onDescriptionChange?: (imageId: Id, value: string) => void;
+  onDescriptionBlur?: (imageId: Id) => void;
 };
 
 export default function ProfileAvatarPanel({
   avatarPanelWidth,
-  avatarVisible,
   avatarLoaded,
-  avatarUrl,
-  avatarId,
+  avatars,
   profileId,
-  avatarInfo,
   avatarUploadStatus,
   avatarUploadMessage,
-  avatarDescriptionDraft,
-  avatarDescriptionStatus,
+  avatarImageDrafts,
+  avatarImageStatuses,
   isEditable,
   initials,
   t,
   onUploadChange,
+  onReplaceChange,
   onOpenFilePicker,
+  onReplaceImage,
   onDelete,
   onDescriptionChange,
   onDescriptionBlur,
@@ -64,39 +62,26 @@ export default function ProfileAvatarPanel({
           }}
         >
           <StackedImageGallery
-            mode="single"
-            images={
-              avatarVisible
-                ? [
-                    {
-                      id: avatarId || profileId || "profile-avatar",
-                      url: avatarUrl,
-                      resourceType: "profile",
-                      resourceId: profileId,
-                      description: avatarInfo,
-                    },
-                  ]
-                : []
-            }
+            mode="multiple"
+            images={avatars.flatMap((avatar) =>
+              avatar.id
+                ? [{ ...avatar, id: avatar.id, resourceType: "profile", resourceId: profileId }]
+                : [],
+            )}
             title={t("profile.avatar.title", "Profile picture")}
             editable={isEditable}
-            onUploadImage={
+            onAddImage={
               isEditable && avatarLoaded
                 ? () => onOpenFilePicker?.()
                 : undefined
             }
-            onReplaceImage={isEditable ? () => onOpenFilePicker?.() : undefined}
-            onDeleteImage={isEditable ? () => onDelete?.() : undefined}
-            imageDrafts={{
-              [String(profileId || "profile-avatar")]:
-                avatarDescriptionDraft || "",
-            }}
-            imageStatuses={{
-              [String(profileId || "profile-avatar")]:
-                avatarDescriptionStatus || null,
-            }}
-            onDescriptionChange={(_, value) => onDescriptionChange?.(value)}
-            onDescriptionBlur={() => onDescriptionBlur?.()}
+            canAddImage={isEditable && avatarLoaded}
+            onReplaceImage={isEditable ? (image) => onReplaceImage?.(image) : undefined}
+            onDeleteImage={isEditable ? (imageId) => onDelete?.(imageId) : undefined}
+            imageDrafts={avatarImageDrafts}
+            imageStatuses={avatarImageStatuses}
+            onDescriptionChange={(imageId, value) => onDescriptionChange?.(imageId, value)}
+            onDescriptionBlur={(imageId) => onDescriptionBlur?.(imageId)}
             replaceTitle={t("profile.avatar.replace", "Replace image")}
             replacePopover={t("profile.avatar.replace", "Replace image")}
             deleteTitle={t("profile.avatar.delete", "Delete image")}
@@ -144,7 +129,16 @@ export default function ProfileAvatarPanel({
             id="avatarUploadInput"
             type="file"
             accept="image/jpeg,image/png,image/gif"
+            multiple
             onChange={onUploadChange}
+            disabled={avatarUploadStatus === "uploading"}
+            className="d-none"
+          />
+          <Form.Control
+            id="avatarReplaceInput"
+            type="file"
+            accept="image/jpeg,image/png,image/gif"
+            onChange={onReplaceChange}
             disabled={avatarUploadStatus === "uploading"}
             className="d-none"
           />

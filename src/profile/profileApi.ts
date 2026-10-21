@@ -209,6 +209,16 @@ export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
   return data.content[0] as Avatar;
 }
 
+/** All profile pictures. The first image remains the profile's thumbnail. */
+export async function getProfileImages(profileId: Id): Promise<Avatar[]> {
+  const response = await requestJson(`/api/images/profile/${profileId}?limit=100`);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  return response.ok && Array.isArray(data?.content)
+    ? (data.content as Avatar[])
+    : [];
+}
+
 export function fetchClubProfiles(
   userId: Id,
   handlers: ProfileHandlers<Profile[]>,
@@ -484,6 +494,94 @@ export async function uploadAvatar(
     throw new Error(`Profile picture upload failed (${upload.status})`);
   }
   return intent.image;
+}
+
+async function uploadProfileImageRequest(
+  profileId: Id,
+  file: File,
+  description: string | null | undefined,
+  method: "POST" | "PATCH",
+  imageId?: Id,
+): Promise<Avatar> {
+  const endpoint = imageId
+    ? `/api/profile/profile/${profileId}/images/${imageId}`
+    : `/api/profile/profile/${profileId}/images`;
+  const intentResponse = await requestJson(endpoint, {
+    method,
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      byteSize: file.size,
+      ...(description !== undefined ? { description } : {}),
+    }),
+  });
+  if (!intentResponse.ok) {
+    throw new Error(
+      `Unable to prepare profile picture upload (${intentResponse.status})`,
+    );
+  }
+  const intent = (await intentResponse.json()) as {
+    image?: Avatar;
+    upload?: { url?: unknown; method?: unknown; headers?: unknown };
+  };
+  if (
+    typeof intent.upload?.url !== "string" ||
+    intent.upload.method !== "PUT" ||
+    !intent.upload.headers ||
+    typeof intent.upload.headers !== "object" ||
+    !intent.image?.id
+  ) {
+    throw new Error("Invalid profile picture upload intent");
+  }
+  const upload = await fetch(intent.upload.url, {
+    method: "PUT",
+    headers: intent.upload.headers as HeadersInit,
+    body: file,
+  });
+  if (!upload.ok) {
+    throw new Error(`Profile picture upload failed (${upload.status})`);
+  }
+  return intent.image;
+}
+
+export function uploadProfileImage(
+  profileId: Id,
+  file: File,
+  description?: string | null,
+) {
+  return uploadProfileImageRequest(profileId, file, description, "POST");
+}
+
+export function replaceProfileImage(
+  profileId: Id,
+  imageId: Id,
+  file: File,
+  description?: string | null,
+) {
+  return uploadProfileImageRequest(
+    profileId,
+    file,
+    description,
+    "PATCH",
+    imageId,
+  );
+}
+
+export function updateProfileImageDescription(
+  profileId: Id,
+  imageId: Id,
+  description: string | null,
+) {
+  return requestJson(`/api/profile/profile/${profileId}/images/${imageId}/description`, {
+    method: "PUT",
+    body: JSON.stringify({ description }),
+  });
+}
+
+export function deleteProfileImage(profileId: Id, imageId: Id) {
+  return requestJson(`/api/profile/profile/${profileId}/images/${imageId}`, {
+    method: "DELETE",
+  });
 }
 
 export function updateAvatarDescription(

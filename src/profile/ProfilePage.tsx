@@ -8,6 +8,7 @@ import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
+import { GalleryImage } from "../component/StackedImageGallery";
 import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import {
   PERIODS,
@@ -29,10 +30,9 @@ import PostPanel from "../post/PostPanel";
 import {
   createClubProfile,
   createUserProfile,
-  deleteAvatar,
+  deleteProfileImage,
   deletePrivateProfilePin,
   deleteProfile,
-  fetchAvatar,
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchProfileById,
@@ -41,11 +41,13 @@ import {
   getPrivateProfilePin,
   getFollowingProfiles,
   fetchUserProfileByUserId,
+  getProfileImages,
   unfollowProfile,
-  updateAvatarDescription,
+  updateProfileImageDescription,
   updateProfile,
   savePrivateProfilePin,
-  uploadAvatar,
+  replaceProfileImage,
+  uploadProfileImage,
 } from "./profileApi";
 
 import { resolveCurrentOwnedProfileId } from "./currentProfile";
@@ -87,6 +89,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     string,
     Promise<Profile | null>
   >();
+  private replacingAvatarId: Id | null = null;
 
   constructor(props: ProfilePageProps) {
     super(props);
@@ -130,6 +133,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       avatarVisible: false,
       avatarLoaded: false,
       avatarId: null,
+      avatarImages: [],
+      avatarImageDrafts: {},
+      avatarImageStatuses: {},
       loaded: false,
       notFound: false,
       createMode: false,
@@ -222,11 +228,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 
   fetchAvatar(profileId: Id) {
-    fetchAvatar(profileId, {
-      onSuccess: (avatar) => this.renderAvatar(avatar),
-      onEmpty: () =>
-        this.setState({ avatarVisible: false, avatarLoaded: true }),
-    });
+    getProfileImages(profileId)
+      .then((avatars) => this.renderAvatars(avatars))
+      .catch(() => this.renderAvatars([]));
   }
 
   fetchProfile(id: string | null | undefined) {
@@ -1030,7 +1034,13 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     if (refreshAvatar) {
-      this.setState({ avatarVisible: false, avatarLoaded: false });
+      this.setState({
+        avatarVisible: false,
+        avatarLoaded: false,
+        avatarImages: [],
+        avatarImageDrafts: {},
+        avatarImageStatuses: {},
+      });
       this.fetchAvatar(profile.id);
     }
 
@@ -1091,25 +1101,34 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
   };
 
-  renderAvatar(avatar: Avatar) {
+  renderAvatars(avatars: Avatar[]) {
+    const avatar = avatars[0];
+    const avatarImageDrafts = Object.fromEntries(
+      avatars.flatMap((image) =>
+        image.id ? [[String(image.id), image.description || ""]] : [],
+      ),
+    );
     this.setState({
-      avatarVisible: true,
+      avatarVisible: Boolean(avatar),
       avatarLoaded: true,
       avatarImage: null,
-      avatarId: avatar.id || null,
-      avatarUrl: avatar.url,
-      avatarInfo: avatar.description,
-      avatarDescriptionDraft: avatar.description || "",
-      avatarDescriptionPersisted: avatar.description || "",
+      avatarId: avatar?.id || null,
+      avatarUrl: avatar?.url || null,
+      avatarInfo: avatar?.description || "",
+      avatarDescriptionDraft: avatar?.description || "",
+      avatarDescriptionPersisted: avatar?.description || "",
       avatarDescriptionStatus: null,
+      avatarImages: avatars,
+      avatarImageDrafts,
+      avatarImageStatuses: {},
     });
   }
 
   handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
   ) => {
-    const file = event.target.files?.[0];
-    if (!file || !this.state.profileId) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length || !this.state.profileId) {
       return;
     }
 
@@ -1119,12 +1138,16 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     });
 
     try {
-      const preparedFile = await this.prepareAvatarFile(file);
-      const avatar = await uploadAvatar(
-        this.state.profileId,
-        preparedFile,
-        this.state.avatarDescriptionDraft || null,
+      const avatars = await Promise.all(
+        files.map(async (file) =>
+          uploadProfileImage(
+            this.state.profileId as Id,
+            await this.prepareAvatarFile(file),
+          ),
+        ),
       );
+      const allAvatars = [...avatars, ...this.state.avatarImages];
+      const firstAvatar = allAvatars[0];
 
       this.setState({
         avatarUploadStatus: "success",
@@ -1133,12 +1156,21 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         // shared Image API until the processor supplies its signed URL.
         avatarVisible: true,
         avatarLoaded: true,
-        avatarId: avatar.id || null,
-        avatarUrl: avatar.url || null,
-        avatarInfo: avatar.description || "",
-        avatarDescriptionDraft: avatar.description || "",
-        avatarDescriptionPersisted: avatar.description || "",
+        avatarId: firstAvatar?.id || null,
+        avatarUrl: firstAvatar?.url || null,
+        avatarInfo: firstAvatar?.description || "",
+        avatarDescriptionDraft: firstAvatar?.description || "",
+        avatarDescriptionPersisted: firstAvatar?.description || "",
         avatarDescriptionStatus: null,
+        avatarImages: allAvatars,
+        avatarImageDrafts: {
+          ...this.state.avatarImageDrafts,
+          ...Object.fromEntries(
+            avatars.flatMap((image) =>
+              image.id ? [[String(image.id), image.description || ""]] : [],
+            ),
+          ),
+        },
       });
     } catch (error) {
       this.setState({
@@ -1290,107 +1322,142 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     return `${normalizedName.slice(0, lastDotIndex)}.${extension}`;
   }
 
-  handleAvatarDescriptionChangeValue = (value: string) => {
-    this.setState({
-      avatarDescriptionDraft: value,
-      avatarDescriptionStatus:
-        value === this.state.avatarDescriptionPersisted ? null : "pending",
-    });
-    this.clearFieldTimer("avatarDescription");
-    this.clearStatusResetTimer("avatarDescription");
-    this.autoSaveTimers.avatarDescription = setTimeout(() => {
-      this.handleAvatarDescriptionSave();
+  handleAvatarDescriptionChangeValue = (imageId: Id, value: string) => {
+    const key = String(imageId);
+    this.setState((previous) => ({
+      avatarImageDrafts: { ...previous.avatarImageDrafts, [key]: value },
+      avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "pending" },
+    }));
+    this.clearFieldTimer(`avatarDescription:${key}`);
+    this.autoSaveTimers[`avatarDescription:${key}`] = setTimeout(() => {
+      void this.handleAvatarDescriptionSave(imageId);
     }, 1800);
   };
 
-  handleAvatarDescriptionChange: React.ChangeEventHandler<
-    HTMLInputElement | HTMLTextAreaElement
-  > = (event) => {
-    this.handleAvatarDescriptionChangeValue(event.target.value);
+  handleAvatarDescriptionBlur = (imageId: Id) => {
+    this.clearFieldTimer(`avatarDescription:${String(imageId)}`);
+    void this.handleAvatarDescriptionSave(imageId);
   };
 
-  handleAvatarDescriptionBlur = () => {
-    this.clearFieldTimer("avatarDescription");
-    this.handleAvatarDescriptionSave();
-  };
-
-  handleAvatarDescriptionSave = async () => {
-    if (
-      !this.isEditableProfile() ||
-      !this.state.avatarVisible ||
-      !this.state.profileId
-    ) {
+  handleAvatarDescriptionSave = async (imageId: Id) => {
+    if (!this.isEditableProfile() || !this.state.profileId) return;
+    const key = String(imageId);
+    const image = this.state.avatarImages.find((candidate) => candidate.id === imageId);
+    const draft = this.state.avatarImageDrafts[key] || "";
+    if (!image || draft === (image.description || "")) {
+      this.setState((previous) => ({
+        avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: null },
+      }));
       return;
     }
-
-    const draft = this.state.avatarDescriptionDraft || "";
-    const persisted = this.state.avatarDescriptionPersisted || "";
-    if (draft === persisted) {
-      this.setState({ avatarDescriptionStatus: null });
-      return;
-    }
-
-    this.setState({ avatarDescriptionStatus: "saving" });
-
+    this.setState((previous) => ({
+      avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "saving" },
+    }));
     try {
-      const response = await updateAvatarDescription(
+      const response = await updateProfileImageDescription(
         this.state.profileId,
-        this.state.avatarDescriptionDraft || null,
+        imageId,
+        draft || null,
       );
-
-      if (response.status !== 200) {
-        throw new Error("Update failed");
-      }
-
-      this.setState({
-        avatarInfo: draft,
-        avatarDescriptionPersisted: draft,
-        avatarDescriptionStatus: "saved",
+      if (!response.ok) throw new Error("Update failed");
+      this.setState((previous) => {
+        const avatarImages = previous.avatarImages.map((candidate) =>
+          candidate.id === imageId ? { ...candidate, description: draft } : candidate,
+        );
+        const first = avatarImages[0];
+        return {
+          avatarImages,
+          avatarInfo: first?.description || "",
+          avatarDescriptionDraft: first?.description || "",
+          avatarDescriptionPersisted: first?.description || "",
+          avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "saved" },
+        };
       });
-      this.resetFieldStatus("avatarDescription");
-    } catch (error) {
-      this.setState({
-        avatarDescriptionDraft: this.state.avatarDescriptionPersisted || "",
-        avatarDescriptionStatus: "error",
-      });
-      this.resetFieldStatus("avatarDescription", 1500);
+      setTimeout(() => {
+        this.setState((previous) => ({
+          avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: null },
+        }));
+      }, 1000);
+    } catch {
+      this.setState((previous) => ({
+        avatarImageDrafts: {
+          ...previous.avatarImageDrafts,
+          [key]: image.description || "",
+        },
+        avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "error" },
+      }));
     }
   };
 
-  handleDeleteAvatar = async () => {
-    if (!this.isEditableProfile() || !this.state.profileId) {
-      return;
-    }
-
+  handleDeleteAvatar = async (imageId: Id) => {
+    if (!this.isEditableProfile() || !this.state.profileId) return;
     try {
-      const response = await deleteAvatar(this.state.profileId);
-
-      if (response.status !== 200) {
-        throw new Error("Delete failed");
-      }
-
-      this.clearFieldTimer("avatarDescription");
-      this.setState({
-        avatarVisible: false,
-        avatarLoaded: true,
-        avatarId: null,
-        avatarUrl: null,
-        avatarImage: null,
-        avatarInfo: "",
-        avatarDescriptionDraft: "",
-        avatarDescriptionPersisted: "",
-        avatarDescriptionStatus: null,
-        avatarUploadMessage: null,
-        avatarUploadStatus: "success",
+      const response = await deleteProfileImage(this.state.profileId, imageId);
+      if (!response.ok) throw new Error("Delete failed");
+      this.setState((previous) => {
+        const avatarImages = previous.avatarImages.filter((image) => image.id !== imageId);
+        const first = avatarImages[0];
+        return {
+          avatarImages,
+          avatarVisible: Boolean(first),
+          avatarId: first?.id || null,
+          avatarUrl: first?.url || null,
+          avatarInfo: first?.description || "",
+          avatarDescriptionDraft: first?.description || "",
+          avatarDescriptionPersisted: first?.description || "",
+          avatarUploadMessage: null,
+          avatarUploadStatus: "success",
+        };
       });
-    } catch (error) {
+    } catch {
       this.setState({
-        avatarUploadMessage: this.t(
-          "profile.avatar.deleteFailed",
-          "Unable to delete profile picture.",
-        ),
+        avatarUploadMessage: this.t("profile.avatar.deleteFailed", "Unable to delete profile picture."),
         avatarUploadStatus: "error",
       });
+    }
+  };
+
+  openAvatarReplacePicker = (image: GalleryImage) => {
+    if (!image.id || this.state.avatarUploadStatus === "uploading") return;
+    this.replacingAvatarId = image.id;
+    const input = document.getElementById("avatarReplaceInput") as HTMLInputElement | null;
+    input?.click();
+  };
+
+  handleAvatarReplace: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
+    const imageId = this.replacingAvatarId;
+    event.target.value = "";
+    if (!file || !imageId || !this.state.profileId) return;
+    this.setState({ avatarUploadStatus: "uploading", avatarUploadMessage: null });
+    try {
+      const current = this.state.avatarImages.find((image) => image.id === imageId);
+      const replacement = await replaceProfileImage(
+        this.state.profileId,
+        imageId,
+        await this.prepareAvatarFile(file),
+        current?.description || null,
+      );
+      this.setState((previous) => {
+        const avatarImages = previous.avatarImages.map((image) =>
+          image.id === imageId ? { ...image, ...replacement } : image,
+        );
+        const first = avatarImages[0];
+        return {
+          avatarImages,
+          avatarId: first?.id || null,
+          avatarUrl: first?.url || null,
+          avatarInfo: first?.description || "",
+          avatarUploadStatus: "success",
+        };
+      });
+    } catch (error) {
+      this.setState({
+        avatarUploadStatus: "error",
+        avatarUploadMessage: error instanceof Error ? error.message : "Unable to replace profile picture.",
+      });
+    } finally {
+      this.replacingAvatarId = null;
     }
   };
 
@@ -1532,21 +1599,20 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           <PageColumn>
             <ProfileAvatarPanel
               avatarPanelWidth={AVATAR_PANEL_WIDTH}
-              avatarVisible={this.state.avatarVisible}
               avatarLoaded={this.state.avatarLoaded}
-              avatarUrl={this.state.avatarUrl}
-              avatarId={this.state.avatarId}
+              avatars={this.state.avatarImages}
               profileId={this.state.profileId}
-              avatarInfo={this.state.avatarInfo}
               avatarUploadStatus={this.state.avatarUploadStatus}
               avatarUploadMessage={this.state.avatarUploadMessage}
-              avatarDescriptionDraft={this.state.avatarDescriptionDraft}
-              avatarDescriptionStatus={this.state.avatarDescriptionStatus}
+              avatarImageDrafts={this.state.avatarImageDrafts}
+              avatarImageStatuses={this.state.avatarImageStatuses}
               isEditable={isEditable}
               initials={profileInitials}
               t={this.t.bind(this)}
               onUploadChange={this.handleAvatarUpload}
+              onReplaceChange={this.handleAvatarReplace}
               onOpenFilePicker={this.openAvatarFilePicker}
+              onReplaceImage={this.openAvatarReplacePicker}
               onDelete={this.handleDeleteAvatar}
               onDescriptionChange={this.handleAvatarDescriptionChangeValue}
               onDescriptionBlur={this.handleAvatarDescriptionBlur}

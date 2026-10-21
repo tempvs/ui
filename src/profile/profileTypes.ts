@@ -102,6 +102,9 @@ export type ProfilePageState = PersistedProfile & {
   avatarId?: string | null;
   avatarUrl?: string | null;
   avatarInfo?: string | null;
+  avatarImages: Avatar[];
+  avatarImageDrafts: Record<string, string>;
+  avatarImageStatuses: Record<string, SaveStatus>;
   loaded: boolean;
   notFound: boolean;
   createMode: boolean;

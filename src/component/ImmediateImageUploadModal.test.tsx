@@ -24,3 +24,18 @@ test("uploads immediately after a file is selected without rendering action butt
   expect(screen.queryByRole("button", { name: /upload/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
 });
+
+test("can accept several images for gallery-backed entities", () => {
+  render(
+    <ImmediateImageUploadModal
+      show
+      title="Add images"
+      fileLabel="Image files"
+      onHide={jest.fn()}
+      onFileChange={jest.fn()}
+      multiple
+    />,
+  );
+
+  expect(screen.getByLabelText("Image files")).toHaveAttribute("multiple");
+});

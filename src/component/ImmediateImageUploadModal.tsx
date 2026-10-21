@@ -10,6 +10,8 @@ type ImmediateImageUploadModalProps = {
   uploading?: boolean;
   uploadingText?: React.ReactNode;
   accept?: string;
+  /** Let gallery-backed entities add several pictures in one selection. */
+  multiple?: boolean;
 };
 
 /** A shared image picker that uploads as soon as a file is selected. */
@@ -22,6 +24,7 @@ export default function ImmediateImageUploadModal({
   uploading = false,
   uploadingText = "Uploading...",
   accept = "image/jpeg,image/png,image/gif",
+  multiple = false,
 }: ImmediateImageUploadModalProps) {
   const inputId = useId();
 
@@ -43,6 +46,7 @@ export default function ImmediateImageUploadModal({
             id={inputId}
             type="file"
             accept={accept}
+            multiple={multiple}
             disabled={uploading}
             onChange={onFileChange}
           />

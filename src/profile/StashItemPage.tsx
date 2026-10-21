@@ -415,30 +415,41 @@ function StashItemPage({ intl }: StashItemPageProps) {
   }
 
   async function handleUploadImage(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!file || !item) {
+    if (!files.length || !item) {
       return;
     }
 
     setImageUploading(true);
     try {
-      const preparedFile = await prepareImageFile(file);
-      const uploadedImage = await uploadStashItemImage(item.id, preparedFile);
-      const pendingImage: EntityImage = {
-        ...uploadedImage,
-        entityId: item.id,
-        belongsTo: "item",
-        resourceId: item.id,
-        resourceType: "item",
-      };
+      const uploadedImages = await Promise.all(
+        files.map(async (file) => {
+          const preparedFile = await prepareImageFile(file);
+          const uploadedImage = await uploadStashItemImage(item.id, preparedFile);
+          return {
+            ...uploadedImage,
+            entityId: item.id,
+            belongsTo: "item",
+            resourceId: item.id,
+            resourceType: "item",
+          } as EntityImage;
+        }),
+      );
       setItemImages((current) => [
-        pendingImage,
-        ...current.filter((image) => image.id !== pendingImage.id),
+        ...uploadedImages,
+        ...current.filter(
+          (image) => !uploadedImages.some((uploaded) => uploaded.id === image.id),
+        ),
       ]);
       setImageDrafts((current) => ({
         ...current,
-        [toRecordKey(pendingImage.id)]: pendingImage.description || "",
+        ...Object.fromEntries(
+          uploadedImages.map((image) => [
+            toRecordKey(image.id),
+            image.description || "",
+          ]),
+        ),
       }));
       setImageUploadVisible(false);
     } finally {
@@ -724,11 +735,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
               images={displayedItemImages}
               title={item.name || t("profile.stash.itemName", "Item")}
               previewSize="default"
-              mode="single"
+              mode="multiple"
               editable={isEditable}
-              onUploadImage={
+              onAddImage={
                 isEditable ? () => setImageUploadVisible(true) : undefined
               }
+              canAddImage={isEditable}
               onReplaceImage={
                 isEditable ? handleOpenReplaceImagePicker : undefined
               }
@@ -1058,6 +1070,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         fileLabel={t("profile.stash.itemImageFile", "Image file")}
         onHide={() => setImageUploadVisible(false)}
         onFileChange={handleUploadImage}
+        multiple
         uploading={imageUploading}
         uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
       />
