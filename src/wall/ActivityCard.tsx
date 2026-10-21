@@ -5,6 +5,7 @@ import { FaTimes } from 'react-icons/fa';
 
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from '../component/DefaultHourglassImage';
 import IconActionButton from '../component/IconActionButton';
+import { formatAppDateTime } from '../i18n/appLocale';
 import RefreshingImage from '../image/RefreshingImage';
 import type { ImageReference } from '../image/RefreshingImage';
 import { WallActivity } from './wallApi';
@@ -33,7 +34,7 @@ export default function ActivityCard({ activity, thumbnail, onDismiss }: { activ
       {activity.mapReference && <MapReferenceAttachment reference={activity.mapReference} />}
       {activity.changes && <dl className="wall-changes">{Object.entries(activity.changes).map(([field, change]) => <React.Fragment key={field}><dt>{field}</dt><dd>{change.before || '—'} → {change.after || '—'}</dd></React.Fragment>)}</dl>}
       <div className="wall-activity-meta">
-        <time dateTime={activity.occurredAt}>{new Date(activity.occurredAt).toLocaleString()}</time>
+        <time dateTime={activity.occurredAt}>{formatAppDateTime(activity.occurredAt)}</time>
         {(activity.reasons || []).map(reason => <Badge bg="light" text="dark" key={reason}>{reasonLabels[reason] || reason}</Badge>)}
       </div>
     </div>

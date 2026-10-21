@@ -4,6 +4,7 @@ import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
 import IconActionButton from "../component/IconActionButton";
+import { formatAppDateTime } from "../i18n/appLocale";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
@@ -295,7 +296,7 @@ export default function CommentThread({
               <p className="comment-content">{comment.content}</p>
             )}
             <time className="text-muted small" dateTime={comment.createdAt}>
-              {new Date(comment.createdAt).toLocaleString()}
+              {formatAppDateTime(comment.createdAt)}
               {comment.edited ? " · Edited" : ""}
             </time>
           </article>

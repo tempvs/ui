@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
+import { formatAppDateTime } from "../i18n/appLocale";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
@@ -229,7 +230,7 @@ export default function EventsPage() {
                     </h2>
                     <time>
                       {event.schedule.startsAt
-                        ? `${new Date(event.schedule.startsAt).toLocaleString()} · ${event.schedule.timeZone}`
+                        ? `${formatAppDateTime(event.schedule.startsAt)} · ${event.schedule.timeZone}`
                         : "Dates to be announced"}
                     </time>
                     {event.description && <p>{event.description}</p>}

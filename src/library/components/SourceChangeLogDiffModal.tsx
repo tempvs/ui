@@ -1,6 +1,7 @@
 import { Modal } from "react-bootstrap";
 
 import StackedImageGallery from "../../component/StackedImageGallery";
+import { formatAppDateTime } from "../../i18n/appLocale";
 import type { LibrarySourceImage, SourceChangeLogEntry } from "../libraryApi";
 import {
   formatSourceChangeValue,
@@ -31,7 +32,7 @@ export default function SourceChangeLogDiffModal({
         {entry && (
           <>
             <p className="small text-muted mb-3">
-              Applied {new Date(entry.createdAt).toLocaleString()}
+              Applied {formatAppDateTime(entry.createdAt)}
             </p>
             {Object.keys(entry.changes).length === 0 ? (
               <p className="text-muted mb-0">

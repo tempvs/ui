@@ -4,6 +4,7 @@ import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
 import IconActionButton from "../component/IconActionButton";
+import { formatAppDateTime } from "../i18n/appLocale";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
@@ -476,7 +477,7 @@ export default function PostPanel({
                 )}
                 <div className="post-entry-meta">
                   <time className="text-muted small" dateTime={post.createdAt}>
-                    {new Date(post.createdAt).toLocaleString()}
+                    {formatAppDateTime(post.createdAt)}
                   </time>
                   {hasBeenEdited(post) && (
                     <span className="post-edited">Edited</span>

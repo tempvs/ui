@@ -486,8 +486,8 @@ export default function EventPage() {
         </PageColumns>
         {/*
                 <ul className="event-occurrences">
-          {new Date(item.schedule.startsAt).toLocaleString()} –{" "}
-          {new Date(item.schedule.endsAt).toLocaleString()} (
+          {formatAppDateTime(item.schedule.startsAt)} –{" "}
+          {formatAppDateTime(item.schedule.endsAt)} (
           {item.schedule.timeZone})
         </p>
         {item.schedule.kind === "RECURRING" && (
@@ -500,7 +500,7 @@ export default function EventPage() {
         <ul className="event-occurrences">
           {(item.upcomingOccurrences || []).map((occurrence) => (
             <li key={occurrence.id}>
-              <time>{new Date(occurrence.startsAt).toLocaleString()}</time>
+              <time>{formatAppDateTime(occurrence.startsAt)}</time>
               <span>{occurrence.status}</span>
             </li>
           ))}

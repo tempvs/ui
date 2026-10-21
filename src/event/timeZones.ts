@@ -24,7 +24,7 @@ type IntlWithSupportedValues = typeof Intl & {
 export const EVENT_TIME_ZONES = (() => {
   const supported = (Intl as IntlWithSupportedValues).supportedValuesOf?.("timeZone");
   return Array.from(new Set(["UTC", ...(supported || FALLBACK_TIME_ZONES)])).sort(
-    (left, right) => (left === "UTC" ? -1 : right === "UTC" ? 1 : left.localeCompare(right)),
+    (left, right) => (left === "UTC" ? -1 : right === "UTC" ? 1 : left.localeCompare(right, "en")),
   );
 })();
 

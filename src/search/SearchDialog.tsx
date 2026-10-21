@@ -10,6 +10,7 @@ import { FaSearch } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
 
+import { formatAppDate } from "../i18n/appLocale";
 import Spinner from "../component/Spinner";
 import TextFilterInput from "../component/TextFilterInput";
 import HistoricalRangeFilter, {
@@ -813,9 +814,7 @@ export default function SearchDialog() {
                               </Card.Title>
                               <small>
                                 {item.schedule.startsAt
-                                  ? new Date(
-                                      item.schedule.startsAt,
-                                    ).toLocaleDateString()
+                                  ? formatAppDate(item.schedule.startsAt)
                                   : "Dates to be announced"}
                               </small>
                             </div>

@@ -20,6 +20,7 @@ import MultiImageFilePicker from "../component/MultiImageFilePicker";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
+import { compareAppText } from "../i18n/appLocale";
 import { getClassificationLabel } from "../library/libraryShared";
 import { ClassificationSelect } from "../library/components/ClassificationSelect";
 import { SaveStatus } from "../component/EditableFieldRow";
@@ -167,7 +168,8 @@ function sortItemsByMarker(
       return 1;
     }
 
-    return String(left.name || left.id).localeCompare(
+    return compareAppText(
+      String(left.name || left.id),
       String(right.name || right.id),
     );
   });

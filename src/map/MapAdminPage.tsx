@@ -9,6 +9,7 @@ import ConfirmationModal from "../component/ConfirmationModal";
 import AdministrationTabs from "../component/AdministrationTabs";
 import TextFilterInput from "../component/TextFilterInput";
 import Spinner from "../component/Spinner";
+import { formatAppDateTime } from "../i18n/appLocale";
 import {
   approveMapPlace,
   approveMapRoleRequest,
@@ -65,7 +66,7 @@ function canAdministerMapRoles(viewer: Viewer | null): boolean {
 function submittedLabel(value: string | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? null : formatAppDateTime(date);
 }
 /** Private review queue. Pending places are deliberately not visible in the
  * public map/search endpoint until this approval has happened. */

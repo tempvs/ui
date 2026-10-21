@@ -16,6 +16,7 @@ import type { MapPlace } from "../map/mapApi";
 import { loadEventRelatedMapContent } from "../map/ownedMapContent";
 import { TempvsEvent } from "./eventApi";
 import TimeZonePicker from "./TimeZonePicker";
+import { formatAppDateTime } from "../i18n/appLocale";
 
 export type EventField =
   | "name"
@@ -57,7 +58,7 @@ function localDateTimeInput(iso?: string) {
 
 function displayDateTime(iso?: string) {
   if (!iso) return "To be announced";
-  return new Date(iso).toLocaleString();
+  return formatAppDateTime(iso);
 }
 
 /** Event metadata uses the same inline-on-click, save-on-blur fields as clubs. */

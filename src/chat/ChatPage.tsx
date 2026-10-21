@@ -28,6 +28,7 @@ import {
   sendMessage,
 } from "./chatApi";
 import { ChatConversationDetails, ChatConversationSummary } from "./chatTypes";
+import { formatAppDateTime } from "../i18n/appLocale";
 
 type IconProps = {
   className?: string;
@@ -73,7 +74,7 @@ function formatDate(value?: string | null) {
     return "";
   }
 
-  return date.toLocaleString();
+  return formatAppDateTime(date);
 }
 
 function toPromiseUserProfile(userId: string) {

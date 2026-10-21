@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { formatAppDateTime } from "../../i18n/appLocale";
 import SourceChangesetDiff, { summarizeSourceChangeset } from "./SourceChangesetDiff";
 import type {
   LibrarySource,
@@ -78,7 +79,7 @@ export default function SourceChangesetProposalCard({
                 {summary.length ? summary.join(" · ") : "No content changes"}
               </span>
               <span className="small text-muted d-block mt-1">
-                Submitted {new Date(changeset.createdAt).toLocaleString()}
+                Submitted {formatAppDateTime(changeset.createdAt)}
               </span>
             </span>
           </button>

@@ -5,16 +5,10 @@ import { IntlProvider } from 'react-intl';
 import './index.css';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
-import localeEn from './translations/en.json';
-import localeBe from './translations/be.json';
+import { appLocaleMessages, resolveAppLocale } from './i18n/appLocale';
 
-const data: Record<string, Record<string, string>> = {
-  be: localeBe,
-  en: localeEn,
-};
-
-const language = navigator.language.split(/[-_]/)[0];
-const messages = data[language] || data.en;
+const language = resolveAppLocale(navigator.language);
+const messages = appLocaleMessages(language);
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {

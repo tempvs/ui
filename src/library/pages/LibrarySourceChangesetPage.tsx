@@ -6,6 +6,7 @@ import ConfirmationModal from "../../component/ConfirmationModal";
 import PageLayout from "../../component/PageLayout";
 import Spinner from "../../component/Spinner";
 import CommentThread from "../../comment/CommentThread";
+import { formatAppDateTime } from "../../i18n/appLocale";
 import { getErrorMessage } from "../../util/errors";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
@@ -259,7 +260,7 @@ export default function LibrarySourceChangesetPage() {
             <div>
               <h1 className="h3 mb-1">{source.name}</h1>
               <div className="text-muted small">
-                Submitted {new Date(changeset.createdAt).toLocaleString()}
+                Submitted {formatAppDateTime(changeset.createdAt)}
               </div>
             </div>
             <span

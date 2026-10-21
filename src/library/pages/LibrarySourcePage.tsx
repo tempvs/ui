@@ -15,6 +15,7 @@ import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import EditableHistoricalRangeField from "../../component/EditableHistoricalRangeField";
 import PlacePickerField from "../../component/PlacePickerField";
+import { formatAppDateTime } from "../../i18n/appLocale";
 import {
   getSource,
   getSourceImages,
@@ -469,7 +470,7 @@ export default function LibrarySourcePage() {
                       </>
                     )}
                     <time className="text-muted">
-                      {new Date(entry.createdAt).toLocaleString()}
+                      {formatAppDateTime(entry.createdAt)}
                     </time>
                     {entry.changesetId && (
                       <>

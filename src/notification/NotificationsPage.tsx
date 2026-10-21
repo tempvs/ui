@@ -4,6 +4,7 @@ import { FaTimes } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import TextFilterInput from "../component/TextFilterInput";
+import { formatAppDateTime } from "../i18n/appLocale";
 import PageLayout from "../component/PageLayout";
 import RefreshingImage from "../image/RefreshingImage";
 import {
@@ -178,7 +179,7 @@ export default function NotificationsPage() {
               </div>
               {item.summary && <span>{item.summary}</span>}
               <time dateTime={item.createdAt}>
-                {new Date(item.createdAt).toLocaleString()}
+                {formatAppDateTime(item.createdAt)}
               </time>
             </div>
             <Button
