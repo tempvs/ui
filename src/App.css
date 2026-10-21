@@ -2175,7 +2175,7 @@ button.stash-item-media-empty:disabled {
   display: grid;
   /* Desktop inventory rows are deliberately compact. The phone override below
      gives the same photo a much larger responsive area. */
-  grid-template-columns: 4.35rem 5rem;
+  grid-template-columns: 4.35rem 4rem;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
@@ -2242,8 +2242,8 @@ button.stash-item-media-empty:disabled {
 }
 
 .stash-item-thumb-shell {
-  width: 5rem;
-  height: 5rem;
+  width: 4rem;
+  height: 4rem;
   overflow: hidden;
   background: rgba(247, 249, 247, 0.94);
 }
@@ -2391,11 +2391,17 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-media-column {
     width: 100%;
-    grid-template-columns: 3rem minmax(0, 1fr);
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stash-item-marker-slot {
-    width: 3rem;
+    position: absolute;
+    z-index: 3;
+    top: 0.55rem;
+    left: 0.55rem;
+    width: auto;
+    min-height: 0;
   }
 
   .stash-item-thumb-shell {
