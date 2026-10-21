@@ -2386,7 +2386,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-card {
-    padding: 0.3rem;
+    padding: 0.25rem;
   }
 
   .stash-collection-tab-row {
@@ -2410,7 +2410,7 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-thumb-shell {
     width: 100%;
-    height: 4rem;
+    height: 3rem;
     min-height: 0;
     aspect-ratio: auto;
   }

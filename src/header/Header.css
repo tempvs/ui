@@ -205,35 +205,32 @@
   }
 
   .header-layout {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.4rem 0.55rem;
+    grid-template-columns: repeat(9, minmax(2.5rem, auto));
+    grid-template-rows: auto auto auto;
+    justify-content: space-between;
+    gap: 0.35rem 0;
   }
 
-  .header-profile-switcher {
-    min-width: 0;
+  /* Let every navigation control participate directly in one compact icon
+     row. The picker and text search claim their own rows below it. */
+  .header-profile-switcher,
+  .header-main-actions,
+  .header-auth-control {
+    display: contents;
   }
 
   .header-profile-select.profile-picker {
-    width: clamp(9.5rem, 52vw, 15rem);
-  }
-
-  .header-auth-control {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .header-main-actions {
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
-    flex-wrap: wrap;
-    align-items: center;
-    overflow: visible;
-    padding: 0.1rem 0 0.3rem;
+  }
+
+  .header-main-actions {
+    padding: 0;
   }
 
   .header-main-actions > * {
-    flex: 0 0 auto;
+    min-width: 0;
   }
 
   .header-search-shell {
@@ -243,6 +240,8 @@
     flex: 1 0 100%;
     min-width: 0;
     width: 100%;
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 
   .search-popover {
@@ -263,8 +262,19 @@
 }
 
 @media (max-width: 359.98px) {
+  .header-layout {
+    grid-template-columns: repeat(9, minmax(2.15rem, auto));
+  }
+
+  .header-icon-button,
+  .header-search-icon-button,
+  .Header .btn {
+    min-width: 2.15rem;
+    min-height: 2.3rem;
+  }
+
   .header-profile-select.profile-picker {
-    width: 8.5rem;
+    width: 100%;
   }
 
 }
