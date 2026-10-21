@@ -2516,6 +2516,10 @@ button.stash-item-media-empty:disabled {
     font-size: 0.7rem;
   }
 
+  .stash-item-list-card .stash-meta-chip {
+    font-size: 0.64rem;
+  }
+
   .stash-item-list-copy {
     grid-column: 3;
     grid-row: 1;
