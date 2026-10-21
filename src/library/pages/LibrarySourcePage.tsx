@@ -367,7 +367,10 @@ export default function LibrarySourcePage() {
               previewSize="compact"
               previewStyle={{ width: "100%" }}
               previewImageStyle={{
-                width: "auto",
+                // Source pictures should fill the available gallery width while
+                // preserving their own aspect ratio. `auto` left narrow images
+                // looking like a squeezed strip in the responsive side panel.
+                width: "100%",
                 maxWidth: "100%",
                 height: "auto",
                 maxHeight: "24rem",
