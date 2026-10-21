@@ -11,7 +11,6 @@ import { FaArrowLeft, FaPlus, FaTimes } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 
-import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import InlineEditableText from "../component/InlineEditableText";
@@ -31,7 +30,6 @@ import {
   createStashGroup,
   createStashItem,
   createStashItemMarker,
-  deleteStashItem,
   deleteStashGroup,
   deleteStashGroupImage,
   deleteStashItemMarker,
@@ -1106,57 +1104,6 @@ export default function StashOverview({
     }
   }
 
-  async function handleDeleteItem(itemId: Id) {
-    try {
-      await deleteStashItem(itemId);
-      const groupKey = activeGroup ? toRecordKey(activeGroup.id) : null;
-      if (groupKey) {
-        setItemsByGroup((previousState) => ({
-          ...previousState,
-          [groupKey]: (previousState[groupKey] || []).filter(
-            (item) => !idsEqual(item.id, itemId),
-          ),
-        }));
-        setMarkersByGroup((previousState) => ({
-          ...previousState,
-          [groupKey]: (previousState[groupKey] || []).filter(
-            (marker) => !idsEqual(marker.itemId, itemId),
-          ),
-        }));
-        setItemOrderByGroup((previousState) => ({
-          ...previousState,
-          [groupKey]: (previousState[groupKey] || []).filter(
-            (orderedItemId) => !idsEqual(orderedItemId, itemId),
-          ),
-        }));
-      }
-      setItemImages((previousState) => {
-        const nextState = { ...previousState };
-        delete nextState[toRecordKey(itemId)];
-        return nextState;
-      });
-      setItemImageCounts((previousState) => {
-        const nextState = { ...previousState };
-        delete nextState[toRecordKey(itemId)];
-        return nextState;
-      });
-      delete itemRowRefs.current[toRecordKey(itemId)];
-      setMarkerPlacement((previousState) =>
-        previousState?.itemId === itemId ? null : previousState,
-      );
-      setMarkerPreviewPosition((previousState) =>
-        markerPlacement?.itemId === itemId ? null : previousState,
-      );
-      setHoveredMarkerItemId((previousState) =>
-        previousState === itemId ? null : previousState,
-      );
-    } catch (error) {
-      setFeedback(
-        t("profile.stash.itemDeleteFailed", "Unable to delete this item."),
-      );
-    }
-  }
-
   async function handleUploadGroupImage(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
@@ -1860,29 +1807,6 @@ export default function StashOverview({
                           }
                         }}
                       >
-                        {isEditable && (
-                          <ConfirmingTrashButton
-                            className="stash-item-delete-trigger"
-                            title={t("profile.stash.itemDelete", "Delete item")}
-                            confirmTitle={t(
-                              "profile.stash.itemDelete",
-                              "Delete item",
-                            )}
-                            confirmMessage={t(
-                              "profile.stash.itemDeleteConfirm",
-                              "Delete this item?",
-                            )}
-                            confirmLabel={t("profile.action.delete", "Delete")}
-                            cancelLabel={t("profile.action.cancel", "Cancel")}
-                            onConfirm={() => {
-                              void handleDeleteItem(item.id);
-                            }}
-                            borderColor="rgba(160, 68, 68, 0.24)"
-                            color="#9c3b3b"
-                            backgroundColor="rgba(252, 241, 241, 0.92)"
-                            size="2rem"
-                          />
-                        )}
                         <div className="stash-item-media-column">
                           <div className="stash-item-marker-slot">
                             {isEditable && hasActiveGroupImage && (

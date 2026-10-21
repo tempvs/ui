@@ -19,6 +19,7 @@ import { useCurrentProfileValue } from "./profile/currentProfile";
 import ProfileAdminPage from "./profile/ProfileAdminPage";
 import StashPage from "./profile/StashPage";
 import StashItemPage from "./profile/StashItemPage";
+import StashItemAdminPage from "./profile/StashItemAdminPage";
 import LibraryPage from "./library/LibraryPage";
 import HomePage from "./HomePage";
 import ChatPage from "./chat/ChatPage";
@@ -147,6 +148,10 @@ function App() {
             />
             <Route path="/profile/:id" element={<ProfilePageWithParam />} />
             <Route path="/stash/:id" element={<StashPage />} />
+            <Route
+              path="/stash/:id/items/:itemId/admin"
+              element={<StashItemAdminPage />}
+            />
             <Route
               path="/stash/:id/items/:itemId"
               element={<StashItemPage />}

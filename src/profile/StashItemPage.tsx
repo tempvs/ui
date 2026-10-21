@@ -7,10 +7,9 @@ import React, {
 } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
-import ConfirmingTrashButton from "../component/ConfirmingTrashButton";
 import ConfirmationModal from "../component/ConfirmationModal";
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
@@ -34,7 +33,6 @@ import {
   fetchProfileById,
 } from "./profileApi";
 import {
-  deleteStashItem,
   deleteStashItemImage,
   getLibrarySourcesByIds,
   getStashEntityImages,
@@ -110,7 +108,6 @@ function truncateLabel(value?: string | null, limit = 30) {
 
 function StashItemPage({ intl }: StashItemPageProps) {
   const { id, itemId } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const navigationImages = useMemo(
     () =>
@@ -564,17 +561,6 @@ function StashItemPage({ intl }: StashItemPageProps) {
     }
   }
 
-  async function handleDeleteItem() {
-    if (!item || !profile) {
-      return;
-    }
-    await deleteStashItem(item.id);
-    navigate(
-      `/stash/${profile.alias || profile.id}${item.itemGroup?.id ? `?group=${item.itemGroup.id}` : ""}`,
-      { replace: true },
-    );
-  }
-
   async function handleUnlinkSource(sourceId: string) {
     if (!item) {
       return;
@@ -742,6 +728,14 @@ function StashItemPage({ intl }: StashItemPageProps) {
         ),
         backgroundColor: "#f8f4ea",
         borderColor: "#d8c7a1",
+        rightContent: isEditable ? (
+          <Link
+            className="btn btn-outline-dark"
+            to={`/stash/${profile.alias || profile.id}/items/${item.id}/admin`}
+          >
+            {t("profile.stash.itemManage", "Manage item")}
+          </Link>
+        ) : undefined,
       }}
     >
       <div className="stash-item-page-shell">
@@ -792,21 +786,6 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 status={itemStatuses.name}
                 textClassName="stash-item-page-title stash-item-page-title-text"
               />
-              {isEditable && (
-                <ConfirmingTrashButton
-                  title={t("profile.stash.itemDelete", "Delete item")}
-                  confirmTitle={t("profile.stash.itemDelete", "Delete item")}
-                  confirmMessage={t(
-                    "profile.stash.itemDeleteConfirm",
-                    "Delete this item?",
-                  )}
-                  confirmLabel={t("profile.action.delete", "Delete")}
-                  cancelLabel={t("profile.action.cancel", "Cancel")}
-                  onConfirm={() => {
-                    void handleDeleteItem();
-                  }}
-                />
-              )}
             </div>
             <Link
               className="stash-inline-link stash-item-page-collection-link"
