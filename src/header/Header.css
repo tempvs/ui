@@ -227,6 +227,7 @@
     grid-row: 2;
     width: 100%;
     flex-wrap: wrap;
+    align-items: center;
     overflow: visible;
     padding: 0.1rem 0 0.3rem;
   }
@@ -236,7 +237,9 @@
   }
 
   .header-search-shell {
-    order: -1;
+    /* On a phone the compact icon strip comes first; the usable text search
+       gets a calm, full-width row underneath it. */
+    order: 2;
     flex: 1 0 100%;
     min-width: 0;
     width: 100%;

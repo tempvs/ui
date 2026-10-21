@@ -2385,6 +2385,10 @@ button.stash-item-media-empty:disabled {
     grid-template-columns: 1fr;
   }
 
+  .stash-item-list-card {
+    padding: 0.3rem;
+  }
+
   .stash-collection-tab-row {
     align-items: flex-start;
   }
@@ -2406,7 +2410,7 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-thumb-shell {
     width: 100%;
-    height: 5rem;
+    height: 4rem;
     min-height: 0;
     aspect-ratio: auto;
   }
