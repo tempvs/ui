@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -61,6 +67,7 @@ type IdRecord<T> = Record<string, T>;
 type FieldName = "name" | "description";
 type FieldStatusMap = Partial<Record<FieldName, SaveStatus>>;
 type ItemNavigationState = { initialItemImages?: EntityImage[] };
+const NO_INITIAL_ITEM_IMAGES: EntityImage[] = [];
 
 const ALL_SOURCE_TYPES = ["WRITTEN", "GRAPHIC", "ARCHAEOLOGICAL", "OTHER"];
 const LinkIcon = FaLink as React.ComponentType<{ className?: string }>;
@@ -105,8 +112,12 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const { id, itemId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const navigationImages =
-    (location.state as ItemNavigationState | null)?.initialItemImages || [];
+  const navigationImages = useMemo(
+    () =>
+      (location.state as ItemNavigationState | null)?.initialItemImages ||
+      NO_INITIAL_ITEM_IMAGES,
+    [location.state],
+  );
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ownerUserProfile, setOwnerUserProfile] = useState<Profile | null>(
@@ -189,7 +200,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
 
   useEffect(() => {
     setInitialItemImages(navigationImages);
-  }, [itemId, location.key]);
+  }, [itemId, location.key, navigationImages]);
 
   useEffect(() => {
     if (
