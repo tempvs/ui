@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Form, OverlayTrigger } from 'react-bootstrap';
 import { FaPen } from 'react-icons/fa';
 
@@ -83,7 +83,7 @@ export default function InlineEditableText({
     }
   }, [editing]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!multiline || !multilineUseContentEditable) {
       return;
     }
@@ -93,6 +93,9 @@ export default function InlineEditableText({
       return;
     }
 
+    // React must not reconcile text children while the browser owns the caret.
+    // Doing so moves the caret to the start on every keystroke, which reverses
+    // text typed into controlled content-editable descriptions.
     if (editing && document.activeElement === control) {
       return;
     }
@@ -183,7 +186,7 @@ export default function InlineEditableText({
                 data-placeholder={placeholder}
                 onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
                 onBlur={handleContentEditableBlur}
-              >{String(controlValue ?? '')}</div>
+              />
               <span className="inline-editable-description-popover" role="tooltip">
                 {popoverValue}
               </span>
@@ -200,7 +203,7 @@ export default function InlineEditableText({
               data-placeholder={placeholder}
               onInput={event => onValueChange?.(event.currentTarget.textContent || '')}
               onBlur={handleContentEditableBlur}
-            >{String(controlValue ?? '')}</div>
+            />
           )
         ) : (
         shouldShowLocalPopover ? (

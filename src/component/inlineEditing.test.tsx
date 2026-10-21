@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -80,4 +80,29 @@ test('clicking non-focusable page chrome saves and closes the active field', asy
   await user.click(screen.getByTestId('page-chrome'));
   expect(onBlur).toHaveBeenCalledTimes(1);
   expect(input).toHaveAttribute('readonly');
+});
+
+test('a controlled content-editable description keeps typed characters in order', async () => {
+  const user = userEvent.setup();
+
+  function DescriptionField() {
+    const [value, setValue] = useState('');
+    return (
+      <InlineEditableText
+        editable
+        multiline
+        multilineUseContentEditable
+        value={value}
+        readOnlyValue={value}
+        onValueChange={setValue}
+      />
+    );
+  }
+
+  render(<DescriptionField />);
+  const field = screen.getByRole('textbox');
+  await user.click(field);
+  await user.type(field, 'A short description');
+
+  expect(field).toHaveTextContent('A short description');
 });
