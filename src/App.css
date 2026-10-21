@@ -2127,10 +2127,10 @@ button.stash-item-media-empty:disabled {
 .stash-item-list-card,
 .stash-source-card {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.55rem;
   align-items: start;
   width: 100%;
-  padding: 0.78rem;
+  padding: 0.5rem;
   border: 1px solid rgba(138, 123, 91, 0.15);
   background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 0.35rem 1rem rgba(31, 38, 35, 0.05);
@@ -2173,10 +2173,9 @@ button.stash-item-media-empty:disabled {
   grid-column: 1;
   grid-row: 1;
   display: grid;
-  /* Keep the marker controls in their own fixed column, but give collection
-     item photos enough room to be useful rather than reducing them to a tiny
-     square beside the item details. */
-  grid-template-columns: 4.35rem 10rem;
+  /* Desktop inventory rows are deliberately compact. The phone override below
+     gives the same photo a much larger responsive area. */
+  grid-template-columns: 4.35rem 5rem;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
@@ -2242,10 +2241,16 @@ button.stash-item-media-empty:disabled {
     0 0.35rem 1rem rgba(31, 38, 35, 0.05);
 }
 
-.stash-item-thumb-shell,
+.stash-item-thumb-shell {
+  width: 5rem;
+  height: 5rem;
+  overflow: hidden;
+  background: rgba(247, 249, 247, 0.94);
+}
+
 .stash-source-thumb-shell {
-  width: 10rem;
-  height: 10rem;
+  width: 6rem;
+  height: 6rem;
   overflow: hidden;
   background: rgba(247, 249, 247, 0.94);
 }
@@ -2386,13 +2391,25 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-media-column {
     width: 100%;
-    grid-template-columns: 4.35rem minmax(0, 1fr);
+    grid-template-columns: 3rem minmax(0, 1fr);
   }
 
-  .stash-item-thumb-shell,
+  .stash-item-marker-slot {
+    width: 3rem;
+  }
+
+  .stash-item-thumb-shell {
+    width: 100%;
+    height: auto;
+    min-height: 11rem;
+    aspect-ratio: 4 / 3;
+  }
+
   .stash-source-thumb-shell {
     width: 100%;
-    height: 9rem;
+    height: auto;
+    min-height: 9rem;
+    aspect-ratio: 4 / 3;
   }
 }
 
