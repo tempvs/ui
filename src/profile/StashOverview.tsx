@@ -104,6 +104,13 @@ function idsEqual(left: Id | null | undefined, right: Id | null | undefined) {
   return String(left) === String(right);
 }
 
+function truncateDescription(value: string, limit = 30) {
+  const characters = Array.from(value);
+  return characters.length > limit
+    ? `${characters.slice(0, limit).join("")}...`
+    : value;
+}
+
 function buildFirstImageMap(images: EntityImage[]) {
   return images.reduce<IdRecord<EntityImage>>((accumulator, image) => {
     const entityId = image.entityId || "";
@@ -1894,7 +1901,9 @@ export default function StashOverview({
                             </div>
                           </div>
                           <div className="stash-item-list-description">
-                            {item.description ||
+                            {item.description
+                              ? truncateDescription(item.description)
+                              :
                               t(
                                 "profile.stash.noDescription",
                                 "No description",

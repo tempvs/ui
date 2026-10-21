@@ -2517,7 +2517,14 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-card .stash-meta-chip {
-    font-size: 0.64rem;
+    min-height: 1.1rem;
+    padding: 0.02rem 0.24rem;
+    font-size: 0.6rem;
+    white-space: nowrap;
+  }
+
+  .stash-item-list-card .stash-meta-row {
+    gap: 0.18rem;
   }
 
   .stash-item-list-copy {
