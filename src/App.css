@@ -13,6 +13,7 @@ html {
 
 .page-layout {
   text-align: left;
+  min-width: 0;
 }
 
 .app-shell-header-slot {
@@ -29,6 +30,7 @@ html {
 
 .page-layout-content {
   margin-top: 1rem;
+  min-width: 0;
 }
 
 .page-columns {
@@ -72,6 +74,10 @@ html {
   }
   .page-columns--three > :last-child {
     grid-column: auto;
+  }
+
+  .page-columns {
+    gap: 1rem;
   }
 }
 
@@ -229,6 +235,12 @@ h3 {
   min-height: 2.1rem;
 }
 
+.tempvs-section-header-title,
+.tempvs-section-header-middle,
+.tempvs-section-header-actions {
+  min-width: 0;
+}
+
 /* A permission check may briefly occupy the action slot. Keep its hourglass
    within the reserved action-row height, rather than letting an inline 50px
    spinner stretch the persistent page jumbo. */
@@ -277,6 +289,136 @@ h3 {
 @media (max-width: 767.98px) {
   .profile-period-years-row {
     flex-wrap: wrap;
+  }
+
+  /* A jumbo remains one stable desktop row, but on a phone its breadcrumb,
+     contextual content, and actions need room to wrap instead of clipping. */
+  .tempvs-section-header {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .tempvs-section-header-row {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.55rem !important;
+  }
+
+  .tempvs-section-header-title,
+  .tempvs-section-header-middle,
+  .tempvs-section-header-actions {
+    width: 100%;
+  }
+
+  .tempvs-section-header-middle {
+    justify-content: flex-start !important;
+  }
+
+  .tempvs-section-header-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .tempvs-section-header-actions > .btn,
+  .tempvs-section-header-actions > button {
+    min-height: 2.5rem;
+  }
+
+  .page-layout .nav-tabs,
+  .modal .nav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.15rem;
+    scrollbar-width: thin;
+  }
+
+  .page-layout .nav-tabs .nav-link,
+  .modal .nav-tabs .nav-link {
+    white-space: nowrap;
+  }
+
+  .modal-dialog {
+    width: auto;
+    max-width: none;
+    min-height: calc(100dvh - 1rem);
+    margin: 0.5rem;
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .modal-body {
+    overscroll-behavior: contain;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 8rem;
+    min-height: 2.6rem;
+  }
+
+  .photo-album-tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .source-profile-links-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .source-profile-filter {
+    width: 100%;
+  }
+
+  .source-image-gallery.stacked-image-gallery-multiple {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .home-shell {
+    padding-top: 1rem;
+  }
+
+  .home-auth-column {
+    padding: 0;
+  }
+
+  .home-auth-panel,
+  .home-message-panel {
+    padding: 1rem;
+  }
+
+  .search-shell {
+    padding-top: 0.8rem;
+  }
+
+  .search-sidebar {
+    padding: 0.65rem;
+  }
+
+  .search-profile-card-body {
+    gap: 0.55rem;
+    padding: 0.5rem;
+  }
+
+  .search-profile-image-link {
+    width: 3.5rem;
+    min-width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .source-profile-list {
+    gap: 0.5rem;
   }
 }
 

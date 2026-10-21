@@ -33,12 +33,12 @@ export default function SectionHeaderBar({
             gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
           }}
         >
-          <div className="d-flex justify-content-start" style={{ minWidth: 0 }}>
+          <div className="tempvs-section-header-title d-flex justify-content-start" style={{ minWidth: 0 }}>
             <div className="small fw-bold mb-1">
               {title}
             </div>
           </div>
-          <div className="d-flex justify-content-center" style={{ minWidth: 0 }}>
+          <div className="tempvs-section-header-middle d-flex justify-content-center" style={{ minWidth: 0 }}>
             {middleContent}
           </div>
           <div className="tempvs-section-header-actions d-flex justify-content-end" style={{ minWidth: 0 }}>

@@ -4,8 +4,13 @@
   max-width: 95%;
 }
 
-.Header .show-grid {
+.header-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 3fr) auto;
   align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .auth-avatar-badge {
@@ -85,6 +90,12 @@
   justify-content: flex-start;
   width: 100%;
   min-width: 0;
+}
+
+.header-auth-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .header-inline-link {
@@ -186,6 +197,76 @@
   position: relative;
   flex: 0 1 18rem;
   min-width: 12rem;
+}
+
+@media (max-width: 767.98px) {
+  .Header .container {
+    max-width: 100%;
+  }
+
+  .header-layout {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 0.55rem;
+  }
+
+  .header-profile-switcher {
+    min-width: 0;
+  }
+
+  .header-profile-select.profile-picker {
+    width: clamp(9.5rem, 52vw, 15rem);
+  }
+
+  .header-auth-control {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .header-main-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 0.1rem 0 0.3rem;
+    scrollbar-width: thin;
+  }
+
+  .header-main-actions > * {
+    flex: 0 0 auto;
+  }
+
+  .header-search-shell {
+    flex: 1 1 8.5rem;
+    min-width: 8.5rem;
+  }
+
+  .search-popover {
+    position: fixed;
+    top: 4.75rem;
+    left: 0.75rem;
+    width: calc(100vw - 1.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow-y: auto;
+  }
+
+  .header-icon-button,
+  .header-search-icon-button,
+  .Header .btn {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .header-profile-select.profile-picker {
+    width: 8.5rem;
+  }
+
+  .header-search-shell {
+    flex-basis: 7rem;
+    min-width: 7rem;
+  }
 }
 
 .search-popover {

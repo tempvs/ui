@@ -392,6 +392,64 @@
   .event-heading {
     flex-direction: column;
   }
+
+  .events-page {
+    padding: 0.9rem 1rem 2rem;
+  }
+
+  .event-panel {
+    padding: 1rem;
+  }
+
+  .event-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-form-actions,
+  .event-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .event-form-actions .btn,
+  .event-actions .btn {
+    width: 100%;
+    min-height: 2.6rem;
+  }
+
+  .event-occurrences li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .event-photo-panel {
+    max-width: none;
+  }
+
+  .event-application-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .event-application-row .profile-picker,
+  .event-application-row select,
+  .event-application-row .event-application-club-picker {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .event-application-row .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .event-application-row .text-muted {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 @media (max-width: 850px) {
   .event-people-grid,

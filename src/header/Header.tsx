@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Col, Container, Row } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import HomeButton from "../home/HomeButton";
@@ -200,12 +200,11 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
     return (
       <div className="Header">
         <Container>
-          <Row className="show-grid">
-            <Col sm={2}>
-              <div className="header-profile-switcher">
-                <HomeButton to="/" />
-                {this.state.loggedIn && (
-                  <>
+          <div className="header-layout">
+            <div className="header-profile-switcher">
+              <HomeButton to="/" />
+              {this.state.loggedIn && (
+                <>
                   <ProfileButton to={this.state.currentProfilePath} />
                   <ProfilePicker
                     className="header-profile-select"
@@ -214,26 +213,23 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                     options={this.state.profileOptions}
                     onChange={this.handleCurrentProfileChange}
                   />
-                  </>
-                )}
-              </div>
-            </Col>
-            <Col sm={9}>
-              <div className="header-main-actions">
-                <SearchDialog />
-                <ClubButton to="/clubs" />
-                <EventButton to="/events" />
-                <MapButton />
-                {this.state.loggedIn && (
-                  <>
-                    <ChatButton to="/chat" />
-                    <NotificationButton to="/notifications" />
-                  </>
-                )}
-                <LibraryButton to="/library" />
-              </div>
-            </Col>
-            <Col sm={1}>
+                </>
+              )}
+            </div>
+            <div className="header-main-actions">
+              <SearchDialog />
+              <ClubButton to="/clubs" />
+              <EventButton to="/events" />
+              <MapButton />
+              {this.state.loggedIn && (
+                <>
+                  <ChatButton to="/chat" />
+                  <NotificationButton to="/notifications" />
+                </>
+              )}
+              <LibraryButton to="/library" />
+            </div>
+            <div className="header-auth-control">
               {this.state.loggedIn ? (
                 <LogOutButton
                   avatarUrl={this.state.avatarUrl}
@@ -242,8 +238,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
               ) : (
                 <LoginRegisterButton />
               )}
-            </Col>
-          </Row>
+            </div>
+          </div>
         </Container>
       </div>
     );

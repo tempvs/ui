@@ -432,6 +432,10 @@
   font-size: 0.875rem;
 }
 @media (max-width: 575px) {
+  .clubs-page {
+    padding: 0.9rem 1rem 2rem;
+  }
+
   .club-page-heading,
   .club-search,
   .club-list-heading {
@@ -447,6 +451,23 @@
   .club-panel {
     padding: 1rem;
   }
+
+  .club-form-picker-row,
+  .profile-relationship-heading {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .club-member-list li {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .club-member-list li > .btn,
+  .club-member-list li > button {
+    min-height: 2.5rem;
+  }
   .profile-relationship-panel {
     padding: 0.8rem;
   }
@@ -455,6 +476,11 @@
   }
   .club-actions {
     flex-wrap: wrap;
+  }
+
+  .club-actions .btn {
+    flex: 1 1 10rem;
+    min-height: 2.5rem;
   }
   .club-event-request-entry {
     grid-template-columns: 1fr;
