@@ -1738,6 +1738,27 @@ button.stash-item-media-empty:disabled {
   box-shadow: 0 0.08rem 0.25rem rgba(31, 38, 35, 0.2);
 }
 
+/* The gallery is used by avatars, entity pictures, source carousels, albums,
+   and stash items. Keep its intrinsic image ratio intact in every context;
+   individual pages may constrain the available area but must never flatten an
+   image while doing so. */
+.stacked-image-gallery-single > .btn,
+.stacked-image-gallery-multiple > .btn {
+  display: block;
+  max-width: 100%;
+}
+
+.stacked-image-gallery-single img,
+.stacked-image-gallery-preview-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.stacked-image-gallery-preview-image {
+  min-width: 0;
+}
+
 .source-card-body {
   align-items: flex-start;
   min-height: 10rem;
@@ -2325,7 +2346,7 @@ button.stash-item-media-empty:disabled {
   box-shadow: none;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 767.98px) {
   .stash-overview-layout,
   .stash-item-page-hero {
     grid-template-columns: 1fr;

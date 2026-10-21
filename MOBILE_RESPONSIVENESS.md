@@ -9,7 +9,7 @@ This checklist keeps the mobile work resumable. The intended baseline is a
 - [x] Make the persistent header use a responsive grid rather than desktop
   Bootstrap columns.
 - [x] Keep navigation available on narrow screens with a horizontally
-  scrollable action row and a full-width mobile search popover.
+  wrapped action row and a full-width mobile search popover.
 - [x] Make page jumbos stack breadcrumbs, contextual content, and actions on
   phones while preserving their stable desktop dimensions.
 - [x] Collapse shared two- and three-column page layouts to one column.
