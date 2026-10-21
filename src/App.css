@@ -2400,7 +2400,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-arrow-layer {
-    display: none;
+    display: block;
   }
 
   .stash-hero-panel {
@@ -2425,7 +2425,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-card {
-    grid-template-columns: 3.3rem minmax(0, 1fr);
+    grid-template-columns: auto 3.3rem minmax(0, 1fr);
     align-items: stretch;
     padding: 0.2rem;
   }
@@ -2442,25 +2442,22 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-media-column {
-    grid-column: 1;
-    grid-row: 1;
-    width: 3.3rem;
-    height: 100%;
-    position: relative;
-    display: block;
+    display: contents;
   }
 
   .stash-item-marker-slot {
-    position: absolute;
-    z-index: 3;
-    top: 0.55rem;
-    left: 0.55rem;
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
     width: auto;
     min-height: 0;
   }
 
   .stash-item-thumb-shell {
-    width: 100%;
+    grid-column: 2;
+    grid-row: 1;
+    width: 3.3rem;
     height: 100%;
     min-height: 0;
     aspect-ratio: auto;
@@ -2505,7 +2502,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-copy {
-    grid-column: 2;
+    grid-column: 3;
     grid-row: 1;
     padding-right: 2rem;
   }
