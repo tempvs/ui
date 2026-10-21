@@ -2410,9 +2410,13 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-thumb-shell {
     width: 100%;
-    height: 3rem;
+    height: 3.3rem;
     min-height: 0;
     aspect-ratio: auto;
+  }
+
+  .stash-item-list-description {
+    margin-top: 0.2rem;
   }
 
   .stash-source-thumb-shell {
