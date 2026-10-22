@@ -16,6 +16,7 @@ import EditableDescriptionField from "../component/EditableDescriptionField";
 import { formatHistoricalRange } from "../component/HistoricalRangeFilter";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import InlineEditableText from "../component/InlineEditableText";
+import PlacePickerField from "../component/PlacePickerField";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import PageLayout from "../component/PageLayout";
 import Spinner from "../component/Spinner";
@@ -23,6 +24,7 @@ import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
 import { SaveStatus } from "../component/EditableFieldRow";
 import { getClassificationLabel, getTypeLabel } from "../library/libraryShared";
+import type { MapPlace } from "../map/mapApi";
 import { clearAllTimers, clearTimer } from "../util/timers";
 import { getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import { prepareImageFile } from "../util/fileUtils";
@@ -137,6 +139,9 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [sourceLinkModalVisible, setSourceLinkModalVisible] = useState(false);
   const [sourceSearch, setSourceSearch] = useState<SourceSearchState>({});
   const [sourceFilter, setSourceFilter] = useState("");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState("");
+  const [sourceDiscoveryPlaceFilter, setSourceDiscoveryPlaceFilter] =
+    useState<MapPlace | null>(null);
   const [sourcePendingUnlink, setSourcePendingUnlink] =
     useState<LibrarySourceSummary | null>(null);
   const [imageUploadVisible, setImageUploadVisible] = useState(false);
@@ -616,6 +621,17 @@ function StashItemPage({ intl }: StashItemPageProps) {
   function closeSourceLinkModal() {
     setSourceLinkModalVisible(false);
     setSourceSearch({});
+    setSourceTypeFilter("");
+    setSourceDiscoveryPlaceFilter(null);
+  }
+
+  function resetSourceSearchResults() {
+    setSourceSearch((previousState) => ({
+      ...previousState,
+      results: [],
+      nextToken: null,
+      error: null,
+    }));
   }
 
   const handleSearchSources = useCallback(
@@ -633,7 +649,8 @@ function StashItemPage({ intl }: StashItemPageProps) {
           query: sourceSearch.query || "",
           period: item.period,
           classifications: item.classification ? [item.classification] : [],
-          types: ALL_SOURCE_TYPES,
+          types: sourceTypeFilter ? [sourceTypeFilter] : ALL_SOURCE_TYPES,
+          discoveredAtPlaceId: sourceDiscoveryPlaceFilter?.id,
           nextToken,
         });
         setSourceSearch((previousState) => ({
@@ -655,7 +672,13 @@ function StashItemPage({ intl }: StashItemPageProps) {
         }));
       }
     },
-    [item, sourceSearch.query, sourceSearchFailedMessage],
+    [
+      item,
+      sourceDiscoveryPlaceFilter?.id,
+      sourceSearch.query,
+      sourceSearchFailedMessage,
+      sourceTypeFilter,
+    ],
   );
 
   useEffect(() => {
@@ -990,6 +1013,45 @@ function StashItemPage({ intl }: StashItemPageProps) {
                 "profile.stash.sourceSearchPlaceholder",
                 "Find matching library sources",
               )}
+            />
+          </div>
+          <div className="d-flex flex-column gap-2 mb-3">
+            <Form.Select
+              size="sm"
+              aria-label={t(
+                "profile.stash.sourceTypeFilter",
+                "Filter by source type",
+              )}
+              value={sourceTypeFilter}
+              onChange={(event) => {
+                setSourceTypeFilter(event.target.value);
+                resetSourceSearchResults();
+              }}
+            >
+              <option value="">
+                {t("profile.stash.sourceTypeAll", "All source types")}
+              </option>
+              {ALL_SOURCE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {getTypeLabel(intl, type)}
+                </option>
+              ))}
+            </Form.Select>
+            <PlacePickerField
+              label={t("profile.stash.sourceDiscoveredAt", "Discovered at")}
+              value={sourceDiscoveryPlaceFilter}
+              editable
+              placeholder={t(
+                "profile.stash.sourceDiscoveryPlaceAll",
+                "Any discovery place",
+              )}
+              labelWidth="7rem"
+              fieldMaxWidth="100%"
+              className="mb-0"
+              onChange={(place) => {
+                setSourceDiscoveryPlaceFilter(place);
+                resetSourceSearchResults();
+              }}
             />
           </div>
           {sourceSearch.error && (

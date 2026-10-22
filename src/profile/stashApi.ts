@@ -40,6 +40,7 @@ type SourceSearchParams = {
   period?: string | null;
   classifications?: string[];
   types?: string[];
+  discoveredAtPlaceId?: string;
   page?: number;
   size?: number;
   nextToken?: string;
@@ -257,13 +258,14 @@ export function updateStashGroupImageDescription(groupId: Id, imageId: Id, descr
   });
 }
 
-export function searchLibrarySources({ query, period, classifications, types, page = 0, size = 20, nextToken }: SourceSearchParams) {
+export function searchLibrarySources({ query, period, classifications, types, discoveredAtPlaceId, page = 0, size = 20, nextToken }: SourceSearchParams) {
   if (page !== 0) throw new Error('Offset Library pages are no longer supported');
   const encodedQuery = encodeLibraryQuery({
     query,
     period,
     classifications,
     types,
+    discoveredAtPlaceId,
   });
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
   if (nextToken) params.set('nextToken', nextToken);
