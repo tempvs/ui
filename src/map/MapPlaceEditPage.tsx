@@ -11,7 +11,6 @@ import {
   proposeMapPlaceChangeset,
   searchMapPlaces,
   type MapPlace,
-  type MapPlaceName,
 } from "./mapApi";
 
 type MapPlaceEditPageProps = { id?: string };
