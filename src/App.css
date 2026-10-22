@@ -2427,13 +2427,14 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-card {
-    grid-template-columns: auto 3.3rem minmax(0, 1fr);
+    grid-template-columns: auto 3rem minmax(0, 1fr);
     align-items: stretch;
+    height: 3rem;
     padding: 0.15rem 0.2rem;
   }
 
   .stash-item-list-card:not(.has-marker-controls) {
-    grid-template-columns: 3.3rem minmax(0, 1fr);
+    grid-template-columns: 3rem minmax(0, 1fr);
   }
 
   .stash-source-card {
@@ -2468,7 +2469,7 @@ button.stash-item-media-empty:disabled {
   .stash-item-thumb-shell {
     grid-column: 2;
     grid-row: 1;
-    width: 3.3rem;
+    width: 3rem;
     height: 100%;
     min-height: 0;
     aspect-ratio: auto;
