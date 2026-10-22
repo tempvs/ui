@@ -135,7 +135,13 @@ export type MapPlaceProposal = {
   description?: string;
   citationUrl?: string;
   aliases?: string[];
+  names?: MapPlaceName[];
 };
+
+export type MapPlaceChangeset =
+  | ({ kind: "UPDATE" } & MapPlaceProposal)
+  | { kind: "DELETE"; note: string }
+  | { kind: "MERGE"; note: string; mergeTargetPlaceId: string };
 
 export type MapProposalStatus = "PENDING" | "CHANGES_REQUESTED";
 export type MapPlaceProposalRecord = MapPlace & {
@@ -144,6 +150,10 @@ export type MapPlaceProposalRecord = MapPlace & {
   updatedAt?: string;
   createdByUserId?: string;
   review?: { reviewerUserId: string; reviewedAt: string; note?: string };
+  changeKind?: "CREATE" | "UPDATE" | "DELETE" | "MERGE";
+  targetPlaceId?: string;
+  baseTargetVersion?: number;
+  mergeTargetPlaceId?: string;
 };
 export type MapPlaceProposalActivity = {
   id: string;
@@ -368,6 +378,28 @@ export async function proposeMapPlace(
   });
   if (response.status === 401) throw new Error("Sign in to propose a place");
   if (!response.ok) throw new Error("Unable to submit this place proposal");
+  return (await responseJson(response)) as MapPlaceProposalRecord;
+}
+
+/** Every approved-place mutation is submitted as a private Map changeset and
+ * cannot affect public geography until a Map editor reviews it. */
+export async function proposeMapPlaceChangeset(
+  placeId: string,
+  changeset: MapPlaceChangeset,
+): Promise<MapPlaceProposalRecord> {
+  const response = await fetch(
+    `/api/map/places/${encodeURIComponent(placeId)}/changesets`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changeset),
+    },
+  );
+  if (response.status === 401)
+    throw new Error("Sign in with a Map contributor role to submit changes");
+  if (response.status === 403)
+    throw new Error("A Map contributor role is required to submit changes");
+  if (!response.ok) throw new Error("Unable to submit this place changeset");
   return (await responseJson(response)) as MapPlaceProposalRecord;
 }
 

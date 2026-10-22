@@ -237,6 +237,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           <span aria-current="page">{place.canonicalName}</span>
         </nav>
         <h1 className="mt-2">{place.canonicalName}</h1>
+        <p className="mb-2">
+          <Link to={`/map/place/${encodeURIComponent(place.id)}/edit`}>
+            Propose an edit, merge, or deletion
+          </Link>
+        </p>
         <p className="text-muted mb-2">
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
           {place.longitude.toFixed(4)}

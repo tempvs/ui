@@ -238,8 +238,8 @@ export default function MapAdminPage() {
         <section className="club-panel" aria-label="Pending place proposals">
           <h1>Place proposals</h1>
           <p className="text-muted">
-            Approve a proposed point only after checking that it is useful,
-            accurately located, and not a duplicate of an approved place.
+            Review every new-place proposal and approved-place changeset before
+            it affects public geography.
           </p>
           {mayReview && proposals.length > 0 && (
             <div className="d-flex align-items-center gap-2 mb-3">
@@ -278,6 +278,27 @@ export default function MapAdminPage() {
                     <div className="d-flex justify-content-between gap-3 flex-wrap">
                       <div>
                         <strong>{proposal.canonicalName}</strong>
+                        <span className="text-muted ms-2">
+                          {(proposal.changeKind || "CREATE").toLowerCase()}{" "}
+                          changeset
+                        </span>
+                        {proposal.changeKind === "MERGE" &&
+                          proposal.mergeTargetPlaceId && (
+                            <p className="small text-muted mb-1">
+                              Merge target:{" "}
+                              <Link
+                                to={`/map/place/${encodeURIComponent(proposal.mergeTargetPlaceId)}`}
+                              >
+                                {proposal.mergeTargetPlaceId}
+                              </Link>
+                            </p>
+                          )}
+                        {proposal.changeKind === "DELETE" && (
+                          <p className="small text-warning mb-1">
+                            This deletes the place only if it has no linked Map
+                            resources.
+                          </p>
+                        )}
                         <span className="text-muted ms-2">
                           {proposal.featureType} ·{" "}
                           {proposal.latitude.toFixed(4)},{" "}
@@ -396,16 +417,18 @@ export default function MapAdminPage() {
                         </div>
                       )}
                     </div>
-                    {mayDecide && (
-                      <DuplicateMergeActions
-                        proposal={proposal}
-                        disabled={
-                          reviewingId === proposal.id ||
-                          !notes[proposal.id]?.trim()
-                        }
-                        onMerge={(target) => void merge(proposal, target)}
-                      />
-                    )}
+                    {mayDecide &&
+                      (!proposal.changeKind ||
+                        proposal.changeKind === "CREATE") && (
+                        <DuplicateMergeActions
+                          proposal={proposal}
+                          disabled={
+                            reviewingId === proposal.id ||
+                            !notes[proposal.id]?.trim()
+                          }
+                          onMerge={(target) => void merge(proposal, target)}
+                        />
+                      )}
                   </li>
                 ))}
               </ul>

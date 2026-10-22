@@ -49,6 +49,20 @@ const entityTypes: MapEntityLocation["entityType"][] = [
   "SOURCE",
 ];
 
+function canProposePlace(viewer: Viewer | null): boolean {
+  return Boolean(
+    viewer?.roles.some((role) =>
+      [
+        "TEMPVS_ADMIN",
+        "MAP_ADMIN",
+        "MAP_EDITOR",
+        "MAP_REVIEWER",
+        "MAP_CONTRIBUTOR",
+      ].includes(role),
+    ),
+  );
+}
+
 /**
  * Public, keyboard-accessible discovery fallback. It persists its query in
  * the URL so a searched place can be shared before the tile-backed map lands.
@@ -643,16 +657,22 @@ export default function MapPage() {
         title: <SectionBreadcrumb items={[{ label: "Map" }]} />,
         rightContent: viewer ? (
           <div className="d-flex gap-2 flex-wrap justify-content-end">
-            <Button
-              type="button"
-              variant="outline-dark"
-              onClick={() => {
-                setEditingProposal(null);
-                setShowProposalModal(true);
-              }}
-            >
-              Propose a place
-            </Button>
+            {canProposePlace(viewer) ? (
+              <Button
+                type="button"
+                variant="outline-dark"
+                onClick={() => {
+                  setEditingProposal(null);
+                  setShowProposalModal(true);
+                }}
+              >
+                Propose a place
+              </Button>
+            ) : (
+              <Link className="btn btn-outline-dark" to="/map/admin">
+                Request Map contributor role
+              </Link>
+            )}
             <Link className="btn btn-outline-dark" to="/map/admin">
               Map administration
             </Link>
