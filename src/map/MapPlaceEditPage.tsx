@@ -22,6 +22,11 @@ type NameDraft = {
   validFrom: string;
   validTo: string;
 };
+type HistoricalEventDraft = {
+  description: string;
+  validFrom: string;
+  validTo: string;
+};
 
 const canContribute = (viewer: Viewer | null) =>
   Boolean(
@@ -50,6 +55,9 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
   const [description, setDescription] = useState("");
   const [citationUrl, setCitationUrl] = useState("");
   const [names, setNames] = useState<NameDraft[]>([]);
+  const [historicalEvents, setHistoricalEvents] = useState<
+    HistoricalEventDraft[]
+  >([]);
   const [note, setNote] = useState("");
   const [mergeQuery, setMergeQuery] = useState("");
   const [mergeResults, setMergeResults] = useState<MapPlace[] | null>(null);
@@ -80,6 +88,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         setDescription(value.description || "");
         setCitationUrl(value.citationUrl || "");
         setNames(nameDrafts(value));
+        setHistoricalEvents(historicalEventDrafts(value));
       })
       .catch(() => !controller.signal.aborted && setPlace(null));
     return () => controller.abort();
@@ -128,10 +137,20 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         names.filter((entry) => entry.preferred).length !== 1 ||
         !names.some(
           (entry) => entry.preferred && entry.value.trim() === name.trim(),
+        ) ||
+        historicalEvents.some(
+          (entry) =>
+            !entry.description.trim() ||
+            (!entry.validFrom.trim() && !entry.validTo.trim()) ||
+            !isWholeYearOrBlank(entry.validFrom) ||
+            !isWholeYearOrBlank(entry.validTo) ||
+            (entry.validFrom.trim() &&
+              entry.validTo.trim() &&
+              Number(entry.validFrom) > Number(entry.validTo)),
         ))
     ) {
       setError(
-        "Provide valid coordinates and exactly one preferred name matching the canonical name.",
+        "Provide valid coordinates, names, and historical event dates. Each event needs a description and a year or year range.",
       );
       return;
     }
@@ -159,6 +178,15 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 names: names.map((entry) => ({
                   value: entry.value.trim(),
                   preferred: entry.preferred,
+                  ...(entry.validFrom.trim()
+                    ? { validFrom: Number(entry.validFrom) }
+                    : {}),
+                  ...(entry.validTo.trim()
+                    ? { validTo: Number(entry.validTo) }
+                    : {}),
+                })),
+                historicalEvents: historicalEvents.map((entry) => ({
+                  description: entry.description.trim(),
                   ...(entry.validFrom.trim()
                     ? { validFrom: Number(entry.validFrom) }
                     : {}),
@@ -381,6 +409,89 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     Add historical name
                   </Button>
                 </fieldset>
+                <fieldset className="border rounded p-3 mb-3">
+                  <legend className="float-none w-auto px-2 fs-6 mb-0">
+                    Important dates and events
+                  </legend>
+                  <p className="small text-muted">
+                    Add a notable event at this place. Use one year for a single
+                    event or both years for a range.
+                  </p>
+                  {historicalEvents.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="d-flex gap-2 align-items-end mb-2"
+                    >
+                      <Form.Control
+                        aria-label="Historical event description"
+                        placeholder="What happened here?"
+                        value={entry.description}
+                        onChange={(event) =>
+                          setHistoricalEvents((current) =>
+                            replaceHistoricalEvent(current, index, {
+                              description: event.target.value,
+                            }),
+                          )
+                        }
+                        disabled={!editable}
+                      />
+                      <Form.Control
+                        aria-label="Event from year"
+                        placeholder="From year"
+                        value={entry.validFrom}
+                        onChange={(event) =>
+                          setHistoricalEvents((current) =>
+                            replaceHistoricalEvent(current, index, {
+                              validFrom: event.target.value,
+                            }),
+                          )
+                        }
+                        disabled={!editable}
+                      />
+                      <Form.Control
+                        aria-label="Event to year"
+                        placeholder="To year"
+                        value={entry.validTo}
+                        onChange={(event) =>
+                          setHistoricalEvents((current) =>
+                            replaceHistoricalEvent(current, index, {
+                              validTo: event.target.value,
+                            }),
+                          )
+                        }
+                        disabled={!editable}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline-danger"
+                        disabled={!editable}
+                        onClick={() =>
+                          setHistoricalEvents((current) =>
+                            current.filter(
+                              (_, eventIndex) => eventIndex !== index,
+                            ),
+                          )
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline-dark"
+                    disabled={!editable || historicalEvents.length >= 50}
+                    onClick={() =>
+                      setHistoricalEvents((current) => [
+                        ...current,
+                        { description: "", validFrom: "", validTo: "" },
+                      ])
+                    }
+                  >
+                    Add important event
+                  </Button>
+                </fieldset>
               </>
             )}
             {mode === "MERGE" && (
@@ -465,6 +576,14 @@ function nameDrafts(place: MapPlace): NameDraft[] {
   }));
 }
 
+function historicalEventDrafts(place: MapPlace): HistoricalEventDraft[] {
+  return (place.historicalEvents ?? []).map((event) => ({
+    description: event.description,
+    validFrom: event.validFrom === undefined ? "" : String(event.validFrom),
+    validTo: event.validTo === undefined ? "" : String(event.validTo),
+  }));
+}
+
 function replaceName(
   names: NameDraft[],
   index: number,
@@ -473,4 +592,18 @@ function replaceName(
   return names.map((entry, entryIndex) =>
     entryIndex === index ? { ...entry, ...update } : entry,
   );
+}
+
+function replaceHistoricalEvent(
+  events: HistoricalEventDraft[],
+  index: number,
+  update: Partial<HistoricalEventDraft>,
+): HistoricalEventDraft[] {
+  return events.map((entry, entryIndex) =>
+    entryIndex === index ? { ...entry, ...update } : entry,
+  );
+}
+
+function isWholeYearOrBlank(value: string): boolean {
+  return !value.trim() || Number.isSafeInteger(Number(value));
 }

@@ -812,6 +812,23 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
                 </dd>
               </>
             )}
+            {proposal.historicalEvents?.length ? (
+              <>
+                <dt className="col-sm-3">Important events</dt>
+                <dd className="col-sm-9 mb-0">
+                  <ul className="mb-0 ps-3">
+                    {proposal.historicalEvents.map((event, index) => (
+                      <li
+                        key={`${event.description}-${event.validFrom ?? ""}-${event.validTo ?? ""}-${index}`}
+                      >
+                        {formatEventYears(event.validFrom, event.validTo)} ·{" "}
+                        {event.description}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </>
+            ) : null}
             {proposal.proposalNote ? (
               <>
                 <dt className="col-sm-3">Rationale</dt>
@@ -915,6 +932,13 @@ function formatDistanceKilometres(
       ),
     );
   return value < 10 ? value.toFixed(1) : Math.round(value).toString();
+}
+
+function formatEventYears(from?: number, to?: number): string {
+  if (from !== undefined && to !== undefined)
+    return from === to ? String(from) : `${from}–${to}`;
+  if (from !== undefined) return `from ${from}`;
+  return `until ${to}`;
 }
 
 function DuplicateMergeActions({

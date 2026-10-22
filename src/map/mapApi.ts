@@ -9,6 +9,12 @@ export type MapPlaceName = {
   provenance?: Array<{ dataset: string; externalId: string; license: string }>;
 };
 
+export type MapPlaceHistoricalEvent = {
+  description: string;
+  validFrom?: number;
+  validTo?: number;
+};
+
 export type MapHistoricalNameRange = {
   /** Astronomical years used by the Map API. An omitted end stays open. */
   from?: number;
@@ -21,6 +27,7 @@ export type MapPlace = {
   /** Names are returned by the public Map API so choosing a result does not
    * require a second request before its historical context can be displayed. */
   names?: MapPlaceName[];
+  historicalEvents?: MapPlaceHistoricalEvent[];
   latitude: number;
   longitude: number;
   featureType: string;
@@ -136,6 +143,7 @@ export type MapPlaceProposal = {
   citationUrl?: string;
   aliases?: string[];
   names?: MapPlaceName[];
+  historicalEvents?: MapPlaceHistoricalEvent[];
 };
 
 export type MapPlaceChangeset =
@@ -173,6 +181,7 @@ export type MapPlaceProposalActivity = {
     version: number;
     canonicalName: string;
     names: Array<{ value: string; preferred: boolean }>;
+    historicalEvents?: MapPlaceHistoricalEvent[];
     latitude: number;
     longitude: number;
     featureType: string;

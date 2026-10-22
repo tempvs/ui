@@ -67,29 +67,29 @@ export default function ProposalActivityPanel({
             {entry.note && <div>{entry.note}</div>}
             {entry.revision && (
               <>
-              <div className="text-muted">
-                Revision {entry.revision.version}:{" "}
-                {entry.revision.canonicalName}
-                {" · "}
-                {entry.revision.latitude.toFixed(6)},{" "}
-                {entry.revision.longitude.toFixed(6)}
-                {entry.revision.names.filter((name) => !name.preferred).length >
-                  0 && (
-                  <>
-                    {" · aliases: "}
-                    {entry.revision.names
-                      .filter((name) => !name.preferred)
-                      .map((name) => name.value)
-                      .join(", ")}
-                  </>
+                <div className="text-muted">
+                  Revision {entry.revision.version}:{" "}
+                  {entry.revision.canonicalName}
+                  {" · "}
+                  {entry.revision.latitude.toFixed(6)},{" "}
+                  {entry.revision.longitude.toFixed(6)}
+                  {entry.revision.names.filter((name) => !name.preferred)
+                    .length > 0 && (
+                    <>
+                      {" · aliases: "}
+                      {entry.revision.names
+                        .filter((name) => !name.preferred)
+                        .map((name) => name.value)
+                        .join(", ")}
+                    </>
+                  )}
+                </div>
+                {previousRevision(activity, index) && (
+                  <RevisionDiff
+                    previous={previousRevision(activity, index)!}
+                    next={entry.revision}
+                  />
                 )}
-              </div>
-              {previousRevision(activity, index) && (
-                <RevisionDiff
-                  previous={previousRevision(activity, index)!}
-                  next={entry.revision}
-                />
-              )}
               </>
             )}
           </li>
@@ -145,6 +145,7 @@ function RevisionDiff({
       `${next.latitude.toFixed(6)}, ${next.longitude.toFixed(6)}`,
     ],
     ["Aliases", aliases(previous), aliases(next)],
+    ["Important events", events(previous), events(next)],
     ["Description", previous.description || "—", next.description || "—"],
     ["Parent", previous.parentPlaceId || "—", next.parentPlaceId || "—"],
     [
@@ -184,6 +185,19 @@ function aliases(
       .filter((name) => !name.preferred)
       .map((name) => name.value)
       .join(", ") || "—"
+  );
+}
+
+function events(
+  revision: NonNullable<MapPlaceProposalActivity["revision"]>,
+): string {
+  return (
+    revision.historicalEvents
+      ?.map(
+        (event) =>
+          `${event.validFrom ?? "?"}${event.validTo === event.validFrom ? "" : `–${event.validTo ?? "?"}`}: ${event.description}`,
+      )
+      .join("; ") || "—"
   );
 }
 

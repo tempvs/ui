@@ -341,6 +341,26 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           </div>
         )}
         {place.description && <p className="mb-2">{place.description}</p>}
+        {place.historicalEvents?.length ? (
+          <div className="mb-2" aria-label="Important dates and events">
+            <h2 className="h6 mb-1">Important dates and events</h2>
+            <ul className="mb-0 ps-3">
+              {place.historicalEvents.map((event, index) => (
+                <li
+                  key={`${event.description}-${event.validFrom ?? ""}-${event.validTo ?? ""}-${index}`}
+                >
+                  <span className="fw-semibold">
+                    {formatPlaceNameRange(
+                      event.validFrom,
+                      event.validTo,
+                    ).trim()}
+                  </span>{" "}
+                  {event.description}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <Form.Check
           id="place-modern-borders"
           label="Modern borders"
