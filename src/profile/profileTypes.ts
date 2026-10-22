@@ -193,6 +193,13 @@ export type TemporalFit = {
   sourceCount: number;
   datedSourceCount: number;
   matchedSourceId?: string | null;
+  sourceFits?: TemporalSourceFit[] | null;
+};
+
+export type TemporalSourceFit = {
+  sourceId: string;
+  status: Exclude<TemporalFitStatus, "NO_SOURCES">;
+  score?: number | null;
 };
 
 export type Stash = {

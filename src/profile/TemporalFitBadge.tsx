@@ -1,14 +1,23 @@
 import React from "react";
 
-import type { MessageFormatter, TemporalFit } from "./profileTypes";
+import type {
+  MessageFormatter,
+  TemporalFit,
+  TemporalSourceFit,
+} from "./profileTypes";
+
+type TemporalFitResult = TemporalFit | TemporalSourceFit;
 
 type TemporalFitBadgeProps = {
-  fit?: TemporalFit | null;
+  fit?: TemporalFitResult | null;
   t: MessageFormatter;
   showScore?: boolean;
 };
 
-export function temporalFitText(fit: TemporalFit | null | undefined, t: MessageFormatter) {
+export function temporalFitText(
+  fit: TemporalFitResult | null | undefined,
+  t: MessageFormatter,
+) {
   if (!fit)
     return t("profile.stash.temporal.unavailable", "Temporal fit unavailable");
   if (fit.status === "NO_SOURCES")

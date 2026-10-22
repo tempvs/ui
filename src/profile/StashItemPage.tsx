@@ -13,6 +13,7 @@ import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 import ConfirmationModal from "../component/ConfirmationModal";
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
+import { formatHistoricalRange } from "../component/HistoricalRangeFilter";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
 import InlineEditableText from "../component/InlineEditableText";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -177,6 +178,16 @@ function StashItemPage({ intl }: StashItemPageProps) {
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
+  const sourceFitsBySourceId = useMemo(
+    () =>
+      new Map(
+        (item?.temporalFit?.sourceFits || []).map((fit) => [
+          fit.sourceId,
+          fit,
+        ]),
+      ),
+    [item?.temporalFit?.sourceFits],
+  );
   const sourceSearchFailedMessage = intl.formatMessage({
     id: "profile.stash.sourceSearchFailed",
     defaultMessage: "Unable to search library sources.",
@@ -887,6 +898,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
           {filteredSources.map((source) => {
             const sourceImage = sourceImages[toRecordKey(source.id)];
             const sourceImageSrc = getImageSrc(sourceImage);
+            const sourceFit = sourceFitsBySourceId.get(source.id);
 
             return (
               <div key={source.id} className="stash-source-card">
@@ -924,6 +936,10 @@ function StashItemPage({ intl }: StashItemPageProps) {
                       t("profile.stash.noDescription", "No description")}
                   </div>
                   <div className="stash-meta-row">
+                    <span className="stash-meta-chip stash-meta-chip-soft">
+                      {formatHistoricalRange(source.from, source.to)}
+                    </span>
+                    <TemporalFitBadge fit={sourceFit} t={t} showScore />
                     <span className="stash-meta-chip stash-meta-chip-soft">
                       {getTypeLabel(intl, source.type)}
                     </span>
