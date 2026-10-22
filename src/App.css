@@ -2429,7 +2429,7 @@ button.stash-item-media-empty:disabled {
   .stash-item-list-card {
     grid-template-columns: auto 3.3rem minmax(0, 1fr);
     align-items: stretch;
-    padding: 0.2rem;
+    padding: 0.15rem 0.2rem;
   }
 
   .stash-item-list-card:not(.has-marker-controls) {
@@ -2489,8 +2489,8 @@ button.stash-item-media-empty:disabled {
 
   .stash-item-list-description {
     margin-top: 0 !important;
-    font-size: 0.78rem;
-    line-height: 1.15;
+    font-size: 0.74rem;
+    line-height: 1.05;
   }
 
   .stash-source-description {
@@ -2500,7 +2500,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-title {
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     line-height: 1;
   }
 
@@ -2517,7 +2517,7 @@ button.stash-item-media-empty:disabled {
   }
 
   .stash-item-list-card .stash-meta-chip {
-    min-height: 1.1rem;
+    min-height: 1rem;
     padding: 0.02rem 0.24rem;
     font-size: 0.6rem;
     white-space: nowrap;
