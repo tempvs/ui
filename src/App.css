@@ -255,7 +255,15 @@ h3 {
   height: 4.4rem;
   min-height: 4.4rem;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Breadcrumb switchers are menus, not header content. Let them escape the
+     fixed-height tile and give the header its own layer above page content. */
+  position: relative;
+  z-index: 20;
+  overflow: visible;
+}
+
+.tempvs-section-header .dropdown-menu {
+  z-index: 1100;
 }
 
 .tempvs-section-header-row {

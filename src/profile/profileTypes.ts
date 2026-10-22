@@ -187,7 +187,7 @@ export type TemporalFitStatus =
   | "PROFILE_RANGE_UNSET";
 
 export type TemporalFit = {
-  algorithmVersion: 1;
+  algorithmVersion: 2;
   status: TemporalFitStatus;
   score?: number | null;
   sourceCount: number;
