@@ -53,7 +53,7 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
         style={{ color: '#000' }}
         id={switcher.id}
       />
-      <Dropdown.Menu>
+      <Dropdown.Menu popperConfig={{ strategy: 'fixed' }}>
         {switcher.items?.length ? switcher.items.map(entry => (
           entry.to ? (
             <Dropdown.Item
