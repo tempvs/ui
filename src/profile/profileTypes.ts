@@ -162,6 +162,7 @@ export type StashItem = {
   classification?: string | null;
   period?: string | null;
   sources?: string[] | null;
+  temporalFit?: TemporalFit | null;
   itemGroup: {
     id: string;
     name?: string | null;
@@ -176,6 +177,24 @@ export type StashItem = {
   };
 };
 
+export type TemporalFitStatus =
+  | "STRONG"
+  | "GOOD"
+  | "PARTIAL"
+  | "DISTANT"
+  | "NO_SOURCES"
+  | "SOURCES_UNDATED"
+  | "PROFILE_RANGE_UNSET";
+
+export type TemporalFit = {
+  algorithmVersion: 1;
+  status: TemporalFitStatus;
+  score?: number | null;
+  sourceCount: number;
+  datedSourceCount: number;
+  matchedSourceId?: string | null;
+};
+
 export type Stash = {
   groups?: StashGroup[] | null;
 };
@@ -187,6 +206,8 @@ export type LibrarySourceSummary = {
   type?: string | null;
   classification?: string | null;
   period?: string | null;
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
 };
 
 export type EntityImage = GalleryImage & {

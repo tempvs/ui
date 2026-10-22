@@ -19,6 +19,7 @@ import MultiImageFilePicker from "../component/MultiImageFilePicker";
 import Spinner from "../component/Spinner";
 import StackedImageGallery from "../component/StackedImageGallery";
 import TextFilterInput from "../component/TextFilterInput";
+import TemporalFitBadge from "./TemporalFitBadge";
 import { compareAppText } from "../i18n/appLocale";
 import { getClassificationLabel } from "../library/libraryShared";
 import { ClassificationSelect } from "../library/components/ClassificationSelect";
@@ -145,6 +146,32 @@ function getImageSrc(image?: EntityImage | null) {
   }
 
   return image.thumbnailUrl || image.url || null;
+}
+
+function temporalSummary(items: StashItem[], t: StashPanelProps["t"]) {
+  const counts = items.reduce<Record<string, number>>((result, item) => {
+    const status = item.temporalFit?.status || "UNAVAILABLE";
+    result[status] = (result[status] || 0) + 1;
+    return result;
+  }, {});
+  const parts = [
+    counts.STRONG
+      ? `${counts.STRONG} ${t("profile.stash.temporal.strongShort", "strong")}`
+      : null,
+    counts.GOOD
+      ? `${counts.GOOD} ${t("profile.stash.temporal.goodShort", "good")}`
+      : null,
+    counts.PARTIAL || counts.DISTANT
+      ? `${(counts.PARTIAL || 0) + (counts.DISTANT || 0)} ${t("profile.stash.temporal.reviewShort", "to review")}`
+      : null,
+    counts.NO_SOURCES
+      ? `${counts.NO_SOURCES} ${t("profile.stash.temporal.needsSourcesShort", "need sources")}`
+      : null,
+    counts.SOURCES_UNDATED
+      ? `${counts.SOURCES_UNDATED} ${t("profile.stash.temporal.undatedShort", "need dates")}`
+      : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 function sortItemsByMarker(
@@ -587,6 +614,18 @@ export default function StashOverview({
   const activeGroupImageCount = activeItems.reduce(
     (count, item) => count + (itemImageCounts[toRecordKey(item.id)] || 0),
     0,
+  );
+  const allItems = useMemo(
+    () => Object.values(itemsByGroup).flat(),
+    [itemsByGroup],
+  );
+  const activeTemporalSummary = useMemo(
+    () => temporalSummary(activeItems, t),
+    [activeItems, t],
+  );
+  const profileTemporalSummary = useMemo(
+    () => temporalSummary(allItems, t),
+    [allItems, t],
   );
   const filteredActiveItems = useMemo(() => {
     const query = itemFilter.trim().toLowerCase();
@@ -1678,6 +1717,17 @@ export default function StashOverview({
                         </span>
                       ))}
                     </div>
+                    {activeTemporalSummary && (
+                      <div className="stash-temporal-summary">
+                        {t("profile.stash.temporal.collection", "Collection temporal fit")}: {activeTemporalSummary}
+                        {profileTemporalSummary && allItems.length !== activeItems.length && (
+                          <>
+                            {" · "}
+                            {t("profile.stash.temporal.profile", "Across profile")}: {profileTemporalSummary}
+                          </>
+                        )}
+                      </div>
+                    )}
                     {markerPlacement && (
                       <div className="stash-marker-helper">
                         {t(
@@ -1920,6 +1970,7 @@ export default function StashOverview({
                               )}
                           </div>
                           <div className="stash-meta-row">
+                            <TemporalFitBadge fit={item.temporalFit} t={t} />
                             {itemSummary.map((value) => (
                               <span
                                 key={value}

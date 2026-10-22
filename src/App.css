@@ -1240,6 +1240,32 @@ button.stash-item-media-empty:disabled {
   color: #48545f;
 }
 
+.stash-temporal-fit {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.stash-temporal-fit--strong { background: #d9f1df; color: #17643a; }
+.stash-temporal-fit--good { background: #d8edf1; color: #135c68; }
+.stash-temporal-fit--partial { background: #fff0c9; color: #7b5600; }
+.stash-temporal-fit--distant { background: #fce0d4; color: #923b1d; }
+.stash-temporal-fit--no-sources,
+.stash-temporal-fit--sources-undated,
+.stash-temporal-fit--profile-range-unset,
+.stash-temporal-fit--unavailable { background: #e9eaed; color: #555c66; }
+
+.stash-temporal-summary {
+  margin: 0.65rem 0 0;
+  color: #5c533f;
+  font-size: 0.84rem;
+}
+
 .stash-detail-panel {
   background-color: rgba(248, 250, 248, 0.8);
   box-shadow: inset 0 1px 0 rgba(79, 117, 103, 0.12);

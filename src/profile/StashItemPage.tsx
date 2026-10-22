@@ -27,6 +27,7 @@ import { getPeriodLabel as getSharedPeriodLabel } from "../util/periods";
 import { prepareImageFile } from "../util/fileUtils";
 import RefreshingImage from "../image/RefreshingImage";
 import { buildClubProfileLabel, buildProfileLabel } from "./profileLabels";
+import TemporalFitBadge from "./TemporalFitBadge";
 import {
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
@@ -598,6 +599,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
       }));
     }
     closeSourceLinkModal();
+    await refreshItemData();
   }
 
   function closeSourceLinkModal() {
@@ -814,6 +816,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
               className="mt-2"
             />
             <div className="stash-meta-row mt-2">
+              <TemporalFitBadge fit={item.temporalFit} t={t} showScore />
               <span className="stash-meta-chip stash-meta-chip-soft">
                 {getClassificationLabel(intl, item.classification)}
               </span>
