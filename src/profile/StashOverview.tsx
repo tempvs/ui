@@ -674,13 +674,23 @@ export default function StashOverview({
       const arrowButtonBounds = itemRowElement
         .querySelector(".stash-item-arrow-trigger")
         ?.getBoundingClientRect();
+      const thumbnailBounds = itemRowElement
+        .querySelector(".stash-item-thumb-shell")
+        ?.getBoundingClientRect();
       const isCompactMobileLayout = window.matchMedia(
         "(max-width: 575.98px)",
       ).matches;
+      const mobileArrowOriginBounds = arrowButtonBounds || thumbnailBounds;
       const arrowOriginBounds =
-        isCompactMobileLayout && arrowButtonBounds
-          ? arrowButtonBounds
+        isCompactMobileLayout && mobileArrowOriginBounds
+          ? mobileArrowOriginBounds
           : itemBounds;
+      const usesMobileControlOrigin = Boolean(
+        isCompactMobileLayout && arrowButtonBounds,
+      );
+      const usesMobileThumbnailOrigin = Boolean(
+        isCompactMobileLayout && !arrowButtonBounds && thumbnailBounds,
+      );
       return [
         {
           itemId: item.id,
@@ -691,13 +701,13 @@ export default function StashOverview({
           x2:
             arrowOriginBounds.left -
             layoutBounds.left +
-            (isCompactMobileLayout && arrowButtonBounds
+            (usesMobileControlOrigin || usesMobileThumbnailOrigin
               ? arrowOriginBounds.width / 2
               : 0),
           y2:
             arrowOriginBounds.top -
             layoutBounds.top +
-            (isCompactMobileLayout && arrowButtonBounds
+            (usesMobileControlOrigin || usesMobileThumbnailOrigin
               ? 0
               : arrowOriginBounds.height / 2),
         },
