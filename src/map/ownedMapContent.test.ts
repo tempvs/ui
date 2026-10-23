@@ -1,12 +1,8 @@
-import {
-  getClubImages,
-  getParticipants,
-  getProfileClubs,
-} from "../club/clubApi";
-import { getSource, getSourceImages } from "../library/libraryApi";
+import { getParticipants, getProfileClubs } from "../club/clubApi";
+import { getSource, getSourcesByIds } from "../library/libraryApi";
+import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
-  getProfileAvatar,
   getUserProfileByUserId,
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
@@ -20,18 +16,18 @@ import {
 } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({
-  getClubImages: jest.fn(),
   getParticipants: jest.fn(),
   getProfileClubs: jest.fn(),
 }));
 jest.mock("../library/libraryApi", () => ({
   getSource: jest.fn(),
-  getSourceImages: jest.fn(),
+  getSourcesByIds: jest.fn(),
 }));
+jest.mock("../image/imageApi", () => ({ getImageThumbnails: jest.fn() }));
 jest.mock("../profile/profileApi", () => ({
   getClubProfiles: jest.fn(),
-  getProfileAvatar: jest.fn(),
   getUserProfileByUserId: jest.fn(),
+  fetchProfileById: jest.fn(),
 }));
 jest.mock("../profile/stashApi", () => ({
   getGroupItems: jest.fn(),
@@ -65,9 +61,6 @@ beforeEach(() => {
       locationPlaceId: "rome",
     },
   ]);
-  jest.mocked(getProfileAvatar).mockResolvedValue({
-    thumbnailUrl: "https://images.test/profile-thumb.jpg",
-  });
   jest.mocked(getProfileClubs).mockResolvedValue([
     {
       id: "club",
@@ -77,7 +70,6 @@ beforeEach(() => {
       photoThumbnailUrl: "https://images.test/club-thumb.jpg",
     } as never,
   ]);
-  jest.mocked(getClubImages).mockResolvedValue([]);
   jest.mocked(getParticipants).mockResolvedValue({
     content: [
       {
@@ -95,10 +87,9 @@ beforeEach(() => {
   jest
     .mocked(getGroupItems)
     .mockResolvedValue([{ id: "item", sources: ["source"] } as never]);
-  jest.mocked(getSource).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: {
+  jest.mocked(getSource).mockResolvedValue({ ok: false, status: 404, data: null });
+  jest.mocked(getSourcesByIds).mockResolvedValue([
+    {
       id: "source",
       version: 1,
       name: "Roman find",
@@ -107,18 +98,19 @@ beforeEach(() => {
       heldAtPlaceId: "rome",
       heldAtPlaceName: "Roma",
     },
-  });
-  jest.mocked(getSourceImages).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: [
-      {
-        id: "source-image",
-        resourceId: "source",
-        thumbnailUrl: "https://images.test/source-thumb.jpg",
-      },
-    ],
-  });
+  ]);
+  jest.mocked(getImageThumbnails).mockResolvedValue([
+    {
+      resourceType: "profile",
+      resourceId: "personal",
+      image: { thumbnailUrl: "https://images.test/profile-thumb.jpg" },
+    },
+    {
+      resourceType: "source",
+      resourceId: "source",
+      image: { thumbnailUrl: "https://images.test/source-thumb.jpg" },
+    },
+  ]);
   jest.mocked(getMapPlace).mockResolvedValue(place);
   jest.mocked(getEvent).mockResolvedValue({
     id: "event",
@@ -179,17 +171,16 @@ test("composes profile, membership club, and club-stash source markers", async (
   // overlay must resolve that canonical place once instead of fanning out a
   // duplicate map request for every marker.
   expect(getMapPlace).toHaveBeenCalledTimes(1);
-  expect(getSourceImages).toHaveBeenCalledTimes(1);
+  expect(getSourcesByIds).toHaveBeenCalledWith(["source"]);
+  expect(getImageThumbnails).toHaveBeenCalledTimes(3);
   expect(
     content.markers.filter((marker) => marker.entityId === "source"),
   ).toHaveLength(1);
 });
 
 test("uses one source marker when discovery and holding records resolve to one town", async () => {
-  jest.mocked(getSource).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: {
+  jest.mocked(getSourcesByIds).mockResolvedValue([
+    {
       id: "source",
       version: 1,
       name: "Roman find",
@@ -198,7 +189,7 @@ test("uses one source marker when discovery and holding records resolve to one t
       heldAtPlaceId: "rome-historic-settlement",
       heldAtPlaceName: "Rome",
     },
-  });
+  ]);
 
   const content = await loadOwnedMapContent("viewer");
 
@@ -208,10 +199,8 @@ test("uses one source marker when discovery and holding records resolve to one t
 });
 
 test("uses discovery only for a source on the general owned map", async () => {
-  jest.mocked(getSource).mockResolvedValue({
-    ok: true,
-    status: 200,
-    data: {
+  jest.mocked(getSourcesByIds).mockResolvedValue([
+    {
       id: "source",
       version: 1,
       name: "Roman find",
@@ -220,7 +209,7 @@ test("uses discovery only for a source on the general owned map", async () => {
       heldAtPlaceId: "museum",
       heldAtPlaceName: "Museum",
     },
-  });
+  ]);
   jest.mocked(getMapPlace).mockImplementation(async (placeId) => ({
     ...place,
     id: placeId,
@@ -243,11 +232,11 @@ test("loads the club avatar when the club catalogue row has an image id but no s
       photoImageId: "club-avatar",
     } as never,
   ]);
-  jest.mocked(getClubImages).mockResolvedValue([
+  jest.mocked(getImageThumbnails).mockResolvedValue([
     {
-      id: "club-avatar",
-      thumbnailUrl: "https://images.test/club-avatar.jpg",
-      status: "READY",
+      resourceType: "club",
+      resourceId: "club",
+      image: { thumbnailUrl: "https://images.test/club-avatar.jpg" },
     },
   ]);
 

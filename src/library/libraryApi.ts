@@ -401,6 +401,25 @@ export function getSource(sourceId: string | undefined) {
   return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`);
 }
 
+/** Bounded ordered lookup used by map and collection summaries. The Library
+ * API accepts at most 20 IDs per request, so callers never create an N+1
+ * request burst for a page of linked sources. */
+export async function getSourcesByIds(
+  sourceIds: readonly string[],
+): Promise<LibrarySource[]> {
+  const ids = Array.from(new Set(sourceIds.filter(Boolean)));
+  const sources: LibrarySource[] = [];
+  for (let offset = 0; offset < ids.length; offset += 20) {
+    const q = window.btoa(JSON.stringify({ ids: ids.slice(offset, offset + 20) }));
+    const result = await fetchJson<LibrarySource[]>(
+      `/api/library/source?q=${encodeURIComponent(q)}`,
+    );
+    if (!result.ok) throw new Error("Unable to load linked sources");
+    if (Array.isArray(result.data)) sources.push(...result.data);
+  }
+  return sources;
+}
+
 export function getSourceImages(sourceId: string | undefined) {
   return fetchJson<{ content: LibrarySourceImage[] }>(
     `/api/images/source/${sourceId}?limit=100`,

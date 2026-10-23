@@ -1,20 +1,17 @@
 import {
   getClub,
-  getClubImages,
   getParticipants,
   getProfileClubs,
   type Club,
 } from "../club/clubApi";
 import {
   getSource,
-  getSourceImages,
-  type ApiResponse,
+  getSourcesByIds,
   type LibrarySource,
-  type LibrarySourceImage,
 } from "../library/libraryApi";
+import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
-  getProfileAvatar,
   getUserProfileByUserId,
   fetchProfileById,
 } from "../profile/profileApi";
@@ -69,7 +66,6 @@ export async function loadProfileRelatedMapContent(
   profile: Profile,
 ): Promise<OwnedMapContent> {
   const resolvePlace = placeResolver();
-  const resolveSourceImage = sourceImageResolver();
   const [profileMarkers, memberships, sourceUsage] = await Promise.all([
     profileMapMarkers([profile], resolvePlace),
     clubsByProfile([profile]),
@@ -83,7 +79,7 @@ export async function loadProfileRelatedMapContent(
   );
   const [clubMarkers, sourceMarkers] = await Promise.all([
     clubMapMarkers(clubs, resolvePlace),
-    sourceMapMarkers(sourceIds, resolvePlace, resolveSourceImage, true),
+    sourceMapMarkers(sourceIds, resolvePlace, true),
   ]);
   const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
   return {
@@ -138,7 +134,6 @@ export async function loadSourceRelatedMapContent(
   const markers = await sourceMapMarkers(
     [source.id],
     resolvePlace,
-    sourceImageResolver(),
   );
   return { markers, connections: [] };
 }
@@ -266,7 +261,6 @@ export async function loadOwnedMapContent(
     ].filter((profile): profile is Profile => Boolean(profile)),
   );
   const resolvePlace = placeResolver();
-  const resolveSourceImage = sourceImageResolver();
 
   // Profiles need only their canonical place and avatar, whereas clubs and
   // source locations require additional membership/stash reads. Publish the
@@ -292,7 +286,6 @@ export async function loadOwnedMapContent(
   const sourceMarkersPromise = sourceMapMarkers(
     sourceIds,
     resolvePlace,
-    resolveSourceImage,
     true,
   );
   const clubMarkers = await clubMarkersPromise;
@@ -320,12 +313,12 @@ async function profileMapMarkers(
   profiles: Profile[],
   resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker[]> {
+  const thumbnails = await thumbnailUrls(
+    profiles.map((profile) => ({ resourceType: "profile", resourceId: profile.id })),
+  );
   const prepared = await Promise.all(
     profiles.map(async (profile) => {
-      const [place, avatar] = await Promise.all([
-        placeFor(profile, resolvePlace),
-        getProfileAvatar(profile.id).catch(() => null),
-      ]);
+      const place = await placeFor(profile, resolvePlace);
       if (!place || !profile.locationPlaceId) return null;
       return marker({
         entityType: "PROFILE",
@@ -336,7 +329,7 @@ async function profileMapMarkers(
         placeName: profile.location || place.canonicalName,
         latitude: place.latitude,
         longitude: place.longitude,
-        thumbnailUrl: avatar?.thumbnailUrl || avatar?.url || profile.avatarUrl,
+        thumbnailUrl: thumbnails.get(`profile:${profile.id}`) || profile.avatarUrl,
         path: `/profile/${encodeURIComponent(profile.alias || profile.id)}`,
       });
     }),
@@ -365,18 +358,13 @@ async function clubMapMarkers(
   clubs: Club[],
   resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker[]> {
+  const thumbnails = await thumbnailUrls(
+    clubs.map((club) => ({ resourceType: "club", resourceId: club.id })),
+  );
   const prepared = await Promise.all(
     clubs.map(async (club) => {
-      const [place, images] = await Promise.all([
-        placeFor(club, resolvePlace),
-        club.photoThumbnailUrl || club.photoUrl || !club.photoImageId
-          ? Promise.resolve([])
-          : getClubImages(club.id).catch(() => []),
-      ]);
+      const place = await placeFor(club, resolvePlace);
       if (!place || !club.locationPlaceId) return null;
-      const photo =
-        images.find((image) => image.id === club.photoImageId) ??
-        images.find((image) => image.thumbnailUrl || image.url);
       return marker({
         entityType: "CLUB",
         entityId: String(club.id),
@@ -389,8 +377,7 @@ async function clubMapMarkers(
         thumbnailUrl:
           club.photoThumbnailUrl ||
           club.photoUrl ||
-          photo?.thumbnailUrl ||
-          photo?.url ||
+          thumbnails.get(`club:${club.id}`) ||
           null,
         path: `/clubs/${encodeURIComponent(club.alias || String(club.id))}`,
       });
@@ -432,35 +419,39 @@ async function sourceIdsUsedByProfiles(
 async function sourceMapMarkers(
   sourceIds: string[],
   resolvePlace: PlaceResolver,
-  resolveSourceImage: SourceImageResolver,
   primaryLocationOnly = false,
 ): Promise<OwnedMapMarker[]> {
-  const sources = await inBatches(sourceIds, 8, async (sourceId) => {
-    const result = await getSource(sourceId);
-    return result.ok ? result.data : null;
-  });
+  const [sources, thumbnails] = await Promise.all([
+    getSourcesByIds(sourceIds).catch(() => []),
+    thumbnailUrls(sourceIds.map((resourceId) => ({ resourceType: "source", resourceId }))),
+  ]);
   const sourceLocationsToResolve = sources
-    .flatMap((result) =>
-      result.status === "fulfilled" && result.value ? [result.value] : [],
-    )
     .flatMap((source) =>
       sourceLocations(source, primaryLocationOnly).map((location) => ({
         source,
         location,
       })),
     );
-  const markers = await inBatches(
-    sourceLocationsToResolve,
-    8,
-    async ({ source, location }) =>
-      sourceMarker(source, location, resolvePlace, resolveSourceImage),
+  const markers = await Promise.all(
+    sourceLocationsToResolve.map(async ({ source, location }) => {
+      const place = await resolvePlace(location.placeId);
+      if (!place) return null;
+      return marker({
+        entityType: "SOURCE",
+        entityId: source.id,
+        locationRole: location.role,
+        label: source.name || "Untitled source",
+        placeId: location.placeId,
+        placeName: location.placeName || place.canonicalName,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        thumbnailUrl: thumbnails.get(`source:${source.id}`) || null,
+        path: `/library/source/${encodeURIComponent(source.id)}`,
+      });
+    }),
   );
   return deduplicateEquivalentSourceMarkers(
-    markers
-      .flatMap((result) =>
-        result.status === "fulfilled" ? [result.value] : [],
-      )
-      .filter((value): value is OwnedMapMarker => Boolean(value)),
+    markers.filter((value): value is OwnedMapMarker => Boolean(value)),
   );
 }
 
@@ -529,38 +520,7 @@ function sourceLocations(
   ].filter((location): location is SourceLocation => Boolean(location));
 }
 
-async function sourceMarker(
-  source: LibrarySource,
-  location: SourceLocation,
-  resolvePlace: PlaceResolver,
-  resolveSourceImage: SourceImageResolver,
-): Promise<OwnedMapMarker | null> {
-  const [place, images] = await Promise.all([
-    resolvePlace(location.placeId),
-    resolveSourceImage(source.id),
-  ]);
-  if (!place) return null;
-  const thumbnail = images?.ok
-    ? images.data?.find((image) => image.thumbnailUrl || image.url)
-    : null;
-  return marker({
-    entityType: "SOURCE",
-    entityId: source.id,
-    locationRole: location.role,
-    label: source.name || "Untitled source",
-    placeId: location.placeId,
-    placeName: location.placeName || place.canonicalName,
-    latitude: place.latitude,
-    longitude: place.longitude,
-    thumbnailUrl: thumbnail?.thumbnailUrl || thumbnail?.url || null,
-    path: `/library/source/${encodeURIComponent(source.id)}`,
-  });
-}
-
 type PlaceResolver = (placeId: string) => Promise<MapPlace | null>;
-type SourceImageResolver = (
-  sourceId: string,
-) => Promise<ApiResponse<LibrarySourceImage[]> | null>;
 
 function placeResolver(): PlaceResolver {
   const reads = new Map<string, Promise<MapPlace | null>>();
@@ -573,41 +533,24 @@ function placeResolver(): PlaceResolver {
   };
 }
 
-/** A source may be rendered twice when it has both a discovery and holding
- * location. Read its image list once for the whole private overlay, rather
- * than doubling image-service requests merely to create two markers. */
-function sourceImageResolver(): SourceImageResolver {
-  const reads = new Map<
-    string,
-    Promise<ApiResponse<LibrarySourceImage[]> | null>
-  >();
-  return (sourceId) => {
-    const existing = reads.get(sourceId);
-    if (existing) return existing;
-    const read = getSourceImages(sourceId).catch(() => null);
-    reads.set(sourceId, read);
-    return read;
-  };
+async function thumbnailUrls(
+  resources: Array<{ resourceType: string; resourceId: string | number }>,
+): Promise<Map<string, string>> {
+  try {
+    const thumbnails = await getImageThumbnails(resources);
+    return new Map(
+      thumbnails.flatMap((entry) => {
+        const url = entry.image?.thumbnailUrl || entry.image?.url;
+        return url ? [[`${entry.resourceType}:${entry.resourceId}`, url] as const] : [];
+      }),
+    );
+  } catch {
+    return new Map();
+  }
 }
 
 async function placeFor(value: Located, resolvePlace: PlaceResolver) {
   return value.locationPlaceId ? resolvePlace(value.locationPlaceId) : null;
-}
-
-async function inBatches<TInput, TResult>(
-  values: readonly TInput[],
-  batchSize: number,
-  load: (value: TInput) => Promise<TResult>,
-): Promise<PromiseSettledResult<TResult>[]> {
-  const results: PromiseSettledResult<TResult>[] = [];
-  for (let offset = 0; offset < values.length; offset += batchSize) {
-    results.push(
-      ...(await Promise.allSettled(
-        values.slice(offset, offset + batchSize).map(load),
-      )),
-    );
-  }
-  return results;
 }
 
 function marker(value: Omit<OwnedMapMarker, "key">): OwnedMapMarker {
