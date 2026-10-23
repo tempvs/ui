@@ -428,15 +428,16 @@ export default function ClubPage() {
   }, [club]);
   useEffect(() => {
     const adminUserIds = club?.adminUserIds ?? [];
+    const adminProfileIds = club?.adminProfiles?.map((admin) => admin.profileId) ?? [];
     let active = true;
-    if (adminUserIds.length === 0) {
+    if (adminUserIds.length + adminProfileIds.length === 0) {
       setAdminProfiles([]);
       return () => {
         active = false;
       };
     }
     const profiles: Profile[] = [];
-    let remaining = adminUserIds.length;
+    let remaining = adminUserIds.length + adminProfileIds.length;
     const done = () => {
       remaining -= 1;
       if (active && remaining === 0) setAdminProfiles(profiles);
@@ -451,10 +452,17 @@ export default function ClubPage() {
         onError: done,
       }),
     );
+    adminProfileIds.forEach((profileId) =>
+      fetchProfileById(profileId, {
+        onSuccess: (profile) => { if (profile) profiles.push(profile); done(); },
+        onMissing: done,
+        onError: done,
+      }),
+    );
     return () => {
       active = false;
     };
-  }, [club?.adminUserIds]);
+  }, [club?.adminUserIds, club?.adminProfiles]);
   useEffect(() => {
     // Load the primary Club record before secondary panels. On a constrained
     // account this prevents the initial page render from fanning out into a
@@ -879,6 +887,7 @@ export default function ClubPage() {
                         <ProfileList
                           profiles={adminProfiles}
                           className="club-member-list"
+                          renderMeta={(profile) => club.adminProfiles?.find((admin) => admin.profileId === String(profile.id))?.role || "Administrator"}
                         />
                       )}
                       {club.adminUserIds.length > adminProfiles.length && (

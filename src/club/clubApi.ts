@@ -15,6 +15,7 @@ export type Club = {
   creatorUserId: string;
   ownerProfileId?: string | null;
   adminUserIds: string[];
+  adminProfiles?: Array<{ profileId: string; role: string }>;
   canManage: boolean;
   canManageAdmins: boolean;
   hasPhoto?: boolean;
@@ -509,6 +510,21 @@ export const removeAdmin = async (id: Id, userId: string) =>
   clubValue(
     await request<unknown>(
       `/clubs/${id}/admins/${encodeURIComponent(userId)}`,
+      "DELETE",
+    ),
+  );
+export const addAdminProfile = async (id: Id, profileId: Id, role: string) =>
+  clubValue(
+    await request<unknown>(
+      `/clubs/${id}/admin-profiles/${encodeURIComponent(String(profileId))}`,
+      "PUT",
+      { role },
+    ),
+  );
+export const removeAdminProfile = async (id: Id, profileId: Id) =>
+  clubValue(
+    await request<unknown>(
+      `/clubs/${id}/admin-profiles/${encodeURIComponent(String(profileId))}`,
       "DELETE",
     ),
   );

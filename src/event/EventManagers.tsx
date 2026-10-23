@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { FaPlus, FaUserMinus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
@@ -41,6 +41,7 @@ export default function EventManagers({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [transferTarget, setTransferTarget] = useState<Profile | null>(null);
+  const [adminRole, setAdminRole] = useState("Administrator");
 
   useEffect(() => {
     let active = true;
@@ -98,7 +99,7 @@ export default function EventManagers({
     setBusy(true);
     setError("");
     try {
-      onChange(await addEventAdmin(event.id, String(profile.id)));
+      onChange(await addEventAdmin(event.id, String(profile.id), adminRole));
       setQuery("");
       setResults([]);
     } catch (error) {
@@ -153,6 +154,7 @@ export default function EventManagers({
           <h2>Admins</h2>
           <ProfileList
             profiles={admins}
+            renderMeta={(profile) => event.adminRoles?.[String(profile.id)] || "Administrator"}
             renderActions={(profile) =>
               canManageAdmins ? (
                 <Button
@@ -179,9 +181,19 @@ export default function EventManagers({
             ariaLabel="Find an event admin"
             disabled={busy}
           />
+          <Form.Control
+            className="mt-2"
+            value={adminRole}
+            maxLength={80}
+            aria-label="Role for new event admin"
+            placeholder="Administrator role"
+            onChange={(event) => setAdminRole(event.target.value)}
+            disabled={busy}
+          />
           {results.length > 0 && (
             <ProfileList
               profiles={results}
+              renderMeta={() => adminRole.trim() || "Administrator"}
               renderActions={(profile) => (
                 <Button
                   size="sm"

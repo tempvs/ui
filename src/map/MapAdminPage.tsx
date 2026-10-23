@@ -12,6 +12,7 @@ import Spinner from "../component/Spinner";
 import { formatAppDateTime } from "../i18n/appLocale";
 import {
   approveMapPlace,
+  addMapMemberRole,
   approveMapRoleRequest,
   findLikelyDuplicateMapPlaces,
   nearbyMapPlaces,
@@ -26,8 +27,12 @@ import {
   type MapPlace,
   type PendingMapPlace,
   type MapRoleMember,
+  type MapRole,
   type MapRoleRequest,
 } from "./mapApi";
+import { searchProfiles } from "../profile/profileApi";
+import { buildProfileLabel } from "../profile/currentProfile";
+import type { Profile } from "../profile/profileTypes";
 import MapCanvas from "./MapCanvas";
 import ProposalActivityPanel from "./ProposalActivityPanel";
 import MapRoleRequestModal from "./MapRoleRequestModal";
@@ -454,6 +459,7 @@ export default function MapAdminPage() {
       {mayAdministerRoles && activeTab !== "proposals" && (
         <MapRoleAdminPanel
           activeTab={activeTab as "role-requests" | "members"}
+          isTempvsAdmin={Boolean(viewer?.roles.includes("TEMPVS_ADMIN"))}
         />
       )}
       <MapRoleRequestModal
@@ -469,8 +475,10 @@ export default function MapAdminPage() {
  * accidentally escalate membership through this page. */
 function MapRoleAdminPanel({
   activeTab,
+  isTempvsAdmin,
 }: {
   activeTab: "role-requests" | "members";
+  isTempvsAdmin: boolean;
 }) {
   const [requests, setRequests] = useState<MapRoleRequest[]>([]);
   const [members, setMembers] = useState<MapRoleMember[]>([]);
@@ -483,8 +491,12 @@ function MapRoleAdminPanel({
   const [removingRole, setRemovingRole] = useState<string | null>(null);
   const [roleToRemove, setRoleToRemove] = useState<{
     member: MapRoleMember;
-    role: Exclude<MapRoleMember["roles"][number], "MAP_ADMIN">;
+    role: MapRoleMember["roles"][number];
   } | null>(null);
+  const [profileQuery, setProfileQuery] = useState("");
+  const [profileResults, setProfileResults] = useState<Profile[]>([]);
+  const [roleToAssign, setRoleToAssign] = useState<MapRole>("MAP_CONTRIBUTOR");
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -554,7 +566,7 @@ function MapRoleAdminPanel({
 
   const removeRole = async (
     member: MapRoleMember,
-    role: Exclude<MapRoleMember["roles"][number], "MAP_ADMIN">,
+    role: MapRoleMember["roles"][number],
   ) => {
     const key = `${member.userId}:${role}`;
     setRemovingRole(key);
@@ -581,6 +593,41 @@ function MapRoleAdminPanel({
     }
   };
 
+  useEffect(() => {
+    if (profileQuery.trim().length < 2) {
+      setProfileResults([]);
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void searchProfiles({ query: profileQuery.trim(), type: "USER", size: 10 })
+        .then((profiles) => {
+          if (active) setProfileResults(profiles.filter((profile) => Boolean(profile.userId)));
+        })
+        .catch(() => active && setError("Unable to search user profiles."));
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [profileQuery]);
+
+  const assignRole = async (profile: Profile) => {
+    if (!profile.userId) return;
+    setAssigningUserId(profile.userId);
+    setError("");
+    try {
+      await addMapMemberRole(profile.userId, roleToAssign);
+      setMembers(await listMapRoleMembers());
+      setProfileQuery("");
+      setProfileResults([]);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to assign this Map role.");
+    } finally {
+      setAssigningUserId(null);
+    }
+  };
+
   return (
     <section className="club-panel" aria-label="Map role management">
       {error && <Alert variant="danger">{error}</Alert>}
@@ -590,11 +637,45 @@ function MapRoleAdminPanel({
         <>
           {activeTab === "role-requests" && (
             <>
+              <h2 className="h5">Add Map member</h2>
+              <p className="text-muted small">
+                Search personal profiles and assign access directly; no request is required.
+              </p>
+              <div className="d-flex gap-2 flex-wrap mb-3">
+                <TextFilterInput
+                  value={profileQuery}
+                  onChange={setProfileQuery}
+                  placeholder="Find a user profile"
+                  ariaLabel="Find a user profile to assign a Map role"
+                />
+                <Form.Select
+                  aria-label="Map role to assign"
+                  value={roleToAssign}
+                  onChange={(event) => setRoleToAssign(event.target.value as MapRole)}
+                  style={{ maxWidth: "13rem" }}
+                >
+                  <option value="MAP_CONTRIBUTOR">Contributor</option>
+                  <option value="MAP_REVIEWER">Reviewer</option>
+                  <option value="MAP_EDITOR">Editor</option>
+                  {isTempvsAdmin && <option value="MAP_ADMIN">Map administrator</option>}
+                </Form.Select>
+              </div>
+              {profileResults.length > 0 && (
+                <ul className="list-unstyled mb-4">
+                  {profileResults.map((profile) => (
+                    <li key={String(profile.id)} className="border-top py-2 d-flex justify-content-between gap-2">
+                      <span>{buildProfileLabel(profile)}</span>
+                      <Button size="sm" variant="dark" disabled={assigningUserId === profile.userId} onClick={() => void assignRole(profile)}>
+                        Assign
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <h2 className="h5">Role requests</h2>
               <p className="text-muted small">
                 Review requests for Map contributor, reviewer, and editor
-                access. Map administrator access itself is managed through the
-                global role.
+                access. Tempvs administrators may also assign Map administrator access.
               </p>
               {requests.length === 0 ? (
                 <p className="text-muted small">
@@ -680,14 +761,7 @@ function MapRoleAdminPanel({
                       </div>
                       <div className="d-flex gap-1 flex-wrap">
                         {member.roles
-                          .filter(
-                            (
-                              role,
-                            ): role is Exclude<
-                              MapRoleMember["roles"][number],
-                              "MAP_ADMIN"
-                            > => role !== "MAP_ADMIN",
-                          )
+                          .filter((role) => role !== "MAP_ADMIN" || isTempvsAdmin)
                           .map((role) => {
                             const key = `${member.userId}:${role}`;
                             return (

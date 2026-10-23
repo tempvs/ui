@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button } from "react-bootstrap";
+import { Alert, Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -19,11 +19,12 @@ import { Profile } from "../profile/profileTypes";
 import ProfileList from "../profile/components/ProfileList";
 import {
   Club,
-  addAdmin,
+  addAdminProfile,
   deleteClub,
   getClub,
   isClubServiceUnavailable,
   removeAdmin,
+  removeAdminProfile,
   transferClubOwnership,
   unfollowClub,
 } from "./clubApi";
@@ -48,7 +49,8 @@ export default function ClubAdminPage() {
   const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [removingAdmin, setRemovingAdmin] = useState<string | null>(null);
+  const [removingAdmin, setRemovingAdmin] = useState<{ id: string; profile: boolean } | null>(null);
+  const [adminRole, setAdminRole] = useState("Administrator");
   const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
   const [ownerProfile, setOwnerProfile] = useState<Profile | null>(null);
   const [reviewerProfile, setReviewerProfile] = useState<Profile | null>(null);
@@ -126,16 +128,18 @@ export default function ClubAdminPage() {
   }, [id, navigate]);
 
   useEffect(() => {
+    const selectedProfiles = club?.adminProfiles ?? [];
     const adminUserIds = club?.adminUserIds ?? [];
     let active = true;
-    if (adminUserIds.length === 0) {
+    const profileIds = selectedProfiles.map((admin) => admin.profileId);
+    if (adminUserIds.length + profileIds.length === 0) {
       setAdminProfiles([]);
       return () => {
         active = false;
       };
     }
     const profiles: Profile[] = [];
-    let remaining = adminUserIds.length;
+    let remaining = adminUserIds.length + profileIds.length;
     const done = () => {
       remaining -= 1;
       if (active && remaining === 0) setAdminProfiles(profiles);
@@ -150,10 +154,17 @@ export default function ClubAdminPage() {
         onError: done,
       }),
     );
+    profileIds.forEach((profileId) =>
+      fetchProfileById(profileId, {
+        onSuccess: (profile) => { if (profile) profiles.push(profile); done(); },
+        onMissing: done,
+        onError: done,
+      }),
+    );
     return () => {
       active = false;
     };
-  }, [club?.adminUserIds]);
+  }, [club?.adminUserIds, club?.adminProfiles]);
 
   useEffect(() => {
     if (!club) {
@@ -318,13 +329,14 @@ export default function ClubAdminPage() {
               <ProfileList
                 profiles={adminProfiles}
                 className="club-member-list"
+                renderMeta={(profile) => club.adminProfiles?.find((admin) => admin.profileId === String(profile.id))?.role || "Administrator"}
                 renderActions={(profile) =>
                   canManageAdmins && profile.userId != null ? (
                     <Button
                       size="sm"
                       variant="outline-danger"
                       disabled={busy}
-                      onClick={() => setRemovingAdmin(String(profile.userId))}
+                      onClick={() => setRemovingAdmin({ id: String(profile.id), profile: Boolean(club.adminProfiles?.some((admin) => admin.profileId === String(profile.id))) })}
                     >
                       {t("remove", "Remove")}
                     </Button>
@@ -351,7 +363,7 @@ export default function ClubAdminPage() {
                             size="sm"
                             variant="outline-danger"
                             disabled={busy}
-                            onClick={() => setRemovingAdmin(userId)}
+                            onClick={() => setRemovingAdmin({ id: userId, profile: false })}
                           >
                             {t("remove", "Remove")}
                           </Button>
@@ -376,9 +388,16 @@ export default function ClubAdminPage() {
                     period={club.period}
                     busy={busy}
                     onSelect={(profile) => {
-                      if (profile.userId)
-                        void act(() => addAdmin(club.id, profile.userId!));
+                      void act(() => addAdminProfile(club.id, profile.id, adminRole));
                     }}
+                  />
+                  <Form.Control
+                    className="mt-2"
+                    value={adminRole}
+                    maxLength={80}
+                    aria-label="Role for new club administrator"
+                    placeholder="Administrator role"
+                    onChange={(event) => setAdminRole(event.target.value)}
                   />
                 </>
               )}
@@ -458,9 +477,9 @@ export default function ClubAdminPage() {
         }}
         onConfirm={() => {
           if (!club || !removingAdmin) return;
-          const userId = removingAdmin;
+          const target = removingAdmin;
           setRemovingAdmin(null);
-          void act(() => removeAdmin(club.id, userId));
+          void act(() => target.profile ? removeAdminProfile(club.id, target.id) : removeAdmin(club.id, target.id));
         }}
       />
       <ConfirmationModal

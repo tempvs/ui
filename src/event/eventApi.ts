@@ -56,6 +56,7 @@ export type TempvsEvent = {
   id: string;
   ownerProfileId: string;
   adminProfileIds: string[];
+  adminRoles?: Record<string, string>;
   name: string;
   description: string | null;
   periods: Period[];
@@ -189,10 +190,10 @@ export function deleteEvent(eventId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}`, { method: "DELETE" });
 }
 
-export function addEventAdmin(eventId: string, profileId: string) {
+export function addEventAdmin(eventId: string, profileId: string, role?: string) {
   return request<TempvsEvent>(`/${encodeURIComponent(eventId)}/admins`, {
     method: "POST",
-    body: JSON.stringify({ profileId }),
+    body: JSON.stringify({ profileId, ...(role?.trim() ? { role: role.trim() } : {}) }),
   });
 }
 

@@ -35,6 +35,7 @@ import { LibraryPendingProposalsContent } from "./LibraryPendingProposalsPage";
 
 type AdminTab = "members" | "requests" | "proposals";
 const ROLE_OPTIONS = [
+  { value: "ROLE_ADMIN", label: "Library administrator" },
   { value: "ROLE_ARCHIVARIUS", label: "Archivarius" },
   { value: "ROLE_SCRIBE", label: "Scribe" },
   { value: "ROLE_CONTRIBUTOR", label: "Contributor" },
@@ -173,9 +174,12 @@ export default function LibraryAdminPage() {
   };
 
   const isLibraryAdmin = Boolean(userInfo?.roles?.includes("ROLE_ADMIN"));
-  const assignableRoleOptions = isLibraryAdmin
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter((option) => option.value !== "ROLE_ARCHIVARIUS");
+  const isTempvsAdmin = Boolean(userInfo?.roles?.includes("TEMPVS_ADMIN"));
+  const assignableRoleOptions = ROLE_OPTIONS.filter((option) =>
+    option.value === "ROLE_ADMIN"
+      ? isTempvsAdmin
+      : isLibraryAdmin || option.value !== "ROLE_ARCHIVARIUS",
+  );
 
   const loadMembers = async () => {
     setLoading(true);
@@ -486,7 +490,7 @@ export default function LibraryAdminPage() {
               ? buildProfileLabel(profile)
               : member.name || member.email || "Library member";
             const protectedAdmin = member.role === "ROLE_ADMIN";
-            const canChange = !self && !protectedAdmin;
+            const canChange = !self && (!protectedAdmin || isTempvsAdmin);
             return (
               <Card key={member.userId} className="border-0 shadow-sm">
                 <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
@@ -512,7 +516,7 @@ export default function LibraryAdminPage() {
                     </div>
                   </div>
                   <div className="d-flex align-items-center gap-2">
-                    {protectedAdmin ? (
+                    {protectedAdmin && !isTempvsAdmin ? (
                       <Form.Control
                         aria-label={`Library role for ${label}`}
                         value={

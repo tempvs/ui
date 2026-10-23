@@ -510,10 +510,22 @@ export async function listMapRoleMembers(): Promise<MapRoleMember[]> {
   return Array.isArray(body) ? (body as MapRoleMember[]) : [];
 }
 
+export async function addMapMemberRole(userId: string, role: MapRole): Promise<void> {
+  const response = await fetch(
+    `/api/map/admin/roles/members/${encodeURIComponent(userId)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    },
+  );
+  if (!response.ok) throw new Error("Unable to assign this Map role");
+}
+
 /** MAP_ADMIN remains provisioned outside the Map application. */
 export async function removeMapMemberRole(
   userId: string,
-  role: Exclude<MapRole, "MAP_ADMIN">,
+  role: MapRole,
 ): Promise<void> {
   const response = await fetch(
     `/api/map/admin/roles/members/${encodeURIComponent(userId)}/roles/${encodeURIComponent(role)}`,

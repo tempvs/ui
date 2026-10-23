@@ -9,6 +9,7 @@ type ProfileListProps = {
   className?: string;
   showPeriod?: boolean;
   renderActions?: (profile: Profile) => React.ReactNode;
+  renderMeta?: (profile: Profile) => React.ReactNode;
   actionPosition?: 'start' | 'end';
 };
 
@@ -18,13 +19,17 @@ export default function ProfileList({
   className,
   showPeriod = false,
   renderActions,
+  renderMeta,
   actionPosition = 'end',
 }: ProfileListProps) {
   return <ul className={['profile-list', className].filter(Boolean).join(' ')}>
     {profiles.map(profile => <li key={String(profile.id)}>
       {actionPosition === 'start' && renderActions?.(profile)}
       <div className="profile-list-entry">
-        <ProfileThumbnailLink profile={profile} />
+        <div className="profile-list-profile">
+          <ProfileThumbnailLink profile={profile} />
+          {renderMeta?.(profile) && <div className="small text-muted">{renderMeta(profile)}</div>}
+        </div>
         {showPeriod && <PeriodBadge period={profile.period} />}
       </div>
       {actionPosition === 'end' && renderActions?.(profile)}
