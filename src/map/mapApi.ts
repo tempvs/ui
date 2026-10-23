@@ -166,6 +166,7 @@ export type MapPlaceProposalRecord = MapPlace & {
 export type MapPlaceProposalActivity = {
   id: string;
   placeId: string;
+  subjectPlaceId?: string;
   kind:
     | "SUBMITTED"
     | "AMENDED"
@@ -177,6 +178,7 @@ export type MapPlaceProposalActivity = {
   actorUserId: string;
   occurredAt: string;
   note?: string;
+  globalAdminOverride?: boolean;
   revision?: {
     version: number;
     canonicalName: string;
@@ -189,6 +191,7 @@ export type MapPlaceProposalActivity = {
     proposalNote?: string;
     citationUrl?: string;
     parentPlaceId?: string;
+    changeKind?: "CREATE" | "UPDATE" | "DELETE" | "MERGE";
     periods?: string[];
     provenance?: Array<{
       dataset: string;
@@ -275,6 +278,32 @@ export async function getMapPlace(
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("Unable to load this place");
   return (await responseJson(response)) as MapPlace;
+}
+
+/** Public, append-only record of proposed and approved place changes. */
+export async function listMapPlaceHistory(
+  id: string,
+  cursor?: string,
+): Promise<{ items: MapPlaceProposalActivity[]; nextCursor?: string }> {
+  const response = await fetch(
+    `/api/map/places/${encodeURIComponent(id)}/history?${new URLSearchParams({
+      limit: "30",
+      ...(cursor ? { cursor } : {}),
+    })}`,
+  );
+  if (!response.ok) throw new Error("Unable to load this place's edit history");
+  const body = (await responseJson(response)) as {
+    items?: unknown;
+    nextCursor?: unknown;
+  } | null;
+  return {
+    items: Array.isArray(body?.items)
+      ? (body?.items as MapPlaceProposalActivity[])
+      : [],
+    ...(typeof body?.nextCursor === "string"
+      ? { nextCursor: body.nextCursor }
+      : {}),
+  };
 }
 
 /** Direct children are deliberately separate from radius discovery: hierarchy

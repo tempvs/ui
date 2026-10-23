@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Alert, Button, ButtonGroup, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
+import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import PlaceNamesList from "../component/PlaceNamesList";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -13,6 +14,8 @@ import {
   getMapPlace,
   listMapPlaceChildren,
   listMapPlaceEntities,
+  listMapPlaceHistory,
+  type MapPlaceProposalActivity,
   type MapEntityLocation,
   type MapPlace,
 } from "./mapApi";
@@ -31,6 +34,7 @@ const entityTypeFilters: EntityTypeFilter[] = [
 /** Public landing page for one approved canonical point. It uses the exact
  * place-assignment API rather than an imprecise radius lookup. */
 export default function MapPlacePage({ id }: MapPlacePageProps) {
+  const [viewer, setViewer] = useState<Viewer | null | undefined>(undefined);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [ancestors, setAncestors] = useState<MapPlace[]>([]);
   const [otherContainmentParents, setOtherContainmentParents] = useState<
@@ -54,6 +58,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     null,
   );
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<MapPlaceProposalActivity[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | undefined>();
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    void getViewer().then(setViewer);
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -78,14 +89,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         entityType === "SOURCE" && sourceRole !== "ALL" ? [sourceRole] : [],
         controller.signal,
       ),
+      listMapPlaceHistory(id, undefined),
     ])
-      .then(([nextPlace, nextChildren, nextEntities]) => {
+      .then(([nextPlace, nextChildren, nextEntities, nextHistory]) => {
         setPlace(nextPlace);
         setChildren(nextChildren.items);
         setChildCursor(nextChildren.nextCursor);
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
         setEntityCounts(nextEntities.counts || {});
+        setHistory(nextHistory.items);
+        setHistoryCursor(nextHistory.nextCursor);
         if (nextPlace) {
           void loadPlaceAncestors(nextPlace, controller.signal).then(
             (nextAncestors) => {
@@ -200,6 +214,26 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
   };
 
+  const loadMoreHistory = async () => {
+    if (!id || !historyCursor || historyLoading) return;
+    setHistoryLoading(true);
+    try {
+      const page = await listMapPlaceHistory(id, historyCursor);
+      setHistory((current) => [...current, ...page.items]);
+      setHistoryCursor(page.nextCursor);
+    } catch (caught) {
+      setError((caught as Error).message || "Unable to load more history.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const canPropose = Boolean(
+    viewer?.roles.some((role) =>
+      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER", "MAP_CONTRIBUTOR"].includes(role),
+    ),
+  );
+
   if (place === undefined)
     return (
       <PageLayout className="map-page" header={{ title: "Place" }}>
@@ -232,11 +266,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           ]}
         />
         <h1 className="mt-2">{place.canonicalName}</h1>
-        <p className="mb-2">
-          <Link to={`/map/place/${encodeURIComponent(place.id)}/edit`}>
-            Propose an edit, merge, or deletion
-          </Link>
-        </p>
+        {canPropose && (
+          <p className="mb-2">
+            <Link to={`/map/place/${encodeURIComponent(place.id)}/edit`}>
+              Propose an edit, merge, or deletion
+            </Link>
+          </p>
+        )}
         <p className="text-muted mb-2">
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
           {place.longitude.toFixed(4)}
@@ -400,6 +436,39 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           </>
         ) : null}
       </section>
+      <section className="club-panel mt-3" aria-label="Place edit history">
+        <h2 className="h5">Edit history</h2>
+        <p className="small text-muted">
+          Every proposed edit and review decision is retained here.
+        </p>
+        {history.length === 0 ? (
+          <p className="text-muted mb-0">No recorded edits yet.</p>
+        ) : (
+          <ol className="mb-0 ps-3">
+            {history.map((entry) => (
+              <li key={entry.id} className="mb-2">
+                <strong>{historyLabel(entry.kind)}</strong> by {entry.actorUserId}
+                {" · "}
+                <time dateTime={entry.occurredAt}>
+                  {new Date(entry.occurredAt).toLocaleString()}
+                </time>
+                {entry.globalAdminOverride && " · Tempvs admin override"}
+                {entry.note && <div className="small text-muted">{entry.note}</div>}
+                {entry.revision && (
+                  <div className="small text-muted">
+                    {entry.revision.changeKind || "UPDATE"}: {entry.revision.canonicalName}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+        {historyCursor && (
+          <Button size="sm" variant="outline-dark" className="mt-2" disabled={historyLoading} onClick={() => void loadMoreHistory()}>
+            {historyLoading ? "Loading…" : "Show more"}
+          </Button>
+        )}
+      </section>
       <section className="club-panel mt-3" aria-label="Place on map">
         <MapCanvas
           places={[place]}
@@ -495,6 +564,18 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       </section>
     </PageLayout>
   );
+}
+
+function historyLabel(kind: MapPlaceProposalActivity["kind"]): string {
+  return {
+    SUBMITTED: "Edit proposed",
+    AMENDED: "Edit amended",
+    CHANGES_REQUESTED: "Changes requested",
+    APPROVED: "Edit approved",
+    REJECTED: "Edit rejected",
+    MERGED: "Places merged",
+    COMMENTED: "Comment added",
+  }[kind];
 }
 
 /** Resolve a bounded primary hierarchy for breadcrumb navigation. The map
