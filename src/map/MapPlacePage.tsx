@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
 import PlaceNamesList from "../component/PlaceNamesList";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
 import { getImageThumbnails } from "../image/imageApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
@@ -219,23 +220,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   return (
     <PageLayout className="map-page" header={{ title: place.canonicalName }}>
       <section className="club-panel" aria-label="Place details">
-        <nav aria-label="Place hierarchy" className="small mb-2">
-          <Link to="/map">Map</Link>
-          {ancestors.map((ancestor) => (
-            <Fragment key={ancestor.id}>
-              <span className="mx-1 text-muted" aria-hidden="true">
-                /
-              </span>
-              <Link to={`/map/place/${encodeURIComponent(ancestor.id)}`}>
-                {ancestor.canonicalName}
-              </Link>
-            </Fragment>
-          ))}
-          <span className="mx-1 text-muted" aria-hidden="true">
-            /
-          </span>
-          <span aria-current="page">{place.canonicalName}</span>
-        </nav>
+        <SectionBreadcrumb
+          className="small mb-2"
+          items={[
+            { label: "Map", to: "/map" },
+            ...ancestors.map((ancestor) => ({
+              label: ancestor.canonicalName,
+              to: `/map/place/${encodeURIComponent(ancestor.id)}`,
+            })),
+            { label: place.canonicalName },
+          ]}
+        />
         <h1 className="mt-2">{place.canonicalName}</h1>
         <p className="mb-2">
           <Link to={`/map/place/${encodeURIComponent(place.id)}/edit`}>

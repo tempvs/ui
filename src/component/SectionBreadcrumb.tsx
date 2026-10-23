@@ -1,6 +1,5 @@
-import React from 'react';
-import { Dropdown } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 export type SectionBreadcrumbSwitcherItem = {
   key?: React.Key;
@@ -36,86 +35,135 @@ type SectionBreadcrumbProps = {
 };
 
 function isInternalPath(value?: string): value is string {
-  return Boolean(value?.startsWith('/') && !value.startsWith('//'));
+  return Boolean(value?.startsWith("/") && !value.startsWith("//"));
 }
 
 function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   if (!switcher) {
     return null;
   }
 
   return (
-    <Dropdown align="end">
-      <Dropdown.Toggle
-        variant="link"
-        size="sm"
-        className="p-0 text-decoration-none"
-        style={{ color: '#000' }}
+    <div ref={rootRef} className="dropdown position-relative">
+      <button
+        type="button"
+        className="btn btn-link btn-sm p-0 text-decoration-none dropdown-toggle"
+        style={{ color: "#000" }}
         id={switcher.id}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((current) => !current)}
       />
-      <Dropdown.Menu popperConfig={{ strategy: 'fixed' }}>
-        {switcher.items?.length ? switcher.items.map(entry => (
-          entry.to ? (
-            <Dropdown.Item
-              as={Link}
-              key={entry.key || String(entry.label)}
-              to={entry.to}
-              active={entry.active}
-              disabled={entry.disabled}
-              onClick={entry.onClick}
-            >
-              {entry.label}
-            </Dropdown.Item>
-          ) : isInternalPath(entry.href) ? (
-            <Dropdown.Item
-              as={Link}
-              key={entry.key || String(entry.label)}
-              to={entry.href}
-              active={entry.active}
-              disabled={entry.disabled}
-              onClick={entry.onClick}
-            >
-              {entry.label}
-            </Dropdown.Item>
-          ) : entry.href ? (
-            <Dropdown.Item
-              as="a"
-              key={entry.key || String(entry.label)}
-              href={entry.href}
-              active={entry.active}
-              aria-disabled={entry.disabled || undefined}
-              onClick={entry.onClick}
-            >
-              {entry.label}
-            </Dropdown.Item>
+      {open && (
+        <div
+          className="dropdown-menu dropdown-menu-end show"
+          role="menu"
+          aria-labelledby={switcher.id}
+        >
+          {switcher.items?.length ? (
+            switcher.items.map((entry) =>
+              entry.to ? (
+                <Link
+                  className={`dropdown-item${entry.active ? " active" : ""}${entry.disabled ? " disabled" : ""}`}
+                  key={entry.key || String(entry.label)}
+                  to={entry.to}
+                  aria-disabled={entry.disabled || undefined}
+                  onClick={(event) => {
+                    setOpen(false);
+                    entry.onClick?.(event);
+                  }}
+                >
+                  {entry.label}
+                </Link>
+              ) : isInternalPath(entry.href) ? (
+                <Link
+                  className={`dropdown-item${entry.active ? " active" : ""}${entry.disabled ? " disabled" : ""}`}
+                  key={entry.key || String(entry.label)}
+                  to={entry.href}
+                  aria-disabled={entry.disabled || undefined}
+                  onClick={(event) => {
+                    setOpen(false);
+                    entry.onClick?.(event);
+                  }}
+                >
+                  {entry.label}
+                </Link>
+              ) : entry.href ? (
+                <a
+                  className={`dropdown-item${entry.active ? " active" : ""}${entry.disabled ? " disabled" : ""}`}
+                  key={entry.key || String(entry.label)}
+                  href={entry.href}
+                  aria-disabled={entry.disabled || undefined}
+                  onClick={(event) => {
+                    setOpen(false);
+                    entry.onClick?.(event);
+                  }}
+                >
+                  {entry.label}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className={`dropdown-item${entry.active ? " active" : ""}`}
+                  key={entry.key || String(entry.label)}
+                  disabled={entry.disabled}
+                  onClick={(event) => {
+                    setOpen(false);
+                    entry.onClick?.(event);
+                  }}
+                >
+                  {entry.label}
+                </button>
+              ),
+            )
           ) : (
-            <Dropdown.Item
-              as="button"
-              key={entry.key || String(entry.label)}
-              active={entry.active}
-              disabled={entry.disabled}
-              onClick={entry.onClick}
-            >
-              {entry.label}
-            </Dropdown.Item>
-          )
-        )) : (
-          <Dropdown.Item disabled>{switcher.emptyLabel || 'No options'}</Dropdown.Item>
-        )}
-      </Dropdown.Menu>
-    </Dropdown>
+            <span className="dropdown-item disabled">
+              {switcher.emptyLabel || "No options"}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-export default function SectionBreadcrumb({ items = [], switcher = null, className = '' }: SectionBreadcrumbProps) {
-  const visibleItems = items.filter((item): item is SectionBreadcrumbItem => Boolean(item?.label));
+export default function SectionBreadcrumb({
+  items = [],
+  switcher = null,
+  className = "",
+}: SectionBreadcrumbProps) {
+  const visibleItems = items.filter((item): item is SectionBreadcrumbItem =>
+    Boolean(item?.label),
+  );
 
   if (!visibleItems.length && !switcher) {
     return null;
   }
 
   return (
-    <div className={`d-flex align-items-center gap-2 flex-wrap fs-6 fw-normal ${className}`.trim()}>
+    <div
+      className={`d-flex align-items-center gap-2 flex-wrap fs-6 fw-normal ${className}`.trim()}
+    >
       {visibleItems.map((item, index) => (
         <React.Fragment key={`${String(item.label)}-${index}`}>
           {index > 0 && <span>&gt;</span>}
