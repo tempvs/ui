@@ -1,13 +1,5 @@
-import { loadPlaceAncestors } from "./MapPlacePage";
-import { getMapPlace, type MapPlace } from "./mapApi";
-
-jest.mock("./mapApi", () => ({
-  getMapPlace: jest.fn(),
-  listMapPlaceChildren: jest.fn(),
-  listMapPlaceEntities: jest.fn(),
-}));
-
-const mockGetMapPlace = jest.mocked(getMapPlace);
+import { otherHistoricalNames } from "./MapPlacePage";
+import type { MapPlace } from "./mapApi";
 
 function place(id: string, parentPlaceId?: string): MapPlace {
   return {
@@ -20,22 +12,15 @@ function place(id: string, parentPlaceId?: string): MapPlace {
   };
 }
 
-test("loads canonical ancestors root-first and stops at a malformed cycle", async () => {
-  const places: Record<string, MapPlace> = {
-    region: place("region"),
-    country: place("country", "region"),
-    town: place("town", "country"),
-  };
-  mockGetMapPlace.mockImplementation(async (id) => places[id] || null);
+test("returns only labels other than the canonical name for the page summary", () => {
+  const town = place("Town");
+  town.names = [
+    { value: "Town", preferred: true },
+    { value: "Old Town", preferred: false, validFrom: 100, validTo: 300 },
+    { value: "TOWN", preferred: false, validFrom: 301, validTo: 400 },
+  ];
 
-  await expect(loadPlaceAncestors(places.town)).resolves.toEqual([
-    places.region,
-    places.country,
-  ]);
-
-  places.region.parentPlaceId = "town";
-  await expect(loadPlaceAncestors(places.town)).resolves.toEqual([
-    places.region,
-    places.country,
+  expect(otherHistoricalNames(town)).toEqual([
+    { value: "Old Town", preferred: false, validFrom: 100, validTo: 300 },
   ]);
 });

@@ -18,6 +18,7 @@ import {
   type MapPlaceProposalActivity,
   type MapEntityLocation,
   type MapPlace,
+  type MapPlaceName,
 } from "./mapApi";
 import { formatPlaceNameRange } from "./placeNames";
 
@@ -36,7 +37,6 @@ const entityTypeFilters: EntityTypeFilter[] = [
 export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [viewer, setViewer] = useState<Viewer | null | undefined>(undefined);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
-  const [ancestors, setAncestors] = useState<MapPlace[]>([]);
   const [otherContainmentParents, setOtherContainmentParents] = useState<
     Record<string, MapPlace>
   >({});
@@ -73,7 +73,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     }
     const controller = new AbortController();
     setPlace(undefined);
-    setAncestors([]);
     setOtherContainmentParents({});
     setEntities([]);
     setEntityCursor(undefined);
@@ -101,14 +100,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         setHistory(nextHistory.items);
         setHistoryCursor(nextHistory.nextCursor);
         if (nextPlace) {
-          void loadPlaceAncestors(nextPlace, controller.signal).then(
-            (nextAncestors) => {
-              if (!controller.signal.aborted) setAncestors(nextAncestors);
-            },
-            () => {
-              if (!controller.signal.aborted) setAncestors([]);
-            },
-          );
           const relatedIds = Array.from(
             new Set(
               nextPlace.containmentRelations?.map(
@@ -251,27 +242,46 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       </PageLayout>
     );
 
+  const historicalNames = otherHistoricalNames(place);
+
   return (
-    <PageLayout className="map-page" header={{ title: place.canonicalName }}>
+    <PageLayout
+      className="map-page"
+      header={{
+        title: (
+          <SectionBreadcrumb
+            items={[
+              { label: "Map", to: "/map" },
+              { label: place.canonicalName },
+            ]}
+          />
+        ),
+        rightContent: canPropose ? (
+          <Link
+            to={`/map/place/${encodeURIComponent(place.id)}/edit`}
+            className="btn btn-dark btn-sm"
+          >
+            Propose edit
+          </Link>
+        ) : null,
+      }}
+    >
       <section className="club-panel" aria-label="Place details">
-        <SectionBreadcrumb
-          className="small mb-2"
-          items={[
-            { label: "Map", to: "/map" },
-            ...ancestors.map((ancestor) => ({
-              label: ancestor.canonicalName,
-              to: `/map/place/${encodeURIComponent(ancestor.id)}`,
-            })),
-            { label: place.canonicalName },
-          ]}
-        />
-        <h1 className="mt-2">{place.canonicalName}</h1>
-        {canPropose && (
-          <p className="mb-2">
-            <Link to={`/map/place/${encodeURIComponent(place.id)}/edit`}>
-              Propose an edit, merge, or deletion
-            </Link>
-          </p>
+        <h1>{place.canonicalName}</h1>
+        {historicalNames.length > 0 && (
+          <div className="mb-3" aria-label="Historical names">
+            <h2 className="h6 mb-1">Historical names</h2>
+            <ul className="list-unstyled mb-0">
+              {historicalNames.map((name, index) => (
+                <li
+                  key={`${name.value}:${name.language ?? ""}:${name.validFrom ?? ""}:${name.validTo ?? ""}:${index}`}
+                >
+                  {name.value}
+                  {formatPlaceNameRange(name.validFrom, name.validTo)}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         <p className="text-muted mb-2">
           {place.featureType} · {place.latitude.toFixed(4)},{" "}
@@ -340,13 +350,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             ))}
           </div>
         ) : null}
-        <p className="mb-2">
-          <Link
-            to={`/map?placeId=${encodeURIComponent(place.id)}&descendants=true`}
-          >
-            Explore this place and child places on the map
-          </Link>
-        </p>
         {children.length > 0 && (
           <div className="small mb-2">
             Contains{" "}
@@ -403,38 +406,42 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         className="club-panel mt-3"
         aria-label="Place names and provenance"
       >
-        <h2 className="h5">Names</h2>
-        <PlaceNamesList place={place} />
-        {(place.periods?.length || place.selectionReasons?.length) && (
-          <dl className="row mb-0 mt-3 small">
-            {place.periods?.length ? (
+        <details>
+          <summary className="h5 mb-0">Names and provenance</summary>
+          <div className="mt-3">
+            <PlaceNamesList place={place} />
+            {(place.periods?.length || place.selectionReasons?.length) && (
+              <dl className="row mb-0 mt-3 small">
+                {place.periods?.length ? (
+                  <>
+                    <dt className="col-sm-3">Periods</dt>
+                    <dd className="col-sm-9">{place.periods.join(", ")}</dd>
+                  </>
+                ) : null}
+                {place.selectionReasons?.length ? (
+                  <>
+                    <dt className="col-sm-3">Included because</dt>
+                    <dd className="col-sm-9">
+                      {place.selectionReasons.join(", ")}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            )}
+            {place.provenance?.length ? (
               <>
-                <dt className="col-sm-3">Periods</dt>
-                <dd className="col-sm-9">{place.periods.join(", ")}</dd>
+                <h3 className="h6 mt-3">Sources</h3>
+                <ul className="mb-0">
+                  {place.provenance.map((source) => (
+                    <li key={`${source.dataset}:${source.externalId}`}>
+                      {source.dataset} ({source.externalId}) — {source.license}
+                    </li>
+                  ))}
+                </ul>
               </>
             ) : null}
-            {place.selectionReasons?.length ? (
-              <>
-                <dt className="col-sm-3">Included because</dt>
-                <dd className="col-sm-9">
-                  {place.selectionReasons.join(", ")}
-                </dd>
-              </>
-            ) : null}
-          </dl>
-        )}
-        {place.provenance?.length ? (
-          <>
-            <h3 className="h6 mt-3">Sources</h3>
-            <ul className="mb-0">
-              {place.provenance.map((source) => (
-                <li key={`${source.dataset}:${source.externalId}`}>
-                  {source.dataset} ({source.externalId}) — {source.license}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
+          </div>
+        </details>
       </section>
       <section className="club-panel mt-3" aria-label="Place edit history">
         <h2 className="h5">Edit history</h2>
@@ -578,26 +585,14 @@ function historyLabel(kind: MapPlaceProposalActivity["kind"]): string {
   }[kind];
 }
 
-/** Resolve a bounded primary hierarchy for breadcrumb navigation. The map
- * service already rejects cyclic imports; this client guard also prevents a
- * malformed response from creating an endless chain in a public page. */
-export async function loadPlaceAncestors(
-  place: MapPlace,
-  signal?: AbortSignal,
-): Promise<MapPlace[]> {
-  const ancestors: MapPlace[] = [];
-  const seen = new Set([place.id]);
-  let parentId = place.parentPlaceId;
-
-  while (parentId && ancestors.length < 16 && !seen.has(parentId)) {
-    seen.add(parentId);
-    const parent = await getMapPlace(parentId, signal);
-    if (!parent) break;
-    ancestors.push(parent);
-    parentId = parent.parentPlaceId;
-  }
-
-  return ancestors.reverse();
+/** Names other than the canonical label are historical/contextual labels and
+ * belong in the page summary. Preserve separate dated records for one
+ * spelling: each can carry distinct evidence and an historical interval. */
+export function otherHistoricalNames(place: MapPlace): MapPlaceName[] {
+  const canonicalName = place.canonicalName.trim().toLocaleLowerCase();
+  return (place.names || []).filter(
+    (name) => name.value.trim().toLocaleLowerCase() !== canonicalName,
+  );
 }
 
 function entityPath(entity: MapEntityLocation): string {
