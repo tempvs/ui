@@ -363,6 +363,7 @@ export default function SearchDialog() {
       selectedProfileTypes,
       selectedTypes,
       hasYearFilter,
+      hasPeriodFilter,
       range,
     ],
   );
