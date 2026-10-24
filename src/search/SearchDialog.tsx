@@ -590,7 +590,7 @@ export default function SearchDialog() {
                   {periodsExpanded && (
                     <div
                       id="search-period-controls"
-                      className="search-filter-controls search-filter-options d-flex flex-column gap-2"
+                      className="search-filter-controls search-filter-options search-period-options d-flex flex-column gap-2"
                     >
                       {PERIODS.map((periodValue) => (
                         <Form.Check

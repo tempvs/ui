@@ -247,14 +247,15 @@
   .search-popover.header-search-popover {
     position: absolute;
     top: calc(100% + 0.35rem);
-    left: 50%;
+    right: 0;
+    left: 0;
     box-sizing: border-box;
-    width: min(42rem, calc(100vw - 1rem));
-    max-width: calc(100vw - 1rem);
+    width: auto;
+    max-width: 100%;
     max-height: calc(100dvh - 9rem);
     overflow-x: hidden;
     overflow-y: auto;
-    transform: translateX(-50%);
+    transform: none;
   }
 
   /* Keep the header overlay dense on phones. Full-page catalogue cards stay
@@ -337,6 +338,18 @@
     flex-wrap: wrap;
     column-gap: 0.7rem !important;
     row-gap: 0.25rem !important;
+  }
+
+  .header-search-popover .search-period-options {
+    flex-direction: column !important;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .header-search-popover .search-period-options .form-check {
+    width: 100%;
+    text-align: left;
   }
 
   .header-search-popover .search-sidebar .d-flex.flex-column.align-items-start {
