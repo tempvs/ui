@@ -65,6 +65,16 @@ function getProfileTypeLabel(profileType: string | null | undefined) {
   return profileType || "";
 }
 
+function searchPeriods(
+  selectedPeriods: readonly string[],
+): Array<string | null> {
+  return selectedPeriods.length ? [...selectedPeriods] : [null];
+}
+
+function periodKey(period: string | null): string {
+  return period || "all";
+}
+
 export default function SearchDialog() {
   const intl = useIntl();
   const location = useLocation();
@@ -72,18 +82,18 @@ export default function SearchDialog() {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const pagingRef = useRef({
     profilePage: 0,
-    clubNextToken: undefined as string | undefined,
-    sourceNextToken: undefined as string | undefined,
+    clubNextTokens: {} as Record<string, string | undefined>,
+    sourceNextTokens: {} as Record<string, string | undefined>,
   });
 
   const [showPopover, setShowPopover] = useState(false);
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [query, setQuery] = useState("");
-  const [period, setPeriod] = useState("");
-  const [selectedProfileTypes, setSelectedProfileTypes] = useState<
-    ProfileType[]
-  >(PROFILE_TYPES);
+  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
+  const [selectedProfileTypes, setSelectedProfileTypes] =
+    useState<ProfileType[]>(PROFILE_TYPES);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [periodsExpanded, setPeriodsExpanded] = useState(false);
   const [yearsExpanded, setYearsExpanded] = useState(false);
   const [profileTypeExpanded, setProfileTypeExpanded] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -111,6 +121,7 @@ export default function SearchDialog() {
     activeTab === "profiles" && profileSearchType === "USER";
   const range = useMemo(() => rangeFromInputs(from, to), [from, to]);
   const hasYearFilter = Boolean(range.from || range.to);
+  const hasPeriodFilter = selectedPeriods.length > 0;
 
   const handleToggle = <T extends string>(
     value: T,
@@ -131,8 +142,8 @@ export default function SearchDialog() {
       if (!append) {
         pagingRef.current = {
           profilePage: 0,
-          clubNextToken: undefined,
-          sourceNextToken: undefined,
+          clubNextTokens: {},
+          sourceNextTokens: {},
         };
         setHasMore(false);
       }
@@ -145,19 +156,30 @@ export default function SearchDialog() {
             setHasMore(false);
             return;
           }
-          const results = await searchProfiles({
-            query,
-            period: profileSearchType === "USER" ? null : period || null,
-            type: profileSearchType,
-            ...(hasYearFilter && range.from ? { from: range.from } : {}),
-            ...(hasYearFilter && range.to ? { to: range.to } : {}),
-            page: append ? pagingRef.current.profilePage + 1 : 0,
-            size: PAGE_SIZE,
-          });
+          const profilePeriods =
+            profileSearchType === "USER"
+              ? [null]
+              : searchPeriods(selectedPeriods);
+          const resultPages = await Promise.all(
+            profilePeriods.map((selectedPeriod) =>
+              searchProfiles({
+                query,
+                period: selectedPeriod,
+                type: profileSearchType,
+                ...(hasYearFilter && range.from ? { from: range.from } : {}),
+                ...(hasYearFilter && range.to ? { to: range.to } : {}),
+                page: append ? pagingRef.current.profilePage + 1 : 0,
+                size: PAGE_SIZE,
+              }),
+            ),
+          );
+          const results = resultPages.flat();
 
           const content = (Array.isArray(results) ? results : []).filter(
             (item) =>
               selectedProfileTypes.includes(item.type as ProfileType) &&
+              (!hasPeriodFilter ||
+                selectedPeriods.includes(item.period || "")) &&
               (!hasYearFilter || overlapsHistoricalRange(item, range)),
           );
           setProfileResults((previous) =>
@@ -176,7 +198,7 @@ export default function SearchDialog() {
           pagingRef.current.profilePage = append
             ? pagingRef.current.profilePage + 1
             : 0;
-          setHasMore(content.length === PAGE_SIZE);
+          setHasMore(resultPages.some((page) => page.length === PAGE_SIZE));
 
           const previewEntries = await Promise.all(
             (Array.isArray(results) ? results : []).map(async (profile) => {
@@ -198,17 +220,28 @@ export default function SearchDialog() {
         }
 
         if (tab === "clubs") {
-          const result = await listClubs(
-            query,
-            period,
-            append ? pagingRef.current.clubNextToken : undefined,
-            undefined,
-            hasYearFilter ? range.from : null,
-            hasYearFilter ? range.to : null,
+          const periodValues = searchPeriods(selectedPeriods);
+          const pages = await Promise.all(
+            periodValues.map((selectedPeriod) =>
+              listClubs(
+                query,
+                selectedPeriod || "",
+                append
+                  ? pagingRef.current.clubNextTokens[periodKey(selectedPeriod)]
+                  : undefined,
+                undefined,
+                hasYearFilter ? range.from : null,
+                hasYearFilter ? range.to : null,
+              ),
+            ),
           );
-          const content = (result.content || []).filter(
-            (item) => !hasYearFilter || overlapsHistoricalRange(item, range),
-          );
+          const content = pages
+            .flatMap((page) => page.content || [])
+            .filter(
+              (item) =>
+                (!hasPeriodFilter || selectedPeriods.includes(item.period)) &&
+                (!hasYearFilter || overlapsHistoricalRange(item, range)),
+            );
           setClubResults((previous) =>
             append
               ? [
@@ -222,8 +255,13 @@ export default function SearchDialog() {
                 ]
               : content,
           );
-          pagingRef.current.clubNextToken = result.nextToken;
-          setHasMore(result.hasMore);
+          pagingRef.current.clubNextTokens = Object.fromEntries(
+            periodValues.map((selectedPeriod, index) => [
+              periodKey(selectedPeriod),
+              pages[index].nextToken,
+            ]),
+          );
+          setHasMore(pages.some((page) => page.hasMore));
           return;
         }
 
@@ -237,7 +275,10 @@ export default function SearchDialog() {
                   `${item.name} ${item.description || ""}`
                     .toLocaleLowerCase()
                     .includes(normalized)) &&
-                (!period || item.periods.includes(period as never)) &&
+                (!hasPeriodFilter ||
+                  item.periods.some((itemPeriod) =>
+                    selectedPeriods.includes(itemPeriod),
+                  )) &&
                 (!hasYearFilter || overlapsHistoricalRange(item, range)),
             ),
           );
@@ -245,20 +286,29 @@ export default function SearchDialog() {
           return;
         }
 
-        const result = await findSources({
-          query,
-          period: period || null,
-          types: selectedTypes,
-          ...(hasYearFilter ? range : {}),
-          nextToken: append ? pagingRef.current.sourceNextToken : undefined,
-          size: PAGE_SIZE,
-        });
-
-        if (!result.ok) {
-          throw new Error("Unable to search sources.");
-        }
-
-        const sources = Array.isArray(result.data) ? result.data : [];
+        const periodValues = searchPeriods(selectedPeriods);
+        const resultPages = await Promise.all(
+          periodValues.map(async (selectedPeriod) => {
+            const result = await findSources({
+              query,
+              period: selectedPeriod,
+              types: selectedTypes,
+              ...(hasYearFilter ? range : {}),
+              nextToken: append
+                ? pagingRef.current.sourceNextTokens[periodKey(selectedPeriod)]
+                : undefined,
+              size: PAGE_SIZE,
+            });
+            if (!result.ok) throw new Error("Unable to search sources.");
+            return result;
+          }),
+        );
+        const sources = resultPages
+          .flatMap((result) => (Array.isArray(result.data) ? result.data : []))
+          .filter(
+            (source) =>
+              !hasPeriodFilter || selectedPeriods.includes(source.period || ""),
+          );
         setSourceResults((previous) =>
           append
             ? [
@@ -272,8 +322,13 @@ export default function SearchDialog() {
               ]
             : sources,
         );
-        pagingRef.current.sourceNextToken = result.nextToken || undefined;
-        setHasMore(Boolean(result.nextToken));
+        pagingRef.current.sourceNextTokens = Object.fromEntries(
+          periodValues.map((selectedPeriod, index) => [
+            periodKey(selectedPeriod),
+            resultPages[index].nextToken || undefined,
+          ]),
+        );
+        setHasMore(resultPages.some((result) => Boolean(result.nextToken)));
 
         const previewEntries = await Promise.all(
           sources.map(async (source) => {
@@ -302,7 +357,7 @@ export default function SearchDialog() {
       }
     },
     [
-      period,
+      selectedPeriods,
       profileSearchType,
       query,
       selectedProfileTypes,
@@ -328,7 +383,7 @@ export default function SearchDialog() {
     };
   }, [
     activeTab,
-    period,
+    selectedPeriods,
     selectedProfileTypes,
     query,
     runSearch,
@@ -396,7 +451,7 @@ export default function SearchDialog() {
   const mapSearchLink = () => {
     const params = publicSearchParams({
       query,
-      period,
+      period: hasPeriodFilter ? selectedPeriods[0] : "",
       range: hasYearFilter ? range : undefined,
     });
     // Map's `q` is a place-name lookup. Header search is an entity lookup, so
@@ -405,7 +460,8 @@ export default function SearchDialog() {
     if (query.trim()) params.set("content", query.trim());
     if (activeTab === "sources") {
       params.set("types", "SOURCE");
-      if (period) params.set("sourcePeriod", period);
+      if (hasPeriodFilter && selectedPeriods.length === 1)
+        params.set("sourcePeriod", selectedPeriods[0]);
       appendMapSearchParams(
         params,
         hasYearFilter ? range : { from: null, to: null },
@@ -413,7 +469,8 @@ export default function SearchDialog() {
       );
     } else if (activeTab === "events") {
       params.set("types", "EVENT");
-      if (period) params.set("eventPeriod", period);
+      if (hasPeriodFilter && selectedPeriods.length === 1)
+        params.set("eventPeriod", selectedPeriods[0]);
       appendMapSearchParams(
         params,
         hasYearFilter ? range : { from: null, to: null },
@@ -421,7 +478,8 @@ export default function SearchDialog() {
       );
     } else if (activeTab === "profiles") {
       params.set("types", "PROFILE");
-      if (period) params.set("profilePeriod", period);
+      if (hasPeriodFilter && selectedPeriods.length === 1)
+        params.set("profilePeriod", selectedPeriods[0]);
       if (profileSearchType) params.set("profileType", profileSearchType);
       appendMapSearchParams(
         params,
@@ -513,22 +571,45 @@ export default function SearchDialog() {
             <Row className="g-4 mt-1">
               <Col lg={4}>
                 <div className="search-sidebar">
-                  <Form.Label className="library-source-filter-heading">
-                    Period
-                  </Form.Label>
-                  <Form.Select
-                    className="mb-4"
-                    value={disablePeriodFilter ? "" : period}
-                    onChange={(event) => setPeriod(event.target.value)}
-                    disabled={disablePeriodFilter}
+                  <button
+                    type="button"
+                    className="library-source-filter-heading search-filter-disclosure"
+                    aria-controls="search-period-controls"
+                    aria-expanded={periodsExpanded}
+                    onClick={() => setPeriodsExpanded((expanded) => !expanded)}
                   >
-                    <option value="">All periods</option>
-                    {PERIODS.map((periodValue) => (
-                      <option key={periodValue} value={periodValue}>
-                        {getPeriodLabel(intl, periodValue)}
-                      </option>
-                    ))}
-                  </Form.Select>
+                    <span>
+                      Periods
+                      {hasPeriodFilter ? ` (${selectedPeriods.length})` : ""}
+                    </span>
+                    <ChevronDownIcon
+                      className={`search-filter-disclosure-caret${periodsExpanded ? " is-expanded" : ""}`}
+                    />
+                  </button>
+                  {periodsExpanded && (
+                    <div
+                      id="search-period-controls"
+                      className="search-filter-controls search-filter-options d-flex flex-column gap-2"
+                    >
+                      {PERIODS.map((periodValue) => (
+                        <Form.Check
+                          key={periodValue}
+                          type="checkbox"
+                          id={`search-period-${periodValue}`}
+                          label={getPeriodLabel(intl, periodValue)}
+                          checked={selectedPeriods.includes(periodValue)}
+                          disabled={disablePeriodFilter}
+                          onChange={() =>
+                            handleToggle(
+                              periodValue,
+                              selectedPeriods,
+                              setSelectedPeriods,
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="library-source-filter-heading search-filter-disclosure"
@@ -542,7 +623,10 @@ export default function SearchDialog() {
                     />
                   </button>
                   {yearsExpanded && (
-                    <div id="search-years-controls" className="search-filter-controls">
+                    <div
+                      id="search-years-controls"
+                      className="search-filter-controls"
+                    >
                       <HistoricalRangeFilter
                         enabled={hasYearFilter}
                         from={from}
