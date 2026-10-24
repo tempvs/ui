@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -87,6 +88,9 @@ export default function SearchDialog() {
   });
 
   const [showPopover, setShowPopover] = useState(false);
+  const [mobilePopoverTop, setMobilePopoverTop] = useState<number | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [query, setQuery] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
@@ -439,6 +443,42 @@ export default function SearchDialog() {
     setShowPopover(false);
   }, [location.pathname]);
 
+  useLayoutEffect(() => {
+    if (!showPopover) {
+      setMobilePopoverTop(null);
+      return;
+    }
+
+    const updateMobilePopoverPosition = () => {
+      const shell = rootRef.current;
+      if (!shell || !window.matchMedia("(max-width: 767.98px)").matches) {
+        setMobilePopoverTop(null);
+        return;
+      }
+
+      setMobilePopoverTop(
+        Math.ceil(shell.getBoundingClientRect().bottom + 6),
+      );
+    };
+
+    updateMobilePopoverPosition();
+    window.addEventListener("resize", updateMobilePopoverPosition);
+    window.addEventListener("scroll", updateMobilePopoverPosition, true);
+    window.visualViewport?.addEventListener(
+      "resize",
+      updateMobilePopoverPosition,
+    );
+
+    return () => {
+      window.removeEventListener("resize", updateMobilePopoverPosition);
+      window.removeEventListener("scroll", updateMobilePopoverPosition, true);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateMobilePopoverPosition,
+      );
+    };
+  }, [showPopover]);
+
   const openPopover = () => {
     setShowPopover(true);
     setSearched(true);
@@ -520,6 +560,11 @@ export default function SearchDialog() {
             className="search-popover header-search-popover"
             role="dialog"
             aria-label="Search"
+            style={
+              mobilePopoverTop === null
+                ? undefined
+                : { top: `${mobilePopoverTop}px` }
+            }
           >
             <Nav
               variant="tabs"
