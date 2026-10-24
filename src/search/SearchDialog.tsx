@@ -44,9 +44,10 @@ import {
 } from "./publicSearchFilterContract";
 
 type SearchTab = "profiles" | "clubs" | "events" | "sources";
-type ProfileTypeFilter = "USER" | "CLUB" | "";
+type ProfileType = "USER" | "CLUB";
 
 const PAGE_SIZE = 20;
+const PROFILE_TYPES: ProfileType[] = ["USER", "CLUB"];
 const ChevronDownIcon = FaChevronDown as React.ComponentType<{
   className?: string;
 }>;
@@ -79,7 +80,9 @@ export default function SearchDialog() {
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState("");
-  const [profileType, setProfileType] = useState<ProfileTypeFilter>("");
+  const [selectedProfileTypes, setSelectedProfileTypes] = useState<
+    ProfileType[]
+  >(PROFILE_TYPES);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [yearsExpanded, setYearsExpanded] = useState(false);
   const [profileTypeExpanded, setProfileTypeExpanded] = useState(false);
@@ -102,15 +105,17 @@ export default function SearchDialog() {
   const [sourcePreviewImages, setSourcePreviewImages] = useState<
     Record<string | number, LibrarySourceImage | null>
   >({});
+  const profileSearchType =
+    selectedProfileTypes.length === 1 ? selectedProfileTypes[0] : null;
   const disablePeriodFilter =
-    activeTab === "profiles" && profileType === "USER";
+    activeTab === "profiles" && profileSearchType === "USER";
   const range = useMemo(() => rangeFromInputs(from, to), [from, to]);
   const hasYearFilter = Boolean(range.from || range.to);
 
-  const handleToggle = (
-    value: string,
-    selectedValues: string[],
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
+  const handleToggle = <T extends string>(
+    value: T,
+    selectedValues: readonly T[],
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
   ) => {
     setter(
       selectedValues.includes(value)
@@ -134,10 +139,16 @@ export default function SearchDialog() {
 
       try {
         if (tab === "profiles") {
+          if (selectedProfileTypes.length === 0) {
+            setProfileResults([]);
+            setProfilePreviewImages({});
+            setHasMore(false);
+            return;
+          }
           const results = await searchProfiles({
             query,
-            period: profileType === "USER" ? null : period || null,
-            type: profileType || null,
+            period: profileSearchType === "USER" ? null : period || null,
+            type: profileSearchType,
             ...(hasYearFilter && range.from ? { from: range.from } : {}),
             ...(hasYearFilter && range.to ? { to: range.to } : {}),
             page: append ? pagingRef.current.profilePage + 1 : 0,
@@ -145,7 +156,9 @@ export default function SearchDialog() {
           });
 
           const content = (Array.isArray(results) ? results : []).filter(
-            (item) => !hasYearFilter || overlapsHistoricalRange(item, range),
+            (item) =>
+              selectedProfileTypes.includes(item.type as ProfileType) &&
+              (!hasYearFilter || overlapsHistoricalRange(item, range)),
           );
           setProfileResults((previous) =>
             append
@@ -288,7 +301,15 @@ export default function SearchDialog() {
         setLoading(false);
       }
     },
-    [period, profileType, query, selectedTypes, hasYearFilter, range],
+    [
+      period,
+      profileSearchType,
+      query,
+      selectedProfileTypes,
+      selectedTypes,
+      hasYearFilter,
+      range,
+    ],
   );
 
   useEffect(() => {
@@ -308,7 +329,7 @@ export default function SearchDialog() {
   }, [
     activeTab,
     period,
-    profileType,
+    selectedProfileTypes,
     query,
     runSearch,
     searched,
@@ -401,7 +422,7 @@ export default function SearchDialog() {
     } else if (activeTab === "profiles") {
       params.set("types", "PROFILE");
       if (period) params.set("profilePeriod", period);
-      if (profileType) params.set("profileType", profileType);
+      if (profileSearchType) params.set("profileType", profileSearchType);
       appendMapSearchParams(
         params,
         hasYearFilter ? range : { from: null, to: null },
@@ -558,25 +579,30 @@ export default function SearchDialog() {
                           className="search-filter-controls search-filter-options d-flex flex-column gap-2"
                         >
                           <Form.Check
-                            type="radio"
-                            id="profile-type-all"
-                            label="All"
-                            checked={profileType === ""}
-                            onChange={() => setProfileType("")}
-                          />
-                          <Form.Check
-                            type="radio"
+                            type="checkbox"
                             id="profile-type-user"
                             label="User"
-                            checked={profileType === "USER"}
-                            onChange={() => setProfileType("USER")}
+                            checked={selectedProfileTypes.includes("USER")}
+                            onChange={() =>
+                              handleToggle(
+                                "USER",
+                                selectedProfileTypes,
+                                setSelectedProfileTypes,
+                              )
+                            }
                           />
                           <Form.Check
-                            type="radio"
+                            type="checkbox"
                             id="profile-type-club"
                             label="Club"
-                            checked={profileType === "CLUB"}
-                            onChange={() => setProfileType("CLUB")}
+                            checked={selectedProfileTypes.includes("CLUB")}
+                            onChange={() =>
+                              handleToggle(
+                                "CLUB",
+                                selectedProfileTypes,
+                                setSelectedProfileTypes,
+                              )
+                            }
                           />
                         </div>
                       )}
