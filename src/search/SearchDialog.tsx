@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Badge, Card, Col, Form, Nav, Row } from "react-bootstrap";
-import { FaSearch } from "react-icons/fa";
+import { FaChevronDown, FaSearch } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
 
@@ -47,6 +47,9 @@ type SearchTab = "profiles" | "clubs" | "events" | "sources";
 type ProfileTypeFilter = "USER" | "CLUB" | "";
 
 const PAGE_SIZE = 20;
+const ChevronDownIcon = FaChevronDown as React.ComponentType<{
+  className?: string;
+}>;
 const SearchIcon = FaSearch as React.ComponentType<{ className?: string }>;
 
 function getProfileTypeLabel(profileType: string | null | undefined) {
@@ -79,6 +82,8 @@ export default function SearchDialog() {
   const [profileType, setProfileType] = useState<ProfileTypeFilter>("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [yearsExpanded, setYearsExpanded] = useState(false);
+  const [profileTypeExpanded, setProfileTypeExpanded] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -504,47 +509,79 @@ export default function SearchDialog() {
                       </option>
                     ))}
                   </Form.Select>
-                  <HistoricalRangeFilter
-                    enabled={rangeEnabled}
-                    from={from}
-                    to={to}
-                    onEnabledChange={setRangeEnabled}
-                    onFromChange={setFrom}
-                    onToChange={setTo}
-                    onValueEntered={() => setRangeEnabled(true)}
-                    label="Years"
-                    alwaysShowFields
-                    stacked
-                  />
+                  <button
+                    type="button"
+                    className="library-source-filter-heading search-filter-disclosure"
+                    aria-controls="search-years-controls"
+                    aria-expanded={yearsExpanded}
+                    onClick={() => setYearsExpanded((expanded) => !expanded)}
+                  >
+                    <span>Years</span>
+                    <ChevronDownIcon
+                      className={`search-filter-disclosure-caret${yearsExpanded ? " is-expanded" : ""}`}
+                    />
+                  </button>
+                  {yearsExpanded && (
+                    <div id="search-years-controls" className="search-filter-controls">
+                      <HistoricalRangeFilter
+                        enabled={rangeEnabled}
+                        from={from}
+                        to={to}
+                        onEnabledChange={setRangeEnabled}
+                        onFromChange={setFrom}
+                        onToChange={setTo}
+                        onValueEntered={() => setRangeEnabled(true)}
+                        label="Use a year range"
+                        alwaysShowFields
+                        stacked
+                      />
+                    </div>
+                  )}
 
                   {activeTab === "profiles" && (
                     <>
-                      <Form.Label className="library-source-filter-heading">
-                        Profile type
-                      </Form.Label>
-                      <div className="search-filter-options d-flex flex-column gap-2">
-                        <Form.Check
-                          type="radio"
-                          id="profile-type-all"
-                          label="All"
-                          checked={profileType === ""}
-                          onChange={() => setProfileType("")}
+                      <button
+                        type="button"
+                        className="library-source-filter-heading search-filter-disclosure"
+                        aria-controls="search-profile-type-controls"
+                        aria-expanded={profileTypeExpanded}
+                        onClick={() =>
+                          setProfileTypeExpanded((expanded) => !expanded)
+                        }
+                      >
+                        <span>Profile type</span>
+                        <ChevronDownIcon
+                          className={`search-filter-disclosure-caret${profileTypeExpanded ? " is-expanded" : ""}`}
                         />
-                        <Form.Check
-                          type="radio"
-                          id="profile-type-user"
-                          label="User"
-                          checked={profileType === "USER"}
-                          onChange={() => setProfileType("USER")}
-                        />
-                        <Form.Check
-                          type="radio"
-                          id="profile-type-club"
-                          label="Club"
-                          checked={profileType === "CLUB"}
-                          onChange={() => setProfileType("CLUB")}
-                        />
-                      </div>
+                      </button>
+                      {profileTypeExpanded && (
+                        <div
+                          id="search-profile-type-controls"
+                          className="search-filter-controls search-filter-options d-flex flex-column gap-2"
+                        >
+                          <Form.Check
+                            type="radio"
+                            id="profile-type-all"
+                            label="All"
+                            checked={profileType === ""}
+                            onChange={() => setProfileType("")}
+                          />
+                          <Form.Check
+                            type="radio"
+                            id="profile-type-user"
+                            label="User"
+                            checked={profileType === "USER"}
+                            onChange={() => setProfileType("USER")}
+                          />
+                          <Form.Check
+                            type="radio"
+                            id="profile-type-club"
+                            label="Club"
+                            checked={profileType === "CLUB"}
+                            onChange={() => setProfileType("CLUB")}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
 
