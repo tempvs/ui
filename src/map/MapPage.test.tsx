@@ -407,8 +407,18 @@ test("hydrates a copied personal map from the original user scope", async () => 
 test("frames every related marker after a shared graph has loaded", async () => {
   mockLoadSharedMapScope.mockResolvedValue({
     markers: [
-      { key: "PROFILE:first", latitude: 41.9, longitude: 12.5 },
-      { key: "SOURCE:second", latitude: 50.1, longitude: 8.6 },
+      {
+        key: "PROFILE:first",
+        entityType: "PROFILE",
+        latitude: 41.9,
+        longitude: 12.5,
+      },
+      {
+        key: "SOURCE:second",
+        entityType: "SOURCE",
+        latitude: 50.1,
+        longitude: 8.6,
+      },
     ],
     connections: [],
   } as never);
