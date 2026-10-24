@@ -143,6 +143,8 @@ export default function MapPage() {
   const suggestionRequest = useRef(0);
   const entityFilterRequest = useRef(0);
   const appliedEntityFilterSignature = useRef<string | null>(null);
+  const coordinateFieldsRef = useRef<HTMLDivElement>(null);
+  const mapSectionRef = useRef<HTMLElement>(null);
   const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
 
   useEffect(() => {
@@ -472,7 +474,10 @@ export default function MapPage() {
     }
   };
 
-  const search = async (options?: { useCurrentCoordinates?: boolean }) => {
+  const search = async (options?: {
+    useCurrentCoordinates?: boolean;
+    scrollToMap?: boolean;
+  }) => {
     setError("");
     setMapError("");
     const trimmed = query.trim();
@@ -513,6 +518,11 @@ export default function MapPage() {
       setError("Enter valid latitude and longitude values.");
       return;
     }
+    if (options?.scrollToMap)
+      mapSectionRef.current?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "start",
+      });
     const next = new URLSearchParams();
     if (linkedPlace) next.set("placeId", linkedPlace.id);
     // Keep the requested historical label in the URL. Replacing it with the
@@ -601,6 +611,16 @@ export default function MapPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const searchCoordinatesOnBlur = () => {
+    window.setTimeout(() => {
+      // Moving from one coordinate field to the other is not a completed
+      // coordinate entry. Search only after focus has left the pair.
+      if (coordinateFieldsRef.current?.contains(document.activeElement)) return;
+      if (!latitude.trim() || !longitude.trim()) return;
+      void search({ useCurrentCoordinates: true, scrollToMap: true });
+    }, 0);
   };
 
   useEffect(() => {
@@ -745,28 +765,54 @@ export default function MapPage() {
           </p>
         </div>
         <div className="map-discovery-controls">
-          <Form.Group className="map-place-search-field">
-            <Form.Label htmlFor="map-place-search">Place</Form.Label>
-            <PlaceSearchAutocomplete
-              inputId="map-place-search"
-              query={query}
-              onQueryChange={(value) => {
-                setQuery(value);
-                setSelectedPlaceId(null);
-                setLatitude("");
-                setLongitude("");
-              }}
-              results={suggestions}
-              loading={suggestionsLoading}
-              failed={suggestionsFailed}
-              onSelect={(place) => void selectPlace(place)}
-              placeholder="Rome, Constantinople…"
-              ariaLabel="Place"
-              resultsClassName="map-place-suggestions"
-              optionClassName="map-place-suggestion"
-              statusClassName="map-place-suggestions-status"
-            />
-          </Form.Group>
+          <div className="map-place-search-and-coordinates">
+            <Form.Group className="map-place-search-field">
+              <Form.Label htmlFor="map-place-search">Place</Form.Label>
+              <PlaceSearchAutocomplete
+                inputId="map-place-search"
+                query={query}
+                onQueryChange={(value) => {
+                  setQuery(value);
+                  setSelectedPlaceId(null);
+                  setLatitude("");
+                  setLongitude("");
+                }}
+                results={suggestions}
+                loading={suggestionsLoading}
+                failed={suggestionsFailed}
+                onSelect={(place) => void selectPlace(place)}
+                placeholder="Rome, Constantinople…"
+                ariaLabel="Place"
+                resultsClassName="map-place-suggestions"
+                optionClassName="map-place-suggestion"
+                statusClassName="map-place-suggestions-status"
+              />
+            </Form.Group>
+            <div
+              ref={coordinateFieldsRef}
+              className="map-coordinate-fields"
+              onBlur={searchCoordinatesOnBlur}
+            >
+              <Form.Group controlId="map-latitude">
+                <Form.Label>Latitude</Form.Label>
+                <Form.Control
+                  size="sm"
+                  value={latitude}
+                  onChange={(event) => setLatitude(event.target.value)}
+                  inputMode="decimal"
+                />
+              </Form.Group>
+              <Form.Group controlId="map-longitude">
+                <Form.Label>Longitude</Form.Label>
+                <Form.Control
+                  size="sm"
+                  value={longitude}
+                  onChange={(event) => setLongitude(event.target.value)}
+                  inputMode="decimal"
+                />
+              </Form.Group>
+            </div>
+          </div>
           <MapEntityFilterControls
             idPrefix="map"
             entityTypes={types}
@@ -808,40 +854,6 @@ export default function MapPage() {
               checked={showModernBorders}
               onChange={(event) => setShowModernBorders(event.target.checked)}
             />
-            <details className="map-coordinate-options">
-              <summary>Use coordinates instead</summary>
-              <div className="map-coordinate-options-content">
-                <Form.Group>
-                  <Form.Label>Latitude</Form.Label>
-                  <Form.Control
-                    size="sm"
-                    value={latitude}
-                    onChange={(event) => setLatitude(event.target.value)}
-                    inputMode="decimal"
-                  />
-                </Form.Group>
-                <Form.Group>
-                  <Form.Label>Longitude</Form.Label>
-                  <Form.Control
-                    size="sm"
-                    value={longitude}
-                    onChange={(event) => setLongitude(event.target.value)}
-                    inputMode="decimal"
-                  />
-                </Form.Group>
-                <Button
-                  type="button"
-                  variant="outline-dark"
-                  size="sm"
-                  onClick={() =>
-                    void search({ useCurrentCoordinates: true })
-                  }
-                  disabled={loading}
-                >
-                  Show area
-                </Button>
-              </div>
-            </details>
           </div>
         </div>
         {error && (
@@ -887,7 +899,11 @@ export default function MapPage() {
           </ul>
         </section>
       )}
-      <section className="club-panel mt-3" aria-label="Interactive map">
+      <section
+        ref={mapSectionRef}
+        className="club-panel mt-3"
+        aria-label="Interactive map"
+      >
         <MapCanvas
           places={items}
           entities={visibleEntities}

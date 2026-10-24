@@ -190,6 +190,32 @@ test("searches places while typing and labels the selected marker with the match
   jest.useRealTimers();
 });
 
+test("searches nearby content after both coordinate fields lose focus", async () => {
+  render(
+    <MemoryRouter>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  fireEvent.change(screen.getByLabelText("Latitude"), {
+    target: { value: "41.9" },
+  });
+  fireEvent.change(screen.getByLabelText("Longitude"), {
+    target: { value: "12.5" },
+  });
+  fireEvent.blur(screen.getByLabelText("Longitude"));
+
+  await waitFor(() =>
+    expect(mockNearbyMapPlaces).toHaveBeenCalledWith(41.9, 12.5, 25),
+  );
+  expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+    "data-focus",
+    "41.9,12.5",
+  );
+  expect(screen.queryByText("Use coordinates instead")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Show area" })).not.toBeInTheDocument();
+});
+
 test("restores source type, event, and profile discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
