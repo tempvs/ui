@@ -244,13 +244,140 @@
     grid-row: 3;
   }
 
-  .search-popover {
+  .search-popover.header-search-popover {
     position: absolute;
     top: calc(100% + 0.35rem);
     left: 0;
     width: min(42rem, calc(100vw - 1.5rem));
-    max-height: calc(100dvh - 5.5rem);
+    max-height: calc(100dvh - 9rem);
     overflow-y: auto;
+  }
+
+  /* Keep the header overlay dense on phones. Full-page catalogue cards stay
+     spacious; only this transient navigation search needs to minimize scroll. */
+  .search-popover.header-search-popover {
+    padding: 0.32rem 0.36rem 0.42rem;
+    font-size: 0.78rem;
+  }
+
+  .header-search-popover .search-tabs {
+    flex-wrap: nowrap;
+    gap: 0.12rem;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .header-search-popover .search-tabs .nav-item {
+    flex: 1 1 0;
+  }
+
+  .header-search-popover .search-tabs .nav-link {
+    display: block;
+    width: 100%;
+    min-height: 1.9rem;
+    padding: 0.25rem 0.12rem;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  .header-search-popover .small {
+    font-size: 0.7rem !important;
+  }
+
+  .header-search-popover .row {
+    --bs-gutter-x: 0.45rem;
+    --bs-gutter-y: 0.5rem;
+    margin-top: 0 !important;
+  }
+
+  .header-search-popover .search-sidebar {
+    padding: 0.4rem;
+    font-size: 0.76rem;
+  }
+
+  .header-search-popover .library-source-filter-heading {
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.1rem;
+    font-size: 0.68rem;
+  }
+
+  .header-search-popover .search-sidebar .mb-4 {
+    margin-bottom: 0.65rem !important;
+  }
+
+  .header-search-popover .search-sidebar .mb-3 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .header-search-popover .search-sidebar .form-select {
+    min-height: 2rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.76rem;
+  }
+
+  .header-search-popover .search-sidebar .form-check {
+    min-height: 1.35rem;
+    margin-bottom: 0;
+    font-size: 0.76rem;
+  }
+
+  .header-search-popover .search-sidebar .gap-2 {
+    gap: 0.35rem !important;
+  }
+
+  .header-search-popover .search-filter-options {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    column-gap: 0.7rem !important;
+    row-gap: 0.25rem !important;
+  }
+
+  .header-search-popover .search-sidebar .d-flex.flex-column.align-items-start {
+    flex-direction: row !important;
+    align-items: flex-end !important;
+  }
+
+  .header-search-popover .search-sidebar .historical-year-era-toggle {
+    min-width: 1.7rem;
+    width: 1.7rem;
+    height: 1.5rem;
+    font-size: 0.7rem;
+  }
+
+  .header-search-popover .search-results-grid {
+    gap: 0.35rem;
+  }
+
+  .header-search-popover .search-results-grid .card-title,
+  .header-search-popover .search-profile-card .card-title.fs-5 {
+    margin-bottom: 0.2rem;
+    font-size: 0.9rem !important;
+  }
+
+  .header-search-popover .search-profile-card-body,
+  .header-search-popover .search-results-grid .source-card-body {
+    flex-direction: row;
+    gap: 0.4rem !important;
+    padding: 0.4rem;
+  }
+
+  .header-search-popover .search-profile-image-link,
+  .header-search-popover .search-results-grid .source-card-image-link {
+    flex: 0 0 3.25rem;
+    width: 3.25rem;
+    min-width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .header-search-popover .search-profile-meta,
+  .header-search-popover .search-results-grid .card-text {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .header-search-popover .search-profile-card .badge,
+  .header-search-popover .search-results-grid .badge {
+    font-size: 0.62rem;
   }
 
   .header-icon-button,

@@ -432,7 +432,11 @@ export default function SearchDialog() {
         </div>
 
         {showPopover && (
-          <div className="search-popover" role="dialog" aria-label="Search">
+          <div
+            className="search-popover header-search-popover"
+            role="dialog"
+            aria-label="Search"
+          >
             <Nav
               variant="tabs"
               activeKey={activeTab}
@@ -518,7 +522,7 @@ export default function SearchDialog() {
                       <Form.Label className="library-source-filter-heading">
                         Profile type
                       </Form.Label>
-                      <div className="d-flex flex-column gap-2">
+                      <div className="search-filter-options d-flex flex-column gap-2">
                         <Form.Check
                           type="radio"
                           id="profile-type-all"
@@ -549,7 +553,7 @@ export default function SearchDialog() {
                       <Form.Label className="library-source-filter-heading">
                         Type
                       </Form.Label>
-                      <div className="d-flex flex-column gap-2">
+                      <div className="search-filter-options d-flex flex-column gap-2">
                         {TYPES.map((type) => (
                           <Form.Check
                             key={type}
@@ -743,6 +747,7 @@ export default function SearchDialog() {
                           <Card.Body className="search-profile-card-body">
                             <Link
                               to={`/clubs/${club.alias || club.id}`}
+                              className="search-profile-image-link"
                               onClick={closePopover}
                             >
                               <RefreshingImage
@@ -790,6 +795,7 @@ export default function SearchDialog() {
                           <Card.Body className="search-profile-card-body">
                             <Link
                               to={`/events/${item.id}`}
+                              className="search-profile-image-link"
                               onClick={closePopover}
                             >
                               <RefreshingImage
