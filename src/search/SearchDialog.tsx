@@ -81,7 +81,6 @@ export default function SearchDialog() {
   const [period, setPeriod] = useState("");
   const [profileType, setProfileType] = useState<ProfileTypeFilter>("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [rangeEnabled, setRangeEnabled] = useState(false);
   const [yearsExpanded, setYearsExpanded] = useState(false);
   const [profileTypeExpanded, setProfileTypeExpanded] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -106,6 +105,7 @@ export default function SearchDialog() {
   const disablePeriodFilter =
     activeTab === "profiles" && profileType === "USER";
   const range = useMemo(() => rangeFromInputs(from, to), [from, to]);
+  const hasYearFilter = Boolean(range.from || range.to);
 
   const handleToggle = (
     value: string,
@@ -138,14 +138,14 @@ export default function SearchDialog() {
             query,
             period: profileType === "USER" ? null : period || null,
             type: profileType || null,
-            ...(rangeEnabled && range.from ? { from: range.from } : {}),
-            ...(rangeEnabled && range.to ? { to: range.to } : {}),
+            ...(hasYearFilter && range.from ? { from: range.from } : {}),
+            ...(hasYearFilter && range.to ? { to: range.to } : {}),
             page: append ? pagingRef.current.profilePage + 1 : 0,
             size: PAGE_SIZE,
           });
 
           const content = (Array.isArray(results) ? results : []).filter(
-            (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
+            (item) => !hasYearFilter || overlapsHistoricalRange(item, range),
           );
           setProfileResults((previous) =>
             append
@@ -190,11 +190,11 @@ export default function SearchDialog() {
             period,
             append ? pagingRef.current.clubNextToken : undefined,
             undefined,
-            rangeEnabled ? range.from : null,
-            rangeEnabled ? range.to : null,
+            hasYearFilter ? range.from : null,
+            hasYearFilter ? range.to : null,
           );
           const content = (result.content || []).filter(
-            (item) => !rangeEnabled || overlapsHistoricalRange(item, range),
+            (item) => !hasYearFilter || overlapsHistoricalRange(item, range),
           );
           setClubResults((previous) =>
             append
@@ -225,7 +225,7 @@ export default function SearchDialog() {
                     .toLocaleLowerCase()
                     .includes(normalized)) &&
                 (!period || item.periods.includes(period as never)) &&
-                (!rangeEnabled || overlapsHistoricalRange(item, range)),
+                (!hasYearFilter || overlapsHistoricalRange(item, range)),
             ),
           );
           setHasMore(false);
@@ -236,7 +236,7 @@ export default function SearchDialog() {
           query,
           period: period || null,
           types: selectedTypes,
-          ...(rangeEnabled ? range : {}),
+          ...(hasYearFilter ? range : {}),
           nextToken: append ? pagingRef.current.sourceNextToken : undefined,
           size: PAGE_SIZE,
         });
@@ -288,7 +288,7 @@ export default function SearchDialog() {
         setLoading(false);
       }
     },
-    [period, profileType, query, selectedTypes, rangeEnabled, range],
+    [period, profileType, query, selectedTypes, hasYearFilter, range],
   );
 
   useEffect(() => {
@@ -313,7 +313,6 @@ export default function SearchDialog() {
     runSearch,
     searched,
     selectedTypes,
-    rangeEnabled,
     from,
     to,
     showPopover,
@@ -377,7 +376,7 @@ export default function SearchDialog() {
     const params = publicSearchParams({
       query,
       period,
-      range: rangeEnabled ? range : undefined,
+      range: hasYearFilter ? range : undefined,
     });
     // Map's `q` is a place-name lookup. Header search is an entity lookup, so
     // project the common textual query into the marker `content` filter.
@@ -388,7 +387,7 @@ export default function SearchDialog() {
       if (period) params.set("sourcePeriod", period);
       appendMapSearchParams(
         params,
-        rangeEnabled ? range : { from: null, to: null },
+        hasYearFilter ? range : { from: null, to: null },
         "source",
       );
     } else if (activeTab === "events") {
@@ -396,7 +395,7 @@ export default function SearchDialog() {
       if (period) params.set("eventPeriod", period);
       appendMapSearchParams(
         params,
-        rangeEnabled ? range : { from: null, to: null },
+        hasYearFilter ? range : { from: null, to: null },
         "event",
       );
     } else if (activeTab === "profiles") {
@@ -405,7 +404,7 @@ export default function SearchDialog() {
       if (profileType) params.set("profileType", profileType);
       appendMapSearchParams(
         params,
-        rangeEnabled ? range : { from: null, to: null },
+        hasYearFilter ? range : { from: null, to: null },
         "profile",
       );
     } else {
@@ -524,15 +523,14 @@ export default function SearchDialog() {
                   {yearsExpanded && (
                     <div id="search-years-controls" className="search-filter-controls">
                       <HistoricalRangeFilter
-                        enabled={rangeEnabled}
+                        enabled={hasYearFilter}
                         from={from}
                         to={to}
-                        onEnabledChange={setRangeEnabled}
+                        onEnabledChange={() => {}}
                         onFromChange={setFrom}
                         onToChange={setTo}
-                        onValueEntered={() => setRangeEnabled(true)}
-                        label="Use a year range"
-                        alwaysShowFields
+                        label={null}
+                        showToggle={false}
                         stacked
                       />
                     </div>
