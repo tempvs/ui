@@ -7,6 +7,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (max-width: 767.98px) {
+  /* A transient overlay must never increase the document's scrollable width.
+     Keep this boundary on every root layer because mobile browsers disagree on
+     whether document or body owns horizontal scrolling. */
+  html,
+  body,
+  #root,
+  .App {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+}
+
 code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
