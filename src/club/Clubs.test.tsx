@@ -37,7 +37,9 @@ jest.mock("./clubApi", () => ({
   updateClub: jest.fn(),
   deleteClub: jest.fn(),
   addAdmin: jest.fn(),
+  addAdminProfile: jest.fn(),
   removeAdmin: jest.fn(),
+  removeAdminProfile: jest.fn(),
   createClub: jest.fn(),
   getClubFollowers: jest.fn(),
   getClubFollowState: jest.fn(),
@@ -637,7 +639,7 @@ test("creator administration searches matching club profiles while typing", asyn
       period: "HIGH_MIDDLE_AGES",
     },
   ]);
-  mock(api.addAdmin).mockResolvedValue({
+  mock(api.addAdminProfile).mockResolvedValue({
     ...club,
     canManage: true,
     canManageAdmins: true,
@@ -668,7 +670,13 @@ test("creator administration searches matching club profiles while typing", asyn
     screen.queryByRole("button", { name: "Search" }),
   ).not.toBeInTheDocument();
   fireEvent.click(await screen.findByRole("button", { name: "Assign" }));
-  await waitFor(() => expect(api.addAdmin).toHaveBeenCalledWith(1, "user-30"));
+  await waitFor(() =>
+    expect(api.addAdminProfile).toHaveBeenCalledWith(
+      1,
+      "club-profile-1",
+      "Administrator",
+    ),
+  );
 });
 
 test("club membership uses the shared panel without an add control", async () => {
