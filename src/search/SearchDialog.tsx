@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Badge, Card, Col, Form, Nav, Row } from "react-bootstrap";
+import { createPortal } from "react-dom";
 import { FaChevronDown, FaSearch } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
@@ -80,6 +81,7 @@ export default function SearchDialog() {
   const intl = useIntl();
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const pagingRef = useRef({
     profilePage: 0,
@@ -419,7 +421,11 @@ export default function SearchDialog() {
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !rootRef.current?.contains(target) &&
+        !popoverRef.current?.contains(target)
+      ) {
         setShowPopover(false);
       }
     };
@@ -555,8 +561,10 @@ export default function SearchDialog() {
           />
         </div>
 
-        {showPopover && (
+        {showPopover
+          ? createPortal(
           <div
+            ref={popoverRef}
             className="search-popover header-search-popover"
             role="dialog"
             aria-label="Search"
@@ -1030,8 +1038,10 @@ export default function SearchDialog() {
                 )}
               </Col>
             </Row>
-          </div>
-        )}
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </>
   );
