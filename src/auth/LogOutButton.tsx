@@ -31,7 +31,11 @@ export default function LogOutButton({ avatarUrl, avatarText }: LogOutButtonProp
   return (
     <>
       <HeaderIconPopover text="logout.popover" defaultMessage="Log out">
-        <Button className="header-icon-button auth-control-button" variant="default" onClick={handleShow}>
+        <Button
+          className={`header-icon-button auth-control-button${avatar ? " auth-control-button--with-avatar" : ""}`}
+          variant="default"
+          onClick={handleShow}
+        >
           {avatar}
           <SignOutIcon />
         </Button>
