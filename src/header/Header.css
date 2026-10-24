@@ -247,10 +247,14 @@
   .search-popover.header-search-popover {
     position: absolute;
     top: calc(100% + 0.35rem);
-    left: 0;
-    width: min(42rem, calc(100vw - 1.5rem));
+    left: 50%;
+    box-sizing: border-box;
+    width: min(42rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
     max-height: calc(100dvh - 9rem);
+    overflow-x: hidden;
     overflow-y: auto;
+    transform: translateX(-50%);
   }
 
   /* Keep the header overlay dense on phones. Full-page catalogue cards stay
@@ -286,6 +290,9 @@
   .header-search-popover .row {
     --bs-gutter-x: 0.45rem;
     --bs-gutter-y: 0.5rem;
+    width: 100%;
+    margin-right: 0;
+    margin-left: 0;
     margin-top: 0 !important;
   }
 
