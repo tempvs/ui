@@ -25,7 +25,6 @@ type Props = {
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
   profileType: string;
   onProfileTypeChange: (value: string) => void;
-  additionalFilters?: React.ReactNode;
 };
 
 const allEntityTypes: MapEntityLocation["entityType"][] = [
@@ -35,8 +34,9 @@ const allEntityTypes: MapEntityLocation["entityType"][] = [
   "SOURCE",
 ];
 
-/** One common historical context keeps discovery simple; entity-specific
- * facets stay available without competing period/year controls. */
+/** Common temporal context applies to every kind of map content. Type-specific
+ * filters live beside the type they affect instead of behind one catch-all
+ * disclosure. */
 export default function MapEntityFilterControls({
   idPrefix,
   entityTypes,
@@ -55,7 +55,6 @@ export default function MapEntityFilterControls({
   onEventRolesChange,
   profileType,
   onProfileTypeChange,
-  additionalFilters,
 }: Props) {
   const toggleEntityType = (type: MapEntityLocation["entityType"]) =>
     onEntityTypesChange(
@@ -81,16 +80,109 @@ export default function MapEntityFilterControls({
       <Form.Group className="map-filter-layers mb-0">
         <Form.Label>Show</Form.Label>
         <div className="map-filter-layer-list">
-          {allEntityTypes.map((type) => (
-            <Form.Check
-              inline
-              key={type}
-              id={`${idPrefix}-type-${type}`}
-              label={type[0] + type.slice(1).toLowerCase()}
-              checked={entityTypes.includes(type)}
-              onChange={() => toggleEntityType(type)}
-            />
-          ))}
+          {allEntityTypes.map((type) => {
+            const label = type[0] + type.slice(1).toLowerCase();
+
+            return (
+              <div className="map-filter-layer" key={type}>
+                <Form.Check
+                  id={`${idPrefix}-type-${type}`}
+                  aria-label={`Show ${label}`}
+                  checked={entityTypes.includes(type)}
+                  onChange={() => toggleEntityType(type)}
+                />
+                <details className="map-type-filter">
+                  <summary>{label}</summary>
+                  <div className="map-type-filter-content">
+                    {type === "SOURCE" && (
+                      <>
+                        <Form.Group>
+                          <Form.Label>Source place</Form.Label>
+                          <div className="d-flex gap-2 flex-wrap">
+                            {(
+                              [
+                                ["DISCOVERED_AT", "Discovered at"],
+                                ["HELD_AT", "Held at"],
+                              ] as const
+                            ).map(([role, roleLabel]) => (
+                              <Form.Check
+                                inline
+                                key={role}
+                                id={`${idPrefix}-source-role-${role}`}
+                                label={roleLabel}
+                                checked={sourceRoles.includes(role)}
+                                onChange={() => toggleSourceRole(role)}
+                              />
+                            ))}
+                          </div>
+                        </Form.Group>
+                        <Form.Group>
+                          <Form.Label>Source type</Form.Label>
+                          <Form.Select
+                            size="sm"
+                            value={sourceType}
+                            onChange={(event) =>
+                              onSourceTypeChange(event.target.value)
+                            }
+                          >
+                            <option value="">All types</option>
+                            {TYPES.map((source) => (
+                              <option key={source} value={source}>
+                                {readable(source)}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </>
+                    )}
+                    {type === "EVENT" && (
+                      <Form.Group>
+                        <Form.Label>Event place</Form.Label>
+                        <div className="d-flex gap-2 flex-wrap">
+                          {(
+                            [
+                              ["VENUE", "Venue"],
+                              ["HISTORICAL_SITE", "Historical site"],
+                            ] as const
+                          ).map(([role, roleLabel]) => (
+                            <Form.Check
+                              inline
+                              key={role}
+                              id={`${idPrefix}-event-role-${role}`}
+                              label={roleLabel}
+                              checked={eventRoles.includes(role)}
+                              onChange={() => toggleEventRole(role)}
+                            />
+                          ))}
+                        </div>
+                      </Form.Group>
+                    )}
+                    {type === "PROFILE" && (
+                      <Form.Group>
+                        <Form.Label>Profile type</Form.Label>
+                        <Form.Select
+                          size="sm"
+                          value={profileType}
+                          onChange={(event) =>
+                            onProfileTypeChange(event.target.value)
+                          }
+                        >
+                          <option value="">All profile types</option>
+                          <option value="USER">User</option>
+                          <option value="CLUB">Club</option>
+                        </Form.Select>
+                      </Form.Group>
+                    )}
+                    {type === "CLUB" && (
+                      <p className="text-muted small mb-0">
+                        Club results use the shared period and year filters.
+                      </p>
+                    )}
+                  </div>
+                </details>
+              </div>
+            );
+          })}
         </div>
       </Form.Group>
       <div className="map-temporal-controls">
@@ -124,93 +216,6 @@ export default function MapEntityFilterControls({
             compact
             className="mb-0"
           />
-        </div>
-        <div className="map-filter-disclosures">
-          <details className="map-advanced-filters">
-            <summary>More filters</summary>
-            <div className="map-advanced-filters-content">
-              {entityTypes.includes("SOURCE") && (
-                <>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Source place</Form.Label>
-                    <div className="d-flex gap-2 flex-wrap">
-                      {(
-                        [
-                          ["DISCOVERED_AT", "Discovered at"],
-                          ["HELD_AT", "Held at"],
-                        ] as const
-                      ).map(([role, label]) => (
-                        <Form.Check
-                          inline
-                          key={role}
-                          id={`${idPrefix}-source-role-${role}`}
-                          label={label}
-                          checked={sourceRoles.includes(role)}
-                          onChange={() => toggleSourceRole(role)}
-                        />
-                      ))}
-                    </div>
-                  </Form.Group>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Source type</Form.Label>
-                    <Form.Select
-                      size="sm"
-                      value={sourceType}
-                      onChange={(event) =>
-                        onSourceTypeChange(event.target.value)
-                      }
-                    >
-                      <option value="">All types</option>
-                      {TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {readable(type)}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </>
-              )}
-              {entityTypes.includes("EVENT") && (
-                <Form.Group className="mb-2">
-                  <Form.Label>Event place</Form.Label>
-                  <div className="d-flex gap-2 flex-wrap">
-                    {(
-                      [
-                        ["VENUE", "Venue"],
-                        ["HISTORICAL_SITE", "Historical site"],
-                      ] as const
-                    ).map(([role, label]) => (
-                      <Form.Check
-                        inline
-                        key={role}
-                        id={`${idPrefix}-event-role-${role}`}
-                        label={label}
-                        checked={eventRoles.includes(role)}
-                        onChange={() => toggleEventRole(role)}
-                      />
-                    ))}
-                  </div>
-                </Form.Group>
-              )}
-              {entityTypes.includes("PROFILE") && (
-                <Form.Group className="mb-0">
-                  <Form.Label>Profile type</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={profileType}
-                    onChange={(event) =>
-                      onProfileTypeChange(event.target.value)
-                    }
-                  >
-                    <option value="">All profile types</option>
-                    <option value="USER">User</option>
-                    <option value="CLUB">Club</option>
-                  </Form.Select>
-                </Form.Group>
-              )}
-            </div>
-          </details>
-          {additionalFilters}
         </div>
       </div>
     </div>

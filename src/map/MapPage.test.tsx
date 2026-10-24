@@ -9,10 +9,6 @@ import {
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { getViewer } from "../auth/viewerApi";
-import {
-  getClubProfiles,
-  getUserProfileByUserId,
-} from "../profile/profileApi";
 import MapPage from "./MapPage";
 import {
   getMapPlace,
@@ -25,11 +21,6 @@ import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
-}));
-
-jest.mock("../profile/profileApi", () => ({
-  getClubProfiles: jest.fn(),
-  getUserProfileByUserId: jest.fn(),
 }));
 
 jest.mock("./MapCanvas", () => {
@@ -99,8 +90,6 @@ const mockNearbyMapPlaces = jest.mocked(nearbyMapPlaces);
 const mockNearbyMapEntitiesPage = jest.mocked(nearbyMapEntitiesPage);
 const mockListMyMapPlaceProposals = jest.mocked(listMyMapPlaceProposals);
 const mockGetViewer = jest.mocked(getViewer);
-const mockGetClubProfiles = jest.mocked(getClubProfiles);
-const mockGetUserProfileByUserId = jest.mocked(getUserProfileByUserId);
 const mockGetMapPlace = jest.mocked(getMapPlace);
 const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
 const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
@@ -114,8 +103,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   window.localStorage.clear();
   mockGetViewer.mockResolvedValue(null);
-  mockGetUserProfileByUserId.mockResolvedValue(null);
-  mockGetClubProfiles.mockResolvedValue([]);
   mockGetMapPlace.mockResolvedValue({
     id: "seed:rome",
     canonicalName: "Rome",
@@ -130,54 +117,16 @@ beforeEach(() => {
   mockLoadOwnedMapContent.mockResolvedValue({ markers: [], connections: [] });
 });
 
-test("uses the selected club profile's historical context without filtering for a user profile", async () => {
-  mockGetViewer.mockResolvedValue({ userId: "viewer", roles: [] });
-  mockGetUserProfileByUserId.mockResolvedValue({
-    id: "user-profile",
-    type: "USER",
-    firstName: "User",
-  });
-  mockGetClubProfiles.mockResolvedValue([
-    {
-      id: "club-profile",
-      type: "CLUB",
-      firstName: "Legio",
-      period: "ANTIQUITY",
-      from: { year: 27, era: "BC" },
-      to: { year: 476, era: "AD" },
-    },
-  ]);
-  window.localStorage.setItem("TEMPVS_CURRENT_PROFILE", "profile:club-profile");
-
-  const { unmount } = render(
-    <MemoryRouter>
-      <MapPage />
-    </MemoryRouter>,
-  );
-
-  await waitFor(() =>
-    expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue(
-      "ANTIQUITY",
-    ),
-  );
-  expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue(
-    "27",
-  );
-  expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue(
-    "476",
-  );
-  expect(screen.queryByRole("button", { name: "Search" })).not.toBeInTheDocument();
-
-  unmount();
-  window.localStorage.setItem("TEMPVS_CURRENT_PROFILE", "user-profile");
+test("starts with empty temporal filters", () => {
   render(
     <MemoryRouter>
       <MapPage />
     </MemoryRouter>,
   );
-  await waitFor(() =>
-    expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue(""),
-  );
+
+  expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue("");
+  expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
+  expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue("");
 });
 
 test("searches places while typing and labels the selected marker with the matched historical name", async () => {
@@ -345,6 +294,79 @@ test("loads the next bounded page of nearby compact markers", async () => {
     undefined,
     "opaque-next-page",
     {},
+  );
+});
+
+test("refreshes nearby markers as temporal filters change", async () => {
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
+
+  render(
+    <MemoryRouter
+      initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}
+    >
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() => expect(mockNearbyMapEntitiesPage).toHaveBeenCalled());
+  expect(screen.queryByText("More filters")).not.toBeInTheDocument();
+  expect(screen.queryByText("Map options")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Show modern borders")).toBeInTheDocument();
+  expect(
+    screen.getByText("Profile", { selector: "summary" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("Club", { selector: "summary" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("Event", { selector: "summary" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("Source", { selector: "summary" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Source", { selector: "summary" }));
+  expect(
+    screen.getByText("Source", { selector: "summary" }).parentElement,
+  ).toHaveAttribute("open");
+
+  fireEvent.change(screen.getByRole("combobox", { name: "Period" }), {
+    target: { value: "ANTIQUITY" },
+  });
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      { period: "ANTIQUITY" },
+      { period: "ANTIQUITY" },
+      undefined,
+      undefined,
+      { period: "ANTIQUITY" },
+    ),
+  );
+
+  fireEvent.change(screen.getAllByRole("textbox", { name: "Year" })[0], {
+    target: { value: "27" },
+  });
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      { period: "ANTIQUITY", from: 27 },
+      { period: "ANTIQUITY", from: 27 },
+      undefined,
+      undefined,
+      { period: "ANTIQUITY", from: 27 },
+    ),
   );
 });
 

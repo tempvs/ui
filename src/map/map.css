@@ -118,8 +118,18 @@
   gap: 0.2rem;
 }
 
-.map-filter-layer-list .form-check {
-  margin-right: 0;
+.map-filter-layer {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.map-filter-layer > .form-check {
+  margin: 0;
+}
+
+.map-type-filter {
+  position: relative;
   white-space: nowrap;
 }
 
@@ -150,20 +160,7 @@
   grid-row: 1;
 }
 
-.map-advanced-filters {
-  position: relative;
-  min-width: 6.7rem;
-  padding-bottom: 0.16rem;
-}
-
-.map-filter-disclosures {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.map-advanced-filters summary,
-.map-view-options summary,
+.map-type-filter summary,
 .map-coordinate-options summary {
   cursor: pointer;
   color: #4d4438;
@@ -172,8 +169,7 @@
   user-select: none;
 }
 
-.map-advanced-filters-content,
-.map-view-options-content {
+.map-type-filter-content {
   display: grid;
   gap: 0.55rem;
   min-width: min(17rem, calc(100vw - 3rem));
@@ -184,23 +180,18 @@
   box-shadow: 0 0.35rem 0.8rem rgb(38 29 17 / 10%);
 }
 
-.map-advanced-filters-content {
+.map-type-filter-content {
   position: absolute;
   z-index: 5;
   width: min(20rem, calc(100vw - 3rem));
 }
 
-.map-view-options {
-  position: relative;
-  min-width: 7.4rem;
-  padding-bottom: 0.16rem;
-}
-
-.map-view-options-content {
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  width: min(18rem, calc(100vw - 3rem));
+.map-main-options {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: start;
+  gap: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .map-coordinate-options {
@@ -269,16 +260,11 @@
     gap: 0.35rem 0.75rem;
   }
 
-  .map-filter-layer-list .form-check {
+  .map-type-filter {
     white-space: normal;
   }
 
-  .map-view-options-content {
-    position: static;
-    width: min(100%, 22rem);
-  }
-
-  .map-advanced-filters-content {
+  .map-type-filter-content {
     position: static;
     width: min(100%, 22rem);
   }

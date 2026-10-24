@@ -9,11 +9,6 @@ import {
   isValidHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
-import { getClubProfiles, getUserProfileByUserId } from "../profile/profileApi";
-import {
-  buildOwnedProfileOptions,
-  resolveCurrentProfileOption,
-} from "../profile/currentProfile";
 import {
   getMapPlace,
   listMyMapPlaceProposals,
@@ -146,7 +141,8 @@ export default function MapPage() {
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
   const suggestionRequest = useRef(0);
-  const profileDefaultsApplied = useRef(false);
+  const entityFilterRequest = useRef(0);
+  const appliedEntityFilterSignature = useRef<string | null>(null);
   const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
 
   useEffect(() => {
@@ -240,86 +236,130 @@ export default function MapPage() {
     };
   }, [sharedScope, showOwnedMap, viewer]);
 
-  // A club profile represents a historical persona, so its period/range make
-  // useful first defaults for discovery. Personal user profiles intentionally
-  // have no historical range and therefore leave Map unfiltered.
+  const fromYear = toAstronomicalYear(from);
+  const toYear = toAstronomicalYear(to);
+  const sourceFilters = useMemo<MapSourceFilters>(
+    () => ({
+      ...(period ? { period } : {}),
+      ...(sourceType ? { types: [sourceType] } : {}),
+      ...(fromYear !== undefined ? { from: fromYear } : {}),
+      ...(toYear !== undefined ? { to: toYear } : {}),
+    }),
+    [fromYear, period, sourceType, toYear],
+  );
+  const eventFilters = useMemo<MapEventFilters>(
+    () => ({
+      ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
+      ...(period ? { period } : {}),
+      ...(fromYear !== undefined ? { from: fromYear } : {}),
+      ...(toYear !== undefined ? { to: toYear } : {}),
+    }),
+    [eventRoles, fromYear, period, toYear],
+  );
+  const profileFilters = useMemo<MapProfileFilters>(
+    () => ({
+      ...(period ? { period } : {}),
+      ...(profileType === "USER" || profileType === "CLUB"
+        ? { types: [profileType] }
+        : {}),
+      ...(fromYear !== undefined ? { from: fromYear } : {}),
+      ...(toYear !== undefined ? { to: toYear } : {}),
+    }),
+    [fromYear, period, profileType, toYear],
+  );
+  const entityFilterSignature = useMemo(
+    () =>
+      [
+        types.join(","),
+        sourceRoles.join(","),
+        eventRoles.join(","),
+        sourceType,
+        profileType,
+        period,
+        `${from.year}:${from.era}`,
+        `${to.year}:${to.era}`,
+        radius,
+      ].join("|"),
+    [
+      eventRoles,
+      from.era,
+      from.year,
+      period,
+      profileType,
+      radius,
+      sourceRoles,
+      sourceType,
+      to.era,
+      to.year,
+      types,
+    ],
+  );
+
+  // The initial nearby-content request belongs to search()/selectPlace().
+  // Afterwards, changing a map filter refreshes just the marker layer, with
+  // no extra submit button or full place search required.
   useEffect(() => {
-    if (!viewer || profileDefaultsApplied.current) return;
-    if (
-      params.has("period") ||
-      params.has("from") ||
-      params.has("to") ||
-      params.has("sourcePeriod") ||
-      params.has("eventPeriod") ||
-      params.has("profilePeriod")
-    ) {
-      profileDefaultsApplied.current = true;
+    if (appliedEntityFilterSignature.current === null) {
+      appliedEntityFilterSignature.current = entityFilterSignature;
       return;
     }
-    let active = true;
-    void Promise.all([
-      getUserProfileByUserId(viewer.userId),
-      getClubProfiles(viewer.userId),
-    ])
-      .then(([userProfile, clubProfiles]) => {
-        if (!active) return;
-        profileDefaultsApplied.current = true;
-        const profile = resolveCurrentProfileOption(
-          buildOwnedProfileOptions(userProfile, clubProfiles),
-        )?.profile;
-        if (!profile || profile.type !== "CLUB") return;
-        setPeriod(profile.period || "");
-        setFrom(
-          profile.from
-            ? { year: String(profile.from.year), era: profile.from.era }
-            : { year: "", era: "AD" },
-        );
-        setTo(
-          profile.to
-            ? { year: String(profile.to.year), era: profile.to.era }
-            : { year: "", era: "AD" },
-        );
+    if (appliedEntityFilterSignature.current === entityFilterSignature) return;
+    appliedEntityFilterSignature.current = entityFilterSignature;
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (
+      latitude === "" ||
+      longitude === "" ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      !isValidHistoricalRange(from, to)
+    )
+      return;
+
+    const requestId = ++entityFilterRequest.current;
+    setEntityNextCursor(null);
+    if (!types.length) {
+      setEntities([]);
+      return;
+    }
+    setEntities([]);
+    void nearbyMapEntitiesPage(
+      lat,
+      lng,
+      Number(radius),
+      types,
+      undefined,
+      undefined,
+      sourceRoles,
+      sourceFilters,
+      eventFilters,
+      undefined,
+      undefined,
+      profileFilters,
+    )
+      .then((page) => {
+        if (requestId !== entityFilterRequest.current) return;
+        setEntities(page.items);
+        setEntityNextCursor(page.nextCursor ?? null);
       })
       .catch(() => {
-        if (active) profileDefaultsApplied.current = true;
+        if (requestId !== entityFilterRequest.current) return;
+        setError("Unable to refresh nearby content.");
       });
-    return () => {
-      active = false;
-    };
-  }, [params, viewer]);
-
-  const sourceFilters: MapSourceFilters = {
-    ...(period ? { period } : {}),
-    ...(sourceType ? { types: [sourceType] } : {}),
-    ...(toAstronomicalYear(from) !== undefined
-      ? { from: toAstronomicalYear(from) }
-      : {}),
-    ...(toAstronomicalYear(to) !== undefined
-      ? { to: toAstronomicalYear(to) }
-      : {}),
-  };
-  const eventFilters: MapEventFilters = {
-    ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
-    ...(period ? { period } : {}),
-    ...(toAstronomicalYear(from) !== undefined
-      ? { from: toAstronomicalYear(from) }
-      : {}),
-    ...(toAstronomicalYear(to) !== undefined
-      ? { to: toAstronomicalYear(to) }
-      : {}),
-  };
-  const profileFilters: MapProfileFilters = {
-    ...(period ? { period } : {}),
-    ...(profileType === "USER" || profileType === "CLUB"
-      ? { types: [profileType] }
-      : {}),
-    ...(toAstronomicalYear(from) !== undefined
-      ? { from: toAstronomicalYear(from) }
-      : {}),
-    ...(toAstronomicalYear(to) !== undefined
-      ? { to: toAstronomicalYear(to) }
-      : {}),
-  };
+  }, [
+    entityFilterSignature,
+    eventFilters,
+    from,
+    latitude,
+    longitude,
+    profileFilters,
+    radius,
+    sourceFilters,
+    sourceRoles,
+    to,
+    types,
+  ]);
 
   // Match the profile picker: query after a short pause and discard every
   // superseded response. This keeps the main map stable while someone types.
@@ -745,55 +785,6 @@ export default function MapPage() {
             onEventRolesChange={setEventRoles}
             profileType={profileType}
             onProfileTypeChange={setProfileType}
-            additionalFilters={
-              <details className="map-view-options">
-                <summary>Map options</summary>
-                <div className="map-view-options-content">
-                  <Form.Check
-                    id="map-modern-borders"
-                    label="Show modern borders"
-                    checked={showModernBorders}
-                    onChange={(event) =>
-                      setShowModernBorders(event.target.checked)
-                    }
-                  />
-                  <details className="map-coordinate-options">
-                    <summary>Use coordinates instead</summary>
-                    <div className="map-coordinate-options-content">
-                      <Form.Group>
-                        <Form.Label>Latitude</Form.Label>
-                        <Form.Control
-                          size="sm"
-                          value={latitude}
-                          onChange={(event) => setLatitude(event.target.value)}
-                          inputMode="decimal"
-                        />
-                      </Form.Group>
-                      <Form.Group>
-                        <Form.Label>Longitude</Form.Label>
-                        <Form.Control
-                          size="sm"
-                          value={longitude}
-                          onChange={(event) => setLongitude(event.target.value)}
-                          inputMode="decimal"
-                        />
-                      </Form.Group>
-                      <Button
-                        type="button"
-                        variant="outline-dark"
-                        size="sm"
-                        onClick={() =>
-                          void search({ useCurrentCoordinates: true })
-                        }
-                        disabled={loading}
-                      >
-                        Show area
-                      </Button>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            }
           />
           <Form.Group className="map-filter-radius mb-0">
             <Form.Label>Within</Form.Label>
@@ -810,6 +801,48 @@ export default function MapPage() {
               <span className="small text-muted">km</span>
             </div>
           </Form.Group>
+          <div className="map-main-options">
+            <Form.Check
+              id="map-modern-borders"
+              label="Show modern borders"
+              checked={showModernBorders}
+              onChange={(event) => setShowModernBorders(event.target.checked)}
+            />
+            <details className="map-coordinate-options">
+              <summary>Use coordinates instead</summary>
+              <div className="map-coordinate-options-content">
+                <Form.Group>
+                  <Form.Label>Latitude</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={latitude}
+                    onChange={(event) => setLatitude(event.target.value)}
+                    inputMode="decimal"
+                  />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Longitude</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={longitude}
+                    onChange={(event) => setLongitude(event.target.value)}
+                    inputMode="decimal"
+                  />
+                </Form.Group>
+                <Button
+                  type="button"
+                  variant="outline-dark"
+                  size="sm"
+                  onClick={() =>
+                    void search({ useCurrentCoordinates: true })
+                  }
+                  disabled={loading}
+                >
+                  Show area
+                </Button>
+              </div>
+            </details>
+          </div>
         </div>
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
