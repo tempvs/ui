@@ -262,7 +262,7 @@ test("restores source type, event, and profile discovery facets from a map URL",
       12.5,
       25,
       ["PROFILE", "EVENT"],
-      "",
+      undefined,
       undefined,
       ["DISCOVERED_AT"],
       {
@@ -281,6 +281,12 @@ test("restores source type, event, and profile discovery facets from a map URL",
       { period: "ANTIQUITY", from: -27, to: 476 },
     ),
   );
+  expect(
+    screen.queryByLabelText("Filter nearby content"),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("Include child places"),
+  ).not.toBeInTheDocument();
 });
 
 test("loads the next bounded page of nearby compact markers", async () => {
@@ -331,7 +337,7 @@ test("loads the next bounded page of nearby compact markers", async () => {
     12.5,
     25,
     ["PROFILE"],
-    "",
+    undefined,
     undefined,
     ["DISCOVERED_AT"],
     {},

@@ -71,15 +71,11 @@ export default function MapPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [query, setQuery] = useState(params.get("q") || "");
-  const [contentQuery, setContentQuery] = useState(params.get("content") || "");
   const [latitude, setLatitude] = useState(params.get("lat") || "");
   const [longitude, setLongitude] = useState(params.get("lng") || "");
   const [radius, setRadius] = useState(params.get("radiusKm") || "25");
   const [showModernBorders, setShowModernBorders] = useState(
     params.get("borders") === "modern",
-  );
-  const [includeDescendants, setIncludeDescendants] = useState(
-    params.get("descendants") === "true",
   );
   const [items, setItems] = useState<MapPlace[]>([]);
   const [suggestions, setSuggestions] = useState<MapPlace[] | null>(null);
@@ -394,7 +390,6 @@ export default function MapPage() {
       lng: String(selected.longitude),
       radiusKm: radius,
     });
-    if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendEntityTypes(next, types);
     appendSourceRoles(next, sourceRoles);
     appendSourceFilters(next, sourceFilters);
@@ -402,7 +397,6 @@ export default function MapPage() {
     appendProfileFilters(next, profileFilters);
     appendHistoricalContext(next, period, from, to);
     if (showModernBorders) next.set("borders", "modern");
-    if (includeDescendants) next.set("descendants", "true");
     setParams(next, { replace: true });
     setLoading(true);
     try {
@@ -414,12 +408,12 @@ export default function MapPage() {
               selected.longitude,
               Number(radius),
               types,
-              contentQuery,
+              undefined,
               undefined,
               sourceRoles,
               sourceFilters,
               eventFilters,
-              includeDescendants ? selected.id : undefined,
+              undefined,
               undefined,
               profileFilters,
             )
@@ -486,7 +480,6 @@ export default function MapPage() {
     // context the person deliberately selected.
     if (trimmed || linkedPlace?.canonicalName)
       next.set("q", trimmed || linkedPlace?.canonicalName || "");
-    if (contentQuery.trim()) next.set("content", contentQuery.trim());
     appendSourceRoles(next, sourceRoles);
     appendEntityTypes(next, types);
     appendSourceFilters(next, sourceFilters);
@@ -494,7 +487,6 @@ export default function MapPage() {
     appendProfileFilters(next, profileFilters);
     appendHistoricalContext(next, period, from, to);
     if (showModernBorders) next.set("borders", "modern");
-    if (includeDescendants) next.set("descendants", "true");
     // A shared page graph is part of the address, not a viewer preference.
     // This invocation is the initial URL hydration (rather than an explicit
     // new search), so retain it while loading the focal place. Otherwise a
@@ -531,12 +523,12 @@ export default function MapPage() {
                 lng,
                 Number(radius),
                 types,
-                contentQuery,
+                undefined,
                 undefined,
                 sourceRoles,
                 sourceFilters,
                 eventFilters,
-                includeDescendants && linkedPlace ? linkedPlace.id : undefined,
+                undefined,
                 undefined,
                 profileFilters,
               )
@@ -594,12 +586,12 @@ export default function MapPage() {
         lng,
         Number(radius),
         types,
-        contentQuery,
+        undefined,
         undefined,
         sourceRoles,
         sourceFilters,
         eventFilters,
-        includeDescendants && selectedPlaceId ? selectedPlaceId : undefined,
+        undefined,
         entityNextCursor,
         profileFilters,
       );
@@ -765,26 +757,6 @@ export default function MapPage() {
                       setShowModernBorders(event.target.checked)
                     }
                   />
-                  {selectedPlaceId && (
-                    <Form.Check
-                      id="map-include-descendants"
-                      label="Include child places"
-                      checked={includeDescendants}
-                      onChange={(event) =>
-                        setIncludeDescendants(event.target.checked)
-                      }
-                    />
-                  )}
-                  <Form.Group>
-                    <Form.Label>Filter nearby content</Form.Label>
-                    <Form.Control
-                      size="sm"
-                      value={contentQuery}
-                      onChange={(event) => setContentQuery(event.target.value)}
-                      placeholder="Name or place"
-                      aria-label="Filter nearby content"
-                    />
-                  </Form.Group>
                   <details className="map-coordinate-options">
                     <summary>Use coordinates instead</summary>
                     <div className="map-coordinate-options-content">
@@ -944,7 +916,6 @@ export default function MapPage() {
                 to={nearPlacePath(
                   place,
                   radius,
-                  contentQuery,
                   showModernBorders,
                   sourceRoles,
                   sourceFilters,
@@ -1057,7 +1028,6 @@ function locationRoleLabel(entity: MapEntityLocation): string {
 function nearPlacePath(
   place: MapPlace,
   radius: string,
-  contentQuery: string,
   showModernBorders: boolean,
   sourceRoles: SourceLocationRole[],
   sourceFilters: MapSourceFilters,
@@ -1072,7 +1042,6 @@ function nearPlacePath(
     lng: String(place.longitude),
     radiusKm: radius || "25",
   });
-  if (contentQuery.trim()) parameters.set("content", contentQuery.trim());
   appendEntityTypes(parameters, types);
   appendSourceRoles(parameters, sourceRoles);
   appendHistoricalContextFromFilters(parameters, sourceFilters);
