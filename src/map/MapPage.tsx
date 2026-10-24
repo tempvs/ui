@@ -620,11 +620,33 @@ export default function MapPage() {
 
   // A source's discovery site is its primary public map location. An explicit
   // advanced source-role filter still permits inspecting holding locations.
-  const visibleEntities = useMemo(
+  const visibleEntities = useMemo(() => {
+    const entitiesForLocationMode = sourceRoles.length
+      ? entities
+      : preferSourceDiscoveryLocations(entities);
+
+    return entitiesForLocationMode.filter((entity) =>
+      types.includes(entity.entityType),
+    );
+  }, [entities, sourceRoles.length, types]);
+
+  const visibleOwnedMarkers = useMemo(
     () =>
-      sourceRoles.length ? entities : preferSourceDiscoveryLocations(entities),
-    [entities, sourceRoles.length],
+      ownedMarkers.filter((marker) => types.includes(marker.entityType)),
+    [ownedMarkers, types],
   );
+
+  const visibleOwnedConnections = useMemo(() => {
+    const visibleMarkerKeys = new Set(
+      visibleOwnedMarkers.map((marker) => marker.key),
+    );
+
+    return ownedConnections.filter(
+      (connection) =>
+        visibleMarkerKeys.has(connection.fromKey) &&
+        visibleMarkerKeys.has(connection.toKey),
+    );
+  }, [ownedConnections, visibleOwnedMarkers]);
 
   const focus = useMemo(() => {
     const selected = visibleEntities.find(
@@ -648,7 +670,7 @@ export default function MapPage() {
   // the link; MapCanvas then keeps every related profile, club and source in
   // view. Before that graph arrives, retain the focal place as feedback that
   // the copied link itself was understood.
-  const mapFocus = sharedScope && ownedMarkers.length ? null : focus;
+  const mapFocus = sharedScope && visibleOwnedMarkers.length ? null : focus;
 
   return (
     <PageLayout
@@ -864,10 +886,10 @@ export default function MapPage() {
         <MapCanvas
           places={items}
           entities={visibleEntities}
-          ownedMarkers={ownedMarkers}
-          ownedConnections={ownedConnections}
+          ownedMarkers={visibleOwnedMarkers}
+          ownedConnections={visibleOwnedConnections}
           focus={mapFocus}
-          initialFitPoints={ownedMarkers}
+          initialFitPoints={visibleOwnedMarkers}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
           selectedPlaceId={selectedPlaceId}
