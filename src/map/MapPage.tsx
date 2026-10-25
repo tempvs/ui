@@ -681,15 +681,22 @@ export default function MapPage() {
       ? entities
       : preferSourceDiscoveryLocations(entities);
 
-    return entitiesForLocationMode.filter((entity) =>
-      types.includes(entity.entityType),
+    return entitiesForLocationMode.filter(
+      (entity) =>
+        types.includes(entity.entityType) &&
+        matchesMapEntityPeriods(entity, periods),
     );
-  }, [entities, sourceRoles.length, types]);
+  }, [entities, periods, sourceRoles.length, types]);
 
   const visibleOwnedMarkers = useMemo(
     () =>
-      ownedMarkers.filter((marker) => types.includes(marker.entityType)),
-    [ownedMarkers, types],
+      ownedMarkers.filter(
+        (marker) =>
+          types.includes(marker.entityType) &&
+          (periods.length === 0 ||
+            marker.periods?.some((period) => periods.includes(period))),
+      ),
+    [ownedMarkers, periods, types],
   );
 
   const visibleOwnedConnections = useMemo(() => {
@@ -1233,6 +1240,30 @@ function parseMapPeriods(params: URLSearchParams): string[] {
     .split(",")
     .filter(Boolean)
     .filter((period, index, all) => all.indexOf(period) === index);
+}
+
+function matchesMapEntityPeriods(
+  entity: MapEntityLocation,
+  periods: readonly string[],
+): boolean {
+  if (periods.length === 0) return true;
+
+  const entityPeriods =
+    entity.entityType === "EVENT"
+      ? entity.eventPeriods || []
+      : entity.entityType === "SOURCE"
+        ? entity.sourcePeriod
+          ? [entity.sourcePeriod]
+          : []
+        : entity.entityType === "CLUB"
+          ? entity.clubPeriod
+            ? [entity.clubPeriod]
+            : []
+          : entity.profilePeriod
+            ? [entity.profilePeriod]
+            : [];
+
+  return entityPeriods.some((period) => periods.includes(period));
 }
 
 function parseProfileTypes(

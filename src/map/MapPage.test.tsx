@@ -347,8 +347,9 @@ test("refreshes nearby markers as temporal filters change", async () => {
   expect(
     screen.getByText("Profile", { selector: "summary" }),
   ).toBeInTheDocument();
+  expect(screen.queryByText("Club", { selector: "summary" })).not.toBeInTheDocument();
   expect(
-    screen.getByText("Club", { selector: "summary" }),
+    screen.getByText("Club", { selector: ".map-type-filter-label" }),
   ).toBeInTheDocument();
   expect(
     screen.getByText("Event", { selector: "summary" }),
@@ -356,6 +357,10 @@ test("refreshes nearby markers as temporal filters change", async () => {
   expect(
     screen.getByText("Source", { selector: "summary" }),
   ).toBeInTheDocument();
+  expect(
+    screen.getByText("Period", { selector: "summary" }).parentElement
+      ?.parentElement,
+  ).toHaveClass("map-temporal-controls");
   fireEvent.click(screen.getByText("Period", { selector: "summary" }));
   expect(
     screen.getByText("Period", { selector: "summary" }).parentElement,

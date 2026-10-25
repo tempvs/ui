@@ -38,6 +38,7 @@ export type OwnedMapMarker = {
   latitude: number;
   longitude: number;
   thumbnailUrl?: string | null;
+  periods?: string[];
   path: string;
 };
 
@@ -178,6 +179,7 @@ export async function loadEventRelatedMapContent(
         latitude: place.latitude,
         longitude: place.longitude,
         thumbnailUrl: event.image?.thumbnailUrl || event.image?.url || null,
+        ...(event.periods?.length ? { periods: event.periods } : {}),
         path: `/events/${encodeURIComponent(event.id)}`,
       });
     }),
@@ -330,6 +332,7 @@ async function profileMapMarkers(
         latitude: place.latitude,
         longitude: place.longitude,
         thumbnailUrl: thumbnails.get(`profile:${profile.id}`) || profile.avatarUrl,
+        ...(profile.period ? { periods: [profile.period] } : {}),
         path: `/profile/${encodeURIComponent(profile.alias || profile.id)}`,
       });
     }),
@@ -379,6 +382,7 @@ async function clubMapMarkers(
           club.photoUrl ||
           thumbnails.get(`club:${club.id}`) ||
           null,
+        ...(club.period ? { periods: [club.period] } : {}),
         path: `/clubs/${encodeURIComponent(club.alias || String(club.id))}`,
       });
     }),
@@ -446,6 +450,7 @@ async function sourceMapMarkers(
         latitude: place.latitude,
         longitude: place.longitude,
         thumbnailUrl: thumbnails.get(`source:${source.id}`) || null,
+        ...(source.period ? { periods: [source.period] } : {}),
         path: `/library/source/${encodeURIComponent(source.id)}`,
       });
     }),

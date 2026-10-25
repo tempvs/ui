@@ -75,6 +75,7 @@ export default function MapEntityFilterControls({
           <div className="map-filter-layer-list">
             {allEntityTypes.map((type) => {
               const label = type[0] + type.slice(1).toLowerCase();
+              const hasTypeControls = type !== "CLUB";
 
               return (
                 <div className="map-filter-layer" key={type}>
@@ -84,9 +85,10 @@ export default function MapEntityFilterControls({
                     checked={entityTypes.includes(type)}
                     onChange={() => toggleEntityType(type)}
                   />
-                  <details className="map-type-filter">
-                    <summary>{label}</summary>
-                    <div className="map-type-filter-content">
+                  {hasTypeControls ? (
+                    <details className="map-type-filter">
+                      <summary>{label}</summary>
+                      <div className="map-type-filter-content">
                       {type === "SOURCE" && (
                         <>
                           <Form.Group>
@@ -169,18 +171,18 @@ export default function MapEntityFilterControls({
                           </div>
                         </Form.Group>
                       )}
-                    </div>
-                  </details>
+                      </div>
+                    </details>
+                  ) : (
+                    <span className="map-type-filter-label map-type-filter-label--placeholder">
+                      {label}
+                    </span>
+                  )}
                 </div>
               );
             })}
           </div>
         </Form.Group>
-        <PeriodFilter
-          idPrefix={idPrefix}
-          periods={periods}
-          onChange={onPeriodsChange}
-        />
       </div>
       <div className="map-temporal-controls">
         <div className="map-filter-years">
@@ -198,6 +200,11 @@ export default function MapEntityFilterControls({
             className="mb-0"
           />
         </div>
+        <PeriodFilter
+          idPrefix={idPrefix}
+          periods={periods}
+          onChange={onPeriodsChange}
+        />
       </div>
     </div>
   );
