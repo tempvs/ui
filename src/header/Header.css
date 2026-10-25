@@ -461,7 +461,7 @@
 }
 
 .search-popover {
-  position: absolute;
+  position: fixed;
   top: calc(100% + 0.45rem);
   left: 0;
   z-index: 50;

@@ -90,8 +90,8 @@ export default function SearchDialog() {
   });
 
   const [showPopover, setShowPopover] = useState(false);
-  const [mobilePopoverTop, setMobilePopoverTop] = useState<number | null>(
-    null,
+  const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>(
+    {},
   );
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [query, setQuery] = useState("");
@@ -451,36 +451,52 @@ export default function SearchDialog() {
 
   useLayoutEffect(() => {
     if (!showPopover) {
-      setMobilePopoverTop(null);
+      setPopoverPosition({});
       return;
     }
 
-    const updateMobilePopoverPosition = () => {
+    const updatePopoverPosition = () => {
       const shell = rootRef.current;
-      if (!shell || !window.matchMedia("(max-width: 767.98px)").matches) {
-        setMobilePopoverTop(null);
+      if (!shell) return;
+
+      const shellBounds = shell.getBoundingClientRect();
+      const top = Math.ceil(shellBounds.bottom + 6);
+
+      if (window.matchMedia("(max-width: 767.98px)").matches) {
+        setPopoverPosition({ top: `${top}px` });
         return;
       }
 
-      setMobilePopoverTop(
-        Math.ceil(shell.getBoundingClientRect().bottom + 6),
+      // The panel lives in a portal so it can sit above the header and page
+      // content. Anchor its fixed coordinates to the search field instead of
+      // leaving its absolute coordinates relative to document.body.
+      const viewportMargin = 16;
+      const panelWidth = Math.min(
+        popoverRef.current?.getBoundingClientRect().width || 672,
+        window.innerWidth - viewportMargin * 2,
       );
+      const left = Math.min(
+        Math.max(viewportMargin, Math.floor(shellBounds.left)),
+        window.innerWidth - panelWidth - viewportMargin,
+      );
+
+      setPopoverPosition({ top: `${top}px`, left: `${left}px` });
     };
 
-    updateMobilePopoverPosition();
-    window.addEventListener("resize", updateMobilePopoverPosition);
-    window.addEventListener("scroll", updateMobilePopoverPosition, true);
+    updatePopoverPosition();
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
     window.visualViewport?.addEventListener(
       "resize",
-      updateMobilePopoverPosition,
+      updatePopoverPosition,
     );
 
     return () => {
-      window.removeEventListener("resize", updateMobilePopoverPosition);
-      window.removeEventListener("scroll", updateMobilePopoverPosition, true);
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
       window.visualViewport?.removeEventListener(
         "resize",
-        updateMobilePopoverPosition,
+        updatePopoverPosition,
       );
     };
   }, [showPopover]);
@@ -568,11 +584,7 @@ export default function SearchDialog() {
             className="search-popover header-search-popover"
             role="dialog"
             aria-label="Search"
-            style={
-              mobilePopoverTop === null
-                ? undefined
-                : { top: `${mobilePopoverTop}px` }
-            }
+            style={popoverPosition}
           >
             <Nav
               variant="tabs"
