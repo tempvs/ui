@@ -637,41 +637,6 @@ function MapRoleAdminPanel({
         <>
           {activeTab === "role-requests" && (
             <>
-              <h2 className="h5">Add Map member</h2>
-              <p className="text-muted small">
-                Search personal profiles and assign access directly; no request is required.
-              </p>
-              <div className="d-flex gap-2 flex-wrap mb-3">
-                <TextFilterInput
-                  value={profileQuery}
-                  onChange={setProfileQuery}
-                  placeholder="Find a user profile"
-                  ariaLabel="Find a user profile to assign a Map role"
-                />
-                <Form.Select
-                  aria-label="Map role to assign"
-                  value={roleToAssign}
-                  onChange={(event) => setRoleToAssign(event.target.value as MapRole)}
-                  style={{ maxWidth: "13rem" }}
-                >
-                  <option value="MAP_CONTRIBUTOR">Contributor</option>
-                  <option value="MAP_REVIEWER">Reviewer</option>
-                  <option value="MAP_EDITOR">Editor</option>
-                  {isTempvsAdmin && <option value="MAP_ADMIN">Map administrator</option>}
-                </Form.Select>
-              </div>
-              {profileResults.length > 0 && (
-                <ul className="list-unstyled mb-4">
-                  {profileResults.map((profile) => (
-                    <li key={String(profile.id)} className="border-top py-2 d-flex justify-content-between gap-2">
-                      <span>{buildProfileLabel(profile)}</span>
-                      <Button size="sm" variant="dark" disabled={assigningUserId === profile.userId} onClick={() => void assignRole(profile)}>
-                        Assign
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
               <h2 className="h5">Role requests</h2>
               <p className="text-muted small">
                 Review requests for Map contributor, reviewer, and editor
@@ -739,25 +704,89 @@ function MapRoleAdminPanel({
             <>
               <h2 className="h5">Map members</h2>
               <p className="text-muted small">
-                Remove a role when a member should no longer administer or
-                review Map data.
+                Add personal profiles directly, or remove roles when a member
+                should no longer administer or review Map data.
               </p>
+              <section className="map-member-assignment" aria-label="Add Map member">
+                <div className="map-member-assignment-heading">
+                  <div>
+                    <h3 className="h6 mb-1">Add a Map member</h3>
+                    <p className="text-muted small mb-0">
+                      Search a personal profile, choose the role, and assign it immediately.
+                    </p>
+                  </div>
+                  <span className="map-member-assignment-note">Personal profiles only</span>
+                </div>
+                <div className="map-member-assignment-controls">
+                  <TextFilterInput
+                    value={profileQuery}
+                    onChange={setProfileQuery}
+                    placeholder="Find a user profile"
+                    ariaLabel="Find a user profile to assign a Map role"
+                  />
+                  <Form.Select
+                    aria-label="Map role to assign"
+                    value={roleToAssign}
+                    onChange={(event) =>
+                      setRoleToAssign(event.target.value as MapRole)
+                    }
+                  >
+                    <option value="MAP_CONTRIBUTOR">Contributor</option>
+                    <option value="MAP_REVIEWER">Reviewer</option>
+                    <option value="MAP_EDITOR">Editor</option>
+                    {isTempvsAdmin && (
+                      <option value="MAP_ADMIN">Map administrator</option>
+                    )}
+                  </Form.Select>
+                </div>
+                {profileQuery.trim().length >= 2 && profileResults.length === 0 && (
+                  <p className="map-member-search-empty mb-0">
+                    No matching personal profiles.
+                  </p>
+                )}
+                {profileResults.length > 0 && (
+                  <ul className="map-member-search-results list-unstyled mb-0">
+                    {profileResults.map((profile) => (
+                      <li key={String(profile.id)}>
+                        <div>
+                          <strong>{buildProfileLabel(profile)}</strong>
+                          <span>Personal profile</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="dark"
+                          disabled={assigningUserId === profile.userId}
+                          onClick={() => void assignRole(profile)}
+                        >
+                          {assigningUserId === profile.userId
+                            ? "Assigning…"
+                            : "Assign role"}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
               {members.length === 0 ? (
                 <p className="text-muted small mb-0">No assigned Map roles.</p>
               ) : (
-                <ul className="list-unstyled mb-0">
+                <ul className="map-member-list list-unstyled mb-0">
                   {members.map((member) => (
                     <li
                       key={member.userId}
-                      className="border-top py-2 small d-flex justify-content-between gap-3 flex-wrap"
                     >
-                      <div>
+                      <div className="map-member-details">
                         <strong>
                           {member.name || member.email || member.userId}
                         </strong>
-                        <span className="text-muted ms-2">
-                          {member.roles.map(formatMapRole).join(", ")}
-                        </span>
+                        {member.name && member.email && (
+                          <span className="map-member-email">{member.email}</span>
+                        )}
+                        <div className="map-member-role-list">
+                          {member.roles.map((role) => (
+                            <span key={role}>{formatMapRole(role)}</span>
+                          ))}
+                        </div>
                       </div>
                       <div className="d-flex gap-1 flex-wrap">
                         {member.roles

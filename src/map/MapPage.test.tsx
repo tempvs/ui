@@ -125,10 +125,8 @@ test("starts with empty temporal filters", () => {
   );
 
   expect(screen.queryByRole("combobox", { name: "Period" })).not.toBeInTheDocument();
-  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(4);
-  screen
-    .getAllByRole("checkbox", { name: "Antiquity" })
-    .forEach((checkbox) => expect(checkbox).not.toBeChecked());
+  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(1);
+  expect(screen.getByRole("checkbox", { name: "Antiquity" })).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: "User" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Club" })).toBeChecked();
   expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
@@ -222,7 +220,7 @@ test("searches nearby content after both coordinate fields lose focus", async ()
   expect(screen.queryByRole("button", { name: "Show area" })).not.toBeInTheDocument();
 });
 
-test("restores source type, event, and profile discovery facets from a map URL", async () => {
+test("restores shared period and layer-specific discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
   mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
@@ -260,7 +258,7 @@ test("restores source type, event, and profile discovery facets from a map URL",
       undefined,
       undefined,
       { periods: ["ANTIQUITY"], types: ["USER", "CLUB"], from: -27, to: 476 },
-      {},
+      { periods: ["ANTIQUITY"] },
     ),
   );
   expect(
@@ -358,12 +356,12 @@ test("refreshes nearby markers as temporal filters change", async () => {
   expect(
     screen.getByText("Source", { selector: "summary" }),
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByText("Source", { selector: "summary" }));
+  fireEvent.click(screen.getByText("Period", { selector: "summary" }));
   expect(
-    screen.getByText("Source", { selector: "summary" }).parentElement,
+    screen.getByText("Period", { selector: "summary" }).parentElement,
   ).toHaveAttribute("open");
 
-  fireEvent.click(document.getElementById("map-source-period-ANTIQUITY")!);
+  fireEvent.click(document.getElementById("map-period-ANTIQUITY")!);
   await waitFor(() =>
     expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
       41.9,
@@ -374,11 +372,11 @@ test("refreshes nearby markers as temporal filters change", async () => {
       undefined,
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"] },
-      {},
+      { periods: ["ANTIQUITY"] },
       undefined,
       undefined,
-      { types: ["USER", "CLUB"] },
-      {},
+      { types: ["USER", "CLUB"], periods: ["ANTIQUITY"] },
+      { periods: ["ANTIQUITY"] },
     ),
   );
 
@@ -395,11 +393,11 @@ test("refreshes nearby markers as temporal filters change", async () => {
       undefined,
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"], from: 27 },
-      { from: 27 },
+      { periods: ["ANTIQUITY"], from: 27 },
       undefined,
       undefined,
-      { types: ["USER", "CLUB"], from: 27 },
-      {},
+      { types: ["USER", "CLUB"], periods: ["ANTIQUITY"], from: 27 },
+      { periods: ["ANTIQUITY"] },
     ),
   );
 });

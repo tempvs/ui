@@ -86,18 +86,7 @@ export default function MapPage() {
   const [sourceRoles, setSourceRoles] = useState<SourceLocationRole[]>(() =>
     parseSourceRoles(params.get("sourceRoles")),
   );
-  const [sourcePeriods, setSourcePeriods] = useState(() =>
-    parsePeriods(params, "source"),
-  );
-  const [eventPeriods, setEventPeriods] = useState(() =>
-    parsePeriods(params, "event"),
-  );
-  const [clubPeriods, setClubPeriods] = useState(() =>
-    parsePeriods(params, "club"),
-  );
-  const [profilePeriods, setProfilePeriods] = useState(() =>
-    parsePeriods(params, "profile"),
-  );
+  const [periods, setPeriods] = useState(() => parseMapPeriods(params));
   const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
   const [from, setFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(
@@ -248,34 +237,34 @@ export default function MapPage() {
   const toYear = toAstronomicalYear(to);
   const sourceFilters = useMemo<MapSourceFilters>(
     () => ({
-      ...(sourcePeriods.length ? { periods: sourcePeriods } : {}),
+      ...(periods.length ? { periods } : {}),
       ...(sourceType ? { types: [sourceType] } : {}),
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [fromYear, sourcePeriods, sourceType, toYear],
+    [fromYear, periods, sourceType, toYear],
   );
   const eventFilters = useMemo<MapEventFilters>(
     () => ({
       ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
-      ...(eventPeriods.length ? { periods: eventPeriods } : {}),
+      ...(periods.length ? { periods } : {}),
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [eventPeriods, eventRoles, fromYear, toYear],
+    [periods, eventRoles, fromYear, toYear],
   );
   const profileFilters = useMemo<MapProfileFilters>(
     () => ({
-      ...(profilePeriods.length ? { periods: profilePeriods } : {}),
+      ...(periods.length ? { periods } : {}),
       types: profileTypes,
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [fromYear, profilePeriods, profileTypes, toYear],
+    [fromYear, periods, profileTypes, toYear],
   );
   const clubFilters = useMemo<MapClubFilters>(
-    () => (clubPeriods.length ? { periods: clubPeriods } : {}),
-    [clubPeriods],
+    () => (periods.length ? { periods } : {}),
+    [periods],
   );
   const entityFilterSignature = useMemo(
     () =>
@@ -284,10 +273,7 @@ export default function MapPage() {
         sourceRoles.join(","),
         eventRoles.join(","),
         sourceType,
-        sourcePeriods.join(","),
-        eventPeriods.join(","),
-        clubPeriods.join(","),
-        profilePeriods.join(","),
+        periods.join(","),
         profileTypes.join(","),
         `${from.year}:${from.era}`,
         `${to.year}:${to.era}`,
@@ -297,10 +283,7 @@ export default function MapPage() {
       eventRoles,
       from.era,
       from.year,
-      sourcePeriods,
-      eventPeriods,
-      clubPeriods,
-      profilePeriods,
+      periods,
       profileTypes,
       radius,
       sourceRoles,
@@ -846,18 +829,12 @@ export default function MapPage() {
             onSourceRolesChange={setSourceRoles}
             sourceType={sourceType}
             onSourceTypeChange={setSourceType}
-            sourcePeriods={sourcePeriods}
-            onSourcePeriodsChange={setSourcePeriods}
             eventRoles={eventRoles}
             onEventRolesChange={setEventRoles}
-            eventPeriods={eventPeriods}
-            onEventPeriodsChange={setEventPeriods}
-            clubPeriods={clubPeriods}
-            onClubPeriodsChange={setClubPeriods}
             profileTypes={profileTypes}
             onProfileTypesChange={setProfileTypes}
-            profilePeriods={profilePeriods}
-            onProfilePeriodsChange={setProfilePeriods}
+            periods={periods}
+            onPeriodsChange={setPeriods}
           />
           <Form.Group className="map-filter-radius mb-0">
             <Form.Label>Within</Form.Label>
@@ -1236,14 +1213,23 @@ function parseEventRoles(
     .filter((role, index, all) => all.indexOf(role) === index);
 }
 
-function parsePeriods(
-  params: URLSearchParams,
-  entityType: "source" | "event" | "club" | "profile",
-): string[] {
-  const plural = params.get(`${entityType}Periods`);
-  const legacy =
-    params.get(`${entityType}Period`) || params.get("period") || "";
-  return (plural ?? legacy)
+function parseMapPeriods(params: URLSearchParams): string[] {
+  const raw =
+    params.get("periods") ||
+    params.get("period") ||
+    [
+      "source",
+      "event",
+      "club",
+      "profile",
+    ]
+      .flatMap((entityType) => [
+        params.get(`${entityType}Periods`),
+        params.get(`${entityType}Period`),
+      ])
+      .filter(Boolean)
+      .join(",");
+  return raw
     .split(",")
     .filter(Boolean)
     .filter((period, index, all) => all.indexOf(period) === index);

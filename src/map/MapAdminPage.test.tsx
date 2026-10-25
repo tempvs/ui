@@ -415,3 +415,24 @@ test("paginates Map role requests and confirms operational-role removal", async 
     ),
   );
 });
+
+test("keeps direct member assignment with Map members instead of role requests", async () => {
+  getViewerMock.mockResolvedValue({
+    userId: "map-admin-1",
+    roles: ["MAP_ADMIN"],
+  });
+  renderAdmin();
+
+  fireEvent.click(
+    await screen.findByRole("tab", { name: "Role requests" }),
+  );
+  expect(
+    screen.queryByLabelText("Find a user profile to assign a Map role"),
+  ).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("tab", { name: "Map members" }));
+  expect(
+    await screen.findByLabelText("Find a user profile to assign a Map role"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Personal profiles only")).toBeInTheDocument();
+});
