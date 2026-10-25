@@ -163,7 +163,8 @@
   grid-row: 1;
 }
 
-.map-type-filter summary {
+.map-type-filter summary,
+.map-period-filter summary {
   cursor: pointer;
   color: #4d4438;
   font-size: 0.88rem;
@@ -180,6 +181,13 @@
   border: 1px solid #d4c9b5;
   background: #fffdf7;
   box-shadow: 0 0.35rem 0.8rem rgb(38 29 17 / 10%);
+}
+
+.map-period-filter-content {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding-left: 0.2rem;
 }
 
 .map-type-filter-content {

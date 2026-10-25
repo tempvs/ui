@@ -11,8 +11,6 @@ type Props = {
   idPrefix: string;
   entityTypes: MapEntityLocation["entityType"][];
   onEntityTypesChange: (types: MapEntityLocation["entityType"][]) => void;
-  period: string;
-  onPeriodChange: (value: string) => void;
   from: HistoricalYearInput;
   onFromChange: (value: HistoricalYearInput) => void;
   to: HistoricalYearInput;
@@ -21,10 +19,18 @@ type Props = {
   onSourceRolesChange: (roles: SourceLocationRole[]) => void;
   sourceType: string;
   onSourceTypeChange: (value: string) => void;
+  sourcePeriods: string[];
+  onSourcePeriodsChange: (periods: string[]) => void;
   eventRoles: Array<"VENUE" | "HISTORICAL_SITE">;
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
-  profileType: string;
-  onProfileTypeChange: (value: string) => void;
+  eventPeriods: string[];
+  onEventPeriodsChange: (periods: string[]) => void;
+  clubPeriods: string[];
+  onClubPeriodsChange: (periods: string[]) => void;
+  profileTypes: Array<"USER" | "CLUB">;
+  onProfileTypesChange: (types: Array<"USER" | "CLUB">) => void;
+  profilePeriods: string[];
+  onProfilePeriodsChange: (periods: string[]) => void;
 };
 
 const allEntityTypes: MapEntityLocation["entityType"][] = [
@@ -34,15 +40,13 @@ const allEntityTypes: MapEntityLocation["entityType"][] = [
   "SOURCE",
 ];
 
-/** Common temporal context applies to every kind of map content. Type-specific
- * filters live beside the type they affect instead of behind one catch-all
- * disclosure. */
+/** Type-specific controls stay next to their map layer. Periods are optional:
+ * an empty set means include every period, while one or more checked values
+ * immediately narrow only that entity type. */
 export default function MapEntityFilterControls({
   idPrefix,
   entityTypes,
   onEntityTypesChange,
-  period,
-  onPeriodChange,
   from,
   onFromChange,
   to,
@@ -51,10 +55,18 @@ export default function MapEntityFilterControls({
   onSourceRolesChange,
   sourceType,
   onSourceTypeChange,
+  sourcePeriods,
+  onSourcePeriodsChange,
   eventRoles,
   onEventRolesChange,
-  profileType,
-  onProfileTypeChange,
+  eventPeriods,
+  onEventPeriodsChange,
+  clubPeriods,
+  onClubPeriodsChange,
+  profileTypes,
+  onProfileTypesChange,
+  profilePeriods,
+  onProfilePeriodsChange,
 }: Props) {
   const toggleEntityType = (type: MapEntityLocation["entityType"]) =>
     onEntityTypesChange(
@@ -63,17 +75,9 @@ export default function MapEntityFilterControls({
         : [...entityTypes, type],
     );
   const toggleSourceRole = (role: SourceLocationRole) =>
-    onSourceRolesChange(
-      sourceRoles.includes(role)
-        ? sourceRoles.filter((value) => value !== role)
-        : [...sourceRoles, role],
-    );
+    onSourceRolesChange(toggle(sourceRoles, role));
   const toggleEventRole = (role: "VENUE" | "HISTORICAL_SITE") =>
-    onEventRolesChange(
-      eventRoles.includes(role)
-        ? eventRoles.filter((value) => value !== role)
-        : [...eventRoles, role],
-    );
+    onEventRolesChange(toggle(eventRoles, role));
 
   return (
     <div className="map-entity-filter-controls">
@@ -133,50 +137,58 @@ export default function MapEntityFilterControls({
                             ))}
                           </Form.Select>
                         </Form.Group>
+                        <PeriodFilter idPrefix={idPrefix} entityType={type} periods={sourcePeriods} onChange={onSourcePeriodsChange} />
                       </>
                     )}
                     {type === "EVENT" && (
-                      <Form.Group>
-                        <Form.Label>Event place</Form.Label>
-                        <div className="d-flex gap-2 flex-wrap">
-                          {(
-                            [
-                              ["VENUE", "Venue"],
-                              ["HISTORICAL_SITE", "Historical site"],
-                            ] as const
-                          ).map(([role, roleLabel]) => (
-                            <Form.Check
-                              inline
-                              key={role}
-                              id={`${idPrefix}-event-role-${role}`}
-                              label={roleLabel}
-                              checked={eventRoles.includes(role)}
-                              onChange={() => toggleEventRole(role)}
-                            />
-                          ))}
-                        </div>
-                      </Form.Group>
+                      <>
+                        <Form.Group>
+                          <Form.Label>Event place</Form.Label>
+                          <div className="d-flex gap-2 flex-wrap">
+                            {(
+                              [
+                                ["VENUE", "Venue"],
+                                ["HISTORICAL_SITE", "Historical site"],
+                              ] as const
+                            ).map(([role, roleLabel]) => (
+                              <Form.Check
+                                inline
+                                key={role}
+                                id={`${idPrefix}-event-role-${role}`}
+                                label={roleLabel}
+                                checked={eventRoles.includes(role)}
+                                onChange={() => toggleEventRole(role)}
+                              />
+                            ))}
+                          </div>
+                        </Form.Group>
+                        <PeriodFilter idPrefix={idPrefix} entityType={type} periods={eventPeriods} onChange={onEventPeriodsChange} />
+                      </>
                     )}
                     {type === "PROFILE" && (
-                      <Form.Group>
-                        <Form.Label>Profile type</Form.Label>
-                        <Form.Select
-                          size="sm"
-                          value={profileType}
-                          onChange={(event) =>
-                            onProfileTypeChange(event.target.value)
-                          }
-                        >
-                          <option value="">All profile types</option>
-                          <option value="USER">User</option>
-                          <option value="CLUB">Club</option>
-                        </Form.Select>
-                      </Form.Group>
+                      <>
+                        <Form.Group>
+                          <Form.Label>Profile type</Form.Label>
+                          <div className="d-flex gap-2 flex-wrap">
+                            {(["USER", "CLUB"] as const).map((profileType) => (
+                              <Form.Check
+                                inline
+                                key={profileType}
+                                id={`${idPrefix}-profile-type-${profileType}`}
+                                label={readable(profileType)}
+                                checked={profileTypes.includes(profileType)}
+                                onChange={() =>
+                                  onProfileTypesChange(toggle(profileTypes, profileType))
+                                }
+                              />
+                            ))}
+                          </div>
+                        </Form.Group>
+                        <PeriodFilter idPrefix={idPrefix} entityType={type} periods={profilePeriods} onChange={onProfilePeriodsChange} />
+                      </>
                     )}
                     {type === "CLUB" && (
-                      <p className="text-muted small mb-0">
-                        Club results use the shared period and year filters.
-                      </p>
+                      <PeriodFilter idPrefix={idPrefix} entityType={type} periods={clubPeriods} onChange={onClubPeriodsChange} />
                     )}
                   </div>
                 </details>
@@ -186,22 +198,6 @@ export default function MapEntityFilterControls({
         </div>
       </Form.Group>
       <div className="map-temporal-controls">
-        <Form.Group className="map-filter-period mb-0">
-          <Form.Label>Period</Form.Label>
-          <Form.Select
-            size="sm"
-            value={period}
-            onChange={(event) => onPeriodChange(event.target.value)}
-            aria-label="Period"
-          >
-            <option value="">All periods</option>
-            {PERIODS.map((value) => (
-              <option key={value} value={value}>
-                {readable(value)}
-              </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
         <div className="map-filter-years">
           <HistoricalRangeFilter
             label="Years"
@@ -220,6 +216,41 @@ export default function MapEntityFilterControls({
       </div>
     </div>
   );
+}
+
+function PeriodFilter({
+  idPrefix,
+  entityType,
+  periods,
+  onChange,
+}: {
+  idPrefix: string;
+  entityType: string;
+  periods: string[];
+  onChange: (periods: string[]) => void;
+}) {
+  return (
+    <details className="map-period-filter">
+      <summary>Period</summary>
+      <div className="map-period-filter-content">
+        {PERIODS.map((period) => (
+          <Form.Check
+            key={period}
+            id={`${idPrefix}-${entityType.toLowerCase()}-period-${period}`}
+            label={readable(period)}
+            checked={periods.includes(period)}
+            onChange={() => onChange(toggle(periods, period))}
+          />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function toggle<T>(values: T[], value: T): T[] {
+  return values.includes(value)
+    ? values.filter((candidate) => candidate !== value)
+    : [...values, value];
 }
 
 function readable(value: string): string {

@@ -124,7 +124,13 @@ test("starts with empty temporal filters", () => {
     </MemoryRouter>,
   );
 
-  expect(screen.getByRole("combobox", { name: "Period" })).toHaveValue("");
+  expect(screen.queryByRole("combobox", { name: "Period" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(4);
+  screen
+    .getAllByRole("checkbox", { name: "Antiquity" })
+    .forEach((checkbox) => expect(checkbox).not.toBeChecked());
+  expect(screen.getByRole("checkbox", { name: "User" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Club" })).toBeChecked();
   expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
   expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue("");
 });
@@ -241,19 +247,20 @@ test("restores source type, event, and profile discovery facets from a map URL",
       undefined,
       ["DISCOVERED_AT"],
       {
-        period: "ANTIQUITY",
+        periods: ["ANTIQUITY"],
         types: ["ARCHAEOLOGICAL"],
         from: -27,
         to: 476,
       },
       {
-        period: "ANTIQUITY",
+        periods: ["ANTIQUITY"],
         from: -27,
         to: 476,
       },
       undefined,
       undefined,
-      { period: "ANTIQUITY", from: -27, to: 476 },
+      { periods: ["ANTIQUITY"], types: ["USER", "CLUB"], from: -27, to: 476 },
+      {},
     ),
   );
   expect(
@@ -319,6 +326,7 @@ test("loads the next bounded page of nearby compact markers", async () => {
     {},
     undefined,
     "opaque-next-page",
+    { types: ["USER", "CLUB"] },
     {},
   );
 });
@@ -355,9 +363,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
     screen.getByText("Source", { selector: "summary" }).parentElement,
   ).toHaveAttribute("open");
 
-  fireEvent.change(screen.getByRole("combobox", { name: "Period" }), {
-    target: { value: "ANTIQUITY" },
-  });
+  fireEvent.click(document.getElementById("map-source-period-ANTIQUITY")!);
   await waitFor(() =>
     expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
       41.9,
@@ -367,11 +373,12 @@ test("refreshes nearby markers as temporal filters change", async () => {
       undefined,
       undefined,
       ["DISCOVERED_AT"],
-      { period: "ANTIQUITY" },
-      { period: "ANTIQUITY" },
+      { periods: ["ANTIQUITY"] },
+      {},
       undefined,
       undefined,
-      { period: "ANTIQUITY" },
+      { types: ["USER", "CLUB"] },
+      {},
     ),
   );
 
@@ -387,11 +394,41 @@ test("refreshes nearby markers as temporal filters change", async () => {
       undefined,
       undefined,
       ["DISCOVERED_AT"],
-      { period: "ANTIQUITY", from: 27 },
-      { period: "ANTIQUITY", from: 27 },
+      { periods: ["ANTIQUITY"], from: 27 },
+      { from: 27 },
       undefined,
       undefined,
-      { period: "ANTIQUITY", from: 27 },
+      { types: ["USER", "CLUB"], from: 27 },
+      {},
+    ),
+  );
+});
+
+test("filters profile markers immediately when a profile type is unchecked", async () => {
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() => expect(mockNearbyMapEntitiesPage).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("checkbox", { name: "User" }));
+
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      {},
+      {},
+      undefined,
+      undefined,
+      { types: ["CLUB"] },
+      {},
     ),
   );
 });

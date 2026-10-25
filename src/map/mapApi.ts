@@ -99,6 +99,7 @@ export type MapEntityLocation = {
   eventPeriods?: string[];
   eventFrom?: number;
   eventTo?: number;
+  clubPeriod?: string;
   profilePeriod?: string;
   profileType?: "USER" | "CLUB";
   profileFrom?: number;
@@ -115,22 +116,25 @@ export type MapEntityLocationPage = {
  * profile, club, or event markers when used in a mixed nearby search. */
 export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
 export type MapSourceFilters = {
-  period?: string;
+  periods?: string[];
   types?: string[];
   from?: number;
   to?: number;
 };
 export type MapEventFilters = {
   locationRoles?: Array<"VENUE" | "HISTORICAL_SITE">;
-  period?: string;
+  periods?: string[];
   from?: number;
   to?: number;
 };
 export type MapProfileFilters = {
-  period?: string;
+  periods?: string[];
   types?: Array<"USER" | "CLUB">;
   from?: number;
   to?: number;
+};
+export type MapClubFilters = {
+  periods?: string[];
 };
 
 export type MapPlaceProposal = {
@@ -749,6 +753,7 @@ export async function nearbyMapEntities(
   eventFilters: MapEventFilters = {},
   parentPlaceId?: string,
   profileFilters: MapProfileFilters = {},
+  clubFilters: MapClubFilters = {},
 ): Promise<MapEntityLocation[]> {
   return (
     await nearbyMapEntitiesPage(
@@ -764,6 +769,7 @@ export async function nearbyMapEntities(
       parentPlaceId,
       undefined,
       profileFilters,
+      clubFilters,
     )
   ).items;
 }
@@ -782,6 +788,7 @@ export async function nearbyMapEntitiesPage(
   parentPlaceId?: string,
   cursor?: string,
   profileFilters: MapProfileFilters = {},
+  clubFilters: MapClubFilters = {},
 ): Promise<MapEntityLocationPage> {
   const response = await fetch(
     `/api/map/entities?${new URLSearchParams({
@@ -792,7 +799,9 @@ export async function nearbyMapEntitiesPage(
       ...(types.length ? { types: types.join(",") } : {}),
       ...(query?.trim() ? { search: query.trim() } : {}),
       ...(sourceRoles.length ? { sourceRoles: sourceRoles.join(",") } : {}),
-      ...(sourceFilters.period ? { sourcePeriod: sourceFilters.period } : {}),
+      ...(sourceFilters.periods?.length
+        ? { sourcePeriods: sourceFilters.periods.join(",") }
+        : {}),
       ...(sourceFilters.types?.length
         ? { sourceTypes: sourceFilters.types.join(",") }
         : {}),
@@ -802,7 +811,9 @@ export async function nearbyMapEntitiesPage(
       ...(sourceFilters.to !== undefined
         ? { sourceTo: String(sourceFilters.to) }
         : {}),
-      ...(eventFilters.period ? { eventPeriod: eventFilters.period } : {}),
+      ...(eventFilters.periods?.length
+        ? { eventPeriods: eventFilters.periods.join(",") }
+        : {}),
       ...(eventFilters.locationRoles?.length
         ? { eventRoles: eventFilters.locationRoles.join(",") }
         : {}),
@@ -812,17 +823,20 @@ export async function nearbyMapEntitiesPage(
       ...(eventFilters.to !== undefined
         ? { eventTo: String(eventFilters.to) }
         : {}),
-      ...(profileFilters.period
-        ? { profilePeriod: profileFilters.period }
+      ...(profileFilters.periods?.length
+        ? { profilePeriods: profileFilters.periods.join(",") }
         : {}),
-      ...(profileFilters.types?.length
-        ? { profileTypes: profileFilters.types.join(",") }
+      ...(profileFilters.types !== undefined
+        ? { profileTypes: profileFilters.types.length ? profileFilters.types.join(",") : "none" }
         : {}),
       ...(profileFilters.from !== undefined
         ? { profileFrom: String(profileFilters.from) }
         : {}),
       ...(profileFilters.to !== undefined
         ? { profileTo: String(profileFilters.to) }
+        : {}),
+      ...(clubFilters.periods?.length
+        ? { clubPeriods: clubFilters.periods.join(",") }
         : {}),
       ...(parentPlaceId ? { parentPlaceId } : {}),
       ...(cursor ? { cursor } : {}),
