@@ -34,7 +34,6 @@ export default function EventsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
-  const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -101,11 +100,12 @@ export default function EventsPage() {
 
   const normalized = query.trim().toLocaleLowerCase();
   const range = rangeFromInputs(from, to);
+  const hasYearFilter = Boolean(range.from || range.to);
   const visible = events.filter((event) => {
     if (
       !normalized &&
       !selectedPeriods.length &&
-      !rangeEnabled &&
+      !hasYearFilter &&
       !venue &&
       !historicalSite
     ) {
@@ -128,12 +128,11 @@ export default function EventsPage() {
       !textMatch ||
       !venueMatch ||
       !historicalSiteMatch ||
-      !periodMatch ||
-      !rangeEnabled
+      !periodMatch
     ) {
       return textMatch && venueMatch && historicalSiteMatch && periodMatch;
     }
-    return overlapsHistoricalRange(event, range);
+    return !hasYearFilter || overlapsHistoricalRange(event, range);
   });
 
   return (
@@ -184,17 +183,16 @@ export default function EventsPage() {
               className="mb-2"
             />
             <HistoricalRangeFilter
-              enabled={rangeEnabled}
+              enabled
               from={from}
               to={to}
-              onEnabledChange={setRangeEnabled}
+              onEnabledChange={() => undefined}
               onFromChange={setFrom}
               onToChange={setTo}
-              onValueEntered={() => setRangeEnabled(true)}
               label="Years"
+              showToggle={false}
               alwaysShowFields
               compact
-              inlineToggle
             />
           </aside>
           <div className="event-search-query">
