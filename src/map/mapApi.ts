@@ -99,6 +99,8 @@ export type MapEntityLocation = {
   eventPeriods?: string[];
   eventFrom?: number;
   eventTo?: number;
+  /** ISO instant after which a one-time or bounded recurring event is past. */
+  eventEndsAt?: string;
   clubPeriod?: string;
   profilePeriod?: string;
   profileType?: "USER" | "CLUB";
@@ -124,6 +126,7 @@ export type MapSourceFilters = {
 export type MapEventFilters = {
   locationRoles?: Array<"VENUE" | "HISTORICAL_SITE">;
   periods?: string[];
+  includePast?: boolean;
   from?: number;
   to?: number;
 };
@@ -817,6 +820,7 @@ export async function nearbyMapEntitiesPage(
       ...(eventFilters.locationRoles?.length
         ? { eventRoles: eventFilters.locationRoles.join(",") }
         : {}),
+      ...(eventFilters.includePast ? { includePastEvents: "true" } : {}),
       ...(eventFilters.from !== undefined
         ? { eventFrom: String(eventFilters.from) }
         : {}),

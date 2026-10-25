@@ -361,10 +361,26 @@ test("refreshes nearby markers as temporal filters change", async () => {
     screen.getByText("Period", { selector: "summary" }).parentElement
       ?.parentElement,
   ).toHaveClass("map-temporal-controls");
+  fireEvent.click(screen.getByText("Event", { selector: "summary" }));
+  expect(
+    screen.getByRole("checkbox", { name: "Include past events" }),
+  ).not.toBeChecked();
+  fireEvent.click(screen.getByText("Source", { selector: "summary" }));
+  await waitFor(() =>
+    expect(
+      screen.getByText("Event", { selector: "summary" }).parentElement,
+    ).not.toHaveAttribute("open"),
+  );
+
   fireEvent.click(screen.getByText("Period", { selector: "summary" }));
   expect(
     screen.getByText("Period", { selector: "summary" }).parentElement,
   ).toHaveAttribute("open");
+  await waitFor(() =>
+    expect(
+      screen.getByText("Source", { selector: "summary" }).parentElement,
+    ).not.toHaveAttribute("open"),
+  );
 
   fireEvent.click(document.getElementById("map-period-ANTIQUITY")!);
   await waitFor(() =>
@@ -385,6 +401,28 @@ test("refreshes nearby markers as temporal filters change", async () => {
     ),
   );
 
+  fireEvent.click(screen.getByText("Event", { selector: "summary" }));
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Include past events" }),
+  );
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      { periods: ["ANTIQUITY"] },
+      { periods: ["ANTIQUITY"], includePast: true },
+      undefined,
+      undefined,
+      { types: ["USER", "CLUB"], periods: ["ANTIQUITY"] },
+      { periods: ["ANTIQUITY"] },
+    ),
+  );
+
   fireEvent.change(screen.getAllByRole("textbox", { name: "Year" })[0], {
     target: { value: "27" },
   });
@@ -398,7 +436,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       undefined,
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"], from: 27 },
-      { periods: ["ANTIQUITY"], from: 27 },
+      { periods: ["ANTIQUITY"], includePast: true, from: 27 },
       undefined,
       undefined,
       { types: ["USER", "CLUB"], periods: ["ANTIQUITY"], from: 27 },

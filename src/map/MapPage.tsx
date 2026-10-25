@@ -107,6 +107,9 @@ export default function MapPage() {
   const [eventRoles, setEventRoles] = useState<
     Array<"VENUE" | "HISTORICAL_SITE">
   >(() => parseEventRoles(params.get("eventRoles")));
+  const [includePastEvents, setIncludePastEvents] = useState(
+    () => params.get("includePastEvents") === "true",
+  );
   const [profileTypes, setProfileTypes] = useState<
     Array<"USER" | "CLUB">
   >(() => parseProfileTypes(params));
@@ -247,11 +250,12 @@ export default function MapPage() {
   const eventFilters = useMemo<MapEventFilters>(
     () => ({
       ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
+      ...(includePastEvents ? { includePast: true } : {}),
       ...(periods.length ? { periods } : {}),
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [periods, eventRoles, fromYear, toYear],
+    [periods, eventRoles, fromYear, includePastEvents, toYear],
   );
   const profileFilters = useMemo<MapProfileFilters>(
     () => ({
@@ -272,6 +276,7 @@ export default function MapPage() {
         types.join(","),
         sourceRoles.join(","),
         eventRoles.join(","),
+        includePastEvents ? "include-past" : "exclude-past",
         sourceType,
         periods.join(","),
         profileTypes.join(","),
@@ -281,6 +286,7 @@ export default function MapPage() {
       ].join("|"),
     [
       eventRoles,
+      includePastEvents,
       from.era,
       from.year,
       periods,
@@ -684,9 +690,12 @@ export default function MapPage() {
     return entitiesForLocationMode.filter(
       (entity) =>
         types.includes(entity.entityType) &&
-        matchesMapEntityPeriods(entity, periods),
+        matchesMapEntityPeriods(entity, periods) &&
+        (includePastEvents ||
+          entity.entityType !== "EVENT" ||
+          !eventHasEnded(entity.eventEndsAt)),
     );
-  }, [entities, periods, sourceRoles.length, types]);
+  }, [entities, includePastEvents, periods, sourceRoles.length, types]);
 
   const visibleOwnedMarkers = useMemo(
     () =>
@@ -694,9 +703,12 @@ export default function MapPage() {
         (marker) =>
           types.includes(marker.entityType) &&
           (periods.length === 0 ||
-            marker.periods?.some((period) => periods.includes(period))),
+            marker.periods?.some((period) => periods.includes(period))) &&
+          (includePastEvents ||
+            marker.entityType !== "EVENT" ||
+            !eventHasEnded(marker.eventEndsAt)),
       ),
-    [ownedMarkers, periods, types],
+    [includePastEvents, ownedMarkers, periods, types],
   );
 
   const visibleOwnedConnections = useMemo(() => {
@@ -838,6 +850,8 @@ export default function MapPage() {
             onSourceTypeChange={setSourceType}
             eventRoles={eventRoles}
             onEventRolesChange={setEventRoles}
+            includePastEvents={includePastEvents}
+            onIncludePastEventsChange={setIncludePastEvents}
             profileTypes={profileTypes}
             onProfileTypesChange={setProfileTypes}
             periods={periods}
@@ -1264,6 +1278,12 @@ function matchesMapEntityPeriods(
             : [];
 
   return entityPeriods.some((period) => periods.includes(period));
+}
+
+function eventHasEnded(endsAt: string | undefined): boolean {
+  if (!endsAt) return false;
+  const endedAt = Date.parse(endsAt);
+  return Number.isFinite(endedAt) && endedAt < Date.now();
 }
 
 function parseProfileTypes(

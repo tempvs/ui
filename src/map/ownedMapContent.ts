@@ -39,6 +39,7 @@ export type OwnedMapMarker = {
   longitude: number;
   thumbnailUrl?: string | null;
   periods?: string[];
+  eventEndsAt?: string;
   path: string;
 };
 
@@ -165,6 +166,7 @@ export async function loadEventRelatedMapContent(
       locationRole: "HISTORICAL_SITE",
     });
   }
+    const eventEndsAt = mapEventEndsAt(event);
   const markers = await Promise.all(
     locations.map(async (location) => {
       const place = await resolvePlace(location.placeId);
@@ -180,6 +182,7 @@ export async function loadEventRelatedMapContent(
         longitude: place.longitude,
         thumbnailUrl: event.image?.thumbnailUrl || event.image?.url || null,
         ...(event.periods?.length ? { periods: event.periods } : {}),
+        ...(eventEndsAt ? { eventEndsAt } : {}),
         path: `/events/${encodeURIComponent(event.id)}`,
       });
     }),
@@ -563,6 +566,13 @@ function marker(value: Omit<OwnedMapMarker, "key">): OwnedMapMarker {
     ...value,
     key: `${value.entityType}:${value.entityId}:${value.locationRole}`,
   };
+}
+
+function mapEventEndsAt(event: TempvsEvent): string | undefined {
+  const schedule = event.schedule;
+  if (!schedule) return undefined;
+  if (schedule.kind === "RECURRING") return schedule.recurrence?.until;
+  return schedule.endsAt;
 }
 
 function buildConnections(

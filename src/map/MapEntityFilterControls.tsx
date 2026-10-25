@@ -21,6 +21,8 @@ type Props = {
   onSourceTypeChange: (value: string) => void;
   eventRoles: Array<"VENUE" | "HISTORICAL_SITE">;
   onEventRolesChange: (roles: Array<"VENUE" | "HISTORICAL_SITE">) => void;
+  includePastEvents: boolean;
+  onIncludePastEventsChange: (includePast: boolean) => void;
   profileTypes: Array<"USER" | "CLUB">;
   onProfileTypesChange: (types: Array<"USER" | "CLUB">) => void;
   periods: string[];
@@ -51,11 +53,16 @@ export default function MapEntityFilterControls({
   onSourceTypeChange,
   eventRoles,
   onEventRolesChange,
+  includePastEvents,
+  onIncludePastEventsChange,
   profileTypes,
   onProfileTypesChange,
   periods,
   onPeriodsChange,
 }: Props) {
+  const [openDisclosure, setOpenDisclosure] = React.useState<string | null>(
+    null,
+  );
   const toggleEntityType = (type: MapEntityLocation["entityType"]) =>
     onEntityTypesChange(
       entityTypes.includes(type)
@@ -86,8 +93,20 @@ export default function MapEntityFilterControls({
                     onChange={() => toggleEntityType(type)}
                   />
                   {hasTypeControls ? (
-                    <details className="map-type-filter">
-                      <summary>{label}</summary>
+                    <details
+                      className="map-type-filter"
+                      open={openDisclosure === type}
+                    >
+                      <summary
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setOpenDisclosure((current) =>
+                            current === type ? null : type,
+                          );
+                        }}
+                      >
+                        {label}
+                      </summary>
                       <div className="map-type-filter-content">
                       {type === "SOURCE" && (
                         <>
@@ -131,26 +150,36 @@ export default function MapEntityFilterControls({
                         </>
                       )}
                       {type === "EVENT" && (
-                        <Form.Group>
-                          <Form.Label>Event place</Form.Label>
-                          <div className="d-flex gap-2 flex-wrap">
-                            {(
-                              [
-                                ["VENUE", "Venue"],
-                                ["HISTORICAL_SITE", "Historical site"],
-                              ] as const
-                            ).map(([role, roleLabel]) => (
-                              <Form.Check
-                                inline
-                                key={role}
-                                id={`${idPrefix}-event-role-${role}`}
-                                label={roleLabel}
-                                checked={eventRoles.includes(role)}
-                                onChange={() => toggleEventRole(role)}
-                              />
-                            ))}
-                          </div>
-                        </Form.Group>
+                        <>
+                          <Form.Group>
+                            <Form.Label>Event place</Form.Label>
+                            <div className="d-flex gap-2 flex-wrap">
+                              {(
+                                [
+                                  ["VENUE", "Venue"],
+                                  ["HISTORICAL_SITE", "Historical site"],
+                                ] as const
+                              ).map(([role, roleLabel]) => (
+                                <Form.Check
+                                  inline
+                                  key={role}
+                                  id={`${idPrefix}-event-role-${role}`}
+                                  label={roleLabel}
+                                  checked={eventRoles.includes(role)}
+                                  onChange={() => toggleEventRole(role)}
+                                />
+                              ))}
+                            </div>
+                          </Form.Group>
+                          <Form.Check
+                            id={`${idPrefix}-event-include-past`}
+                            label="Include past events"
+                            checked={includePastEvents}
+                            onChange={(event) =>
+                              onIncludePastEventsChange(event.target.checked)
+                            }
+                          />
+                        </>
                       )}
                       {type === "PROFILE" && (
                         <Form.Group>
@@ -204,6 +233,12 @@ export default function MapEntityFilterControls({
           idPrefix={idPrefix}
           periods={periods}
           onChange={onPeriodsChange}
+          open={openDisclosure === "PERIOD"}
+          onToggle={() =>
+            setOpenDisclosure((current) =>
+              current === "PERIOD" ? null : "PERIOD",
+            )
+          }
         />
       </div>
     </div>
@@ -214,14 +249,28 @@ function PeriodFilter({
   idPrefix,
   periods,
   onChange,
+  open,
+  onToggle,
 }: {
   idPrefix: string;
   periods: string[];
   onChange: (periods: string[]) => void;
+  open: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <details className="map-period-filter map-period-filter--global">
-      <summary>Period</summary>
+    <details
+      className="map-period-filter map-period-filter--global"
+      open={open}
+    >
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          onToggle();
+        }}
+      >
+        Period
+      </summary>
       <div className="map-period-filter-content">
         {PERIODS.map((period) => (
           <Form.Check
