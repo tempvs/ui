@@ -381,6 +381,7 @@
 }
 
 .map-selected-place-label {
+  display: block;
   margin-bottom: 0.35rem;
   padding: 0.15rem 0.38rem;
   border: 1px solid #66533b;
@@ -391,11 +392,25 @@
   font-weight: 700;
   line-height: 1.2;
   box-shadow: 0 0.1rem 0.25rem rgb(38 29 17 / 20%);
+  cursor: pointer;
+  text-decoration: none;
 }
 
 .map-selected-place-label:hover,
 .map-selected-place-label:focus-visible {
   background: #f5edda;
+}
+
+.map-marker-popover {
+  display: grid;
+  gap: 0.35rem;
+  color: #332c24;
+  font-size: 0.82rem;
+}
+
+.map-marker-links {
+  display: flex;
+  gap: 0.65rem;
 }
 
 /* Authenticated, viewer-scoped content uses DOM markers so avatars and club

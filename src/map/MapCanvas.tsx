@@ -65,6 +65,8 @@ type MarkerProperties = {
   kind: "PLACE" | MapEntityLocation["entityType"];
   label: string;
   role?: string;
+  entityId?: string;
+  placeId?: string;
 };
 
 const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
@@ -217,7 +219,9 @@ export default function MapCanvas({
     ownedMarkerInstances.current.forEach((marker) => marker.remove());
     ownedMarkerInstances.current = [];
     if (!ready || !map.current) return undefined;
+    const mapInstance = map.current;
     const offsets = markerOffsets(ownedMarkers);
+    const popupDisposers: Array<() => void> = [];
     const instances = ownedMarkers.map((ownedMarker) => {
       const element = document.createElement("button");
       element.type = "button";
@@ -241,16 +245,20 @@ export default function MapCanvas({
         event.stopPropagation();
         ownedMarkerSelectRef.current?.(ownedMarker);
       });
+      popupDisposers.push(
+        addMarkerLinksPopup(mapInstance, element, ownedMarker),
+      );
       return new maplibregl.Marker({
         element,
         anchor: "center",
         offset: offsets.get(ownedMarker.key) || [0, 0],
       })
         .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
-        .addTo(map.current as maplibregl.Map);
+        .addTo(mapInstance);
     });
     ownedMarkerInstances.current = instances;
     return () => {
+      popupDisposers.forEach((dispose) => dispose());
       instances.forEach((marker) => marker.remove());
       if (ownedMarkerInstances.current === instances)
         ownedMarkerInstances.current = [];
@@ -259,7 +267,9 @@ export default function MapCanvas({
 
   useEffect(() => {
     if (!ready || !map.current) return undefined;
+    const mapInstance = map.current;
     const offsets = markerOffsets(thumbnailMarkers);
+    const popupDisposers: Array<() => void> = [];
     const instances = thumbnailMarkers.map((thumbnailMarker) => {
       const markerElement = mapMarkerElement(thumbnailMarker, "thumbnail");
       markerElement.addEventListener("click", (event) => {
@@ -267,15 +277,21 @@ export default function MapCanvas({
         event.stopPropagation();
         thumbnailMarkerSelectRef.current?.(thumbnailMarker);
       });
+      popupDisposers.push(
+        addMarkerLinksPopup(mapInstance, markerElement, thumbnailMarker),
+      );
       return new maplibregl.Marker({
         element: markerElement,
         anchor: "center",
         offset: offsets.get(thumbnailMarker.key) || [0, 0],
       })
         .setLngLat([thumbnailMarker.longitude, thumbnailMarker.latitude])
-        .addTo(map.current as maplibregl.Map);
+        .addTo(mapInstance);
     });
-    return () => instances.forEach((marker) => marker.remove());
+    return () => {
+      popupDisposers.forEach((dispose) => dispose());
+      instances.forEach((marker) => marker.remove());
+    };
   }, [ready, thumbnailMarkers]);
 
   useEffect(() => {
@@ -306,25 +322,15 @@ export default function MapCanvas({
     if (!ready || !map.current || !selectedPlaceId) return undefined;
     const place = places.find((item) => item.id === selectedPlaceId);
     if (!place) return undefined;
-    const element = document.createElement("button");
-    element.type = "button";
+    const element = document.createElement("a");
     element.className = "map-selected-place-label";
     element.textContent = place.matchedName || place.canonicalName;
-    element.setAttribute("aria-label", `Show names for ${element.textContent}`);
+    element.href = placePath(place.id);
+    element.setAttribute("aria-label", `Open ${element.textContent}`);
     const marker = new maplibregl.Marker({ element, anchor: "bottom" })
       .setLngLat([place.longitude, place.latitude])
       .addTo(map.current);
-    element.addEventListener("click", () => {
-      placeSelectRef.current?.(place);
-      new maplibregl.Popup({
-        closeButton: true,
-        closeOnClick: true,
-        maxWidth: "18rem",
-      })
-        .setLngLat([place.longitude, place.latitude])
-        .setDOMContent(placePopover(place))
-        .addTo(map.current as maplibregl.Map);
-    });
+    element.addEventListener("click", (event) => event.stopPropagation());
     selectedPlaceMarker.current = marker;
     return () => {
       marker.remove();
@@ -669,6 +675,61 @@ function addMarkerLayers(
     const key = event.features?.[0]?.properties?.key;
     if (typeof key === "string") onEntitySelect(key);
   });
+  let entityHoverPopup: maplibregl.Popup | null = null;
+  let entityHoverCloseTimer: number | undefined;
+  const closeEntityHoverPopup = () => {
+    if (entityHoverCloseTimer !== undefined) {
+      window.clearTimeout(entityHoverCloseTimer);
+      entityHoverCloseTimer = undefined;
+    }
+    entityHoverPopup?.remove();
+    entityHoverPopup = null;
+  };
+  const scheduleEntityHoverClose = () => {
+    if (entityHoverCloseTimer !== undefined)
+      window.clearTimeout(entityHoverCloseTimer);
+    entityHoverCloseTimer = window.setTimeout(closeEntityHoverPopup, 160);
+  };
+  map.on("mouseenter", "map-entity-points", (event) => {
+    const feature = event.features?.[0];
+    const properties = feature?.properties;
+    const entityType = properties?.kind;
+    const entityId = properties?.entityId;
+    const placeId = properties?.placeId;
+    const label = properties?.label;
+    if (
+      !feature ||
+      !isEntityType(entityType) ||
+      typeof entityId !== "string" ||
+      typeof placeId !== "string" ||
+      typeof label !== "string"
+    )
+      return;
+    closeEntityHoverPopup();
+    const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
+      number,
+      number,
+    ];
+    const popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: "18rem",
+    })
+      .setLngLat(coordinates)
+      .setDOMContent(
+        markerLinksPopover({ entityType, entityId, placeId, label }),
+      )
+      .addTo(map);
+    entityHoverPopup = popup;
+    popup.getElement()?.addEventListener("mouseenter", () => {
+      if (entityHoverCloseTimer !== undefined) {
+        window.clearTimeout(entityHoverCloseTimer);
+        entityHoverCloseTimer = undefined;
+      }
+    });
+    popup.getElement()?.addEventListener("mouseleave", scheduleEntityHoverClose);
+  });
+  map.on("mouseleave", "map-entity-points", scheduleEntityHoverClose);
   const openPlace = (event: maplibregl.MapLayerMouseEvent) => {
     const id = event.features?.[0]?.properties?.placeId;
     if (typeof id !== "string") return;
@@ -716,6 +777,118 @@ function markerColour(): maplibregl.ExpressionSpecification {
   ];
 }
 
+type LinkedMarker = Pick<
+  MapThumbnailMarker,
+  "entityType" | "entityId" | "placeId" | "label"
+>;
+type LinkableMarker = LinkedMarker &
+  Pick<MapThumbnailMarker, "latitude" | "longitude">;
+
+function addMarkerLinksPopup(
+  map: maplibregl.Map,
+  trigger: HTMLElement,
+  marker: LinkableMarker,
+): () => void {
+  let popup: maplibregl.Popup | null = null;
+  let closeTimer: number | undefined;
+  const close = () => {
+    if (closeTimer !== undefined) {
+      window.clearTimeout(closeTimer);
+      closeTimer = undefined;
+    }
+    popup?.remove();
+    popup = null;
+  };
+  const scheduleClose = () => {
+    if (closeTimer !== undefined) window.clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(close, 160);
+  };
+  const open = () => {
+    if (closeTimer !== undefined) {
+      window.clearTimeout(closeTimer);
+      closeTimer = undefined;
+    }
+    if (popup) return;
+    popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: "18rem",
+    })
+      .setLngLat([marker.longitude, marker.latitude])
+      .setDOMContent(markerLinksPopover(marker))
+      .addTo(map);
+    popup.getElement()?.addEventListener("mouseenter", open);
+    popup.getElement()?.addEventListener("mouseleave", scheduleClose);
+  };
+  trigger.addEventListener("mouseenter", open);
+  trigger.addEventListener("mouseleave", scheduleClose);
+  trigger.addEventListener("focus", open);
+  trigger.addEventListener("blur", scheduleClose);
+  return () => {
+    trigger.removeEventListener("mouseenter", open);
+    trigger.removeEventListener("mouseleave", scheduleClose);
+    trigger.removeEventListener("focus", open);
+    trigger.removeEventListener("blur", scheduleClose);
+    close();
+  };
+}
+
+function markerLinksPopover(marker: LinkedMarker): HTMLDivElement {
+  const container = document.createElement("div");
+  container.className = "map-marker-popover";
+  container.addEventListener("click", (event) => event.stopPropagation());
+  const heading = document.createElement("strong");
+  heading.textContent = marker.label;
+  container.append(heading);
+  const links = document.createElement("div");
+  links.className = "map-marker-links";
+  const placeLink = document.createElement("a");
+  placeLink.href = placePath(marker.placeId);
+  placeLink.textContent = "Place";
+  const entityLink = document.createElement("a");
+  entityLink.href = entityPath(marker.entityType, marker.entityId);
+  entityLink.textContent = readableEntityType(marker.entityType);
+  links.append(placeLink, entityLink);
+  container.append(links);
+  return container;
+}
+
+function placePath(placeId: string): string {
+  return `/map/place/${encodeURIComponent(placeId)}`;
+}
+
+function entityPath(
+  entityType: MapEntityLocation["entityType"],
+  entityId: string,
+): string {
+  const id = encodeURIComponent(entityId);
+  switch (entityType) {
+    case "PROFILE":
+      return `/profile/${id}`;
+    case "CLUB":
+      return `/clubs/${id}`;
+    case "EVENT":
+      return `/events/${id}`;
+    case "SOURCE":
+      return `/library/source/${id}`;
+  }
+}
+
+function readableEntityType(entityType: MapEntityLocation["entityType"]): string {
+  return entityType[0] + entityType.slice(1).toLocaleLowerCase();
+}
+
+function isEntityType(
+  value: unknown,
+): value is MapEntityLocation["entityType"] {
+  return (
+    value === "PROFILE" ||
+    value === "CLUB" ||
+    value === "EVENT" ||
+    value === "SOURCE"
+  );
+}
+
 function entityCollection(
   entities: MapEntityLocation[],
 ): GeoJSON.FeatureCollection<GeoJSON.Point, MarkerProperties> {
@@ -732,6 +905,8 @@ function entityCollection(
         kind: entity.entityType,
         label: entity.label,
         role: entity.locationRole,
+        entityId: entity.entityId,
+        placeId: entity.placeId,
       },
     })),
   };
