@@ -173,6 +173,7 @@ export default function SearchDialog() {
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const resultsPaneRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pagingRef = useRef({
@@ -214,6 +215,7 @@ export default function SearchDialog() {
   });
   const [to, setTo] = useState<HistoricalYearInput>({ year: "", era: "AD" });
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
@@ -268,6 +270,7 @@ export default function SearchDialog() {
   const runSearch = useCallback(
     async (tab: SearchTab, append = false) => {
       setLoading(true);
+      setLoadingMore(append);
       setError(null);
       if (!append) {
         pagingRef.current = {
@@ -484,6 +487,7 @@ export default function SearchDialog() {
         setError(getErrorMessage(searchError));
       } finally {
         setLoading(false);
+        setLoadingMore(false);
       }
     },
     [
@@ -527,17 +531,26 @@ export default function SearchDialog() {
 
   useEffect(() => {
     const target = loadMoreRef.current;
-    if (!showPopover || !target || !hasMore || loading) return undefined;
+    const root = resultsPaneRef.current;
+    if (
+      !showPopover ||
+      !target ||
+      !root ||
+      !hasMore ||
+      loading ||
+      loadingMore
+    )
+      return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting))
           void runSearch(activeTab, true);
       },
-      { root: null, rootMargin: "160px" },
+      { root, rootMargin: "0px 0px 480px", threshold: 0 },
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [activeTab, hasMore, loading, runSearch, showPopover]);
+  }, [activeTab, hasMore, loading, loadingMore, runSearch, showPopover]);
 
   useEffect(() => {
     if (!showPopover) {
@@ -630,16 +643,23 @@ export default function SearchDialog() {
 
       const shellBounds = shell.getBoundingClientRect();
       const top = Math.ceil(shellBounds.bottom + 6);
+      const viewportMargin = 16;
+      const height = Math.max(
+        0,
+        Math.min(
+          Math.round(window.innerHeight * 0.7),
+          window.innerHeight - top - viewportMargin,
+        ),
+      );
 
       if (window.matchMedia("(max-width: 767.98px)").matches) {
-        setPopoverPosition({ top: `${top}px` });
+        setPopoverPosition({ top: `${top}px`, height: `${height}px` });
         return;
       }
 
       // The panel lives in a portal so it can sit above the header and page
       // content. Anchor its fixed coordinates to the search field instead of
       // leaving its absolute coordinates relative to document.body.
-      const viewportMargin = 16;
       const panelWidth = Math.min(
         popoverRef.current?.getBoundingClientRect().width || 672,
         window.innerWidth - viewportMargin * 2,
@@ -649,17 +669,21 @@ export default function SearchDialog() {
         window.innerWidth - panelWidth - viewportMargin,
       );
 
-      setPopoverPosition({ top: `${top}px`, left: `${left}px` });
+      setPopoverPosition({
+        top: `${top}px`,
+        left: `${left}px`,
+        height: `${height}px`,
+      });
     };
 
     updatePopoverPosition();
     window.addEventListener("resize", updatePopoverPosition);
-    window.addEventListener("scroll", updatePopoverPosition, true);
+    window.addEventListener("scroll", updatePopoverPosition);
     window.visualViewport?.addEventListener("resize", updatePopoverPosition);
 
     return () => {
       window.removeEventListener("resize", updatePopoverPosition);
-      window.removeEventListener("scroll", updatePopoverPosition, true);
+      window.removeEventListener("scroll", updatePopoverPosition);
       window.visualViewport?.removeEventListener(
         "resize",
         updatePopoverPosition,
@@ -680,6 +704,7 @@ export default function SearchDialog() {
   const selectTab = (tab: SearchTab) => {
     setActiveTab(tab);
     setSortOrder(tab === "events" ? "DATE_ASC" : "NAME_ASC");
+    resultsPaneRef.current?.scrollTo({ top: 0 });
   };
   const updateRecentSearches = (next: string[]) => {
     setRecentSearches(next);
@@ -850,7 +875,7 @@ export default function SearchDialog() {
                   </div>
                 )}
 
-                <Row className="g-4 mt-1">
+                <Row className="search-body g-4 mt-1">
                   <Col lg={4}>
                     <div className="search-sidebar">
                       <button
@@ -1009,13 +1034,17 @@ export default function SearchDialog() {
                     </div>
                   </Col>
 
-                  <Col lg={8}>
+                  <Col
+                    lg={8}
+                    className="search-results-pane"
+                    ref={resultsPaneRef}
+                  >
                     {error && (
                       <div className="tempvs-plain-message text-danger">
                         {error}
                       </div>
                     )}
-                    {loading && <Spinner />}
+                    {loading && !loadingMore && <Spinner />}
                     {!loading && !searched && (
                       <div className="search-empty-state">Loading results.</div>
                     )}
@@ -1263,12 +1292,17 @@ export default function SearchDialog() {
                         </div>
                       </>
                     )}
-                    {hasMore && (
+                    {hasMore && !loadingMore && (
                       <div
                         ref={loadMoreRef}
                         className="search-load-more-sentinel"
                         aria-hidden="true"
                       />
+                    )}
+                    {loadingMore && (
+                      <div className="search-load-more-indicator">
+                        <Spinner size="sm" />
+                      </div>
                     )}
                   </Col>
                 </Row>
