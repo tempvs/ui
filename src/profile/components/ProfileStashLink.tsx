@@ -43,6 +43,7 @@ export default function ProfileStashLink({
       id={`open-owned-items:${profileId}`}
       visible={editable && !hasItems}
       message="Add items you own."
+      className="profile-stash-coachmark"
     >
       <Link to={`/stash/${alias || profileId}`} className="btn btn-outline-secondary profile-stash-button">
         {label}

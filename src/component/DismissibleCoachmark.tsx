@@ -7,6 +7,7 @@ type DismissibleCoachmarkProps = {
   visible: boolean;
   children: React.ReactNode;
   placement?: "top" | "bottom";
+  className?: string;
 };
 
 const CloseIcon = FaTimes as React.ComponentType<{ "aria-hidden"?: boolean }>;
@@ -18,6 +19,7 @@ export default function DismissibleCoachmark({
   visible,
   children,
   placement = "bottom",
+  className,
 }: DismissibleCoachmarkProps) {
   const storageKey = `tempvs:coachmark:${id}`;
   const [dismissed, setDismissed] = useState(() => {
@@ -37,7 +39,7 @@ export default function DismissibleCoachmark({
   };
 
   return (
-    <span className="coachmark-anchor">
+    <span className={`coachmark-anchor${className ? ` ${className}` : ""}`}>
       {children}
       {visible && !dismissed && (
         <span className={`dismissible-coachmark dismissible-coachmark--${placement}`} role="status">

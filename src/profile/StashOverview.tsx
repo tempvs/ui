@@ -1383,23 +1383,6 @@ export default function StashOverview({
               )}
             </div>
           </div>
-          {isEditable && (
-            <DismissibleCoachmark
-              id="create-first-collection"
-              visible={!loading && groups.length === 0}
-              message="Add a photo of yourself, then add your items and their images."
-            >
-              <button
-                type="button"
-                className="stash-inline-icon-button"
-                title={t("profile.stash.groupCreate", "Create collection")}
-                aria-label={t("profile.stash.groupCreate", "Create collection")}
-                onClick={() => setGroupCreateVisible(true)}
-              >
-                <PlusIcon />
-              </button>
-            </DismissibleCoachmark>
-          )}
         </div>
 
         {feedback && <div className="stash-feedback-note">{feedback}</div>}
@@ -1407,17 +1390,42 @@ export default function StashOverview({
         {loading && <Spinner size="sm" />}
 
         {!loading && !groups.length && (
-          <div className="stash-empty-state">
-            <div className="fw-semibold mb-1">
-              {t("profile.stash.emptyTitle", "No collections yet")}
-            </div>
-            <div className="small text-muted mb-3">
-              {t(
-                "profile.stash.empty",
-                "Start by creating the first group of belongings.",
+          <>
+            <div
+              className="stash-collection-tab-row stash-collection-tab-row--empty"
+              aria-label={t("profile.stash.collectionsTitle", "Collections")}
+            >
+              <div className="stash-collection-tab-list" />
+              {isEditable && (
+                <DismissibleCoachmark
+                  id={`create-first-collection:${profile.id}`}
+                  visible
+                  message="Add a photo of yourself, then add your items and their images."
+                >
+                  <button
+                    type="button"
+                    className="stash-inline-icon-button"
+                    title={t("profile.stash.groupCreate", "Create collection")}
+                    aria-label={t("profile.stash.groupCreate", "Create collection")}
+                    onClick={() => setGroupCreateVisible(true)}
+                  >
+                    <PlusIcon />
+                  </button>
+                </DismissibleCoachmark>
               )}
             </div>
-          </div>
+            <div className="stash-empty-state">
+              <div className="fw-semibold mb-1">
+                {t("profile.stash.emptyTitle", "No collections yet")}
+              </div>
+              <div className="small text-muted mb-3">
+                {t(
+                  "profile.stash.empty",
+                  "Start by creating the first group of belongings.",
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {!loading && groups.length > 0 && (
@@ -1777,7 +1785,7 @@ export default function StashOverview({
                     </div>
                     {isEditable && (
                       <DismissibleCoachmark
-                        id="create-first-item"
+                        id={`create-first-item:${profile.id}:${activeGroup.id}`}
                         visible={groups.length === 1 && activeItems.length === 0}
                         message="Create your first item and upload its images, then mark it on your collection photo."
                       >

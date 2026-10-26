@@ -57,12 +57,13 @@ html {
   align-items: flex-start;
   gap: 0.35rem;
   width: max-content;
-  max-width: min(17rem, calc(100vw - 2rem));
-  padding: 0.55rem 0.6rem;
-  border: 1px solid #9b7a46;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(125, 94, 47, 0.55);
+  border-radius: 0.9rem !important;
   background: #fffaf0;
   color: #49391f;
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   font-weight: 600;
   line-height: 1.25;
   text-align: left;
@@ -71,17 +72,17 @@ html {
 
 .dismissible-coachmark--bottom {
   top: calc(100% + 0.55rem);
-  right: 0;
+  left: 0;
 }
 
 .dismissible-coachmark--top {
-  right: 0;
+  left: 0;
   bottom: calc(100% + 0.55rem);
 }
 
 .dismissible-coachmark::before {
   position: absolute;
-  right: 0.55rem;
+  left: 0.55rem;
   width: 0;
   height: 0;
   border-right: 0.4rem solid transparent;
@@ -1095,6 +1096,11 @@ h3 {
   justify-content: center;
   width: 100%;
   min-height: 2.7rem;
+}
+
+.profile-stash-action,
+.profile-stash-coachmark {
+  width: 100%;
 }
 
 .profile-following-panel {

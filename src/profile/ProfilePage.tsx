@@ -1745,7 +1745,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           </PageColumn>
           <PageColumn>
             {isClubProfile && (
-              <div className="mb-3">
+              <div className="mb-3 profile-stash-action">
                 <div className="d-flex justify-content-start">
                   <ProfileStashLink
                     profileId={this.state.profileId || ""}
