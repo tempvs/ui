@@ -410,24 +410,12 @@ export default function EventPage() {
     >
       {error && <Alert variant="danger">{error}</Alert>}
       <article className="event-detail">
-        <PageColumns variant="three" className="event-page-layout">
+        <PageColumns variant="two" className="event-identity-layout">
           <PageColumn>
             <EventPhotoPanel
               eventId={item.id}
               name={item.name}
               editable={canManage}
-            />
-            <PhotoAlbumsPanel
-              targetType="event"
-              targetId={item.id}
-              editable={canManage}
-            />
-            <EventPeoplePanels
-              eventId={item.id}
-              canManage={false}
-              revision={peopleRevision}
-              showApprovals={false}
-              onChanged={() => setPeopleRevision((value) => value + 1)}
             />
           </PageColumn>
           <PageColumn>
@@ -468,6 +456,24 @@ export default function EventPage() {
               }
               onHistoricalSiteChange={updateHistoricalSite}
             />
+          </PageColumn>
+        </PageColumns>
+        <PageColumns variant="three" className="event-page-layout event-community-layout">
+          <PageColumn>
+            <PhotoAlbumsPanel
+              targetType="event"
+              targetId={item.id}
+              editable={canManage}
+            />
+            <EventPeoplePanels
+              eventId={item.id}
+              canManage={false}
+              revision={peopleRevision}
+              showApprovals={false}
+              onChanged={() => setPeopleRevision((value) => value + 1)}
+            />
+          </PageColumn>
+          <PageColumn>
             <PostPanel
               targetType="EVENT"
               targetId={item.id}

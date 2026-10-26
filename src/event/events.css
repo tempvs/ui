@@ -107,6 +107,15 @@
   max-width: 70rem;
   margin: 0 auto;
 }
+.event-identity-layout {
+  --page-section-background: #f8f4ea;
+  --page-section-border: #d8c7a1;
+}
+.event-identity-layout .club-panel {
+  background: var(--page-section-background);
+  border: 1px solid var(--page-section-border);
+  border-radius: 0.65rem;
+}
 .event-page-layout .event-photo-panel {
   max-width: none;
 }
