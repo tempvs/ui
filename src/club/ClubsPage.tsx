@@ -3,7 +3,7 @@ import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
-import "../component/catalogueSearch.css";
+import CatalogueFilterDisclosure from "../component/CatalogueFilterDisclosure";
 import HistoricalRangeFilter, {
   formatHistoricalRange,
   type HistoricalYearInput,
@@ -251,52 +251,37 @@ export default function ClubsPage() {
       <>
         <div className="catalogue-search-layout">
           <aside className="catalogue-search-filters">
-            <details
-              className="catalogue-filter-disclosure"
+            <CatalogueFilterDisclosure
               open={filtersOpen}
-              onToggle={(event) =>
-                setFiltersOpen((event.currentTarget as HTMLDetailsElement).open)
+              onOpenChange={setFiltersOpen}
+              hasActiveFilters={hasActiveFilters}
+              activeCount={
+                selectedPeriods.length + Number(Boolean(from.year || to.year))
               }
+              inactiveSummary="All clubs"
+              onClearFilters={clearFilters}
             >
-              <summary>
-                Filters
-                {hasActiveFilters
-                  ? ` (${selectedPeriods.length + Number(Boolean(from.year || to.year))})`
-                  : ""}
-              </summary>
-              <div className="catalogue-filter-disclosure-content">
-                <div className="catalogue-filter-disclosure-actions">
-                  <span className="small text-muted">
-                    {hasActiveFilters ? "Filters applied" : "All clubs"}
-                  </span>
-                  {hasActiveFilters && (
-                    <Button variant="link" size="sm" onClick={clearFilters}>
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
-                <HistoricalRangeFilter
-                  enabled={rangeEnabled}
-                  from={from}
-                  to={to}
-                  onEnabledChange={setRangeEnabled}
-                  onFromChange={setFrom}
-                  onToChange={setTo}
-                  onValueEntered={() => setRangeEnabled(true)}
-                  label="Years"
-                  alwaysShowFields
-                  compact
-                  inlineToggle
-                />
-                <PeriodMultiSelect
-                  ariaLabel={t("period", "Period")}
-                  selected={selectedPeriods}
-                  onChange={setSelectedPeriods}
-                  disabled={unavailable}
-                  display="checkboxes"
-                />
-              </div>
-            </details>
+              <HistoricalRangeFilter
+                enabled={rangeEnabled}
+                from={from}
+                to={to}
+                onEnabledChange={setRangeEnabled}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onValueEntered={() => setRangeEnabled(true)}
+                label="Years"
+                alwaysShowFields
+                compact
+                inlineToggle
+              />
+              <PeriodMultiSelect
+                ariaLabel={t("period", "Period")}
+                selected={selectedPeriods}
+                onChange={setSelectedPeriods}
+                disabled={unavailable}
+                display="checkboxes"
+              />
+            </CatalogueFilterDisclosure>
           </aside>
           <div className="catalogue-search-query">
             <TextFilterInput

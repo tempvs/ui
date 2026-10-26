@@ -4,7 +4,7 @@ import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import PlusActionButton from "../../component/PlusActionButton";
-import "../../component/catalogueSearch.css";
+import CatalogueFilterDisclosure from "../../component/CatalogueFilterDisclosure";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
@@ -451,78 +451,64 @@ export default function LibraryPeriodPage() {
 
       <div className="catalogue-search-layout">
         <aside className="catalogue-search-filters">
-          <details
-            className="catalogue-filter-disclosure library-source-filter"
+          <CatalogueFilterDisclosure
             open={filtersOpen}
-            onToggle={(event) =>
-              setFiltersOpen(
-                (event.currentTarget as HTMLDetailsElement).open,
-              )
-            }
+            onOpenChange={setFiltersOpen}
+            hasActiveFilters={hasActiveFilters}
+            inactiveSummary="All sources"
+            onClearFilters={clearFilters}
+            className="library-source-filter"
           >
-            <summary>Filters</summary>
-            <div className="catalogue-filter-disclosure-content">
-              <div className="catalogue-filter-disclosure-actions">
-                <span className="small text-muted">
-                  {hasActiveFilters ? "Filters applied" : "All sources"}
-                </span>
-                {hasActiveFilters && (
-                  <Button variant="link" size="sm" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
-                )}
-              </div>
-              <HistoricalRangeFilter
-                enabled={rangeEnabled}
-                from={from}
-                to={to}
-                onEnabledChange={setRangeEnabled}
-                onFromChange={setFrom}
-                onToChange={setTo}
-                alwaysShowFields
-                onValueEntered={() => setRangeEnabled(true)}
+            <HistoricalRangeFilter
+              enabled={rangeEnabled}
+              from={from}
+              to={to}
+              onEnabledChange={setRangeEnabled}
+              onFromChange={setFrom}
+              onToChange={setTo}
+              alwaysShowFields
+              onValueEntered={() => setRangeEnabled(true)}
+            />
+            <div>
+              <PlacePickerField
+                label="Discovered at"
+                value={discoveredAtPlace}
+                editable
+                onChange={setDiscoveredAtPlace}
+                labelWidth="7rem"
+                fieldMaxWidth="100%"
+                className="mb-2"
               />
-              <div>
-                <PlacePickerField
-                  label="Discovered at"
-                  value={discoveredAtPlace}
-                  editable
-                  onChange={setDiscoveredAtPlace}
-                  labelWidth="7rem"
-                  fieldMaxWidth="100%"
-                  className="mb-2"
-                />
-                <PlacePickerField
-                  label="Held at"
-                  value={heldAtPlace}
-                  editable
-                  onChange={setHeldAtPlace}
-                  labelWidth="7rem"
-                  fieldMaxWidth="100%"
-                  className="mb-0"
-                />
-              </div>
-              <Form.Group>
-                <Form.Label className="library-source-filter-heading">
-                  Type
-                </Form.Label>
-                <div className="d-flex flex-column gap-2">
-                  {TYPES.map((type) => (
-                    <Form.Check
-                      key={type}
-                      type="checkbox"
-                      id={`type-${type}`}
-                      label={getTypeLabel(intl, type)}
-                      checked={selectedTypes.includes(type)}
-                      onChange={() =>
-                        handleToggle(type, selectedTypes, setSelectedTypes)
-                      }
-                    />
-                  ))}
-                </div>
-              </Form.Group>
+              <PlacePickerField
+                label="Held at"
+                value={heldAtPlace}
+                editable
+                onChange={setHeldAtPlace}
+                labelWidth="7rem"
+                fieldMaxWidth="100%"
+                className="mb-0"
+              />
             </div>
-          </details>
+            <Form.Group>
+              <Form.Label className="library-source-filter-heading">
+                Type
+              </Form.Label>
+              <div className="d-flex flex-column gap-2">
+                {TYPES.map((type) => (
+                  <Form.Check
+                    key={type}
+                    type="checkbox"
+                    id={`type-${type}`}
+                    label={getTypeLabel(intl, type)}
+                    checked={selectedTypes.includes(type)}
+                    onChange={() =>
+                      handleToggle(type, selectedTypes, setSelectedTypes)
+                    }
+                  />
+                ))}
+              </div>
+            </Form.Group>
+          </CatalogueFilterDisclosure>
         </aside>
         <div className="catalogue-search-query">
           <TextFilterInput

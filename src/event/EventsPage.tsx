@@ -10,6 +10,7 @@ import HistoricalRangeFilter, {
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import PageLayout from "../component/PageLayout";
+import CatalogueFilterDisclosure from "../component/CatalogueFilterDisclosure";
 import ResultSortSelect from "../component/ResultSortSelect";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
@@ -181,68 +182,56 @@ export default function EventsPage() {
       <>
         <div className="event-search-layout">
           <aside className="event-search-filters">
-            <details
-              className="event-filter-disclosure"
+            <CatalogueFilterDisclosure
               open={filtersOpen}
-              onToggle={(event) =>
-                setFiltersOpen((event.currentTarget as HTMLDetailsElement).open)
+              onOpenChange={setFiltersOpen}
+              hasActiveFilters={hasActiveFilters}
+              activeCount={
+                selectedPeriods.length +
+                Number(hasYearFilter) +
+                Number(Boolean(venue)) +
+                Number(Boolean(historicalSite))
               }
+              inactiveSummary="All events"
+              onClearFilters={clearFilters}
             >
-              <summary>
-                Filters
-                {hasActiveFilters
-                  ? ` (${selectedPeriods.length + Number(hasYearFilter) + Number(Boolean(venue)) + Number(Boolean(historicalSite))})`
-                  : ""}
-              </summary>
-              <div className="event-filter-disclosure-content">
-                <div className="event-filter-disclosure-actions">
-                  <span className="small text-muted">
-                    {hasActiveFilters ? "Filters applied" : "All events"}
-                  </span>
-                  {hasActiveFilters && (
-                    <Button variant="link" size="sm" onClick={clearFilters}>
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
-                <PeriodMultiSelect
-                  ariaLabel="Period"
-                  selected={selectedPeriods}
-                  onChange={setSelectedPeriods}
-                  display="checkboxes"
-                />
-                <PlacePickerField
-                  label="Venue"
-                  value={venue}
-                  editable
-                  onChange={setVenue}
-                  labelWidth="6.5rem"
-                  fieldMaxWidth="15rem"
-                  className="mb-2"
-                />
-                <PlacePickerField
-                  label="Historical site"
-                  value={historicalSite}
-                  editable
-                  onChange={setHistoricalSite}
-                  labelWidth="6.5rem"
-                  fieldMaxWidth="15rem"
-                  className="mb-2"
-                />
-                <HistoricalRangeFilter
-                  enabled
-                  from={from}
-                  to={to}
-                  onEnabledChange={() => undefined}
-                  onFromChange={setFrom}
-                  onToChange={setTo}
-                  label="Years"
-                  showToggle={false}
-                  alwaysShowFields
-                  compact
-                />
-              </div>
-            </details>
+              <PeriodMultiSelect
+                ariaLabel="Period"
+                selected={selectedPeriods}
+                onChange={setSelectedPeriods}
+                display="checkboxes"
+              />
+              <PlacePickerField
+                label="Venue"
+                value={venue}
+                editable
+                onChange={setVenue}
+                labelWidth="6.5rem"
+                fieldMaxWidth="15rem"
+                className="mb-2"
+              />
+              <PlacePickerField
+                label="Historical site"
+                value={historicalSite}
+                editable
+                onChange={setHistoricalSite}
+                labelWidth="6.5rem"
+                fieldMaxWidth="15rem"
+                className="mb-2"
+              />
+              <HistoricalRangeFilter
+                enabled
+                from={from}
+                to={to}
+                onEnabledChange={() => undefined}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                label="Years"
+                showToggle={false}
+                alwaysShowFields
+                compact
+              />
+            </CatalogueFilterDisclosure>
           </aside>
           <div className="event-search-query">
             <TextFilterInput
