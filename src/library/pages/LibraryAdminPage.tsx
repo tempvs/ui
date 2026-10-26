@@ -1,17 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { Button, Card, Form, Modal } from "react-bootstrap";
-import { FaPlus, FaTrash } from "react-icons/fa";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Button, Card } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
 
-import IconActionButton from "../../component/IconActionButton";
-import ConfirmationModal from "../../component/ConfirmationModal";
 import AdministrationTabs from "../../component/AdministrationTabs";
+import RoleMemberPanel from "../../component/RoleMemberPanel";
 import SectionBreadcrumb from "../../component/SectionBreadcrumb";
 import Spinner from "../../component/Spinner";
-import TextFilterInput from "../../component/TextFilterInput";
-import { buildProfileLabel } from "../../profile/currentProfile";
 import {
-  getProfileAvatar,
   getUserProfileByUserId,
   getUserProfilesByUserIds,
   searchProfiles,
@@ -34,49 +29,11 @@ import { PAGE_SIZE } from "../libraryShared";
 import { LibraryPendingProposalsContent } from "./LibraryPendingProposalsPage";
 
 type AdminTab = "members" | "requests" | "proposals";
-const ROLE_OPTIONS = [
+const ROLE_OPTIONS: Array<{ value: LibraryMember["role"]; label: string }> = [
   { value: "LIBRARY_ADMIN", label: "Library administrator" },
   { value: "LIBRARY_ARCHIVARIUS", label: "Archivarius" },
   { value: "LIBRARY_SCRIBE", label: "Scribe" },
 ];
-const TrashIcon = FaTrash as React.ComponentType<{ className?: string }>;
-const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
-
-function ProfileThumbnail({
-  profile,
-  avatarUrl,
-  label,
-}: {
-  profile?: Profile | null;
-  avatarUrl?: string | null;
-  label: string;
-}) {
-  const imageUrl = avatarUrl || profile?.avatarUrl;
-  const initials = label
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-  return imageUrl ? (
-    <img
-      src={imageUrl}
-      alt=""
-      className="rounded-circle object-fit-cover flex-shrink-0"
-      style={{ width: "2.5rem", height: "2.5rem" }}
-    />
-  ) : (
-    <div
-      aria-hidden="true"
-      className="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center flex-shrink-0 text-muted small"
-      style={{ width: "2.5rem", height: "2.5rem" }}
-    >
-      {initials || "?"}
-    </div>
-  );
-}
-
 export default function LibraryAdminPage() {
   const { tab: tabParam } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
@@ -84,7 +41,6 @@ export default function LibraryAdminPage() {
     tabParam === "requests" || tabParam === "proposals" ? tabParam : "members";
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<LibraryMember[]>([]);
-  const [memberUserIds, setMemberUserIds] = useState<string[]>([]);
   const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [roleRequests, setRoleRequests] = useState<LibraryRoleRequest[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
@@ -92,47 +48,12 @@ export default function LibraryAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [memberFilter, setMemberFilter] = useState("");
   const [memberProfiles, setMemberProfiles] = useState<Record<string, Profile>>(
     {},
   );
   const [roleRequestProfiles, setRoleRequestProfiles] = useState<
     Record<string, Profile>
   >({});
-  const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>(
-    {},
-  );
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [memberPendingRemoval, setMemberPendingRemoval] =
-    useState<LibraryMember | null>(null);
-  const [profileQuery, setProfileQuery] = useState("");
-  const [profileResults, setProfileResults] = useState<Profile[]>([]);
-  const [profileSearchLoading, setProfileSearchLoading] = useState(false);
-  const [profileSearchComplete, setProfileSearchComplete] = useState(false);
-  const [profileRoleSelection, setProfileRoleSelection] = useState<
-    Record<string, string>
-  >({});
-
-  const hydrateAvatars = async (profiles: Profile[]) => {
-    const entries = await Promise.all(
-      profiles.map(async (profile) => {
-        try {
-          const avatar = await getProfileAvatar(profile.id);
-          return [
-            profile.id,
-            avatar?.thumbnailUrl || avatar?.url || profile.avatarUrl || null,
-          ] as const;
-        } catch {
-          return [profile.id, profile.avatarUrl || null] as const;
-        }
-      }),
-    );
-    setAvatarUrls((current) => ({
-      ...current,
-      ...Object.fromEntries(entries),
-    }));
-  };
-
   const hydrateMemberProfiles = async (nextMembers: LibraryMember[]) => {
     const profiles = await Promise.all(
       nextMembers.map(async (member) => {
@@ -148,7 +69,6 @@ export default function LibraryAdminPage() {
       (value): value is [string, Profile] => value !== null,
     );
     setMemberProfiles(Object.fromEntries(resolvedProfiles));
-    void hydrateAvatars(resolvedProfiles.map(([, profile]) => profile));
   };
 
   const hydrateRoleRequestProfiles = async (
@@ -196,9 +116,6 @@ export default function LibraryAdminPage() {
         );
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
-      setMemberUserIds(
-        result.data?.memberUserIds || nextMembers.map((member) => member.userId),
-      );
       setUserInfo(viewer);
       void hydrateMemberProfiles(nextMembers);
     } catch (fetchError) {
@@ -254,9 +171,6 @@ export default function LibraryAdminPage() {
       if (!result.ok) throw new Error("Unable to update the Library role.");
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
-      setMemberUserIds(
-        result.data?.memberUserIds || nextMembers.map((item) => item.userId),
-      );
       void hydrateMemberProfiles(nextMembers);
       setNotice(
         "Library role updated. The member must refresh their session before new permissions appear.",
@@ -267,73 +181,6 @@ export default function LibraryAdminPage() {
       setUpdating(null);
     }
   };
-  useEffect(() => {
-    const query = profileQuery.trim();
-    if (!showAddMember || !query) {
-      setProfileSearchLoading(false);
-      setProfileResults([]);
-      setProfileSearchComplete(false);
-      return;
-    }
-
-    let active = true;
-    const timerId = window.setTimeout(() => {
-      void (async () => {
-        setProfileSearchLoading(true);
-        setError(null);
-        try {
-          const profiles = await searchProfiles({
-            query,
-            type: "USER",
-            size: 20,
-          });
-          const assignedUserIds = new Set(memberUserIds);
-          const nextProfiles = profiles.filter(
-            (profile) =>
-              Boolean(profile.userId) && !assignedUserIds.has(profile.userId!),
-          );
-          if (!active) return;
-          setProfileResults(nextProfiles);
-          setProfileSearchComplete(true);
-
-          const entries = await Promise.all(
-            nextProfiles.map(async (profile) => {
-              try {
-                const avatar = await getProfileAvatar(profile.id);
-                return [
-                  profile.id,
-                  avatar?.thumbnailUrl ||
-                    avatar?.url ||
-                    profile.avatarUrl ||
-                    null,
-                ] as const;
-              } catch {
-                return [profile.id, profile.avatarUrl || null] as const;
-              }
-            }),
-          );
-          if (active) {
-            setAvatarUrls((current) => ({
-              ...current,
-              ...Object.fromEntries(entries),
-            }));
-          }
-        } catch (fetchError) {
-          if (active) {
-            setError(getErrorMessage(fetchError));
-            setProfileSearchComplete(false);
-          }
-        } finally {
-          if (active) setProfileSearchLoading(false);
-        }
-      })();
-    }, 150);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timerId);
-    };
-  }, [memberUserIds, profileQuery, showAddMember]);
   const assignProfile = async (profile: Profile, role: string) => {
     if (!profile.userId) return;
     setError(null);
@@ -344,9 +191,6 @@ export default function LibraryAdminPage() {
       if (!result.ok) throw new Error("Unable to assign the Library role.");
       const nextMembers = result.data?.members || [];
       setMembers(nextMembers);
-      setMemberUserIds(
-        result.data?.memberUserIds || nextMembers.map((item) => item.userId),
-      );
       void hydrateMemberProfiles(nextMembers);
       setNotice(
         "Library role assigned. The member must refresh their session before new permissions appear.",
@@ -397,19 +241,6 @@ export default function LibraryAdminPage() {
       setLoadingMore(false);
     }
   };
-  const normalizedMemberFilter = memberFilter.trim().toLowerCase();
-  const filteredMembers = members.filter((member) => {
-    if (!normalizedMemberFilter) return true;
-    const profile = memberProfiles[member.userId];
-    return [
-      member.name,
-      member.email,
-      member.userId,
-      profile ? buildProfileLabel(profile) : null,
-      profile?.alias,
-    ].some((value) => value?.toLowerCase().includes(normalizedMemberFilter));
-  });
-
   return (
     <div className="page-layout-content px-4 px-xl-5 pb-4">
       <LibrarySectionHeader
@@ -445,238 +276,39 @@ export default function LibraryAdminPage() {
       )}
       {loading && <Spinner />}
       {!loading && tab === "members" && (
-        <div className="d-flex flex-column gap-3">
-          <div className="d-flex align-items-center justify-content-between gap-2">
-            <div style={{ maxWidth: "28rem", width: "100%" }}>
-              <TextFilterInput
-                ariaLabel="Filter Library members"
-                placeholder="Filter members by profile name or alias"
-                value={memberFilter}
-                onChange={setMemberFilter}
-              />
-            </div>
-            <IconActionButton
-              title="Add Library member"
-              onClick={() => {
-                setProfileQuery("");
-                setProfileResults([]);
-                setProfileSearchComplete(false);
-                setShowAddMember(true);
-              }}
-              size="2.4rem"
-              fontSize="1rem"
-              borderColor="#000"
-              color="#000"
-              backgroundColor="#fff"
-            >
-              <PlusIcon />
-            </IconActionButton>
-          </div>
-          {members.length === 0 && (
-            <div className="tempvs-plain-message text-muted mb-0">
-              No Library roles have been assigned.
-            </div>
-          )}
-          {members.length > 0 && filteredMembers.length === 0 && (
-            <div className="tempvs-plain-message text-muted mb-0">
-              No Library members match the current filter.
-            </div>
-          )}
-          {filteredMembers.map((member) => {
-            const self = member.userId === userInfo?.userId;
-            const profile = memberProfiles[member.userId];
-            const label = profile
-              ? buildProfileLabel(profile)
-              : member.name || member.email || "Library member";
-            const protectedAdmin = member.role === "LIBRARY_ADMIN";
-            const canChange = !self && (!protectedAdmin || isTempvsAdmin);
-            return (
-              <Card key={member.userId} className="border-0 shadow-sm">
-                <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                  <div className="d-flex align-items-center gap-3">
-                    <ProfileThumbnail
-                      profile={profile}
-                      avatarUrl={profile ? avatarUrls[profile.id] : null}
-                      label={label}
-                    />
-                    <div>
-                      <div className="fw-semibold">
-                        {profile ? (
-                          <Link to={`/profile/${profile.alias || profile.id}`}>
-                            {label}
-                          </Link>
-                        ) : (
-                          label
-                        )}
-                      </div>
-                      {member.email && (
-                        <div className="text-muted small">{member.email}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    {protectedAdmin && !isTempvsAdmin ? (
-                      <Form.Control
-                        aria-label={`Library role for ${label}`}
-                        value={
-                          self ? "Library Admin (your role)" : "Library Admin"
-                        }
-                        disabled
-                        readOnly
-                        style={{ maxWidth: "15rem" }}
-                      />
-                    ) : (
-                      <Form.Select
-                        aria-label={`Library role for ${label}`}
-                        value={member.role}
-                        disabled={!canChange || updating !== null}
-                        onChange={(event) =>
-                          void updateMember(member, event.target.value)
-                        }
-                        style={{ maxWidth: "15rem" }}
-                      >
-                        {assignableRoleOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
-                    {canChange && (
-                      <IconActionButton
-                        title={`Remove ${label} from the Library`}
-                        aria-label={`Remove ${label} from the Library`}
-                        onClick={() => setMemberPendingRemoval(member)}
-                        disabled={updating !== null}
-                        size="2.15rem"
-                        fontSize="0.9rem"
-                        borderColor="#b42318"
-                        color="#b42318"
-                        backgroundColor="#fff"
-                      >
-                        <TrashIcon />
-                      </IconActionButton>
-                    )}
-                  </div>
-                </Card.Body>
-              </Card>
+        <RoleMemberPanel
+          areaLabel="Library"
+          members={members.map((member) => ({
+            ...member,
+            protectedRole: member.role === "LIBRARY_ADMIN",
+          }))}
+          profiles={memberProfiles}
+          roleOptions={assignableRoleOptions}
+          viewerUserId={userInfo?.userId}
+          busyUserId={updating}
+          searchProfiles={(query) =>
+            searchProfiles({ query, type: "USER", size: 20 })
+          }
+          canChangeMember={(member) =>
+            member.userId !== userInfo?.userId &&
+            (!member.protectedRole || isTempvsAdmin)
+          }
+          onAdd={(profile, role) => void assignProfile(profile, role)}
+          onChangeRole={(member, role) => {
+            const currentMember = members.find(
+              (candidate) => candidate.userId === member.userId,
             );
-          })}
-        </div>
+            if (currentMember) void updateMember(currentMember, role);
+          }}
+          onRemove={(member) => {
+            const currentMember = members.find(
+              (candidate) => candidate.userId === member.userId,
+            );
+            if (currentMember) void updateMember(currentMember, null);
+          }}
+        />
       )}
       {tab === "proposals" && <LibraryPendingProposalsContent />}
-      <Modal
-        show={showAddMember}
-        onHide={() => {
-          if (!profileSearchLoading && updating === null)
-            setShowAddMember(false);
-        }}
-        centered
-      >
-        <Modal.Header closeButton={updating === null}>
-          <Modal.Title>Add Library member</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="text-muted small">
-            Search user profiles by name or alias, then choose a Library role.
-          </p>
-          <Form.Control
-            aria-label="Search user profiles to add"
-            placeholder="Start typing a name or alias"
-            value={profileQuery}
-            disabled={updating !== null}
-            onChange={(event) => setProfileQuery(event.target.value)}
-          />
-          {profileSearchLoading && <Spinner />}
-          {profileResults.length > 0 && (
-            <div className="d-flex flex-column gap-3 mt-3">
-              {profileResults.map((profile) => {
-                const selectedRole =
-                  profileRoleSelection[profile.id] ||
-                  assignableRoleOptions[0]?.value;
-                const label = buildProfileLabel(profile);
-                return (
-                  <div
-                    key={profile.id}
-                    className="d-flex align-items-center justify-content-between gap-2 flex-wrap"
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <ProfileThumbnail
-                        profile={profile}
-                        avatarUrl={avatarUrls[profile.id]}
-                        label={label}
-                      />
-                      <div>
-                        <Link
-                          className="fw-semibold"
-                          to={`/profile/${profile.alias || profile.id}`}
-                        >
-                          {label}
-                        </Link>
-                        {profile.alias && (
-                          <div className="text-muted small">
-                            @{profile.alias}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <Form.Select
-                        aria-label={`Library role to assign to ${label}`}
-                        value={selectedRole}
-                        disabled={updating !== null}
-                        onChange={(event) =>
-                          setProfileRoleSelection((current) => ({
-                            ...current,
-                            [profile.id]: event.target.value,
-                          }))
-                        }
-                        style={{ minWidth: "10rem" }}
-                      >
-                        {assignableRoleOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <Button
-                        variant="dark"
-                        disabled={!selectedRole || updating !== null}
-                        onClick={() =>
-                          void assignProfile(profile, selectedRole)
-                        }
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {profileSearchComplete &&
-            !profileSearchLoading &&
-            profileResults.length === 0 && (
-              <div className="text-muted small mt-3">
-                No matching user profiles.
-              </div>
-            )}
-        </Modal.Body>
-      </Modal>
-      <ConfirmationModal
-        show={memberPendingRemoval !== null}
-        title="Remove Library member"
-        message="Are you sure you want to remove this user from the Library?"
-        cancelLabel="No"
-        confirmLabel="Yes"
-        busy={updating !== null}
-        onHide={() => setMemberPendingRemoval(null)}
-        onConfirm={() => {
-          const member = memberPendingRemoval;
-          setMemberPendingRemoval(null);
-          if (member) void updateMember(member, null);
-        }}
-      />
       {!loading && tab === "requests" && (
         <div className="d-flex flex-column gap-3">
           {roleRequests.length === 0 && (

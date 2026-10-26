@@ -1,16 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Form, Modal } from "react-bootstrap";
-import { FaPlus, FaTrash } from "react-icons/fa";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
-import ConfirmationModal from "../component/ConfirmationModal";
 import AdministrationTabs from "../component/AdministrationTabs";
+import RoleMemberPanel from "../component/RoleMemberPanel";
 import TextFilterInput from "../component/TextFilterInput";
 import Spinner from "../component/Spinner";
-import IconActionButton from "../component/IconActionButton";
 import { formatAppDateTime } from "../i18n/appLocale";
 import {
   approveMapPlace,
@@ -36,9 +34,7 @@ import {
   getUserProfilesByUserIds,
   searchProfiles,
 } from "../profile/profileApi";
-import { buildProfileLabel } from "../profile/currentProfile";
 import type { Profile } from "../profile/profileTypes";
-import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
 import MapCanvas from "./MapCanvas";
 import ProposalActivityPanel from "./ProposalActivityPanel";
 import MapRoleRequestModal from "./MapRoleRequestModal";
@@ -48,9 +44,6 @@ const MAP_ROLE_OPTIONS: Array<{ value: MapRole; label: string }> = [
   { value: "MAP_EDITOR", label: "Editor" },
   { value: "MAP_REVIEWER", label: "Reviewer" },
 ];
-const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
-const TrashIcon = FaTrash as React.ComponentType<{ className?: string }>;
-
 function canViewPlaceReviews(viewer: Viewer | null): boolean {
   return Boolean(
     viewer?.roles.some(
@@ -506,19 +499,8 @@ function MapRoleAdminPanel({
   const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [removingRole, setRemovingRole] = useState<string | null>(null);
-  const [memberPendingRemoval, setMemberPendingRemoval] =
-    useState<MapRoleMember | null>(null);
-  const [memberFilter, setMemberFilter] = useState("");
   const [memberProfiles, setMemberProfiles] = useState<
     Record<string, Profile>
-  >({});
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [profileQuery, setProfileQuery] = useState("");
-  const [profileResults, setProfileResults] = useState<Profile[]>([]);
-  const [profileSearchLoading, setProfileSearchLoading] = useState(false);
-  const [profileSearchComplete, setProfileSearchComplete] = useState(false);
-  const [profileRoleSelection, setProfileRoleSelection] = useState<
-    Record<string, MapRole>
   >({});
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -627,46 +609,8 @@ function MapRoleAdminPanel({
       setError((caught as Error).message || "Unable to remove this Map member.");
     } finally {
       setRemovingRole(null);
-      setMemberPendingRemoval(null);
     }
   };
-
-  useEffect(() => {
-    const query = profileQuery.trim();
-    if (!showAddMember || !query) {
-      setProfileResults([]);
-      setProfileSearchLoading(false);
-      setProfileSearchComplete(false);
-      return;
-    }
-    let active = true;
-    const timer = window.setTimeout(() => {
-      setProfileSearchLoading(true);
-      void searchProfiles({ query, type: "USER", size: 20 })
-        .then((profiles) => {
-          if (!active) return;
-          const memberUserIds = new Set(members.map((member) => member.userId));
-          setProfileResults(
-            (profiles ?? []).filter(
-              (profile) =>
-                Boolean(profile.userId) && !memberUserIds.has(profile.userId!),
-            ),
-          );
-          setProfileSearchComplete(true);
-        })
-        .catch(() => {
-          if (active) {
-            setError("Unable to search user profiles.");
-            setProfileSearchComplete(false);
-          }
-        })
-        .finally(() => active && setProfileSearchLoading(false));
-    }, 150);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [members, profileQuery, showAddMember]);
 
   const assignRole = async (profile: Profile, role: MapRole) => {
     if (!profile.userId) return;
@@ -779,296 +723,45 @@ function MapRoleAdminPanel({
           )}
           {activeTab === "members" && (
             <>
-              <MapMembersContent
-                members={members}
-                memberProfiles={memberProfiles}
-                memberFilter={memberFilter}
-                onMemberFilterChange={setMemberFilter}
-                isTempvsAdmin={isTempvsAdmin}
+              <RoleMemberPanel
+                areaLabel="Map"
+                members={members.map((member) => ({
+                  userId: member.userId,
+                  name: member.name,
+                  email: member.email,
+                  role: primaryMapRole(member.roles),
+                  protectedRole: member.roles.includes("MAP_ADMIN"),
+                }))}
+                profiles={memberProfiles}
+                roleOptions={assignableRoleOptions}
                 viewerUserId={viewerUserId}
-                assigningUserId={assigningUserId}
-                removingUserId={removingRole}
-                onChangeRole={updateMemberRole}
-                onRemove={setMemberPendingRemoval}
-                onAdd={() => {
-                  setProfileQuery("");
-                  setProfileResults([]);
-                  setProfileSearchComplete(false);
-                  setShowAddMember(true);
+                busyUserId={assigningUserId || removingRole}
+                searchProfiles={(query) =>
+                  searchProfiles({ query, type: "USER", size: 20 })
+                }
+                canChangeMember={(member) =>
+                  member.userId !== viewerUserId &&
+                  (!member.protectedRole || isTempvsAdmin)
+                }
+                onAdd={assignRole}
+                onChangeRole={(member, role) => {
+                  const rawMember = members.find(
+                    (candidate) => candidate.userId === member.userId,
+                  );
+                  if (rawMember) void updateMemberRole(rawMember, role);
+                }}
+                onRemove={(member) => {
+                  const rawMember = members.find(
+                    (candidate) => candidate.userId === member.userId,
+                  );
+                  if (rawMember) void removeMember(rawMember);
                 }}
               />
-              {/*
-                            ? "Assigning…"
-                                  ? "Removing…"
-              */}
             </>
           )}
         </>
       )}
-      <Modal
-        show={showAddMember}
-        onHide={() => {
-          if (!profileSearchLoading && assigningUserId === null)
-            setShowAddMember(false);
-        }}
-        centered
-      >
-        <Modal.Header closeButton={assigningUserId === null}>
-          <Modal.Title>Add Map member</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="text-muted small">
-            Search user profiles by name or alias, then choose a Map role.
-          </p>
-          <Form.Control
-            aria-label="Search user profiles to add"
-            placeholder="Start typing a name or alias"
-            value={profileQuery}
-            disabled={assigningUserId !== null}
-            onChange={(event) => setProfileQuery(event.target.value)}
-          />
-          {profileSearchLoading && <Spinner size="sm" />}
-          {profileResults.length > 0 && (
-            <div className="d-flex flex-column gap-3 mt-3">
-              {profileResults.map((profile) => {
-                const selectedRole =
-                  profileRoleSelection[profile.id] ||
-                  assignableRoleOptions[0]?.value;
-                const label = buildProfileLabel(profile);
-                return (
-                  <div
-                    key={profile.id}
-                    className="d-flex align-items-center justify-content-between gap-2 flex-wrap"
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <ProfileThumbnailLink profile={profile} displayLabel={false} />
-                      <div>
-                        <Link
-                          className="fw-semibold"
-                          to={`/profile/${profile.alias || profile.id}`}
-                        >
-                          {label}
-                        </Link>
-                        {profile.alias && (
-                          <div className="text-muted small">@{profile.alias}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <Form.Select
-                        aria-label={`Map role to assign to ${label}`}
-                        value={selectedRole}
-                        disabled={assigningUserId !== null}
-                        onChange={(event) =>
-                          setProfileRoleSelection((current) => ({
-                            ...current,
-                            [profile.id]: event.target.value as MapRole,
-                          }))
-                        }
-                        style={{ minWidth: "10rem" }}
-                      >
-                        {assignableRoleOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <Button
-                        variant="dark"
-                        disabled={!selectedRole || assigningUserId !== null}
-                        onClick={() =>
-                          selectedRole && void assignRole(profile, selectedRole)
-                        }
-                      >
-                        {assigningUserId === profile.userId ? "Adding…" : "Add"}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {profileSearchComplete &&
-            !profileSearchLoading &&
-            profileResults.length === 0 && (
-              <div className="text-muted small mt-3">
-                No matching user profiles.
-              </div>
-            )}
-        </Modal.Body>
-      </Modal>
-      <ConfirmationModal
-        show={memberPendingRemoval !== null}
-        title="Remove Map member"
-        message="Are you sure you want to remove this user from Map administration?"
-        cancelLabel="No"
-        confirmLabel="Yes"
-        busy={removingRole !== null}
-        onHide={() => {
-          if (!removingRole) setMemberPendingRemoval(null);
-        }}
-        onConfirm={() => {
-          if (memberPendingRemoval) void removeMember(memberPendingRemoval);
-        }}
-      />
     </section>
-  );
-}
-
-function MapMembersContent({
-  members,
-  memberProfiles,
-  memberFilter,
-  onMemberFilterChange,
-  isTempvsAdmin,
-  viewerUserId,
-  assigningUserId,
-  removingUserId,
-  onChangeRole,
-  onRemove,
-  onAdd,
-}: {
-  members: MapRoleMember[];
-  memberProfiles: Record<string, Profile>;
-  memberFilter: string;
-  onMemberFilterChange: (value: string) => void;
-  isTempvsAdmin: boolean;
-  viewerUserId?: string;
-  assigningUserId: string | null;
-  removingUserId: string | null;
-  onChangeRole: (member: MapRoleMember, role: MapRole) => void;
-  onRemove: (member: MapRoleMember) => void;
-  onAdd: () => void;
-}) {
-  const normalizedFilter = memberFilter.trim().toLocaleLowerCase();
-  const filteredMembers = members.filter((member) => {
-    if (!normalizedFilter) return true;
-    const profile = memberProfiles[member.userId];
-    return [
-      member.name,
-      member.email,
-      member.userId,
-      profile ? buildProfileLabel(profile) : null,
-      profile?.alias,
-    ].some((value) => value?.toLocaleLowerCase().includes(normalizedFilter));
-  });
-  const roleOptions = MAP_ROLE_OPTIONS.filter(
-    (option) => isTempvsAdmin || option.value !== "MAP_ADMIN",
-  );
-
-  return (
-    <div className="d-flex flex-column gap-3">
-      <div className="d-flex align-items-center justify-content-between gap-2">
-        <div style={{ maxWidth: "28rem", width: "100%" }}>
-          <TextFilterInput
-            ariaLabel="Filter Map members"
-            placeholder="Filter members by profile name or alias"
-            value={memberFilter}
-            onChange={onMemberFilterChange}
-          />
-        </div>
-        <IconActionButton
-          title="Add Map member"
-          onClick={onAdd}
-          size="2.4rem"
-          fontSize="1rem"
-          borderColor="#000"
-          color="#000"
-          backgroundColor="#fff"
-        >
-          <PlusIcon />
-        </IconActionButton>
-      </div>
-      {members.length === 0 && (
-        <div className="tempvs-plain-message text-muted mb-0">
-          No Map roles have been assigned.
-        </div>
-      )}
-      {members.length > 0 && filteredMembers.length === 0 && (
-        <div className="tempvs-plain-message text-muted mb-0">
-          No Map members match the current filter.
-        </div>
-      )}
-      {filteredMembers.map((member) => {
-        const self = member.userId === viewerUserId;
-        const profile = memberProfiles[member.userId];
-        const label = profile
-          ? buildProfileLabel(profile)
-          : member.name || member.email || "Map member";
-        const role = primaryMapRole(member.roles);
-        const protectedAdmin = member.roles.includes("MAP_ADMIN");
-        const canChange = !self && (!protectedAdmin || isTempvsAdmin);
-        return (
-          <Card key={member.userId} className="border-0 shadow-sm">
-            <Card.Body className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-              <div className="d-flex align-items-center gap-3">
-                {profile ? (
-                  <ProfileThumbnailLink profile={profile} displayLabel={false} />
-                ) : (
-                  <div className="fw-semibold">{label}</div>
-                )}
-                <div>
-                  <div className="fw-semibold">
-                    {profile ? (
-                      <Link to={`/profile/${profile.alias || profile.id}`}>
-                        {label}
-                      </Link>
-                    ) : (
-                      label
-                    )}
-                  </div>
-                  {member.email && (
-                    <div className="text-muted small">{member.email}</div>
-                  )}
-                </div>
-              </div>
-              <div className="d-flex align-items-center gap-2">
-                {protectedAdmin && !isTempvsAdmin ? (
-                  <Form.Control
-                    aria-label={`Map role for ${label}`}
-                    value={self ? "Map Admin (your role)" : "Map Admin"}
-                    disabled
-                    readOnly
-                    style={{ maxWidth: "15rem" }}
-                  />
-                ) : (
-                  <Form.Select
-                    aria-label={`Map role for ${label}`}
-                    value={role}
-                    disabled={!canChange || assigningUserId !== null}
-                    onChange={(event) =>
-                      onChangeRole(member, event.target.value as MapRole)
-                    }
-                    style={{ maxWidth: "15rem" }}
-                  >
-                    {roleOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                )}
-                {canChange && (
-                  <IconActionButton
-                    title={`Remove ${label} from the Map`}
-                    aria-label={`Remove ${label} from the Map`}
-                    onClick={() => onRemove(member)}
-                    disabled={removingUserId !== null || assigningUserId !== null}
-                    size="2.15rem"
-                    fontSize="0.9rem"
-                    borderColor="#b42318"
-                    color="#b42318"
-                    backgroundColor="#fff"
-                  >
-                    <TrashIcon />
-                  </IconActionButton>
-                )}
-              </div>
-            </Card.Body>
-          </Card>
-        );
-      })}
-    </div>
   );
 }
 
