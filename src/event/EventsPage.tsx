@@ -35,7 +35,9 @@ export default function EventsPage() {
   const [query, setQuery] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"DATE" | "NAME">("DATE");
+  const [sortOrder, setSortOrder] = useState<
+    "DATE_ASC" | "DATE_DESC" | "NAME_ASC" | "NAME_DESC"
+  >("DATE_ASC");
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -147,8 +149,18 @@ export default function EventsPage() {
     return !hasYearFilter || overlapsHistoricalRange(event, range);
   });
   const sortedVisible = [...visible].sort((left, right) => {
-    if (sortOrder === "NAME") return left.name.localeCompare(right.name);
-    return eventSortTimestamp(left) - eventSortTimestamp(right);
+    if (sortOrder === "NAME_ASC") return left.name.localeCompare(right.name);
+    if (sortOrder === "NAME_DESC") return right.name.localeCompare(left.name);
+
+    const leftTimestamp = eventSortTimestamp(left);
+    const rightTimestamp = eventSortTimestamp(right);
+    if (leftTimestamp === null && rightTimestamp === null) return 0;
+    if (leftTimestamp === null) return 1;
+    if (rightTimestamp === null) return -1;
+
+    return sortOrder === "DATE_ASC"
+      ? leftTimestamp - rightTimestamp
+      : rightTimestamp - leftTimestamp;
   });
 
   return (
@@ -255,11 +267,19 @@ export default function EventsPage() {
                 value={sortOrder}
                 aria-label="Sort events"
                 onChange={(event) =>
-                  setSortOrder(event.target.value as "DATE" | "NAME")
+                  setSortOrder(
+                    event.target.value as
+                      | "DATE_ASC"
+                      | "DATE_DESC"
+                      | "NAME_ASC"
+                      | "NAME_DESC",
+                  )
                 }
               >
-                <option value="DATE">Date: soonest first</option>
-                <option value="NAME">Name: A–Z</option>
+                <option value="DATE_ASC">Sooner first</option>
+                <option value="DATE_DESC">Sooner last</option>
+                <option value="NAME_ASC">A–Z</option>
+                <option value="NAME_DESC">Z–A</option>
               </select>
             </div>
             <div className="event-card-grid event-search-results">
@@ -340,11 +360,10 @@ export default function EventsPage() {
   );
 }
 
-function eventSortTimestamp(event: TempvsEvent): number {
-  const value = event.schedule.startsAt
-    ? new Date(event.schedule.startsAt).getTime()
-    : Number.POSITIVE_INFINITY;
-  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+function eventSortTimestamp(event: TempvsEvent): number | null {
+  if (!event.schedule.startsAt) return null;
+  const value = new Date(event.schedule.startsAt).getTime();
+  return Number.isFinite(value) ? value : null;
 }
 
 function isPastEvent(event: TempvsEvent): boolean {
