@@ -67,6 +67,7 @@ type MarkerProperties = {
   role?: string;
   entityId?: string;
   placeId?: string;
+  placeName?: string;
 };
 
 const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
@@ -696,12 +697,14 @@ function addMarkerLayers(
     const entityType = properties?.kind;
     const entityId = properties?.entityId;
     const placeId = properties?.placeId;
+    const placeName = properties?.placeName;
     const label = properties?.label;
     if (
       !feature ||
       !isEntityType(entityType) ||
       typeof entityId !== "string" ||
       typeof placeId !== "string" ||
+      typeof placeName !== "string" ||
       typeof label !== "string"
     )
       return;
@@ -713,11 +716,19 @@ function addMarkerLayers(
     const popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
+      anchor: "left",
+      offset: [14, 0],
       maxWidth: "18rem",
     })
       .setLngLat(coordinates)
       .setDOMContent(
-        markerLinksPopover({ entityType, entityId, placeId, label }),
+        markerLinksPopover({
+          entityType,
+          entityId,
+          placeId,
+          placeName,
+          label,
+        }),
       )
       .addTo(map);
     entityHoverPopup = popup;
@@ -727,7 +738,9 @@ function addMarkerLayers(
         entityHoverCloseTimer = undefined;
       }
     });
-    popup.getElement()?.addEventListener("mouseleave", scheduleEntityHoverClose);
+    popup
+      .getElement()
+      ?.addEventListener("mouseleave", scheduleEntityHoverClose);
   });
   map.on("mouseleave", "map-entity-points", scheduleEntityHoverClose);
   const openPlace = (event: maplibregl.MapLayerMouseEvent) => {
@@ -779,7 +792,7 @@ function markerColour(): maplibregl.ExpressionSpecification {
 
 type LinkedMarker = Pick<
   MapThumbnailMarker,
-  "entityType" | "entityId" | "placeId" | "label"
+  "entityType" | "entityId" | "placeId" | "placeName" | "label"
 >;
 type LinkableMarker = LinkedMarker &
   Pick<MapThumbnailMarker, "latitude" | "longitude">;
@@ -812,6 +825,8 @@ function addMarkerLinksPopup(
     popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
+      anchor: "left",
+      offset: [14, 0],
       maxWidth: "18rem",
     })
       .setLngLat([marker.longitude, marker.latitude])
@@ -837,19 +852,15 @@ function markerLinksPopover(marker: LinkedMarker): HTMLDivElement {
   const container = document.createElement("div");
   container.className = "map-marker-popover";
   container.addEventListener("click", (event) => event.stopPropagation());
-  const heading = document.createElement("strong");
-  heading.textContent = marker.label;
-  container.append(heading);
-  const links = document.createElement("div");
-  links.className = "map-marker-links";
-  const placeLink = document.createElement("a");
-  placeLink.href = placePath(marker.placeId);
-  placeLink.textContent = "Place";
   const entityLink = document.createElement("a");
+  entityLink.className = "map-marker-resource-link";
   entityLink.href = entityPath(marker.entityType, marker.entityId);
-  entityLink.textContent = readableEntityType(marker.entityType);
-  links.append(placeLink, entityLink);
-  container.append(links);
+  entityLink.textContent = marker.label;
+  const placeLink = document.createElement("a");
+  placeLink.className = "map-marker-place-link";
+  placeLink.href = placePath(marker.placeId);
+  placeLink.textContent = marker.placeName;
+  container.append(entityLink, placeLink);
   return container;
 }
 
@@ -872,10 +883,6 @@ function entityPath(
     case "SOURCE":
       return `/library/source/${id}`;
   }
-}
-
-function readableEntityType(entityType: MapEntityLocation["entityType"]): string {
-  return entityType[0] + entityType.slice(1).toLocaleLowerCase();
 }
 
 function isEntityType(
@@ -907,6 +914,7 @@ function entityCollection(
         role: entity.locationRole,
         entityId: entity.entityId,
         placeId: entity.placeId,
+        placeName: entity.placeName,
       },
     })),
   };
