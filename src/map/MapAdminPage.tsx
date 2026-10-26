@@ -639,7 +639,7 @@ function MapRoleAdminPanel({
             <>
               <h2 className="h5">Role requests</h2>
               <p className="text-muted small">
-                Review requests for Map contributor, reviewer, and editor
+                Review requests for Map reviewer and editor
                 access. Tempvs administrators may also assign Map administrator access.
               </p>
               {requests.length === 0 ? (

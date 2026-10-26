@@ -795,7 +795,7 @@ export default function MapPage() {
               </Button>
             ) : (
               <Link className="btn btn-outline-dark" to="/map/admin">
-                Request Map contributor role
+                Request Map reviewer role
               </Link>
             )}
             <Link className="btn btn-outline-dark" to="/map/admin">

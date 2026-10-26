@@ -440,9 +440,9 @@ export async function proposeMapPlaceChangeset(
     },
   );
   if (response.status === 401)
-    throw new Error("Sign in with a Map contributor role to submit changes");
+    throw new Error("Sign in with a Map reviewer role to submit changes");
   if (response.status === 403)
-    throw new Error("A Map contributor role is required to submit changes");
+    throw new Error("A Map reviewer role is required to submit changes");
   if (!response.ok) throw new Error("Unable to submit this place changeset");
   return (await responseJson(response)) as MapPlaceProposalRecord;
 }

@@ -226,7 +226,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         </p>
         {!editable && (
           <Alert variant="warning">
-            A Map contributor role is required. Request one from Map
+            A Map reviewer role is required. Request one from Map
             administration before submitting changes.
           </Alert>
         )}
