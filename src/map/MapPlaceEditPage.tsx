@@ -35,7 +35,6 @@ const canContribute = (viewer: Viewer | null) =>
         "MAP_ADMIN",
         "MAP_EDITOR",
         "MAP_REVIEWER",
-        "MAP_CONTRIBUTOR",
       ].includes(role),
     ),
   );

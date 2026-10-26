@@ -221,7 +221,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
 
   const canPropose = Boolean(
     viewer?.roles.some((role) =>
-      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER", "MAP_CONTRIBUTOR"].includes(role),
+      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER"].includes(role),
     ),
   );
 

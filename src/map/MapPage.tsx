@@ -53,7 +53,6 @@ function canProposePlace(viewer: Viewer | null): boolean {
         "MAP_ADMIN",
         "MAP_EDITOR",
         "MAP_REVIEWER",
-        "MAP_CONTRIBUTOR",
       ].includes(role),
     ),
   );

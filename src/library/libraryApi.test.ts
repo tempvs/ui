@@ -31,7 +31,7 @@ test("Library search and admin lists use opaque cursor envelopes", async () => {
     )
     .mockResolvedValueOnce(
       response({
-        roleRequests: [{ userId: "12", role: "ROLE_CONTRIBUTOR" }],
+        roleRequests: [{ userId: "12", role: "LIBRARY_SCRIBE" }],
         nextToken: "next-request",
       }),
     );

@@ -1,8 +1,7 @@
 export const ROLE_ORDER = [
-  "ROLE_ADMIN",
-  "ROLE_ARCHIVARIUS",
-  "ROLE_SCRIBE",
-  "ROLE_CONTRIBUTOR",
+  "LIBRARY_ADMIN",
+  "LIBRARY_ARCHIVARIUS",
+  "LIBRARY_SCRIBE",
 ] as const;
 
 export type LibraryRole = (typeof ROLE_ORDER)[number];
@@ -20,22 +19,18 @@ export type RoleMeta = {
 };
 
 const ROLE_META: Record<LibraryRole, RoleMeta> = {
-  ROLE_ADMIN: {
+  LIBRARY_ADMIN: {
     label: "Library Admin",
     description: "Can manage role requests and all library sources.",
   },
-  ROLE_ARCHIVARIUS: {
+  LIBRARY_ARCHIVARIUS: {
     label: "Archivarius",
     description:
-      "Can assign Scribe and Contributor access, and create and edit sources.",
+      "Can assign Scribe access, and create and edit sources.",
   },
-  ROLE_SCRIBE: {
+  LIBRARY_SCRIBE: {
     label: "Scribe",
     description: "Can create and edit source details and attached images.",
-  },
-  ROLE_CONTRIBUTOR: {
-    label: "Contributor",
-    description: "Can add new sources and upload supporting images.",
   },
 };
 
@@ -45,7 +40,7 @@ export function getRoles(userInfo: LibraryUserInfo): Set<string> {
   // nested-group support, so each domain maps that signed group to its own
   // highest local permission. Mirror the Library API's mapping here so the
   // UI never hides controls that the API will authorize.
-  if (roles.has("TEMPVS_ADMIN")) roles.add("ROLE_ADMIN");
+  if (roles.has("TEMPVS_ADMIN")) roles.add("LIBRARY_ADMIN");
   return roles;
 }
 
@@ -59,33 +54,32 @@ export function hasAnyRole(
 
 export function canContribute(userInfo: LibraryUserInfo): boolean {
   return hasAnyRole(userInfo, [
-    "ROLE_CONTRIBUTOR",
-    "ROLE_SCRIBE",
-    "ROLE_ARCHIVARIUS",
-    "ROLE_ADMIN",
+    "LIBRARY_SCRIBE",
+    "LIBRARY_ARCHIVARIUS",
+    "LIBRARY_ADMIN",
   ]);
 }
 
 export function canEditSource(userInfo: LibraryUserInfo): boolean {
   return hasAnyRole(userInfo, [
-    "ROLE_SCRIBE",
-    "ROLE_ARCHIVARIUS",
-    "ROLE_ADMIN",
+    "LIBRARY_SCRIBE",
+    "LIBRARY_ARCHIVARIUS",
+    "LIBRARY_ADMIN",
   ]);
 }
 
 export function canDeleteSource(userInfo: LibraryUserInfo): boolean {
-  return hasAnyRole(userInfo, ["ROLE_ADMIN"]);
+  return hasAnyRole(userInfo, ["LIBRARY_ADMIN"]);
 }
 
 export function canManageAllLibraryRoles(userInfo: LibraryUserInfo): boolean {
-  return hasAnyRole(userInfo, ["ROLE_ADMIN"]);
+  return hasAnyRole(userInfo, ["LIBRARY_ADMIN"]);
 }
 
 export function canAccessLibraryAdministration(
   userInfo: LibraryUserInfo,
 ): boolean {
-  return hasAnyRole(userInfo, ["ROLE_ARCHIVARIUS", "ROLE_ADMIN"]);
+  return hasAnyRole(userInfo, ["LIBRARY_ARCHIVARIUS", "LIBRARY_ADMIN"]);
 }
 
 export function getPrimaryRole(userInfo: LibraryUserInfo): LibraryRole | null {

@@ -387,7 +387,7 @@ test("paginates Map role requests and confirms operational-role removal", async 
       userId: "member-1",
       email: "member@example.test",
       name: "Map Member",
-      roles: ["MAP_CONTRIBUTOR"],
+      roles: ["MAP_REVIEWER"],
     },
   ]);
   removeMapMemberRoleMock.mockResolvedValue();
@@ -405,13 +405,13 @@ test("paginates Map role requests and confirms operational-role removal", async 
   expect(await screen.findByText("user-2")).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("tab", { name: "Map members" }));
-  fireEvent.click(screen.getByRole("button", { name: "Remove Contributor" }));
+  fireEvent.click(screen.getByRole("button", { name: "Remove Reviewer" }));
   expect(await screen.findByText("Remove Map role")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Remove role" }));
   await waitFor(() =>
     expect(removeMapMemberRoleMock).toHaveBeenCalledWith(
       "member-1",
-      "MAP_CONTRIBUTOR",
+      "MAP_REVIEWER",
     ),
   );
 });

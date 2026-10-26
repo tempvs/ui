@@ -66,7 +66,7 @@ export type LibraryMember = {
   userId: string;
   email: string | null;
   name: string | null;
-  role: "ROLE_CONTRIBUTOR" | "ROLE_SCRIBE" | "ROLE_ARCHIVARIUS" | "ROLE_ADMIN";
+  role: "LIBRARY_SCRIBE" | "LIBRARY_ARCHIVARIUS" | "LIBRARY_ADMIN";
 };
 
 export type SourceChangeProposal = {
@@ -386,7 +386,7 @@ export function getAdminMembers() {
   return fetchJson<LibraryAdminMembers>("/api/library/library/admin/users");
 }
 
-export function setAdminMemberRole(userId: string, role: string) {
+export function setAdminMemberRole(userId: string, role: string | null) {
   return fetchJson<LibraryAdminMembers>(
     `/api/library/library/admin/users/${userId}/role`,
     {

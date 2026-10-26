@@ -35,10 +35,9 @@ import { LibraryPendingProposalsContent } from "./LibraryPendingProposalsPage";
 
 type AdminTab = "members" | "requests" | "proposals";
 const ROLE_OPTIONS = [
-  { value: "ROLE_ADMIN", label: "Library administrator" },
-  { value: "ROLE_ARCHIVARIUS", label: "Archivarius" },
-  { value: "ROLE_SCRIBE", label: "Scribe" },
-  { value: "ROLE_CONTRIBUTOR", label: "Contributor" },
+  { value: "LIBRARY_ADMIN", label: "Library administrator" },
+  { value: "LIBRARY_ARCHIVARIUS", label: "Archivarius" },
+  { value: "LIBRARY_SCRIBE", label: "Scribe" },
 ];
 const TrashIcon = FaTrash as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
@@ -173,12 +172,12 @@ export default function LibraryAdminPage() {
     }
   };
 
-  const isLibraryAdmin = Boolean(userInfo?.roles?.includes("ROLE_ADMIN"));
+  const isLibraryAdmin = Boolean(userInfo?.roles?.includes("LIBRARY_ADMIN"));
   const isTempvsAdmin = Boolean(userInfo?.roles?.includes("TEMPVS_ADMIN"));
   const assignableRoleOptions = ROLE_OPTIONS.filter((option) =>
-    option.value === "ROLE_ADMIN"
+    option.value === "LIBRARY_ADMIN"
       ? isTempvsAdmin
-      : isLibraryAdmin || option.value !== "ROLE_ARCHIVARIUS",
+      : isLibraryAdmin || option.value !== "LIBRARY_ARCHIVARIUS",
   );
 
   const loadMembers = async () => {
@@ -246,7 +245,7 @@ export default function LibraryAdminPage() {
     setLoading(false);
     setError(null);
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- loading functions intentionally refresh on a URL tab change.
-  const updateMember = async (member: LibraryMember, role: string) => {
+  const updateMember = async (member: LibraryMember, role: string | null) => {
     setError(null);
     setNotice(null);
     setUpdating(member.userId);
@@ -489,7 +488,7 @@ export default function LibraryAdminPage() {
             const label = profile
               ? buildProfileLabel(profile)
               : member.name || member.email || "Library member";
-            const protectedAdmin = member.role === "ROLE_ADMIN";
+            const protectedAdmin = member.role === "LIBRARY_ADMIN";
             const canChange = !self && (!protectedAdmin || isTempvsAdmin);
             return (
               <Card key={member.userId} className="border-0 shadow-sm">
@@ -675,7 +674,7 @@ export default function LibraryAdminPage() {
         onConfirm={() => {
           const member = memberPendingRemoval;
           setMemberPendingRemoval(null);
-          if (member) void updateMember(member, "ROLE_USER");
+          if (member) void updateMember(member, null);
         }}
       />
       {!loading && tab === "requests" && (

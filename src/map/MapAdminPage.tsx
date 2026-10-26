@@ -495,7 +495,7 @@ function MapRoleAdminPanel({
   } | null>(null);
   const [profileQuery, setProfileQuery] = useState("");
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
-  const [roleToAssign, setRoleToAssign] = useState<MapRole>("MAP_CONTRIBUTOR");
+  const [roleToAssign, setRoleToAssign] = useState<MapRole>("MAP_REVIEWER");
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -731,7 +731,6 @@ function MapRoleAdminPanel({
                       setRoleToAssign(event.target.value as MapRole)
                     }
                   >
-                    <option value="MAP_CONTRIBUTOR">Contributor</option>
                     <option value="MAP_REVIEWER">Reviewer</option>
                     <option value="MAP_EDITOR">Editor</option>
                     {isTempvsAdmin && (

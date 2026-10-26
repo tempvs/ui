@@ -86,8 +86,8 @@ export default function LibraryLandingPage() {
     : userInfo && !roleMeta
       ? [
           {
-            role: "ROLE_CONTRIBUTOR",
-            label: "Request Contributor access",
+            role: "LIBRARY_SCRIBE",
+            label: "Request Scribe access",
             description: "Create sources and upload supporting images.",
             pending: false,
           },

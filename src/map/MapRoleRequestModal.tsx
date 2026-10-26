@@ -15,11 +15,6 @@ const ROLE_OPTIONS: Array<{
   description: string;
 }> = [
   {
-    value: "MAP_CONTRIBUTOR",
-    label: "Contributor",
-    description: "Submit and amend canonical-place proposals.",
-  },
-  {
     value: "MAP_REVIEWER",
     label: "Reviewer",
     description: "Review proposals, comment, and request changes.",
@@ -39,7 +34,7 @@ export default function MapRoleRequestModal({
   onHide: () => void;
 }) {
   const [requests, setRequests] = useState<MapRoleRequest[]>([]);
-  const [role, setRole] = useState<MapRoleRequest["role"]>("MAP_CONTRIBUTOR");
+  const [role, setRole] = useState<MapRoleRequest["role"]>("MAP_REVIEWER");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);

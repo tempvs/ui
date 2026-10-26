@@ -208,8 +208,7 @@ export type MapPlaceProposalActivity = {
   };
 };
 
-export type MapRole =
-  "MAP_CONTRIBUTOR" | "MAP_REVIEWER" | "MAP_EDITOR" | "MAP_ADMIN";
+export type MapRole = "MAP_REVIEWER" | "MAP_EDITOR" | "MAP_ADMIN";
 export type MapRoleRequest = {
   id: string;
   userId: string;
