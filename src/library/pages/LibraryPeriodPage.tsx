@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Col, Form, Modal, Row } from "react-bootstrap";
+import { Button, Col, Form, Modal, Row } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import PlusActionButton from "../../component/PlusActionButton";
+import "../../component/catalogueSearch.css";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
 import MultiImageFilePicker from "../../component/MultiImageFilePicker";
 import PlacePickerField from "../../component/PlacePickerField";
+import ResultSortSelect from "../../component/ResultSortSelect";
+import TextFilterInput from "../../component/TextFilterInput";
 import type { MapPlace } from "../../map/mapApi";
 import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
@@ -27,7 +30,6 @@ import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import SourceCard from "../components/SourceCard";
 import {
-  getPeriodLabel,
   getTypeLabel,
   PAGE_SIZE,
   TYPES,
@@ -56,6 +58,9 @@ export default function LibraryPeriodPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<
+    "NAME_ASC" | "NAME_DESC" | "YEAR_ASC" | "YEAR_DESC"
+  >("NAME_ASC");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -98,6 +103,27 @@ export default function LibraryPeriodPage() {
     (rangeEnabled && (from.year || to.year)) ||
     discoveredAtPlace ||
     heldAtPlace,
+  );
+  const sortedSources = useMemo(
+    () =>
+      [...sources].sort((left, right) => {
+        if (sortOrder === "NAME_ASC" || sortOrder === "NAME_DESC") {
+          const comparison = (left.name || "").localeCompare(
+            right.name || "",
+          );
+          return sortOrder === "NAME_ASC" ? comparison : -comparison;
+        }
+
+        const leftYear = sourceSortYear(left);
+        const rightYear = sourceSortYear(right);
+        if (leftYear === null && rightYear === null) return 0;
+        if (leftYear === null) return 1;
+        if (rightYear === null) return -1;
+        return sortOrder === "YEAR_ASC"
+          ? leftYear - rightYear
+          : rightYear - leftYear;
+      }),
+    [sources, sortOrder],
   );
   const clearFilters = () => {
     setQuery("");
@@ -421,121 +447,117 @@ export default function LibraryPeriodPage() {
           <LibraryPeriodBreadcrumb period={periodCode} variant="period" />
         }
       />
-      <div className="mb-4 mt-2">
-        <h1 className="mb-2">{getPeriodLabel(intl, periodCode)}</h1>
-        <p className="text-muted mb-0">
-          {intl.formatMessage({
-            id: `period.${period}.shortDescription`,
-            defaultMessage: "Historical period overview.",
-          })}
-        </p>
-      </div>
-
       {error && <div className="tempvs-plain-message text-danger">{error}</div>}
 
-      <Row className="g-4 align-items-start">
-        <Col lg={4}>
-          <Card className="border-0 shadow-sm mb-4">
-            <Card.Body>
-              <Card.Title>Find sources</Card.Title>
-              <Form
-                className="library-source-filter"
-                onSubmit={(event) => event.preventDefault()}
-              >
-                <Form.Group className="mb-3">
-                  <Form.Control
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Name or description"
-                  />
-                </Form.Group>
-                <details
-                  className="library-filter-disclosure"
-                  open={filtersOpen}
-                  onToggle={(event) =>
-                    setFiltersOpen(
-                      (event.currentTarget as HTMLDetailsElement).open,
-                    )
-                  }
-                >
-                  <summary>
-                    Filters{hasActiveFilters ? " (active)" : ""}
-                  </summary>
-                  <div className="library-filter-disclosure-content">
-                    {hasActiveFilters && (
-                      <Button variant="link" size="sm" onClick={clearFilters}>
-                        Clear filters
-                      </Button>
-                    )}
-                    <HistoricalRangeFilter
-                      enabled={rangeEnabled}
-                      from={from}
-                      to={to}
-                      onEnabledChange={setRangeEnabled}
-                      onFromChange={setFrom}
-                      onToChange={setTo}
-                      alwaysShowFields
-                      onValueEntered={() => setRangeEnabled(true)}
+      <div className="catalogue-search-layout">
+        <aside className="catalogue-search-filters">
+          <details
+            className="catalogue-filter-disclosure library-source-filter"
+            open={filtersOpen}
+            onToggle={(event) =>
+              setFiltersOpen(
+                (event.currentTarget as HTMLDetailsElement).open,
+              )
+            }
+          >
+            <summary>Filters</summary>
+            <div className="catalogue-filter-disclosure-content">
+              <div className="catalogue-filter-disclosure-actions">
+                <span className="small text-muted">
+                  {hasActiveFilters ? "Filters applied" : "All sources"}
+                </span>
+                {hasActiveFilters && (
+                  <Button variant="link" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+              <HistoricalRangeFilter
+                enabled={rangeEnabled}
+                from={from}
+                to={to}
+                onEnabledChange={setRangeEnabled}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                alwaysShowFields
+                onValueEntered={() => setRangeEnabled(true)}
+              />
+              <div>
+                <PlacePickerField
+                  label="Discovered at"
+                  value={discoveredAtPlace}
+                  editable
+                  onChange={setDiscoveredAtPlace}
+                  labelWidth="7rem"
+                  fieldMaxWidth="100%"
+                  className="mb-2"
+                />
+                <PlacePickerField
+                  label="Held at"
+                  value={heldAtPlace}
+                  editable
+                  onChange={setHeldAtPlace}
+                  labelWidth="7rem"
+                  fieldMaxWidth="100%"
+                  className="mb-0"
+                />
+              </div>
+              <Form.Group>
+                <Form.Label className="library-source-filter-heading">
+                  Type
+                </Form.Label>
+                <div className="d-flex flex-column gap-2">
+                  {TYPES.map((type) => (
+                    <Form.Check
+                      key={type}
+                      type="checkbox"
+                      id={`type-${type}`}
+                      label={getTypeLabel(intl, type)}
+                      checked={selectedTypes.includes(type)}
+                      onChange={() =>
+                        handleToggle(type, selectedTypes, setSelectedTypes)
+                      }
                     />
-                    <div className="mb-3">
-                      <PlacePickerField
-                        label="Discovered at"
-                        value={discoveredAtPlace}
-                        editable
-                        onChange={setDiscoveredAtPlace}
-                        labelWidth="7rem"
-                        fieldMaxWidth="100%"
-                        className="mb-2"
-                      />
-                      <PlacePickerField
-                        label="Held at"
-                        value={heldAtPlace}
-                        editable
-                        onChange={setHeldAtPlace}
-                        labelWidth="7rem"
-                        fieldMaxWidth="100%"
-                        className="mb-0"
-                      />
-                    </div>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="library-source-filter-heading">
-                        Type
-                      </Form.Label>
-                      <div className="d-flex flex-column gap-2">
-                        {TYPES.map((type) => (
-                          <Form.Check
-                            key={type}
-                            type="checkbox"
-                            id={`type-${type}`}
-                            label={getTypeLabel(intl, type)}
-                            checked={selectedTypes.includes(type)}
-                            onChange={() =>
-                              handleToggle(
-                                type,
-                                selectedTypes,
-                                setSelectedTypes,
-                              )
-                            }
-                          />
-                        ))}
-                      </div>
-                    </Form.Group>
-                  </div>
-                </details>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col lg={8}>
+                  ))}
+                </div>
+              </Form.Group>
+            </div>
+          </details>
+        </aside>
+        <div className="catalogue-search-query">
+          <TextFilterInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Filter sources"
+            ariaLabel="Filter sources"
+          />
           {loading && <SourceResultsSkeleton />}
           {!loading && (
             <>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <h2 className="mb-0 fs-4">Sources</h2>
+              <div className="catalogue-results-toolbar" aria-live="polite">
+                <span>
+                  Showing {sources.length} source{sources.length === 1 ? "" : "s"}
+                </span>
                 <div className="d-flex align-items-center gap-2">
-                  <div className="text-muted small">
-                    {sources.length} result(s)
-                  </div>
+                  <ResultSortSelect
+                    value={sortOrder}
+                    ariaLabel="Sort sources"
+                    onChange={(value) =>
+                      setSortOrder(
+                        value as
+                          | "NAME_ASC"
+                          | "NAME_DESC"
+                          | "YEAR_ASC"
+                          | "YEAR_DESC",
+                      )
+                    }
+                    options={[
+                      { value: "NAME_ASC", label: "Name: A–Z" },
+                      { value: "NAME_DESC", label: "Name: Z–A" },
+                      { value: "YEAR_ASC", label: "Years: oldest first" },
+                      { value: "YEAR_DESC", label: "Years: newest first" },
+                    ]}
+                  />
                   {canContribute(userInfo) && (
                     <PlusActionButton
                       title="Create source"
@@ -561,7 +583,7 @@ export default function LibraryPeriodPage() {
                 </div>
               )}
               <Row className="g-3">
-                {sources.map((source) => (
+                {sortedSources.map((source) => (
                   <Col md={6} key={source.id}>
                     <SourceCard
                       source={source}
@@ -584,8 +606,8 @@ export default function LibraryPeriodPage() {
               )}
             </>
           )}
-        </Col>
-      </Row>
+        </div>
+      </div>
 
       {canContribute(userInfo) && (
         <Modal
@@ -711,6 +733,12 @@ export default function LibraryPeriodPage() {
       )}
     </div>
   );
+}
+
+function sourceSortYear(source: LibrarySource): number | null {
+  const year = source.from || source.to;
+  if (!year) return null;
+  return year.era === "BC" ? 1 - year.year : year.year;
 }
 
 function SourceResultsSkeleton() {

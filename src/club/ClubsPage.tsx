@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
+import "../component/catalogueSearch.css";
 import HistoricalRangeFilter, {
   formatHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import ResultSortSelect from "../component/ResultSortSelect";
+import TextFilterInput from "../component/TextFilterInput";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -247,8 +249,8 @@ export default function ClubsPage() {
     >
       {error && !creating && <Alert variant="danger">{error}</Alert>}
       <>
-        <div className="club-search-layout">
-          <aside className="club-search-filters">
+        <div className="catalogue-search-layout">
+          <aside className="catalogue-search-filters">
             <details
               className="catalogue-filter-disclosure"
               open={filtersOpen}
@@ -296,14 +298,14 @@ export default function ClubsPage() {
               </div>
             </details>
           </aside>
-          <div className="club-search-query">
-            <Form.Control
-              aria-label={t("searchClubs", "Search clubs")}
+          <div className="catalogue-search-query">
+            <TextFilterInput
+              ariaLabel={t("searchClubs", "Search clubs")}
               placeholder={t("searchClubs", "Search clubs")}
-              maxLength={120}
               value={query}
               disabled={unavailable}
-              onChange={(e) => setQuery(e.target.value)}
+              maxLength={120}
+              onChange={setQuery}
             />
             <div className="catalogue-results-toolbar" aria-live="polite">
               <span>

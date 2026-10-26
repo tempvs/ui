@@ -9,6 +9,7 @@ type TextFilterInputProps = {
   className?: string;
   size?: "sm" | "lg";
   disabled?: boolean;
+  maxLength?: number;
   onFocus?: React.FocusEventHandler<HTMLInputElement>;
 };
 
@@ -26,6 +27,7 @@ const TextFilterInput = React.forwardRef<
       className,
       size = "sm",
       disabled = false,
+      maxLength,
       onFocus,
     },
     ref,
@@ -39,6 +41,7 @@ const TextFilterInput = React.forwardRef<
       placeholder={placeholder}
       aria-label={ariaLabel}
       disabled={disabled}
+      maxLength={maxLength}
       onFocus={onFocus}
       className={className}
     />
