@@ -417,14 +417,8 @@
 }
 
 .map-marker-resource-link {
-  border: 0;
   font-weight: 700;
   outline: none;
-}
-
-.map-marker-resource-link:focus-visible {
-  outline: 2px solid #b7944f;
-  outline-offset: 2px;
 }
 
 .map-marker-place-link {
