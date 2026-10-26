@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
 import PlaceSearchAutocomplete from "../component/PlaceSearchAutocomplete";
+import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
 import {
   getMapPlace,
@@ -217,7 +218,19 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
 
   const editable = canContribute(viewer);
   return (
-    <PageLayout className="map-page" header={{ title: "Edit place" }}>
+    <PageLayout
+      className="map-page"
+      header={{
+        title: (
+          <SectionBreadcrumb
+            items={[
+              { label: "Map", to: "/map" },
+              { label: place.canonicalName },
+            ]}
+          />
+        ),
+      }}
+    >
       <section className="club-panel">
         <p className="text-muted mb-3">
           Changes to <strong>{place.canonicalName}</strong> are submitted as a
