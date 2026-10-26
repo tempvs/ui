@@ -3,6 +3,7 @@ import { Button, Form, Modal } from "react-bootstrap";
 
 import PlusActionButton from "../../component/PlusActionButton";
 import Spinner from "../../component/Spinner";
+import DismissibleCoachmark from "../../component/DismissibleCoachmark";
 import { MessageFormatter } from "../profileTypes";
 
 type ClubProfile = {
@@ -185,13 +186,19 @@ export default function ClubProfilesSection({
               </p>
             </div>
             {canCreate && (
-              <PlusActionButton
-                onClick={onShowCreate}
-                title={t(
-                  "profile.clubProfile.create.title",
-                  "Create club profile",
-                )}
-              />
+              <DismissibleCoachmark
+                id="create-club-profile"
+                visible={clubProfilesLoaded && showEmptyMessage}
+                message="Click here to create a reenactment profile."
+              >
+                <PlusActionButton
+                  onClick={onShowCreate}
+                  title={t(
+                    "profile.clubProfile.create.title",
+                    "Create club profile",
+                  )}
+                />
+              </DismissibleCoachmark>
             )}
           </div>
           {!clubProfilesLoaded && <Spinner />}

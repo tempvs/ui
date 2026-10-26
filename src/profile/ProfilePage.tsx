@@ -5,6 +5,7 @@ import { injectIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
+import EntityDetailPage from "../component/EntityDetailPage";
 import { PageColumn, PageColumns } from "../component/PageColumns";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
@@ -23,6 +24,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
+import ProfileStashLink from "./components/ProfileStashLink";
 import type { Club } from "../club/clubApi";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
@@ -1494,7 +1496,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     const isEditable = this.isEditableProfile();
     const isClubProfile = this.state.type === "CLUB";
     const headerSubtitleDisplay = isClubProfile
-      ? "Club profile"
+      ? "Name"
       : "User profile";
     const ownerLink =
       isClubProfile && this.state.ownerUserProfile
@@ -1588,7 +1590,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           borderColor: isClubProfile ? "#d8c7a1" : "#bfd3f2",
         }}
       >
-        <PageColumns
+        <EntityDetailPage>
+          <PageColumns
           variant="three"
           className={`profile-page-columns ${
             isClubProfile
@@ -1744,12 +1747,12 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             {isClubProfile && (
               <div className="mb-3">
                 <div className="d-flex justify-content-start">
-                  <Link
-                    to={`/stash/${this.state.alias || this.state.profileId}`}
-                    className="btn btn-outline-secondary profile-stash-button"
-                  >
-                    {this.t("profile.stash.button", "Owned items")}
-                  </Link>
+                  <ProfileStashLink
+                    profileId={this.state.profileId || ""}
+                    alias={this.state.alias}
+                    editable={isEditable}
+                    label={this.t("profile.stash.button", "Owned items")}
+                  />
                 </div>
               </div>
             )}
@@ -1813,7 +1816,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               onDelete={this.handleDeleteClubProfile}
             />
           </PageColumn>
-        </PageColumns>
+          </PageColumns>
+        </EntityDetailPage>
       </PageLayout>
     );
   }

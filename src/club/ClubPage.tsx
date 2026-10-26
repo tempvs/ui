@@ -3,6 +3,7 @@ import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmationModal from "../component/ConfirmationModal";
+import EntityDetailPage from "../component/EntityDetailPage";
 import { SaveStatus } from "../component/EditableFieldRow";
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
@@ -805,7 +806,7 @@ export default function ClubPage() {
         <Spinner />
       ) : (
         club && (
-          <>
+          <EntityDetailPage>
             <PageColumns variant="three" className="club-page-columns">
               <PageColumn>
                 <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
@@ -914,7 +915,7 @@ export default function ClubPage() {
                 </section>
               </PageColumn>
             </PageColumns>
-          </>
+          </EntityDetailPage>
         )
       )}
       <ConfirmationModal

@@ -12,6 +12,8 @@ import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
+import DismissibleCoachmark from "../component/DismissibleCoachmark";
+import EntityDetailPage from "../component/EntityDetailPage";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import { formatHistoricalRange } from "../component/HistoricalRangeFilter";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
@@ -38,6 +40,7 @@ import {
 } from "./profileApi";
 import {
   deleteStashItemImage,
+  getGroupItems,
   getLibrarySourcesByIds,
   getStashEntityImages,
   getStashItem,
@@ -134,6 +137,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
   const [imageDrafts, setImageDrafts] = useState<IdRecord<string>>({});
   const [imageStatuses, setImageStatuses] = useState<IdRecord<SaveStatus>>({});
   const [sources, setSources] = useState<LibrarySourceSummary[]>([]);
+  const [profileHasLinkedSources, setProfileHasLinkedSources] = useState(true);
   const [sourceImages, setSourceImages] = useState<IdRecord<EntityImage>>({});
   const [currentUserId, setCurrentUserId] = useState<Id | null>(null);
   const [sourceLinkModalVisible, setSourceLinkModalVisible] = useState(false);
@@ -297,6 +301,14 @@ function StashItemPage({ intl }: StashItemPageProps) {
         setSources(Array.isArray(nextSources) ? nextSources : []);
         setCollectionGroups(nextStash?.groups || []);
 
+        const profileItems = await Promise.all(
+          (nextStash?.groups || []).map((group) => getGroupItems(group.id)),
+        );
+        if (!active) return;
+        setProfileHasLinkedSources(
+          profileItems.flat().some((profileItem) => (profileItem.sources || []).length > 0),
+        );
+
         const nextSourceImages = await getStashEntityImages(
           "source",
           (nextSources || []).map((source) => source.id),
@@ -316,6 +328,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         setOwnerUserProfile(null);
         setItemImages([]);
         setSources([]);
+        setProfileHasLinkedSources(true);
         setSourceImages({});
         setCollectionGroups([]);
       } finally {
@@ -602,6 +615,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
           }
         : linkedItem,
     );
+    setProfileHasLinkedSources(true);
     if (linkedSource) {
       setSources((previousState) =>
         previousState.some((source) => source.id === sourceId)
@@ -774,7 +788,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
         ) : undefined,
       }}
     >
-      <div className="stash-item-page-shell">
+      <EntityDetailPage className="stash-item-page-shell">
         <div className="stash-item-page-hero">
           <div className="stash-item-page-main-image-shell">
             <StackedImageGallery
@@ -884,15 +898,21 @@ function StashItemPage({ intl }: StashItemPageProps) {
               />
             </div>
             {isEditable && (
-              <button
-                type="button"
-                className="stash-inline-icon-button"
-                title={t("profile.stash.sourceAdd", "Add source")}
-                aria-label={t("profile.stash.sourceAdd", "Add source")}
-                onClick={() => setSourceLinkModalVisible(true)}
+              <DismissibleCoachmark
+                id="link-first-source"
+                visible={!profileHasLinkedSources}
+                message="Support your items with known sources."
               >
-                <PlusIcon />
-              </button>
+                <button
+                  type="button"
+                  className="stash-inline-icon-button"
+                  title={t("profile.stash.sourceAdd", "Add source")}
+                  aria-label={t("profile.stash.sourceAdd", "Add source")}
+                  onClick={() => setSourceLinkModalVisible(true)}
+                >
+                  <PlusIcon />
+                </button>
+              </DismissibleCoachmark>
             )}
           </div>
 
@@ -987,7 +1007,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
             );
           })}
         </section>
-      </div>
+      </EntityDetailPage>
 
       <Modal
         show={sourceLinkModalVisible}

@@ -10,6 +10,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import PageLayout from "../../component/PageLayout";
 import { PageColumn, PageColumns } from "../../component/PageColumns";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
+import EntityDetailPage from "../../component/EntityDetailPage";
 import StackedImageGallery from "../../component/StackedImageGallery";
 import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
@@ -272,7 +273,8 @@ export default function LibrarySourcePage() {
         ) : null,
       }}
     >
-      <PageColumns variant="two" className="library-source-columns">
+      <EntityDetailPage>
+        <PageColumns variant="two" className="library-source-columns">
         <PageColumn>
           <div className="stash-source-copy stash-item-display-copy text-start">
             <div className="stash-item-title">{source.name}</div>
@@ -428,7 +430,8 @@ export default function LibrarySourcePage() {
             </section>
           </section>
         </PageColumn>
-      </PageColumns>
+        </PageColumns>
+      </EntityDetailPage>
 
       <section className="stash-shell p-3 mt-4" aria-label="Source change log">
         <div className="stash-subheading mb-2">Change log</div>

@@ -33,6 +33,88 @@ html {
   min-width: 0;
 }
 
+.entity-detail-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.entity-detail-page > *,
+.entity-detail-page .page-column,
+.entity-detail-page .inline-editable-control {
+  min-width: 0;
+}
+
+.coachmark-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.dismissible-coachmark {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  width: max-content;
+  max-width: min(17rem, calc(100vw - 2rem));
+  padding: 0.55rem 0.6rem;
+  border: 1px solid #9b7a46;
+  background: #fffaf0;
+  color: #49391f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  box-shadow: 0 0.35rem 1rem rgba(55, 43, 22, 0.18);
+}
+
+.dismissible-coachmark--bottom {
+  top: calc(100% + 0.55rem);
+  right: 0;
+}
+
+.dismissible-coachmark--top {
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+}
+
+.dismissible-coachmark::before {
+  position: absolute;
+  right: 0.55rem;
+  width: 0;
+  height: 0;
+  border-right: 0.4rem solid transparent;
+  border-left: 0.4rem solid transparent;
+  content: "";
+}
+
+.dismissible-coachmark--bottom::before {
+  top: -0.45rem;
+  border-bottom: 0.45rem solid #9b7a46;
+}
+
+.dismissible-coachmark--top::before {
+  bottom: -0.45rem;
+  border-top: 0.45rem solid #9b7a46;
+}
+
+.dismissible-coachmark button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  min-width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
 .page-columns {
   display: grid;
   align-items: start;
@@ -78,6 +160,26 @@ html {
 
   .page-columns {
     gap: 1rem;
+  }
+
+  .entity-detail-page .library-source-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .entity-detail-page .library-source-columns > .page-column {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .entity-detail-page .library-source-columns .source-image-gallery {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .entity-detail-page
+    .library-source-columns
+    .source-image-gallery.stacked-image-gallery-multiple {
+    padding: 0.75rem;
   }
 
   /* Entity pages keep the post feed beside the main details on desktop. On a
@@ -430,6 +532,21 @@ h3 {
 }
 
 @media (max-width: 575.98px) {
+  .entity-detail-page .library-source-columns .d-flex.align-items-center.gap-3 {
+    align-items: flex-start !important;
+    gap: 0.45rem !important;
+  }
+
+  .entity-detail-page .library-source-columns .inline-editable-row-label {
+    flex: 0 0 6.25rem;
+  }
+
+  .entity-detail-page .library-source-columns .historical-range-field-slot {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
   .home-shell {
     padding-top: 1rem;
   }

@@ -12,6 +12,7 @@ import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
+import DismissibleCoachmark from "../component/DismissibleCoachmark";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import InlineEditableText from "../component/InlineEditableText";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
@@ -1382,6 +1383,23 @@ export default function StashOverview({
               )}
             </div>
           </div>
+          {isEditable && (
+            <DismissibleCoachmark
+              id="create-first-collection"
+              visible={!loading && groups.length === 0}
+              message="Add a photo of yourself, then add your items and their images."
+            >
+              <button
+                type="button"
+                className="stash-inline-icon-button"
+                title={t("profile.stash.groupCreate", "Create collection")}
+                aria-label={t("profile.stash.groupCreate", "Create collection")}
+                onClick={() => setGroupCreateVisible(true)}
+              >
+                <PlusIcon />
+              </button>
+            </DismissibleCoachmark>
+          )}
         </div>
 
         {feedback && <div className="stash-feedback-note">{feedback}</div>}
@@ -1399,15 +1417,6 @@ export default function StashOverview({
                 "Start by creating the first group of belongings.",
               )}
             </div>
-            {isEditable && (
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => setGroupCreateVisible(true)}
-              >
-                {t("profile.stash.groupCreateFirst", "Create first collection")}
-              </Button>
-            )}
           </div>
         )}
 
@@ -1767,17 +1776,23 @@ export default function StashOverview({
                       />
                     </div>
                     {isEditable && (
-                      <button
-                        type="button"
-                        className="stash-inline-icon-button"
-                        title={t("profile.stash.itemCreate", "Add item")}
-                        onClick={() => {
-                          setItemCreateImages([]);
-                          setItemCreateTarget(activeGroup);
-                        }}
+                      <DismissibleCoachmark
+                        id="create-first-item"
+                        visible={groups.length === 1 && activeItems.length === 0}
+                        message="Create your first item and upload its images, then mark it on your collection photo."
                       >
-                        <PlusIcon />
-                      </button>
+                        <button
+                          type="button"
+                          className="stash-inline-icon-button"
+                          title={t("profile.stash.itemCreate", "Add item")}
+                          onClick={() => {
+                            setItemCreateImages([]);
+                            setItemCreateTarget(activeGroup);
+                          }}
+                        >
+                          <PlusIcon />
+                        </button>
+                      </DismissibleCoachmark>
                     )}
                   </div>
                   {activeItems.length === 0 && (
