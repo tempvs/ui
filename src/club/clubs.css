@@ -297,14 +297,12 @@
 }
 .profile-page-columns--club,
 .club-page-columns,
-.club-identity-layout,
 .event-page-layout {
   --page-section-background: #f8f4ea;
   --page-section-border: #d8c7a1;
 }
 .profile-page-columns .club-panel,
 .club-page-columns .club-panel,
-.club-identity-layout .club-panel,
 .event-page-layout .club-panel,
 .profile-page-columns .post-panel,
 .club-page-columns .post-panel,
@@ -316,18 +314,6 @@
   background: var(--page-section-background, #fff);
   border: 1px solid var(--page-section-border, #ddd8d0);
   border-radius: 0.65rem;
-}
-
-.club-identity-layout,
-.event-identity-layout {
-  max-width: 70rem;
-  margin: 0 auto 1.5rem;
-}
-
-.club-community-layout,
-.event-community-layout {
-  max-width: 70rem;
-  margin: 0 auto;
 }
 .profile-fields-panel,
 .profile-club-profiles-panel,

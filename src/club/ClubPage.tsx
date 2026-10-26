@@ -806,9 +806,31 @@ export default function ClubPage() {
       ) : (
         club && (
           <>
-            <PageColumns variant="two" className="club-identity-layout">
+            <PageColumns variant="three" className="club-page-columns">
               <PageColumn>
                 <ClubPhotoPanel club={managedClub ?? club} onChange={setClub} />
+                <PhotoAlbumsPanel
+                  targetType="club"
+                  targetId={club.id}
+                  editable={canManage}
+                />
+                <ClubMembersPanel
+                  members={members}
+                  memberFilter={memberFilter}
+                  onMemberFilterChange={setMemberFilter}
+                  participantsError={participantsError}
+                  participantsLoading={participantsLoading}
+                  onRetry={() => setRevision((value) => value + 1)}
+                  onReachEnd={() => {
+                    if (hasMore && !participantsLoading)
+                      loadMoreParticipants.current();
+                  }}
+                  t={t}
+                />
+                <ClubFollowersPanel
+                  clubId={String(club.id)}
+                  revision={followersRevision}
+                />
               </PageColumn>
               <PageColumn>
                 <ClubFieldsPanel
@@ -841,34 +863,6 @@ export default function ClubPage() {
                   }
                   onBlur={saveClubField}
                 />
-              </PageColumn>
-            </PageColumns>
-            <PageColumns variant="three" className="club-page-columns club-community-layout">
-              <PageColumn>
-                <PhotoAlbumsPanel
-                  targetType="club"
-                  targetId={club.id}
-                  editable={canManage}
-                />
-                <ClubMembersPanel
-                  members={members}
-                  memberFilter={memberFilter}
-                  onMemberFilterChange={setMemberFilter}
-                  participantsError={participantsError}
-                  participantsLoading={participantsLoading}
-                  onRetry={() => setRevision((value) => value + 1)}
-                  onReachEnd={() => {
-                    if (hasMore && !participantsLoading)
-                      loadMoreParticipants.current();
-                  }}
-                  t={t}
-                />
-                <ClubFollowersPanel
-                  clubId={String(club.id)}
-                  revision={followersRevision}
-                />
-              </PageColumn>
-              <PageColumn>
                 <PostPanel
                   targetType="CLUB"
                   targetId={club.id}

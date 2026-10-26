@@ -4,7 +4,6 @@ import { Alert, Button } from "react-bootstrap";
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
 import Spinner from "../component/Spinner";
-import HomeExplorePanel from "../home/HomeExplorePanel";
 import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
 import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
 import {
@@ -218,7 +217,6 @@ export default function WallPage({ userId }: { userId: string }) {
 
   return (
     <PageLayout header={{ title: "Wall" }}>
-      <HomeExplorePanel />
       <div className="wall-page">
         <div className="wall-header">
           <div>

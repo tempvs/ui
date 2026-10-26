@@ -6,7 +6,6 @@ import AuthPanel from "./auth/AuthPanel";
 import { fetchCurrentUserInfo, fetchUserProfileByUserId } from "./profile/profileApi";
 import WallPage from "./wall/WallPage";
 import Spinner from "./component/Spinner";
-import HomeExplorePanel from "./home/HomeExplorePanel";
 
 export default function HomePage() {
   const [userId, setUserId] = useState<string | null>();
@@ -82,7 +81,6 @@ export default function HomePage() {
           </section>
         </Col>
       </Row>
-      <HomeExplorePanel />
     </Container>
   );
 }
