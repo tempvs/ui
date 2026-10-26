@@ -39,6 +39,8 @@ export type OwnedMapMarker = {
   longitude: number;
   thumbnailUrl?: string | null;
   periods?: string[];
+  temporalFrom?: number;
+  temporalTo?: number;
   eventEndsAt?: string;
   path: string;
 };
@@ -133,10 +135,7 @@ export async function loadSourceRelatedMapContent(
   source: LibrarySource,
 ): Promise<OwnedMapContent> {
   const resolvePlace = placeResolver();
-  const markers = await sourceMapMarkers(
-    [source.id],
-    resolvePlace,
-  );
+  const markers = await sourceMapMarkers([source.id], resolvePlace);
   return { markers, connections: [] };
 }
 
@@ -166,7 +165,7 @@ export async function loadEventRelatedMapContent(
       locationRole: "HISTORICAL_SITE",
     });
   }
-    const eventEndsAt = mapEventEndsAt(event);
+  const eventEndsAt = mapEventEndsAt(event);
   const markers = await Promise.all(
     locations.map(async (location) => {
       const place = await resolvePlace(location.placeId);
@@ -182,6 +181,7 @@ export async function loadEventRelatedMapContent(
         longitude: place.longitude,
         thumbnailUrl: event.image?.thumbnailUrl || event.image?.url || null,
         ...(event.periods?.length ? { periods: event.periods } : {}),
+        ...historicalRange(event.from, event.to),
         ...(eventEndsAt ? { eventEndsAt } : {}),
         path: `/events/${encodeURIComponent(event.id)}`,
       });
@@ -288,11 +288,7 @@ export async function loadOwnedMapContent(
     new Set(Array.from(sourceUsage.values()).flat()),
   );
   const clubMarkersPromise = clubMapMarkers(clubs, resolvePlace);
-  const sourceMarkersPromise = sourceMapMarkers(
-    sourceIds,
-    resolvePlace,
-    true,
-  );
+  const sourceMarkersPromise = sourceMapMarkers(sourceIds, resolvePlace, true);
   const clubMarkers = await clubMarkersPromise;
   // Club locations usually resolve before all stash-linked sources. Fit those
   // too; a final snapshot below extends the frame to every available point.
@@ -319,7 +315,10 @@ async function profileMapMarkers(
   resolvePlace: PlaceResolver,
 ): Promise<OwnedMapMarker[]> {
   const thumbnails = await thumbnailUrls(
-    profiles.map((profile) => ({ resourceType: "profile", resourceId: profile.id })),
+    profiles.map((profile) => ({
+      resourceType: "profile",
+      resourceId: profile.id,
+    })),
   );
   const prepared = await Promise.all(
     profiles.map(async (profile) => {
@@ -334,8 +333,10 @@ async function profileMapMarkers(
         placeName: profile.location || place.canonicalName,
         latitude: place.latitude,
         longitude: place.longitude,
-        thumbnailUrl: thumbnails.get(`profile:${profile.id}`) || profile.avatarUrl,
+        thumbnailUrl:
+          thumbnails.get(`profile:${profile.id}`) || profile.avatarUrl,
         ...(profile.period ? { periods: [profile.period] } : {}),
+        ...historicalRange(profile.from, profile.to),
         path: `/profile/${encodeURIComponent(profile.alias || profile.id)}`,
       });
     }),
@@ -386,6 +387,7 @@ async function clubMapMarkers(
           thumbnails.get(`club:${club.id}`) ||
           null,
         ...(club.period ? { periods: [club.period] } : {}),
+        ...historicalRange(club.from, club.to),
         path: `/clubs/${encodeURIComponent(club.alias || String(club.id))}`,
       });
     }),
@@ -430,15 +432,16 @@ async function sourceMapMarkers(
 ): Promise<OwnedMapMarker[]> {
   const [sources, thumbnails] = await Promise.all([
     getSourcesByIds(sourceIds).catch(() => []),
-    thumbnailUrls(sourceIds.map((resourceId) => ({ resourceType: "source", resourceId }))),
+    thumbnailUrls(
+      sourceIds.map((resourceId) => ({ resourceType: "source", resourceId })),
+    ),
   ]);
-  const sourceLocationsToResolve = sources
-    .flatMap((source) =>
-      sourceLocations(source, primaryLocationOnly).map((location) => ({
-        source,
-        location,
-      })),
-    );
+  const sourceLocationsToResolve = sources.flatMap((source) =>
+    sourceLocations(source, primaryLocationOnly).map((location) => ({
+      source,
+      location,
+    })),
+  );
   const markers = await Promise.all(
     sourceLocationsToResolve.map(async ({ source, location }) => {
       const place = await resolvePlace(location.placeId);
@@ -454,6 +457,7 @@ async function sourceMapMarkers(
         longitude: place.longitude,
         thumbnailUrl: thumbnails.get(`source:${source.id}`) || null,
         ...(source.period ? { periods: [source.period] } : {}),
+        ...historicalRange(source.from, source.to),
         path: `/library/source/${encodeURIComponent(source.id)}`,
       });
     }),
@@ -492,6 +496,20 @@ function sameCoordinates(
     Math.abs(left.latitude - right.latitude) < 0.00001 &&
     Math.abs(left.longitude - right.longitude) < 0.00001
   );
+}
+
+function historicalRange(
+  from: { year: number; era: "BC" | "AD" } | null | undefined,
+  to: { year: number; era: "BC" | "AD" } | null | undefined,
+): Pick<OwnedMapMarker, "temporalFrom" | "temporalTo"> {
+  return {
+    ...(from ? { temporalFrom: astronomicalYear(from) } : {}),
+    ...(to ? { temporalTo: astronomicalYear(to) } : {}),
+  };
+}
+
+function astronomicalYear(value: { year: number; era: "BC" | "AD" }): number {
+  return value.era === "BC" ? 1 - value.year : value.year;
 }
 
 type SourceLocation = {
@@ -549,7 +567,9 @@ async function thumbnailUrls(
     return new Map(
       thumbnails.flatMap((entry) => {
         const url = entry.image?.thumbnailUrl || entry.image?.url;
-        return url ? [[`${entry.resourceType}:${entry.resourceId}`, url] as const] : [];
+        return url
+          ? [[`${entry.resourceType}:${entry.resourceId}`, url] as const]
+          : [];
       }),
     );
   } catch {

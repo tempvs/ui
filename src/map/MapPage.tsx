@@ -695,16 +695,19 @@ export default function MapPage() {
       (entity) =>
         types.includes(entity.entityType) &&
         matchesMapEntityPeriods(entity, periodsEnabled ? periods : []) &&
+        matchesMapEntityYears(entity, fromYear, toYear) &&
         (includePastEvents ||
           entity.entityType !== "EVENT" ||
           !eventHasEnded(entity.eventEndsAt)),
     );
   }, [
     entities,
+    fromYear,
     includePastEvents,
     periods,
     periodsEnabled,
     sourceRoles.length,
+    toYear,
     types,
   ]);
 
@@ -716,11 +719,25 @@ export default function MapPage() {
           (!periodsEnabled ||
             periods.length === 0 ||
             marker.periods?.some((period) => periods.includes(period))) &&
+          matchesYearRange(
+            marker.temporalFrom,
+            marker.temporalTo,
+            fromYear,
+            toYear,
+          ) &&
           (includePastEvents ||
             marker.entityType !== "EVENT" ||
             !eventHasEnded(marker.eventEndsAt)),
       ),
-    [includePastEvents, ownedMarkers, periods, periodsEnabled, types],
+    [
+      fromYear,
+      includePastEvents,
+      ownedMarkers,
+      periods,
+      periodsEnabled,
+      toYear,
+      types,
+    ],
   );
 
   const visibleOwnedConnections = useMemo(() => {
@@ -1287,6 +1304,41 @@ function matchesMapEntityPeriods(
             : [];
 
   return entityPeriods.some((period) => periods.includes(period));
+}
+
+function matchesMapEntityYears(
+  entity: MapEntityLocation,
+  from: number | undefined,
+  to: number | undefined,
+): boolean {
+  const range =
+    entity.entityType === "SOURCE"
+      ? [entity.sourceFrom, entity.sourceTo]
+      : entity.entityType === "EVENT"
+        ? [entity.eventFrom, entity.eventTo]
+        : entity.entityType === "PROFILE"
+          ? [entity.profileFrom, entity.profileTo]
+          : [];
+  return matchesYearRange(range[0], range[1], from, to);
+}
+
+/** Undated and open-ended content remains discoverable, matching Map API
+ * filtering. This runs before the refreshed request resolves so stale markers
+ * that definitively miss the entered range disappear immediately. */
+function matchesYearRange(
+  itemFrom: number | undefined,
+  itemTo: number | undefined,
+  filterFrom: number | undefined,
+  filterTo: number | undefined,
+): boolean {
+  if (filterFrom === undefined && filterTo === undefined) return true;
+  if (itemFrom === undefined && itemTo === undefined) return true;
+  return (
+    (itemTo === undefined ||
+      filterFrom === undefined ||
+      itemTo >= filterFrom) &&
+    (filterTo === undefined || itemFrom === undefined || itemFrom <= filterTo)
+  );
 }
 
 function eventHasEnded(endsAt: string | undefined): boolean {

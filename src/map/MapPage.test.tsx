@@ -499,6 +499,41 @@ test("refreshes nearby markers as temporal filters change", async () => {
   );
 });
 
+test("hides out-of-range map markers before and after a year-filter refresh", async () => {
+  mockNearbyMapEntitiesPage.mockResolvedValue({
+    items: [
+      {
+        entityType: "SOURCE",
+        entityId: "medieval-source",
+        locationRole: "DISCOVERED_AT",
+        label: "Medieval source",
+        placeId: "seed:rome",
+        placeName: "Rome",
+        latitude: 41.9,
+        longitude: 12.5,
+        sourceFrom: 1000,
+        sourceTo: 1200,
+      },
+    ],
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText("Medieval source")).toBeInTheDocument();
+  fireEvent.change(screen.getAllByRole("textbox", { name: "Year" })[0], {
+    target: { value: "1500" },
+  });
+
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage.mock.calls.length).toBeGreaterThan(1),
+  );
+  expect(screen.queryByText("Medieval source")).not.toBeInTheDocument();
+});
+
 test("filters profile markers immediately when a profile type is unchecked", async () => {
   render(
     <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}>
