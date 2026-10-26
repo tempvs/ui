@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Badge, Card, Col, Form, Nav, Row } from "react-bootstrap";
 import { createPortal } from "react-dom";
-import { FaChevronDown, FaSearch } from "react-icons/fa";
+import { FaChevronDown, FaSearch, FaTimes } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
 
@@ -18,6 +18,9 @@ import TextFilterInput from "../component/TextFilterInput";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
+import ResultSortSelect, {
+  type ResultSortOption,
+} from "../component/ResultSortSelect";
 import RefreshingImage from "../image/RefreshingImage";
 import {
   findSources,
@@ -47,14 +50,25 @@ import {
 
 type SearchTab = "profiles" | "clubs" | "events" | "sources";
 type ProfileType = "USER" | "CLUB";
+type SearchSortOrder = "DATE_ASC" | "DATE_DESC" | "NAME_ASC" | "NAME_DESC";
 
 const PAGE_SIZE = 20;
 const PROFILE_TYPES: ProfileType[] = ["USER", "CLUB"];
 const RECENT_SEARCHES_KEY = "tempvs-recent-searches";
+const NAME_SORT_OPTIONS: ResultSortOption[] = [
+  { value: "NAME_ASC", label: "Name: A–Z" },
+  { value: "NAME_DESC", label: "Name: Z–A" },
+];
+const EVENT_SORT_OPTIONS: ResultSortOption[] = [
+  { value: "DATE_ASC", label: "Sooner first" },
+  { value: "DATE_DESC", label: "Sooner last" },
+  ...NAME_SORT_OPTIONS,
+];
 const ChevronDownIcon = FaChevronDown as React.ComponentType<{
   className?: string;
 }>;
 const SearchIcon = FaSearch as React.ComponentType<{ className?: string }>;
+const TimesIcon = FaTimes as React.ComponentType<{ className?: string }>;
 
 function getProfileTypeLabel(profileType: string | null | undefined) {
   if (profileType === "CLUB") {
@@ -78,6 +92,82 @@ function periodKey(period: string | null): string {
   return period || "all";
 }
 
+function profileDisplayName(profile: Profile): string {
+  return (
+    [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() ||
+    profile.alias ||
+    "Unnamed profile"
+  );
+}
+
+function sortByName<T>(
+  values: readonly T[],
+  getName: (value: T) => string,
+  sortOrder: SearchSortOrder,
+): T[] {
+  return [...values].sort((left, right) => {
+    const comparison = getName(left).localeCompare(getName(right));
+    return sortOrder === "NAME_DESC" ? -comparison : comparison;
+  });
+}
+
+function eventSortTimestamp(event: TempvsEvent): number | null {
+  if (!event.schedule.startsAt) return null;
+  const value = new Date(event.schedule.startsAt).getTime();
+  return Number.isFinite(value) ? value : null;
+}
+
+function sortEvents(
+  values: readonly TempvsEvent[],
+  sortOrder: SearchSortOrder,
+): TempvsEvent[] {
+  if (sortOrder === "NAME_ASC" || sortOrder === "NAME_DESC") {
+    return sortByName(values, (event) => event.name, sortOrder);
+  }
+
+  return [...values].sort((left, right) => {
+    const leftTimestamp = eventSortTimestamp(left);
+    const rightTimestamp = eventSortTimestamp(right);
+    if (leftTimestamp === null && rightTimestamp === null) return 0;
+    if (leftTimestamp === null) return 1;
+    if (rightTimestamp === null) return -1;
+    return sortOrder === "DATE_ASC"
+      ? leftTimestamp - rightTimestamp
+      : rightTimestamp - leftTimestamp;
+  });
+}
+
+type SearchResultsHeadingProps = {
+  title: string;
+  count: number;
+  sortOrder: SearchSortOrder;
+  sortOptions: readonly ResultSortOption[];
+  onSortChange: (value: SearchSortOrder) => void;
+};
+
+function SearchResultsHeading({
+  title,
+  count,
+  sortOrder,
+  sortOptions,
+  onSortChange,
+}: SearchResultsHeadingProps) {
+  return (
+    <div className="search-results-heading">
+      <h2 className="mb-0 fs-4">{title}</h2>
+      <div className="search-results-toolbar text-muted small">
+        <span>{count} result(s)</span>
+        <ResultSortSelect
+          value={sortOrder}
+          options={sortOptions}
+          ariaLabel={`Sort ${title.toLocaleLowerCase()}`}
+          onChange={(value) => onSortChange(value as SearchSortOrder)}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function SearchDialog() {
   const intl = useIntl();
   const location = useLocation();
@@ -96,6 +186,7 @@ export default function SearchDialog() {
     {},
   );
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
+  const [sortOrder, setSortOrder] = useState<SearchSortOrder>("NAME_ASC");
   const [query, setQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -143,6 +234,24 @@ export default function SearchDialog() {
   const range = useMemo(() => rangeFromInputs(from, to), [from, to]);
   const hasYearFilter = Boolean(range.from || range.to);
   const hasPeriodFilter = selectedPeriods.length > 0;
+  const sortOptions =
+    activeTab === "events" ? EVENT_SORT_OPTIONS : NAME_SORT_OPTIONS;
+  const sortedProfileResults = useMemo(
+    () => sortByName(profileResults, profileDisplayName, sortOrder),
+    [profileResults, sortOrder],
+  );
+  const sortedSourceResults = useMemo(
+    () => sortByName(sourceResults, (source) => source.name || "", sortOrder),
+    [sourceResults, sortOrder],
+  );
+  const sortedClubResults = useMemo(
+    () => sortByName(clubResults, (club) => club.name, sortOrder),
+    [clubResults, sortOrder],
+  );
+  const sortedEventResults = useMemo(
+    () => sortEvents(eventResults, sortOrder),
+    [eventResults, sortOrder],
+  );
 
   const handleToggle = <T extends string>(
     value: T,
@@ -568,6 +677,25 @@ export default function SearchDialog() {
     setQuery(value);
     setShowPopover(true);
   };
+  const selectTab = (tab: SearchTab) => {
+    setActiveTab(tab);
+    setSortOrder(tab === "events" ? "DATE_ASC" : "NAME_ASC");
+  };
+  const updateRecentSearches = (next: string[]) => {
+    setRecentSearches(next);
+    try {
+      window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+    } catch {
+      // Search remains usable when storage is unavailable.
+    }
+  };
+  const removeRecentSearch = (recent: string) => {
+    updateRecentSearches(
+      recentSearches.filter(
+        (item) => item.toLocaleLowerCase() !== recent.toLocaleLowerCase(),
+      ),
+    );
+  };
   const mapSearchLink = () => {
     const params = publicSearchParams({
       query,
@@ -647,7 +775,7 @@ export default function SearchDialog() {
                   <Nav.Item>
                     <Nav.Link
                       eventKey="profiles"
-                      onClick={() => setActiveTab("profiles")}
+                      onClick={() => selectTab("profiles")}
                     >
                       Profiles
                     </Nav.Link>
@@ -655,7 +783,7 @@ export default function SearchDialog() {
                   <Nav.Item>
                     <Nav.Link
                       eventKey="clubs"
-                      onClick={() => setActiveTab("clubs")}
+                      onClick={() => selectTab("clubs")}
                     >
                       Clubs
                     </Nav.Link>
@@ -663,7 +791,7 @@ export default function SearchDialog() {
                   <Nav.Item>
                     <Nav.Link
                       eventKey="events"
-                      onClick={() => setActiveTab("events")}
+                      onClick={() => selectTab("events")}
                     >
                       Events
                     </Nav.Link>
@@ -671,7 +799,7 @@ export default function SearchDialog() {
                   <Nav.Item>
                     <Nav.Link
                       eventKey="sources"
-                      onClick={() => setActiveTab("sources")}
+                      onClick={() => selectTab("sources")}
                     >
                       Sources
                     </Nav.Link>
@@ -688,16 +816,35 @@ export default function SearchDialog() {
                 </div>
                 {!query.trim() && recentSearches.length > 0 && (
                   <div className="header-search-recents">
-                    <span>Recent searches</span>
+                    <div className="header-search-recents-heading">
+                      <span>Recent searches</span>
+                      <button
+                        type="button"
+                        className="header-search-recents-clear"
+                        onClick={() => updateRecentSearches([])}
+                      >
+                        Clear all
+                      </button>
+                    </div>
                     <div>
                       {recentSearches.map((recent) => (
-                        <button
-                          key={recent}
-                          type="button"
-                          onClick={() => setQuery(recent)}
-                        >
-                          {recent}
-                        </button>
+                        <span className="header-search-recent-chip" key={recent}>
+                          <button
+                            type="button"
+                            className="header-search-recent-query"
+                            onClick={() => setQuery(recent)}
+                          >
+                            {recent}
+                          </button>
+                          <button
+                            type="button"
+                            className="header-search-recent-remove"
+                            aria-label={`Remove ${recent} from recent searches`}
+                            onClick={() => removeRecentSearch(recent)}
+                          >
+                            <TimesIcon aria-hidden="true" />
+                          </button>
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -875,26 +1022,21 @@ export default function SearchDialog() {
 
                     {!loading && searched && activeTab === "profiles" && (
                       <>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <h2 className="mb-0 fs-4">Profiles</h2>
-                          <div className="text-muted small">
-                            {profileResults.length} result(s)
-                          </div>
-                        </div>
+                        <SearchResultsHeading
+                          title="Profiles"
+                          count={profileResults.length}
+                          sortOrder={sortOrder}
+                          sortOptions={sortOptions}
+                          onSortChange={setSortOrder}
+                        />
                         {profileResults.length === 0 && (
                           <div className="search-empty-state">
                             No profiles matched the current filters.
                           </div>
                         )}
                         <div className="search-results-grid">
-                          {profileResults.map((profile) => {
-                            const profileName =
-                              [profile.firstName, profile.lastName]
-                                .filter(Boolean)
-                                .join(" ")
-                                .trim() ||
-                              profile.alias ||
-                              "Unnamed profile";
+                          {sortedProfileResults.map((profile) => {
+                            const profileName = profileDisplayName(profile);
                             const avatar = profilePreviewImages[profile.id];
 
                             return (
@@ -991,19 +1133,20 @@ export default function SearchDialog() {
 
                     {!loading && searched && activeTab === "sources" && (
                       <>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <h2 className="mb-0 fs-4">Sources</h2>
-                          <div className="text-muted small">
-                            {sourceResults.length} result(s)
-                          </div>
-                        </div>
+                        <SearchResultsHeading
+                          title="Sources"
+                          count={sourceResults.length}
+                          sortOrder={sortOrder}
+                          sortOptions={sortOptions}
+                          onSortChange={setSortOrder}
+                        />
                         {sourceResults.length === 0 && (
                           <div className="search-empty-state">
                             No sources matched the current filters.
                           </div>
                         )}
                         <div className="search-results-grid">
-                          {sourceResults.map((source) => (
+                          {sortedSourceResults.map((source) => (
                             <SourceCard
                               key={String(source.id)}
                               source={source}
@@ -1018,19 +1161,20 @@ export default function SearchDialog() {
                     )}
                     {!loading && searched && activeTab === "clubs" && (
                       <>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <h2 className="mb-0 fs-4">Clubs</h2>
-                          <div className="text-muted small">
-                            {clubResults.length} result(s)
-                          </div>
-                        </div>
+                        <SearchResultsHeading
+                          title="Clubs"
+                          count={clubResults.length}
+                          sortOrder={sortOrder}
+                          sortOptions={sortOptions}
+                          onSortChange={setSortOrder}
+                        />
                         {clubResults.length === 0 && (
                           <div className="search-empty-state">
                             No clubs matched the current filters.
                           </div>
                         )}
                         <div className="search-results-grid">
-                          {clubResults.map((club) => (
+                          {sortedClubResults.map((club) => (
                             <Card key={club.id} className="shadow-sm">
                               <Card.Body className="search-profile-card-body">
                                 <Link
@@ -1066,19 +1210,20 @@ export default function SearchDialog() {
                     )}
                     {!loading && searched && activeTab === "events" && (
                       <>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <h2 className="mb-0 fs-4">Events</h2>
-                          <div className="text-muted small">
-                            {eventResults.length} result(s)
-                          </div>
-                        </div>
+                        <SearchResultsHeading
+                          title="Events"
+                          count={eventResults.length}
+                          sortOrder={sortOrder}
+                          sortOptions={sortOptions}
+                          onSortChange={setSortOrder}
+                        />
                         {eventResults.length === 0 && (
                           <div className="search-empty-state">
                             No events matched the current filters.
                           </div>
                         )}
                         <div className="search-results-grid">
-                          {eventResults.map((item) => (
+                          {sortedEventResults.map((item) => (
                             <Card key={item.id} className="shadow-sm">
                               <Card.Body className="search-profile-card-body">
                                 <Link

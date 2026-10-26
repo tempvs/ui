@@ -10,6 +10,7 @@ import HistoricalRangeFilter, {
 import PlacePickerField from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import PageLayout from "../component/PageLayout";
+import ResultSortSelect from "../component/ResultSortSelect";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import RefreshingImage from "../image/RefreshingImage";
@@ -176,12 +177,6 @@ export default function EventsPage() {
           ) : null,
       }}
     >
-      <div className="event-heading">
-        <div>
-          <h1>Events</h1>
-          <p>Festivals, meetings, and other themed gatherings.</p>
-        </div>
-      </div>
       {error && !creating && <Alert variant="danger">{error}</Alert>}
       <>
         <div className="event-search-layout">
@@ -262,25 +257,25 @@ export default function EventsPage() {
                   ? "Updating events…"
                   : `Showing ${visible.length} event${visible.length === 1 ? "" : "s"}`}
               </span>
-              <select
-                className="form-select form-select-sm"
+              <ResultSortSelect
                 value={sortOrder}
-                aria-label="Sort events"
-                onChange={(event) =>
+                ariaLabel="Sort events"
+                onChange={(value) =>
                   setSortOrder(
-                    event.target.value as
+                    value as
                       | "DATE_ASC"
                       | "DATE_DESC"
                       | "NAME_ASC"
                       | "NAME_DESC",
                   )
                 }
-              >
-                <option value="DATE_ASC">Sooner first</option>
-                <option value="DATE_DESC">Sooner last</option>
-                <option value="NAME_ASC">A–Z</option>
-                <option value="NAME_DESC">Z–A</option>
-              </select>
+                options={[
+                  { value: "DATE_ASC", label: "Sooner first" },
+                  { value: "DATE_DESC", label: "Sooner last" },
+                  { value: "NAME_ASC", label: "Name: A–Z" },
+                  { value: "NAME_DESC", label: "Name: Z–A" },
+                ]}
+              />
             </div>
             <div className="event-card-grid event-search-results">
               {sortedVisible.map((event) => (

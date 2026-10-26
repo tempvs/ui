@@ -7,6 +7,7 @@ import HistoricalRangeFilter, {
   formatHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
+import ResultSortSelect from "../component/ResultSortSelect";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import PageLayout from "../component/PageLayout";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
@@ -310,17 +311,17 @@ export default function ClubsPage() {
                   ? "Updating clubs…"
                   : `Showing ${clubs.length} club${clubs.length === 1 ? "" : "s"}`}
               </span>
-              <Form.Select
-                size="sm"
+              <ResultSortSelect
                 value={sortOrder}
-                aria-label="Sort clubs"
-                onChange={(event) =>
-                  setSortOrder(event.target.value as "NAME_ASC" | "NAME_DESC")
+                ariaLabel="Sort clubs"
+                onChange={(value) =>
+                  setSortOrder(value as "NAME_ASC" | "NAME_DESC")
                 }
-              >
-                <option value="NAME_ASC">Name: A–Z</option>
-                <option value="NAME_DESC">Name: Z–A</option>
-              </Form.Select>
+                options={[
+                  { value: "NAME_ASC", label: "Name: A–Z" },
+                  { value: "NAME_DESC", label: "Name: Z–A" },
+                ]}
+              />
             </div>
             <div className="club-card-grid club-search-results">
               {sortedClubs.map((club) => (
