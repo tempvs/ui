@@ -50,6 +50,7 @@ type ProfileType = "USER" | "CLUB";
 
 const PAGE_SIZE = 20;
 const PROFILE_TYPES: ProfileType[] = ["USER", "CLUB"];
+const RECENT_SEARCHES_KEY = "tempvs-recent-searches";
 const ChevronDownIcon = FaChevronDown as React.ComponentType<{
   className?: string;
 }>;
@@ -83,6 +84,7 @@ export default function SearchDialog() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const pagingRef = useRef({
     profilePage: 0,
     clubNextTokens: {} as Record<string, string | undefined>,
@@ -95,6 +97,19 @@ export default function SearchDialog() {
   );
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [query, setQuery] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const stored = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed)
+        ? parsed
+            .filter((value): value is string => typeof value === "string")
+            .slice(0, 5)
+        : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
   const [selectedProfileTypes, setSelectedProfileTypes] =
     useState<ProfileType[]>(PROFILE_TYPES);
@@ -446,6 +461,51 @@ export default function SearchDialog() {
   }, [showPopover]);
 
   useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        target?.matches("input, textarea, select, [contenteditable='true']")
+      )
+        return;
+      event.preventDefault();
+      setShowPopover(true);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+    };
+    document.addEventListener("keydown", handleSearchShortcut);
+    return () => document.removeEventListener("keydown", handleSearchShortcut);
+  }, []);
+
+  useEffect(() => {
+    const normalized = query.trim();
+    if (!showPopover || normalized.length < 2) return undefined;
+    const timeout = window.setTimeout(() => {
+      setRecentSearches((current) => {
+        const next = [
+          normalized,
+          ...current.filter(
+            (item) =>
+              item.toLocaleLowerCase() !== normalized.toLocaleLowerCase(),
+          ),
+        ].slice(0, 5);
+        try {
+          window.localStorage.setItem(
+            RECENT_SEARCHES_KEY,
+            JSON.stringify(next),
+          );
+        } catch {
+          // Search remains usable when storage is unavailable.
+        }
+        return next;
+      });
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [query, showPopover]);
+
+  useEffect(() => {
     setShowPopover(false);
   }, [location.pathname]);
 
@@ -486,10 +546,7 @@ export default function SearchDialog() {
     updatePopoverPosition();
     window.addEventListener("resize", updatePopoverPosition);
     window.addEventListener("scroll", updatePopoverPosition, true);
-    window.visualViewport?.addEventListener(
-      "resize",
-      updatePopoverPosition,
-    );
+    window.visualViewport?.addEventListener("resize", updatePopoverPosition);
 
     return () => {
       window.removeEventListener("resize", updatePopoverPosition);
@@ -559,15 +616,11 @@ export default function SearchDialog() {
     <>
       <div className="header-search-shell" ref={rootRef}>
         <div className="header-search-trigger">
-          <button
-            type="button"
-            className="header-search-icon-button"
-            onClick={openPopover}
-            aria-label="Open search"
-          >
+          <span className="header-search-icon" aria-hidden="true">
             <SearchIcon />
-          </button>
+          </span>
           <TextFilterInput
+            ref={inputRef}
             value={query}
             onFocus={openPopover}
             onChange={handleTriggerChange}
@@ -579,477 +632,501 @@ export default function SearchDialog() {
 
         {showPopover
           ? createPortal(
-          <div
-            ref={popoverRef}
-            className="search-popover header-search-popover"
-            role="dialog"
-            aria-label="Search"
-            style={popoverPosition}
-          >
-            <Nav
-              variant="tabs"
-              activeKey={activeTab}
-              className="search-tabs mb-3"
-            >
-              <Nav.Item>
-                <Nav.Link
-                  eventKey="profiles"
-                  onClick={() => setActiveTab("profiles")}
-                >
-                  Profiles
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link
-                  eventKey="clubs"
-                  onClick={() => setActiveTab("clubs")}
-                >
-                  Clubs
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link
-                  eventKey="events"
-                  onClick={() => setActiveTab("events")}
-                >
-                  Events
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link
-                  eventKey="sources"
-                  onClick={() => setActiveTab("sources")}
-                >
-                  Sources
-                </Nav.Link>
-              </Nav.Item>
-            </Nav>
-            <div className="d-flex justify-content-end mb-2">
-              <Link
-                to={mapSearchLink()}
-                onClick={closePopover}
-                className="small"
+              <div
+                ref={popoverRef}
+                className="search-popover header-search-popover"
+                role="dialog"
+                aria-label="Search"
+                style={popoverPosition}
               >
-                View these filters on map
-              </Link>
-            </div>
-
-            <Row className="g-4 mt-1">
-              <Col lg={4}>
-                <div className="search-sidebar">
-                  <button
-                    type="button"
-                    className="library-source-filter-heading search-filter-disclosure"
-                    aria-controls="search-period-controls"
-                    aria-expanded={periodsExpanded}
-                    onClick={() => setPeriodsExpanded((expanded) => !expanded)}
-                  >
-                    <span>
-                      Periods
-                      {hasPeriodFilter ? ` (${selectedPeriods.length})` : ""}
-                    </span>
-                    <ChevronDownIcon
-                      className={`search-filter-disclosure-caret${periodsExpanded ? " is-expanded" : ""}`}
-                    />
-                  </button>
-                  {periodsExpanded && (
-                    <div
-                      id="search-period-controls"
-                      className="search-filter-controls search-filter-options search-period-options d-flex flex-column gap-2"
+                <Nav
+                  variant="tabs"
+                  activeKey={activeTab}
+                  className="search-tabs mb-3"
+                >
+                  <Nav.Item>
+                    <Nav.Link
+                      eventKey="profiles"
+                      onClick={() => setActiveTab("profiles")}
                     >
-                      {PERIODS.map((periodValue) => (
-                        <Form.Check
-                          key={periodValue}
-                          type="checkbox"
-                          id={`search-period-${periodValue}`}
-                          label={getPeriodLabel(intl, periodValue)}
-                          checked={selectedPeriods.includes(periodValue)}
-                          disabled={disablePeriodFilter}
-                          onChange={() =>
-                            handleToggle(
-                              periodValue,
-                              selectedPeriods,
-                              setSelectedPeriods,
-                            )
-                          }
-                        />
+                      Profiles
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link
+                      eventKey="clubs"
+                      onClick={() => setActiveTab("clubs")}
+                    >
+                      Clubs
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link
+                      eventKey="events"
+                      onClick={() => setActiveTab("events")}
+                    >
+                      Events
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link
+                      eventKey="sources"
+                      onClick={() => setActiveTab("sources")}
+                    >
+                      Sources
+                    </Nav.Link>
+                  </Nav.Item>
+                </Nav>
+                <div className="d-flex justify-content-end mb-2">
+                  <Link
+                    to={mapSearchLink()}
+                    onClick={closePopover}
+                    className="small"
+                  >
+                    View these filters on map
+                  </Link>
+                </div>
+                {!query.trim() && recentSearches.length > 0 && (
+                  <div className="header-search-recents">
+                    <span>Recent searches</span>
+                    <div>
+                      {recentSearches.map((recent) => (
+                        <button
+                          key={recent}
+                          type="button"
+                          onClick={() => setQuery(recent)}
+                        >
+                          {recent}
+                        </button>
                       ))}
                     </div>
-                  )}
-                  <button
-                    type="button"
-                    className="library-source-filter-heading search-filter-disclosure"
-                    aria-controls="search-years-controls"
-                    aria-expanded={yearsExpanded}
-                    onClick={() => setYearsExpanded((expanded) => !expanded)}
-                  >
-                    <span>Years</span>
-                    <ChevronDownIcon
-                      className={`search-filter-disclosure-caret${yearsExpanded ? " is-expanded" : ""}`}
-                    />
-                  </button>
-                  {yearsExpanded && (
-                    <div
-                      id="search-years-controls"
-                      className="search-filter-controls"
-                    >
-                      <HistoricalRangeFilter
-                        enabled={hasYearFilter}
-                        from={from}
-                        to={to}
-                        onEnabledChange={() => {}}
-                        onFromChange={setFrom}
-                        onToChange={setTo}
-                        label={null}
-                        showToggle={false}
-                        stacked
-                      />
-                    </div>
-                  )}
+                  </div>
+                )}
 
-                  {activeTab === "profiles" && (
-                    <>
+                <Row className="g-4 mt-1">
+                  <Col lg={4}>
+                    <div className="search-sidebar">
                       <button
                         type="button"
                         className="library-source-filter-heading search-filter-disclosure"
-                        aria-controls="search-profile-type-controls"
-                        aria-expanded={profileTypeExpanded}
+                        aria-controls="search-period-controls"
+                        aria-expanded={periodsExpanded}
                         onClick={() =>
-                          setProfileTypeExpanded((expanded) => !expanded)
+                          setPeriodsExpanded((expanded) => !expanded)
                         }
                       >
-                        <span>Profile type</span>
+                        <span>
+                          Periods
+                          {hasPeriodFilter
+                            ? ` (${selectedPeriods.length})`
+                            : ""}
+                        </span>
                         <ChevronDownIcon
-                          className={`search-filter-disclosure-caret${profileTypeExpanded ? " is-expanded" : ""}`}
+                          className={`search-filter-disclosure-caret${periodsExpanded ? " is-expanded" : ""}`}
                         />
                       </button>
-                      {profileTypeExpanded && (
+                      {periodsExpanded && (
                         <div
-                          id="search-profile-type-controls"
-                          className="search-filter-controls search-filter-options d-flex flex-column gap-2"
+                          id="search-period-controls"
+                          className="search-filter-controls search-filter-options search-period-options d-flex flex-column gap-2"
                         >
-                          <Form.Check
-                            type="checkbox"
-                            id="profile-type-user"
-                            label="User"
-                            checked={selectedProfileTypes.includes("USER")}
-                            onChange={() =>
-                              handleToggle(
-                                "USER",
-                                selectedProfileTypes,
-                                setSelectedProfileTypes,
-                              )
-                            }
-                          />
-                          <Form.Check
-                            type="checkbox"
-                            id="profile-type-club"
-                            label="Club"
-                            checked={selectedProfileTypes.includes("CLUB")}
-                            onChange={() =>
-                              handleToggle(
-                                "CLUB",
-                                selectedProfileTypes,
-                                setSelectedProfileTypes,
-                              )
-                            }
+                          {PERIODS.map((periodValue) => (
+                            <Form.Check
+                              key={periodValue}
+                              type="checkbox"
+                              id={`search-period-${periodValue}`}
+                              label={getPeriodLabel(intl, periodValue)}
+                              checked={selectedPeriods.includes(periodValue)}
+                              disabled={disablePeriodFilter}
+                              onChange={() =>
+                                handleToggle(
+                                  periodValue,
+                                  selectedPeriods,
+                                  setSelectedPeriods,
+                                )
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="library-source-filter-heading search-filter-disclosure"
+                        aria-controls="search-years-controls"
+                        aria-expanded={yearsExpanded}
+                        onClick={() =>
+                          setYearsExpanded((expanded) => !expanded)
+                        }
+                      >
+                        <span>Years</span>
+                        <ChevronDownIcon
+                          className={`search-filter-disclosure-caret${yearsExpanded ? " is-expanded" : ""}`}
+                        />
+                      </button>
+                      {yearsExpanded && (
+                        <div
+                          id="search-years-controls"
+                          className="search-filter-controls"
+                        >
+                          <HistoricalRangeFilter
+                            enabled={hasYearFilter}
+                            from={from}
+                            to={to}
+                            onEnabledChange={() => {}}
+                            onFromChange={setFrom}
+                            onToChange={setTo}
+                            label={null}
+                            showToggle={false}
+                            stacked
                           />
                         </div>
                       )}
-                    </>
-                  )}
 
-                  {activeTab === "sources" && (
-                    <>
-                      <Form.Label className="library-source-filter-heading">
-                        Type
-                      </Form.Label>
-                      <div className="search-filter-options d-flex flex-column gap-2">
-                        {TYPES.map((type) => (
-                          <Form.Check
-                            key={type}
-                            type="checkbox"
-                            id={`search-type-${type}`}
-                            label={getTypeLabel(intl, type)}
-                            checked={selectedTypes.includes(type)}
-                            onChange={() =>
-                              handleToggle(
-                                type,
-                                selectedTypes,
-                                setSelectedTypes,
-                              )
+                      {activeTab === "profiles" && (
+                        <>
+                          <button
+                            type="button"
+                            className="library-source-filter-heading search-filter-disclosure"
+                            aria-controls="search-profile-type-controls"
+                            aria-expanded={profileTypeExpanded}
+                            onClick={() =>
+                              setProfileTypeExpanded((expanded) => !expanded)
                             }
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Col>
-
-              <Col lg={8}>
-                {error && (
-                  <div className="tempvs-plain-message text-danger">
-                    {error}
-                  </div>
-                )}
-                {loading && <Spinner />}
-                {!loading && !searched && (
-                  <div className="search-empty-state">Loading results.</div>
-                )}
-
-                {!loading && searched && activeTab === "profiles" && (
-                  <>
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <h2 className="mb-0 fs-4">Profiles</h2>
-                      <div className="text-muted small">
-                        {profileResults.length} result(s)
-                      </div>
-                    </div>
-                    {profileResults.length === 0 && (
-                      <div className="search-empty-state">
-                        No profiles matched the current filters.
-                      </div>
-                    )}
-                    <div className="search-results-grid">
-                      {profileResults.map((profile) => {
-                        const profileName =
-                          [profile.firstName, profile.lastName]
-                            .filter(Boolean)
-                            .join(" ")
-                            .trim() ||
-                          profile.alias ||
-                          "Unnamed profile";
-                        const avatar = profilePreviewImages[profile.id];
-
-                        return (
-                          <Card
-                            key={String(profile.id)}
-                            className="shadow-sm search-profile-card"
                           >
-                            <Card.Body className="search-profile-card-body">
-                              {avatar &&
-                                (avatar.thumbnailUrl || avatar.url) && (
-                                  <Link
-                                    to={`/profile/${profile.alias || profile.id}`}
-                                    className="search-profile-image-link"
-                                    onClick={closePopover}
-                                  >
-                                    <RefreshingImage
-                                      image={{
-                                        ...avatar,
-                                        resourceType: "profile",
-                                        resourceId: profile.id,
-                                      }}
-                                      variant="thumbnail"
-                                      alt=""
-                                      className="search-profile-image"
-                                    />
-                                  </Link>
-                                )}
-                              <div
-                                className="text-start flex-grow-1"
-                                style={{ minWidth: 0 }}
-                              >
-                                <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
-                                  <Card.Title className="mb-0 fs-5">
-                                    <Link
-                                      to={`/profile/${profile.alias || profile.id}`}
-                                      className="link-dark text-decoration-underline"
-                                      onClick={closePopover}
-                                    >
-                                      {profileName}
-                                    </Link>
-                                  </Card.Title>
-                                  <Badge bg="secondary">
-                                    {getProfileTypeLabel(profile.type)}
-                                  </Badge>
-                                </div>
-                                <div className="d-flex flex-wrap gap-2 mb-3">
-                                  {profile.period && (
-                                    <Badge
-                                      bg="light"
-                                      text="dark"
-                                      className="border"
-                                    >
-                                      {getPeriodLabel(intl, profile.period)}
-                                    </Badge>
-                                  )}
-                                  {profile.alias && (
-                                    <Badge
-                                      bg="light"
-                                      text="dark"
-                                      className="border"
-                                    >
-                                      @{profile.alias}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="search-profile-meta">
-                                  {profile.nickName && (
-                                    <div>
-                                      <strong>Nickname:</strong>{" "}
-                                      {profile.nickName}
-                                    </div>
-                                  )}
-                                  {profile.profileEmail && (
-                                    <div>
-                                      <strong>Email:</strong>{" "}
-                                      {profile.profileEmail}
-                                    </div>
-                                  )}
-                                  {profile.location && (
-                                    <div>
-                                      <strong>Location:</strong>{" "}
-                                      {profile.location}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                            <span>Profile type</span>
+                            <ChevronDownIcon
+                              className={`search-filter-disclosure-caret${profileTypeExpanded ? " is-expanded" : ""}`}
+                            />
+                          </button>
+                          {profileTypeExpanded && (
+                            <div
+                              id="search-profile-type-controls"
+                              className="search-filter-controls search-filter-options d-flex flex-column gap-2"
+                            >
+                              <Form.Check
+                                type="checkbox"
+                                id="profile-type-user"
+                                label="User"
+                                checked={selectedProfileTypes.includes("USER")}
+                                onChange={() =>
+                                  handleToggle(
+                                    "USER",
+                                    selectedProfileTypes,
+                                    setSelectedProfileTypes,
+                                  )
+                                }
+                              />
+                              <Form.Check
+                                type="checkbox"
+                                id="profile-type-club"
+                                label="Club"
+                                checked={selectedProfileTypes.includes("CLUB")}
+                                onChange={() =>
+                                  handleToggle(
+                                    "CLUB",
+                                    selectedProfileTypes,
+                                    setSelectedProfileTypes,
+                                  )
+                                }
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
 
-                {!loading && searched && activeTab === "sources" && (
-                  <>
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <h2 className="mb-0 fs-4">Sources</h2>
-                      <div className="text-muted small">
-                        {sourceResults.length} result(s)
-                      </div>
-                    </div>
-                    {sourceResults.length === 0 && (
-                      <div className="search-empty-state">
-                        No sources matched the current filters.
-                      </div>
-                    )}
-                    <div className="search-results-grid">
-                      {sourceResults.map((source) => (
-                        <SourceCard
-                          key={String(source.id)}
-                          source={source}
-                          showPeriodBadge
-                          firstImage={sourcePreviewImages[source.id] || null}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-                {!loading && searched && activeTab === "clubs" && (
-                  <>
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <h2 className="mb-0 fs-4">Clubs</h2>
-                      <div className="text-muted small">
-                        {clubResults.length} result(s)
-                      </div>
-                    </div>
-                    {clubResults.length === 0 && (
-                      <div className="search-empty-state">
-                        No clubs matched the current filters.
-                      </div>
-                    )}
-                    <div className="search-results-grid">
-                      {clubResults.map((club) => (
-                        <Card key={club.id} className="shadow-sm">
-                          <Card.Body className="search-profile-card-body">
-                            <Link
-                              to={`/clubs/${club.alias || club.id}`}
-                              className="search-profile-image-link"
-                              onClick={closePopover}
-                            >
-                              <RefreshingImage
-                                image={{
-                                  resourceType: "club",
-                                  resourceId: club.id,
-                                  thumbnailUrl: club.photoThumbnailUrl,
-                                }}
-                                variant="thumbnail"
-                                fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-                                className="search-profile-image"
-                                alt=""
+                      {activeTab === "sources" && (
+                        <>
+                          <Form.Label className="library-source-filter-heading">
+                            Type
+                          </Form.Label>
+                          <div className="search-filter-options d-flex flex-column gap-2">
+                            {TYPES.map((type) => (
+                              <Form.Check
+                                key={type}
+                                type="checkbox"
+                                id={`search-type-${type}`}
+                                label={getTypeLabel(intl, type)}
+                                checked={selectedTypes.includes(type)}
+                                onChange={() =>
+                                  handleToggle(
+                                    type,
+                                    selectedTypes,
+                                    setSelectedTypes,
+                                  )
+                                }
                               />
-                            </Link>
-                            <Card.Title>
-                              <Link
-                                to={`/clubs/${club.alias || club.id}`}
-                                onClick={closePopover}
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </Col>
+
+                  <Col lg={8}>
+                    {error && (
+                      <div className="tempvs-plain-message text-danger">
+                        {error}
+                      </div>
+                    )}
+                    {loading && <Spinner />}
+                    {!loading && !searched && (
+                      <div className="search-empty-state">Loading results.</div>
+                    )}
+
+                    {!loading && searched && activeTab === "profiles" && (
+                      <>
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                          <h2 className="mb-0 fs-4">Profiles</h2>
+                          <div className="text-muted small">
+                            {profileResults.length} result(s)
+                          </div>
+                        </div>
+                        {profileResults.length === 0 && (
+                          <div className="search-empty-state">
+                            No profiles matched the current filters.
+                          </div>
+                        )}
+                        <div className="search-results-grid">
+                          {profileResults.map((profile) => {
+                            const profileName =
+                              [profile.firstName, profile.lastName]
+                                .filter(Boolean)
+                                .join(" ")
+                                .trim() ||
+                              profile.alias ||
+                              "Unnamed profile";
+                            const avatar = profilePreviewImages[profile.id];
+
+                            return (
+                              <Card
+                                key={String(profile.id)}
+                                className="shadow-sm search-profile-card"
                               >
-                                {club.name}
-                              </Link>
-                            </Card.Title>
-                          </Card.Body>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {!loading && searched && activeTab === "events" && (
-                  <>
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <h2 className="mb-0 fs-4">Events</h2>
-                      <div className="text-muted small">
-                        {eventResults.length} result(s)
-                      </div>
-                    </div>
-                    {eventResults.length === 0 && (
-                      <div className="search-empty-state">
-                        No events matched the current filters.
-                      </div>
+                                <Card.Body className="search-profile-card-body">
+                                  {avatar &&
+                                    (avatar.thumbnailUrl || avatar.url) && (
+                                      <Link
+                                        to={`/profile/${profile.alias || profile.id}`}
+                                        className="search-profile-image-link"
+                                        onClick={closePopover}
+                                      >
+                                        <RefreshingImage
+                                          image={{
+                                            ...avatar,
+                                            resourceType: "profile",
+                                            resourceId: profile.id,
+                                          }}
+                                          variant="thumbnail"
+                                          alt=""
+                                          className="search-profile-image"
+                                        />
+                                      </Link>
+                                    )}
+                                  <div
+                                    className="text-start flex-grow-1"
+                                    style={{ minWidth: 0 }}
+                                  >
+                                    <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                      <Card.Title className="mb-0 fs-5">
+                                        <Link
+                                          to={`/profile/${profile.alias || profile.id}`}
+                                          className="link-dark text-decoration-underline"
+                                          onClick={closePopover}
+                                        >
+                                          {profileName}
+                                        </Link>
+                                      </Card.Title>
+                                      <Badge bg="secondary">
+                                        {getProfileTypeLabel(profile.type)}
+                                      </Badge>
+                                    </div>
+                                    <div className="d-flex flex-wrap gap-2 mb-3">
+                                      {profile.period && (
+                                        <Badge
+                                          bg="light"
+                                          text="dark"
+                                          className="border"
+                                        >
+                                          {getPeriodLabel(intl, profile.period)}
+                                        </Badge>
+                                      )}
+                                      {profile.alias && (
+                                        <Badge
+                                          bg="light"
+                                          text="dark"
+                                          className="border"
+                                        >
+                                          @{profile.alias}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="search-profile-meta">
+                                      {profile.nickName && (
+                                        <div>
+                                          <strong>Nickname:</strong>{" "}
+                                          {profile.nickName}
+                                        </div>
+                                      )}
+                                      {profile.profileEmail && (
+                                        <div>
+                                          <strong>Email:</strong>{" "}
+                                          {profile.profileEmail}
+                                        </div>
+                                      )}
+                                      {profile.location && (
+                                        <div>
+                                          <strong>Location:</strong>{" "}
+                                          {profile.location}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </Card.Body>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
-                    <div className="search-results-grid">
-                      {eventResults.map((item) => (
-                        <Card key={item.id} className="shadow-sm">
-                          <Card.Body className="search-profile-card-body">
-                            <Link
-                              to={`/events/${item.id}`}
-                              className="search-profile-image-link"
-                              onClick={closePopover}
-                            >
-                              <RefreshingImage
-                                image={{
-                                  resourceType: "event",
-                                  resourceId: item.id,
-                                }}
-                                variant="thumbnail"
-                                fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-                                className="search-profile-image"
-                                alt=""
-                              />
-                            </Link>
-                            <div>
-                              <Card.Title>
+
+                    {!loading && searched && activeTab === "sources" && (
+                      <>
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                          <h2 className="mb-0 fs-4">Sources</h2>
+                          <div className="text-muted small">
+                            {sourceResults.length} result(s)
+                          </div>
+                        </div>
+                        {sourceResults.length === 0 && (
+                          <div className="search-empty-state">
+                            No sources matched the current filters.
+                          </div>
+                        )}
+                        <div className="search-results-grid">
+                          {sourceResults.map((source) => (
+                            <SourceCard
+                              key={String(source.id)}
+                              source={source}
+                              showPeriodBadge
+                              firstImage={
+                                sourcePreviewImages[source.id] || null
+                              }
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {!loading && searched && activeTab === "clubs" && (
+                      <>
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                          <h2 className="mb-0 fs-4">Clubs</h2>
+                          <div className="text-muted small">
+                            {clubResults.length} result(s)
+                          </div>
+                        </div>
+                        {clubResults.length === 0 && (
+                          <div className="search-empty-state">
+                            No clubs matched the current filters.
+                          </div>
+                        )}
+                        <div className="search-results-grid">
+                          {clubResults.map((club) => (
+                            <Card key={club.id} className="shadow-sm">
+                              <Card.Body className="search-profile-card-body">
                                 <Link
-                                  to={`/events/${item.id}`}
+                                  to={`/clubs/${club.alias || club.id}`}
+                                  className="search-profile-image-link"
                                   onClick={closePopover}
                                 >
-                                  {item.name}
+                                  <RefreshingImage
+                                    image={{
+                                      resourceType: "club",
+                                      resourceId: club.id,
+                                      thumbnailUrl: club.photoThumbnailUrl,
+                                    }}
+                                    variant="thumbnail"
+                                    fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
+                                    className="search-profile-image"
+                                    alt=""
+                                  />
                                 </Link>
-                              </Card.Title>
-                              <small>
-                                {item.schedule.startsAt
-                                  ? formatAppDate(item.schedule.startsAt)
-                                  : "Dates to be announced"}
-                              </small>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {hasMore && (
-                  <div
-                    ref={loadMoreRef}
-                    className="search-load-more-sentinel"
-                    aria-hidden="true"
-                  />
-                )}
-              </Col>
-            </Row>
+                                <Card.Title>
+                                  <Link
+                                    to={`/clubs/${club.alias || club.id}`}
+                                    onClick={closePopover}
+                                  >
+                                    {club.name}
+                                  </Link>
+                                </Card.Title>
+                              </Card.Body>
+                            </Card>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {!loading && searched && activeTab === "events" && (
+                      <>
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                          <h2 className="mb-0 fs-4">Events</h2>
+                          <div className="text-muted small">
+                            {eventResults.length} result(s)
+                          </div>
+                        </div>
+                        {eventResults.length === 0 && (
+                          <div className="search-empty-state">
+                            No events matched the current filters.
+                          </div>
+                        )}
+                        <div className="search-results-grid">
+                          {eventResults.map((item) => (
+                            <Card key={item.id} className="shadow-sm">
+                              <Card.Body className="search-profile-card-body">
+                                <Link
+                                  to={`/events/${item.id}`}
+                                  className="search-profile-image-link"
+                                  onClick={closePopover}
+                                >
+                                  <RefreshingImage
+                                    image={{
+                                      resourceType: "event",
+                                      resourceId: item.id,
+                                    }}
+                                    variant="thumbnail"
+                                    fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
+                                    className="search-profile-image"
+                                    alt=""
+                                  />
+                                </Link>
+                                <div>
+                                  <Card.Title>
+                                    <Link
+                                      to={`/events/${item.id}`}
+                                      onClick={closePopover}
+                                    >
+                                      {item.name}
+                                    </Link>
+                                  </Card.Title>
+                                  <small>
+                                    {item.schedule.startsAt
+                                      ? formatAppDate(item.schedule.startsAt)
+                                      : "Dates to be announced"}
+                                  </small>
+                                </div>
+                              </Card.Body>
+                            </Card>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {hasMore && (
+                      <div
+                        ref={loadMoreRef}
+                        className="search-load-more-sentinel"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </Col>
+                </Row>
               </div>,
               document.body,
             )

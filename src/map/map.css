@@ -242,6 +242,31 @@
   gap: 0.85rem;
   flex-wrap: wrap;
 }
+.map-active-filter-bar,
+.map-active-filter-actions,
+.map-active-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.map-active-filter-bar {
+  justify-content: space-between;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgb(91 75 49 / 18%);
+  color: #5c4b37;
+  font-size: 0.82rem;
+}
+.map-active-filter-chips span {
+  border-radius: 999px;
+  background: #f0eadc;
+  padding: 0.16rem 0.45rem;
+}
+.map-active-filter-actions .btn {
+  padding: 0;
+  color: #584732;
+  font-size: inherit;
+}
 
 .map-coordinate-fields {
   display: grid;
@@ -295,6 +320,10 @@
 
   .map-filter-radius {
     justify-self: start;
+  }
+  .map-active-filter-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .map-filter-layer-list {
@@ -419,6 +448,10 @@
 .map-marker-resource-link {
   font-weight: 700;
   outline: none;
+}
+.map-marker-resource-link:focus-visible {
+  background: #f5edda;
+  text-decoration: underline;
 }
 
 .map-marker-place-link {
@@ -654,5 +687,4 @@
     right: auto;
     bottom: 1.4rem;
   }
-
 }

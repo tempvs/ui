@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
-import { formatAppDateTime } from "../i18n/appLocale";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import HistoricalRangeFilter, {
+  formatHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import PlacePickerField from "../component/PlacePickerField";
@@ -34,6 +34,8 @@ export default function EventsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"DATE" | "NAME">("DATE");
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
     era: "AD",
@@ -101,6 +103,21 @@ export default function EventsPage() {
   const normalized = query.trim().toLocaleLowerCase();
   const range = rangeFromInputs(from, to);
   const hasYearFilter = Boolean(range.from || range.to);
+  const hasActiveFilters = Boolean(
+    normalized ||
+    selectedPeriods.length ||
+    hasYearFilter ||
+    venue ||
+    historicalSite,
+  );
+  const clearFilters = () => {
+    setQuery("");
+    setSelectedPeriods([]);
+    setFrom({ year: "", era: "AD" });
+    setTo({ year: "", era: "AD" });
+    setVenue(null);
+    setHistoricalSite(null);
+  };
   const visible = events.filter((event) => {
     if (
       !normalized &&
@@ -124,15 +141,14 @@ export default function EventsPage() {
       event.periods.some((eventPeriod) =>
         selectedPeriods.includes(eventPeriod),
       );
-    if (
-      !textMatch ||
-      !venueMatch ||
-      !historicalSiteMatch ||
-      !periodMatch
-    ) {
+    if (!textMatch || !venueMatch || !historicalSiteMatch || !periodMatch) {
       return textMatch && venueMatch && historicalSiteMatch && periodMatch;
     }
     return !hasYearFilter || overlapsHistoricalRange(event, range);
+  });
+  const sortedVisible = [...visible].sort((left, right) => {
+    if (sortOrder === "NAME") return left.name.localeCompare(right.name);
+    return eventSortTimestamp(left) - eventSortTimestamp(right);
   });
 
   return (
@@ -158,42 +174,68 @@ export default function EventsPage() {
       <>
         <div className="event-search-layout">
           <aside className="event-search-filters">
-            <PeriodMultiSelect
-              ariaLabel="Period"
-              selected={selectedPeriods}
-              onChange={setSelectedPeriods}
-              display="checkboxes"
-            />
-            <PlacePickerField
-              label="Venue"
-              value={venue}
-              editable
-              onChange={setVenue}
-              labelWidth="6.5rem"
-              fieldMaxWidth="15rem"
-              className="mb-2"
-            />
-            <PlacePickerField
-              label="Historical site"
-              value={historicalSite}
-              editable
-              onChange={setHistoricalSite}
-              labelWidth="6.5rem"
-              fieldMaxWidth="15rem"
-              className="mb-2"
-            />
-            <HistoricalRangeFilter
-              enabled
-              from={from}
-              to={to}
-              onEnabledChange={() => undefined}
-              onFromChange={setFrom}
-              onToChange={setTo}
-              label="Years"
-              showToggle={false}
-              alwaysShowFields
-              compact
-            />
+            <details
+              className="event-filter-disclosure"
+              open={filtersOpen}
+              onToggle={(event) =>
+                setFiltersOpen((event.currentTarget as HTMLDetailsElement).open)
+              }
+            >
+              <summary>
+                Filters
+                {hasActiveFilters
+                  ? ` (${selectedPeriods.length + Number(hasYearFilter) + Number(Boolean(venue)) + Number(Boolean(historicalSite))})`
+                  : ""}
+              </summary>
+              <div className="event-filter-disclosure-content">
+                <div className="event-filter-disclosure-actions">
+                  <span className="small text-muted">
+                    {hasActiveFilters ? "Filters applied" : "All events"}
+                  </span>
+                  {hasActiveFilters && (
+                    <Button variant="link" size="sm" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+                <PeriodMultiSelect
+                  ariaLabel="Period"
+                  selected={selectedPeriods}
+                  onChange={setSelectedPeriods}
+                  display="checkboxes"
+                />
+                <PlacePickerField
+                  label="Venue"
+                  value={venue}
+                  editable
+                  onChange={setVenue}
+                  labelWidth="6.5rem"
+                  fieldMaxWidth="15rem"
+                  className="mb-2"
+                />
+                <PlacePickerField
+                  label="Historical site"
+                  value={historicalSite}
+                  editable
+                  onChange={setHistoricalSite}
+                  labelWidth="6.5rem"
+                  fieldMaxWidth="15rem"
+                  className="mb-2"
+                />
+                <HistoricalRangeFilter
+                  enabled
+                  from={from}
+                  to={to}
+                  onEnabledChange={() => undefined}
+                  onFromChange={setFrom}
+                  onToChange={setTo}
+                  label="Years"
+                  showToggle={false}
+                  alwaysShowFields
+                  compact
+                />
+              </div>
+            </details>
           </aside>
           <div className="event-search-query">
             <TextFilterInput
@@ -202,8 +244,26 @@ export default function EventsPage() {
               placeholder="Filter events"
               ariaLabel="Filter events"
             />
+            <div className="event-results-toolbar" aria-live="polite">
+              <span>
+                {loading
+                  ? "Updating events…"
+                  : `Showing ${visible.length} event${visible.length === 1 ? "" : "s"}`}
+              </span>
+              <select
+                className="form-select form-select-sm"
+                value={sortOrder}
+                aria-label="Sort events"
+                onChange={(event) =>
+                  setSortOrder(event.target.value as "DATE" | "NAME")
+                }
+              >
+                <option value="DATE">Date: soonest first</option>
+                <option value="NAME">Name: A–Z</option>
+              </select>
+            </div>
             <div className="event-card-grid event-search-results">
-              {visible.map((event) => (
+              {sortedVisible.map((event) => (
                 <article className="event-panel event-card" key={event.id}>
                   <Link
                     to={`/events/${event.id}`}
@@ -223,18 +283,31 @@ export default function EventsPage() {
                         <PeriodBadge key={period} period={period} />
                       ))}
                     </div>
+                    {isPastEvent(event) && (
+                      <span className="event-past-badge">Past event</span>
+                    )}
                     <h2>
                       <Link to={`/events/${event.id}`}>{event.name}</Link>
                     </h2>
-                    <time>
-                      {event.schedule.startsAt
-                        ? `${formatAppDateTime(event.schedule.startsAt)} · ${event.schedule.timeZone}`
-                        : "Dates to be announced"}
-                    </time>
+                    <time>{formatEventCardDate(event)}</time>
+                    {(event.venuePlaceName ||
+                      event.historicalSitePlaceName) && (
+                      <p className="event-card-place">
+                        {event.venuePlaceName
+                          ? `Venue: ${event.venuePlaceName}`
+                          : `Historical site: ${event.historicalSitePlaceName}`}
+                      </p>
+                    )}
+                    {(event.from || event.to) && (
+                      <p className="event-card-temporal">
+                        {formatHistoricalRange(event.from, event.to)}
+                      </p>
+                    )}
                     {event.description && <p>{event.description}</p>}
                   </div>
                 </article>
               ))}
+              {loading && events.length === 0 && <EventResultsSkeleton />}
             </div>
             {loading && <p role="status">Loading events…</p>}
             {!loading && !error && visible.length === 0 && (
@@ -264,5 +337,42 @@ export default function EventsPage() {
         </Modal.Body>
       </Modal>
     </PageLayout>
+  );
+}
+
+function eventSortTimestamp(event: TempvsEvent): number {
+  const value = event.schedule.startsAt
+    ? new Date(event.schedule.startsAt).getTime()
+    : Number.POSITIVE_INFINITY;
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function isPastEvent(event: TempvsEvent): boolean {
+  const end = event.schedule.endsAt || event.schedule.startsAt;
+  return Boolean(end && new Date(end).getTime() < Date.now());
+}
+
+function formatEventCardDate(event: TempvsEvent): string {
+  if (!event.schedule.startsAt) return "Dates to be announced";
+  const date = new Date(event.schedule.startsAt);
+  if (!Number.isFinite(date.getTime())) return "Dates to be announced";
+  const value = new Intl.DateTimeFormat("en", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+  return `${value} · ${event.schedule.timeZone}`;
+}
+
+function EventResultsSkeleton() {
+  return (
+    <div className="event-results-skeleton" aria-hidden="true">
+      {[0, 1].map((item) => (
+        <div className="event-results-skeleton-card" key={item} />
+      ))}
+    </div>
   );
 }

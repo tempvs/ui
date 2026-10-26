@@ -49,6 +49,31 @@
 .event-card-content {
   min-width: 0;
 }
+.event-past-badge {
+  display: inline-block;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: #eee9e2;
+  color: #5f5a54;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.event-card time,
+.event-card-place,
+.event-card-temporal {
+  display: block;
+  margin-top: 0.35rem;
+  color: #5c4b37;
+  font-size: 0.875rem;
+}
+.event-card-place,
+.event-card-temporal {
+  margin-bottom: 0;
+}
+.event-card-temporal {
+  font-weight: 600;
+}
 .event-period-badges {
   display: flex;
   flex-wrap: wrap;
@@ -220,6 +245,42 @@
   display: grid;
   gap: 0.75rem;
 }
+.event-filter-disclosure {
+  border: 1px solid rgba(87, 102, 98, 0.2);
+  border-radius: 0.5rem;
+  background: rgba(255, 253, 247, 0.75);
+}
+.event-filter-disclosure summary {
+  cursor: pointer;
+  padding: 0.65rem 0.75rem;
+  color: #3d3527;
+  font-weight: 700;
+}
+.event-filter-disclosure-content {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.75rem;
+}
+.event-filter-disclosure-actions,
+.event-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.event-filter-disclosure-actions .btn {
+  padding: 0;
+  color: #584732;
+}
+.event-results-toolbar {
+  margin-top: 0.75rem;
+  color: #67635e;
+  font-size: 0.875rem;
+}
+.event-results-toolbar .form-select {
+  width: auto;
+  min-width: 10rem;
+}
 .event-search-place-row {
   display: grid;
   gap: 0.45rem;
@@ -380,6 +441,24 @@
   border-radius: 0.45rem;
   color: #67635e;
 }
+.event-results-skeleton {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.event-results-skeleton-card {
+  min-height: 8.5rem;
+  border-radius: 0.4rem;
+  background: linear-gradient(90deg, #f1ede6 25%, #faf8f4 37%, #f1ede6 63%);
+  background-size: 400% 100%;
+  animation: event-skeleton-shimmer 1.25s ease-in-out infinite;
+}
+@keyframes event-skeleton-shimmer {
+  to {
+    background-position: -135% 0;
+  }
+}
 @media (max-width: 700px) {
   .event-date-grid,
   .event-recurrence-grid,
@@ -388,6 +467,16 @@
   }
   .event-search-results {
     grid-template-columns: 1fr;
+  }
+  .event-results-skeleton {
+    grid-template-columns: 1fr;
+  }
+  .event-results-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .event-results-toolbar .form-select {
+    width: 100%;
   }
   .event-heading {
     flex-direction: column;

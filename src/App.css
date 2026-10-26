@@ -489,11 +489,50 @@ h3 {
   margin-bottom: 0.4rem;
 }
 
+.library-filter-disclosure {
+  border: 1px solid rgba(111, 116, 121, 0.26);
+  border-radius: 0.45rem;
+  background: #faf8f4;
+}
+
+.library-filter-disclosure summary {
+  cursor: pointer;
+  padding: 0.65rem 0.75rem;
+  color: #343a40;
+  font-weight: 700;
+}
+
+.library-filter-disclosure-content {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.library-filter-disclosure-content > .btn {
+  justify-self: start;
+  padding: 0;
+  color: #584732;
+}
+
 .tempvs-plain-message {
   margin: 0.65rem 0;
   font-size: 0.9rem;
   font-weight: 600;
   text-align: left;
+}
+
+.library-source-skeleton {
+  min-height: 12rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(90deg, #f1ede6 25%, #faf8f4 37%, #f1ede6 63%);
+  background-size: 400% 100%;
+  animation: library-skeleton-shimmer 1.25s ease-in-out infinite;
+}
+
+@keyframes library-skeleton-shimmer {
+  to {
+    background-position: -135% 0;
+  }
 }
 
 .search-shell {
@@ -1259,14 +1298,29 @@ button.stash-item-media-empty:disabled {
   line-height: 1.25;
 }
 
-.stash-temporal-fit--strong { background: #d9f1df; color: #17643a; }
-.stash-temporal-fit--good { background: #d8edf1; color: #135c68; }
-.stash-temporal-fit--partial { background: #fff0c9; color: #7b5600; }
-.stash-temporal-fit--distant { background: #fce0d4; color: #923b1d; }
+.stash-temporal-fit--strong {
+  background: #d9f1df;
+  color: #17643a;
+}
+.stash-temporal-fit--good {
+  background: #d8edf1;
+  color: #135c68;
+}
+.stash-temporal-fit--partial {
+  background: #fff0c9;
+  color: #7b5600;
+}
+.stash-temporal-fit--distant {
+  background: #fce0d4;
+  color: #923b1d;
+}
 .stash-temporal-fit--no-sources,
 .stash-temporal-fit--sources-undated,
 .stash-temporal-fit--profile-range-unset,
-.stash-temporal-fit--unavailable { background: #e9eaed; color: #555c66; }
+.stash-temporal-fit--unavailable {
+  background: #e9eaed;
+  color: #555c66;
+}
 
 .stash-temporal-summary {
   margin: 0.65rem 0 0;
@@ -2586,7 +2640,6 @@ button.stash-item-media-empty:disabled {
     grid-column: auto;
     grid-row: auto;
   }
-
 }
 
 .chat-shell {

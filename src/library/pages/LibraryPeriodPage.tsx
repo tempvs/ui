@@ -4,7 +4,6 @@ import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import PlusActionButton from "../../component/PlusActionButton";
-import Spinner from "../../component/Spinner";
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../../component/HistoricalRangeFilter";
@@ -56,6 +55,7 @@ export default function LibraryPeriodPage() {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
@@ -92,6 +92,22 @@ export default function LibraryPeriodPage() {
 
   const periodCode = (period || "").toUpperCase();
   const sourceRange = useMemo(() => rangeFromInputs(from, to), [from, to]);
+  const hasActiveFilters = Boolean(
+    query.trim() ||
+    selectedTypes.length ||
+    (rangeEnabled && (from.year || to.year)) ||
+    discoveredAtPlace ||
+    heldAtPlace,
+  );
+  const clearFilters = () => {
+    setQuery("");
+    setSelectedTypes([]);
+    setRangeEnabled(false);
+    setFrom({ year: "", era: "AD" });
+    setTo({ year: "", era: "AD" });
+    setDiscoveredAtPlace(null);
+    setHeldAtPlace(null);
+  };
 
   useEffect(() => {
     let active = true;
@@ -433,61 +449,85 @@ export default function LibraryPeriodPage() {
                     placeholder="Name or description"
                   />
                 </Form.Group>
-                <HistoricalRangeFilter
-                  enabled={rangeEnabled}
-                  from={from}
-                  to={to}
-                  onEnabledChange={setRangeEnabled}
-                  onFromChange={setFrom}
-                  onToChange={setTo}
-                  alwaysShowFields
-                  onValueEntered={() => setRangeEnabled(true)}
-                />
-                <div className="mb-3">
-                  <PlacePickerField
-                    label="Discovered at"
-                    value={discoveredAtPlace}
-                    editable
-                    onChange={setDiscoveredAtPlace}
-                    labelWidth="7rem"
-                    fieldMaxWidth="100%"
-                    className="mb-2"
-                  />
-                  <PlacePickerField
-                    label="Held at"
-                    value={heldAtPlace}
-                    editable
-                    onChange={setHeldAtPlace}
-                    labelWidth="7rem"
-                    fieldMaxWidth="100%"
-                    className="mb-0"
-                  />
-                </div>
-                <Form.Group className="mb-3">
-                  <Form.Label className="library-source-filter-heading">
-                    Type
-                  </Form.Label>
-                  <div className="d-flex flex-column gap-2">
-                    {TYPES.map((type) => (
-                      <Form.Check
-                        key={type}
-                        type="checkbox"
-                        id={`type-${type}`}
-                        label={getTypeLabel(intl, type)}
-                        checked={selectedTypes.includes(type)}
-                        onChange={() =>
-                          handleToggle(type, selectedTypes, setSelectedTypes)
-                        }
+                <details
+                  className="library-filter-disclosure"
+                  open={filtersOpen}
+                  onToggle={(event) =>
+                    setFiltersOpen(
+                      (event.currentTarget as HTMLDetailsElement).open,
+                    )
+                  }
+                >
+                  <summary>
+                    Filters{hasActiveFilters ? " (active)" : ""}
+                  </summary>
+                  <div className="library-filter-disclosure-content">
+                    {hasActiveFilters && (
+                      <Button variant="link" size="sm" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    )}
+                    <HistoricalRangeFilter
+                      enabled={rangeEnabled}
+                      from={from}
+                      to={to}
+                      onEnabledChange={setRangeEnabled}
+                      onFromChange={setFrom}
+                      onToChange={setTo}
+                      alwaysShowFields
+                      onValueEntered={() => setRangeEnabled(true)}
+                    />
+                    <div className="mb-3">
+                      <PlacePickerField
+                        label="Discovered at"
+                        value={discoveredAtPlace}
+                        editable
+                        onChange={setDiscoveredAtPlace}
+                        labelWidth="7rem"
+                        fieldMaxWidth="100%"
+                        className="mb-2"
                       />
-                    ))}
+                      <PlacePickerField
+                        label="Held at"
+                        value={heldAtPlace}
+                        editable
+                        onChange={setHeldAtPlace}
+                        labelWidth="7rem"
+                        fieldMaxWidth="100%"
+                        className="mb-0"
+                      />
+                    </div>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="library-source-filter-heading">
+                        Type
+                      </Form.Label>
+                      <div className="d-flex flex-column gap-2">
+                        {TYPES.map((type) => (
+                          <Form.Check
+                            key={type}
+                            type="checkbox"
+                            id={`type-${type}`}
+                            label={getTypeLabel(intl, type)}
+                            checked={selectedTypes.includes(type)}
+                            onChange={() =>
+                              handleToggle(
+                                type,
+                                selectedTypes,
+                                setSelectedTypes,
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                    </Form.Group>
                   </div>
-                </Form.Group>
+                </details>
               </Form>
             </Card.Body>
           </Card>
         </Col>
         <Col lg={8}>
-          {loading && <Spinner />}
+          {loading && <SourceResultsSkeleton />}
           {!loading && (
             <>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -670,6 +710,18 @@ export default function LibraryPeriodPage() {
         </Modal>
       )}
     </div>
+  );
+}
+
+function SourceResultsSkeleton() {
+  return (
+    <Row className="g-3" aria-label="Loading sources" aria-busy="true">
+      {[0, 1, 2, 3].map((item) => (
+        <Col md={6} key={item}>
+          <div className="library-source-skeleton" />
+        </Col>
+      ))}
+    </Row>
   );
 }
 

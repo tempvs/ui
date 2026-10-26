@@ -158,7 +158,7 @@
   box-shadow: 0 0.1rem 0.45rem rgba(31, 38, 35, 0.06);
 }
 
-.header-search-icon-button {
+.header-search-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -169,12 +169,7 @@
   background: transparent;
   color: #5f6970;
   font-size: 0.84rem;
-}
-
-.header-search-icon-button:hover,
-.header-search-icon-button:focus {
-  background: rgba(63, 71, 79, 0.08);
-  color: #2f3940;
+  pointer-events: none;
 }
 
 .header-search-input.form-control {
@@ -191,6 +186,31 @@
 
 .header-search-input.form-control:focus {
   box-shadow: none;
+}
+
+.header-search-recents {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.1rem 0 0.55rem;
+  color: #67635e;
+  font-size: 0.78rem;
+}
+.header-search-recents > div {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.header-search-recents button {
+  border: 0;
+  border-radius: 999px;
+  background: #f0eadc;
+  color: #4d4438;
+  padding: 0.2rem 0.5rem;
+  font-size: inherit;
+}
+.header-search-recents button:hover,
+.header-search-recents button:focus-visible {
+  background: #e4d8c0;
 }
 
 .header-search-shell {
@@ -457,7 +477,6 @@
   .header-profile-select.profile-picker {
     width: 100%;
   }
-
 }
 
 .search-popover {

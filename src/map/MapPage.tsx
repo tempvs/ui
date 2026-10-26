@@ -48,12 +48,9 @@ const entityTypes: MapEntityLocation["entityType"][] = [
 function canProposePlace(viewer: Viewer | null): boolean {
   return Boolean(
     viewer?.roles.some((role) =>
-      [
-        "TEMPVS_ADMIN",
-        "MAP_ADMIN",
-        "MAP_EDITOR",
-        "MAP_REVIEWER",
-      ].includes(role),
+      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER"].includes(
+        role,
+      ),
     ),
   );
 }
@@ -751,6 +748,56 @@ export default function MapPage() {
     );
   }, [ownedConnections, visibleOwnedMarkers]);
 
+  const activeMapFilters = useMemo(() => {
+    const filters: string[] = [];
+    if (types.length !== entityTypes.length)
+      filters.push(
+        `${types.length} content type${types.length === 1 ? "" : "s"}`,
+      );
+    if (sourceRoles.length !== 1 || sourceRoles[0] !== "DISCOVERED_AT")
+      filters.push("source place");
+    if (sourceType) filters.push("source type");
+    if (eventRoles.length) filters.push("event place");
+    if (includePastEvents) filters.push("past events");
+    if (profileTypes.length !== 2) filters.push("profile type");
+    if (periodsEnabled && periods.length)
+      filters.push(
+        `${periods.length} period${periods.length === 1 ? "" : "s"}`,
+      );
+    if (from.year || to.year) filters.push("years");
+    if (radius !== "25") filters.push(`${radius} km`);
+    if (showModernBorders) filters.push("modern borders");
+    return filters;
+  }, [
+    eventRoles.length,
+    from.year,
+    includePastEvents,
+    periods.length,
+    periodsEnabled,
+    profileTypes.length,
+    radius,
+    showModernBorders,
+    sourceRoles,
+    sourceType,
+    to.year,
+    types.length,
+  ]);
+
+  const resetMapFilters = () => {
+    setTypes(entityTypes);
+    setSourceRoles(["DISCOVERED_AT"]);
+    setSourceType("");
+    setEventRoles([]);
+    setIncludePastEvents(false);
+    setProfileTypes(["USER", "CLUB"]);
+    setPeriods([]);
+    setPeriodsEnabled(false);
+    setFrom({ year: "", era: "AD" });
+    setTo({ year: "", era: "AD" });
+    setRadius("25");
+    setShowModernBorders(false);
+  };
+
   const focus = useMemo(() => {
     const selected = visibleEntities.find(
       (entity) => entityKey(entity) === selectedEntityKey,
@@ -909,6 +956,34 @@ export default function MapPage() {
               checked={showModernBorders}
               onChange={(event) => setShowModernBorders(event.target.checked)}
             />
+          </div>
+        </div>
+        <div className="map-active-filter-bar" aria-live="polite">
+          <span>
+            {items.length} place{items.length === 1 ? "" : "s"} ·{" "}
+            {visibleEntities.length + visibleOwnedMarkers.length} visible item
+            {visibleEntities.length + visibleOwnedMarkers.length === 1
+              ? ""
+              : "s"}
+          </span>
+          <div className="map-active-filter-actions">
+            {activeMapFilters.length ? (
+              <div
+                className="map-active-filter-chips"
+                aria-label="Active map filters"
+              >
+                {activeMapFilters.map((filter) => (
+                  <span key={filter}>{filter}</span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted">All map content types</span>
+            )}
+            {activeMapFilters.length > 0 && (
+              <Button size="sm" variant="link" onClick={resetMapFilters}>
+                Reset filters
+              </Button>
+            )}
           </div>
         </div>
         {error && (

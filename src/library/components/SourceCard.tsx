@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { getTypeLabel, PeriodBadge } from "../libraryShared";
 import RefreshingImage from "../../image/RefreshingImage";
 import PlaceNamePopover from "../../component/PlaceNamePopover";
+import { formatHistoricalRange } from "../../component/HistoricalRangeFilter";
 
 type SourceCardSource = {
   id: string | number;
@@ -13,6 +14,8 @@ type SourceCardSource = {
   description?: string | null;
   type?: string | null;
   period?: string | null;
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
   discoveredAtPlaceId?: string | null;
   discoveredAtPlaceName?: string | null;
   heldAtPlaceId?: string | null;
@@ -83,6 +86,11 @@ export default function SourceCard({
           </Card.Text>
           <div className="d-flex gap-2 flex-wrap mb-3">
             <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
+            {(source.from || source.to) && (
+              <Badge bg="light" text="dark">
+                {formatHistoricalRange(source.from, source.to)}
+              </Badge>
+            )}
           </div>
           {(source.discoveredAtPlaceId || source.heldAtPlaceId) && (
             <div className="small text-muted d-flex flex-column gap-1">

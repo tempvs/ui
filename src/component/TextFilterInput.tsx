@@ -13,18 +13,25 @@ type TextFilterInputProps = {
 };
 
 /** A controlled text field for filtering the list currently shown on a page. */
-export default function TextFilterInput({
-  value,
-  onChange,
-  placeholder,
-  ariaLabel = placeholder,
-  className,
-  size = "sm",
-  disabled = false,
-  onFocus,
-}: TextFilterInputProps) {
-  return (
+const TextFilterInput = React.forwardRef<
+  HTMLInputElement,
+  TextFilterInputProps
+>(
+  (
+    {
+      value,
+      onChange,
+      placeholder,
+      ariaLabel = placeholder,
+      className,
+      size = "sm",
+      disabled = false,
+      onFocus,
+    },
+    ref,
+  ) => (
     <Form.Control
+      ref={ref}
       type="search"
       size={size}
       value={value}
@@ -35,5 +42,9 @@ export default function TextFilterInput({
       onFocus={onFocus}
       className={className}
     />
-  );
-}
+  ),
+);
+
+TextFilterInput.displayName = "TextFilterInput";
+
+export default TextFilterInput;

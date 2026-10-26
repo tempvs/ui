@@ -4,6 +4,7 @@ import { useIntl } from "react-intl";
 import { Link, useNavigate } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import HistoricalRangeFilter, {
+  formatHistoricalRange,
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
@@ -39,6 +40,10 @@ export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"NAME_ASC" | "NAME_DESC">(
+    "NAME_ASC",
+  );
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [from, setFrom] = useState<HistoricalYearInput>({
     year: "",
@@ -63,6 +68,19 @@ export default function ClubsPage() {
     },
     [rangeEnabled, from, to],
   );
+  const hasActiveFilters =
+    selectedPeriods.length > 0 ||
+    (rangeEnabled && Boolean(from.year || to.year));
+  const clearFilters = () => {
+    setSelectedPeriods([]);
+    setRangeEnabled(false);
+    setFrom({ year: "", era: "AD" });
+    setTo({ year: "", era: "AD" });
+  };
+  const sortedClubs = [...clubs].sort((left, right) => {
+    const comparison = left.name.localeCompare(right.name);
+    return sortOrder === "NAME_ASC" ? comparison : -comparison;
+  });
 
   useEffect(
     () =>
@@ -230,26 +248,52 @@ export default function ClubsPage() {
       <>
         <div className="club-search-layout">
           <aside className="club-search-filters">
-            <HistoricalRangeFilter
-              enabled={rangeEnabled}
-              from={from}
-              to={to}
-              onEnabledChange={setRangeEnabled}
-              onFromChange={setFrom}
-              onToChange={setTo}
-              onValueEntered={() => setRangeEnabled(true)}
-              label="Years"
-              alwaysShowFields
-              compact
-              inlineToggle
-            />
-            <PeriodMultiSelect
-              ariaLabel={t("period", "Period")}
-              selected={selectedPeriods}
-              onChange={setSelectedPeriods}
-              disabled={unavailable}
-              display="checkboxes"
-            />
+            <details
+              className="catalogue-filter-disclosure"
+              open={filtersOpen}
+              onToggle={(event) =>
+                setFiltersOpen((event.currentTarget as HTMLDetailsElement).open)
+              }
+            >
+              <summary>
+                Filters
+                {hasActiveFilters
+                  ? ` (${selectedPeriods.length + Number(Boolean(from.year || to.year))})`
+                  : ""}
+              </summary>
+              <div className="catalogue-filter-disclosure-content">
+                <div className="catalogue-filter-disclosure-actions">
+                  <span className="small text-muted">
+                    {hasActiveFilters ? "Filters applied" : "All clubs"}
+                  </span>
+                  {hasActiveFilters && (
+                    <Button variant="link" size="sm" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+                <HistoricalRangeFilter
+                  enabled={rangeEnabled}
+                  from={from}
+                  to={to}
+                  onEnabledChange={setRangeEnabled}
+                  onFromChange={setFrom}
+                  onToChange={setTo}
+                  onValueEntered={() => setRangeEnabled(true)}
+                  label="Years"
+                  alwaysShowFields
+                  compact
+                  inlineToggle
+                />
+                <PeriodMultiSelect
+                  ariaLabel={t("period", "Period")}
+                  selected={selectedPeriods}
+                  onChange={setSelectedPeriods}
+                  disabled={unavailable}
+                  display="checkboxes"
+                />
+              </div>
+            </details>
           </aside>
           <div className="club-search-query">
             <Form.Control
@@ -260,8 +304,26 @@ export default function ClubsPage() {
               disabled={unavailable}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <div className="catalogue-results-toolbar" aria-live="polite">
+              <span>
+                {loading
+                  ? "Updating clubs…"
+                  : `Showing ${clubs.length} club${clubs.length === 1 ? "" : "s"}`}
+              </span>
+              <Form.Select
+                size="sm"
+                value={sortOrder}
+                aria-label="Sort clubs"
+                onChange={(event) =>
+                  setSortOrder(event.target.value as "NAME_ASC" | "NAME_DESC")
+                }
+              >
+                <option value="NAME_ASC">Name: A–Z</option>
+                <option value="NAME_DESC">Name: Z–A</option>
+              </Form.Select>
+            </div>
             <div className="club-card-grid club-search-results">
-              {clubs.map((club) => (
+              {sortedClubs.map((club) => (
                 <article key={club.id} className="club-panel">
                   <PeriodBadge period={club.period} />
                   <h2 className="mt-3">
@@ -289,9 +351,15 @@ export default function ClubsPage() {
                   {club.location && (
                     <p className="text-muted">{club.location}</p>
                   )}
+                  {(club.from || club.to) && (
+                    <p className="club-card-temporal">
+                      {formatHistoricalRange(club.from, club.to)}
+                    </p>
+                  )}
                   <p className="club-card-description">{club.description}</p>
                 </article>
               ))}
+              {loading && clubs.length === 0 && <ResultsSkeleton />}
             </div>
           </div>
         </div>
@@ -345,5 +413,15 @@ export default function ClubsPage() {
         </Modal.Body>
       </Modal>
     </PageLayout>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <div className="catalogue-results-skeleton" aria-hidden="true">
+      {[0, 1, 2].map((item) => (
+        <div className="catalogue-results-skeleton-card" key={item} />
+      ))}
+    </div>
   );
 }
