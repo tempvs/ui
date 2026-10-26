@@ -124,9 +124,16 @@ test("starts with empty temporal filters", () => {
     </MemoryRouter>,
   );
 
-  expect(screen.queryByRole("combobox", { name: "Period" })).not.toBeInTheDocument();
-  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(1);
+  expect(
+    screen.queryByRole("combobox", { name: "Period" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(
+    1,
+  );
   expect(screen.getByRole("checkbox", { name: "Antiquity" })).not.toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Enable period filter" }),
+  ).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: "User" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Club" })).toBeChecked();
   expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
@@ -217,7 +224,9 @@ test("searches nearby content after both coordinate fields lose focus", async ()
     "41.9,12.5",
   );
   expect(screen.queryByText("Use coordinates instead")).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Show area" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Show area" }),
+  ).not.toBeInTheDocument();
 });
 
 test("restores shared period and layer-specific discovery facets from a map URL", async () => {
@@ -333,9 +342,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
   mockNearbyMapEntitiesPage.mockResolvedValue({ items: [] });
 
   render(
-    <MemoryRouter
-      initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}
-    >
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}>
       <MapPage />
     </MemoryRouter>,
   );
@@ -347,7 +354,9 @@ test("refreshes nearby markers as temporal filters change", async () => {
   expect(
     screen.getByText("Profile", { selector: "summary" }),
   ).toBeInTheDocument();
-  expect(screen.queryByText("Club", { selector: "summary" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("Club", { selector: "summary" }),
+  ).not.toBeInTheDocument();
   expect(
     screen.getByText("Club", { selector: ".map-type-filter-label" }),
   ).toBeInTheDocument();
@@ -359,7 +368,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
   ).toBeInTheDocument();
   expect(
     screen.getByText("Period", { selector: "summary" }).parentElement
-      ?.parentElement,
+      ?.parentElement?.parentElement,
   ).toHaveClass("map-temporal-controls");
   fireEvent.click(screen.getByText("Event", { selector: "summary" }));
   expect(
@@ -383,6 +392,51 @@ test("refreshes nearby markers as temporal filters change", async () => {
   );
 
   fireEvent.click(document.getElementById("map-period-ANTIQUITY")!);
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      { periods: ["ANTIQUITY"] },
+      { periods: ["ANTIQUITY"] },
+      undefined,
+      undefined,
+      { types: ["USER", "CLUB"], periods: ["ANTIQUITY"] },
+      { periods: ["ANTIQUITY"] },
+    ),
+  );
+  expect(
+    screen.getByRole("checkbox", { name: "Enable period filter" }),
+  ).toBeChecked();
+
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Enable period filter" }),
+  );
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
+      41.9,
+      12.5,
+      25,
+      ["PROFILE", "CLUB", "EVENT", "SOURCE"],
+      undefined,
+      undefined,
+      ["DISCOVERED_AT"],
+      {},
+      {},
+      undefined,
+      undefined,
+      { types: ["USER", "CLUB"] },
+      {},
+    ),
+  );
+
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Enable period filter" }),
+  );
   await waitFor(() =>
     expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
       41.9,

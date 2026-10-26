@@ -87,6 +87,9 @@ export default function MapPage() {
     parseSourceRoles(params.get("sourceRoles")),
   );
   const [periods, setPeriods] = useState(() => parseMapPeriods(params));
+  const [periodsEnabled, setPeriodsEnabled] = useState(
+    () => parseMapPeriods(params).length > 0,
+  );
   const [sourceType, setSourceType] = useState(params.get("sourceType") || "");
   const [from, setFrom] = useState<HistoricalYearInput>(() =>
     parseHistoricalYear(
@@ -110,9 +113,9 @@ export default function MapPage() {
   const [includePastEvents, setIncludePastEvents] = useState(
     () => params.get("includePastEvents") === "true",
   );
-  const [profileTypes, setProfileTypes] = useState<
-    Array<"USER" | "CLUB">
-  >(() => parseProfileTypes(params));
+  const [profileTypes, setProfileTypes] = useState<Array<"USER" | "CLUB">>(() =>
+    parseProfileTypes(params),
+  );
   const [error, setError] = useState("");
   const [mapError, setMapError] = useState("");
   const [selectedEntityKey, setSelectedEntityKey] = useState<string | null>(
@@ -240,35 +243,35 @@ export default function MapPage() {
   const toYear = toAstronomicalYear(to);
   const sourceFilters = useMemo<MapSourceFilters>(
     () => ({
-      ...(periods.length ? { periods } : {}),
+      ...(periodsEnabled && periods.length ? { periods } : {}),
       ...(sourceType ? { types: [sourceType] } : {}),
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [fromYear, periods, sourceType, toYear],
+    [fromYear, periods, periodsEnabled, sourceType, toYear],
   );
   const eventFilters = useMemo<MapEventFilters>(
     () => ({
       ...(eventRoles.length ? { locationRoles: eventRoles } : {}),
       ...(includePastEvents ? { includePast: true } : {}),
-      ...(periods.length ? { periods } : {}),
+      ...(periodsEnabled && periods.length ? { periods } : {}),
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [periods, eventRoles, fromYear, includePastEvents, toYear],
+    [periods, periodsEnabled, eventRoles, fromYear, includePastEvents, toYear],
   );
   const profileFilters = useMemo<MapProfileFilters>(
     () => ({
-      ...(periods.length ? { periods } : {}),
+      ...(periodsEnabled && periods.length ? { periods } : {}),
       types: profileTypes,
       ...(fromYear !== undefined ? { from: fromYear } : {}),
       ...(toYear !== undefined ? { to: toYear } : {}),
     }),
-    [fromYear, periods, profileTypes, toYear],
+    [fromYear, periods, periodsEnabled, profileTypes, toYear],
   );
   const clubFilters = useMemo<MapClubFilters>(
-    () => (periods.length ? { periods } : {}),
-    [periods],
+    () => (periodsEnabled && periods.length ? { periods } : {}),
+    [periods, periodsEnabled],
   );
   const entityFilterSignature = useMemo(
     () =>
@@ -278,7 +281,7 @@ export default function MapPage() {
         eventRoles.join(","),
         includePastEvents ? "include-past" : "exclude-past",
         sourceType,
-        periods.join(","),
+        periodsEnabled ? periods.join(",") : "",
         profileTypes.join(","),
         `${from.year}:${from.era}`,
         `${to.year}:${to.era}`,
@@ -290,6 +293,7 @@ export default function MapPage() {
       from.era,
       from.year,
       periods,
+      periodsEnabled,
       profileTypes,
       radius,
       sourceRoles,
@@ -690,25 +694,33 @@ export default function MapPage() {
     return entitiesForLocationMode.filter(
       (entity) =>
         types.includes(entity.entityType) &&
-        matchesMapEntityPeriods(entity, periods) &&
+        matchesMapEntityPeriods(entity, periodsEnabled ? periods : []) &&
         (includePastEvents ||
           entity.entityType !== "EVENT" ||
           !eventHasEnded(entity.eventEndsAt)),
     );
-  }, [entities, includePastEvents, periods, sourceRoles.length, types]);
+  }, [
+    entities,
+    includePastEvents,
+    periods,
+    periodsEnabled,
+    sourceRoles.length,
+    types,
+  ]);
 
   const visibleOwnedMarkers = useMemo(
     () =>
       ownedMarkers.filter(
         (marker) =>
           types.includes(marker.entityType) &&
-          (periods.length === 0 ||
+          (!periodsEnabled ||
+            periods.length === 0 ||
             marker.periods?.some((period) => periods.includes(period))) &&
           (includePastEvents ||
             marker.entityType !== "EVENT" ||
             !eventHasEnded(marker.eventEndsAt)),
       ),
-    [includePastEvents, ownedMarkers, periods, types],
+    [includePastEvents, ownedMarkers, periods, periodsEnabled, types],
   );
 
   const visibleOwnedConnections = useMemo(() => {
@@ -856,6 +868,8 @@ export default function MapPage() {
             onProfileTypesChange={setProfileTypes}
             periods={periods}
             onPeriodsChange={setPeriods}
+            periodsEnabled={periodsEnabled}
+            onPeriodsEnabledChange={setPeriodsEnabled}
           />
           <Form.Group className="map-filter-radius mb-0">
             <Form.Label>Within</Form.Label>
@@ -1238,12 +1252,7 @@ function parseMapPeriods(params: URLSearchParams): string[] {
   const raw =
     params.get("periods") ||
     params.get("period") ||
-    [
-      "source",
-      "event",
-      "club",
-      "profile",
-    ]
+    ["source", "event", "club", "profile"]
       .flatMap((entityType) => [
         params.get(`${entityType}Periods`),
         params.get(`${entityType}Period`),
@@ -1286,17 +1295,14 @@ function eventHasEnded(endsAt: string | undefined): boolean {
   return Number.isFinite(endedAt) && endedAt < Date.now();
 }
 
-function parseProfileTypes(
-  params: URLSearchParams,
-): Array<"USER" | "CLUB"> {
+function parseProfileTypes(params: URLSearchParams): Array<"USER" | "CLUB"> {
   const raw = params.get("profileTypes") || params.get("profileType");
   if (raw === "none") return [];
   if (!raw) return ["USER", "CLUB"];
   return raw
     .split(",")
     .filter(
-      (type): type is "USER" | "CLUB" =>
-        type === "USER" || type === "CLUB",
+      (type): type is "USER" | "CLUB" => type === "USER" || type === "CLUB",
     )
     .filter((type, index, all) => all.indexOf(type) === index);
 }

@@ -27,6 +27,8 @@ type Props = {
   onProfileTypesChange: (types: Array<"USER" | "CLUB">) => void;
   periods: string[];
   onPeriodsChange: (periods: string[]) => void;
+  periodsEnabled: boolean;
+  onPeriodsEnabledChange: (enabled: boolean) => void;
 };
 
 const allEntityTypes: MapEntityLocation["entityType"][] = [
@@ -37,8 +39,8 @@ const allEntityTypes: MapEntityLocation["entityType"][] = [
 ];
 
 /** Type-specific controls stay next to their map layer. The shared period
- * control is optional: an empty set includes every period, while one or more
- * checked values immediately narrow every selected map layer. */
+ * control can be paused while retaining selections; choosing a period enables
+ * it immediately. */
 export default function MapEntityFilterControls({
   idPrefix,
   entityTypes,
@@ -59,6 +61,8 @@ export default function MapEntityFilterControls({
   onProfileTypesChange,
   periods,
   onPeriodsChange,
+  periodsEnabled,
+  onPeriodsEnabledChange,
 }: Props) {
   const [openDisclosure, setOpenDisclosure] = React.useState<string | null>(
     null,
@@ -108,98 +112,102 @@ export default function MapEntityFilterControls({
                         {label}
                       </summary>
                       <div className="map-type-filter-content">
-                      {type === "SOURCE" && (
-                        <>
-                          <Form.Group>
-                            <Form.Label>Source place</Form.Label>
-                            <div className="d-flex gap-2 flex-wrap">
-                              {(
-                                [
-                                  ["DISCOVERED_AT", "Discovered at"],
-                                  ["HELD_AT", "Held at"],
-                                ] as const
-                              ).map(([role, roleLabel]) => (
-                                <Form.Check
-                                  inline
-                                  key={role}
-                                  id={`${idPrefix}-source-role-${role}`}
-                                  label={roleLabel}
-                                  checked={sourceRoles.includes(role)}
-                                  onChange={() => toggleSourceRole(role)}
-                                />
-                              ))}
-                            </div>
-                          </Form.Group>
-                          <Form.Group>
-                            <Form.Label>Source type</Form.Label>
-                            <Form.Select
-                              size="sm"
-                              value={sourceType}
-                              onChange={(event) =>
-                                onSourceTypeChange(event.target.value)
-                              }
-                            >
-                              <option value="">All types</option>
-                              {TYPES.map((source) => (
-                                <option key={source} value={source}>
-                                  {readable(source)}
-                                </option>
-                              ))}
-                            </Form.Select>
-                          </Form.Group>
-                        </>
-                      )}
-                      {type === "EVENT" && (
-                        <>
-                          <Form.Group>
-                            <Form.Label>Event place</Form.Label>
-                            <div className="d-flex gap-2 flex-wrap">
-                              {(
-                                [
-                                  ["VENUE", "Venue"],
-                                  ["HISTORICAL_SITE", "Historical site"],
-                                ] as const
-                              ).map(([role, roleLabel]) => (
-                                <Form.Check
-                                  inline
-                                  key={role}
-                                  id={`${idPrefix}-event-role-${role}`}
-                                  label={roleLabel}
-                                  checked={eventRoles.includes(role)}
-                                  onChange={() => toggleEventRole(role)}
-                                />
-                              ))}
-                            </div>
-                          </Form.Group>
-                          <Form.Check
-                            id={`${idPrefix}-event-include-past`}
-                            label="Include past events"
-                            checked={includePastEvents}
-                            onChange={(event) =>
-                              onIncludePastEventsChange(event.target.checked)
-                            }
-                          />
-                        </>
-                      )}
-                      {type === "PROFILE" && (
-                        <Form.Group>
-                          <Form.Label>Profile type</Form.Label>
-                          <div className="d-flex gap-2 flex-wrap">
-                            {(["USER", "CLUB"] as const).map((profileType) => (
-                              <Form.Check
-                                inline
-                                key={profileType}
-                                id={`${idPrefix}-profile-type-${profileType}`}
-                                label={readable(profileType)}
-                                checked={profileTypes.includes(profileType)}
-                                onChange={() =>
-                                  onProfileTypesChange(toggle(profileTypes, profileType))
+                        {type === "SOURCE" && (
+                          <>
+                            <Form.Group>
+                              <Form.Label>Source place</Form.Label>
+                              <div className="d-flex gap-2 flex-wrap">
+                                {(
+                                  [
+                                    ["DISCOVERED_AT", "Discovered at"],
+                                    ["HELD_AT", "Held at"],
+                                  ] as const
+                                ).map(([role, roleLabel]) => (
+                                  <Form.Check
+                                    inline
+                                    key={role}
+                                    id={`${idPrefix}-source-role-${role}`}
+                                    label={roleLabel}
+                                    checked={sourceRoles.includes(role)}
+                                    onChange={() => toggleSourceRole(role)}
+                                  />
+                                ))}
+                              </div>
+                            </Form.Group>
+                            <Form.Group>
+                              <Form.Label>Source type</Form.Label>
+                              <Form.Select
+                                size="sm"
+                                value={sourceType}
+                                onChange={(event) =>
+                                  onSourceTypeChange(event.target.value)
                                 }
-                              />
-                            ))}
-                          </div>
-                        </Form.Group>
-                      )}
+                              >
+                                <option value="">All types</option>
+                                {TYPES.map((source) => (
+                                  <option key={source} value={source}>
+                                    {readable(source)}
+                                  </option>
+                                ))}
+                              </Form.Select>
+                            </Form.Group>
+                          </>
+                        )}
+                        {type === "EVENT" && (
+                          <>
+                            <Form.Group>
+                              <Form.Label>Event place</Form.Label>
+                              <div className="d-flex gap-2 flex-wrap">
+                                {(
+                                  [
+                                    ["VENUE", "Venue"],
+                                    ["HISTORICAL_SITE", "Historical site"],
+                                  ] as const
+                                ).map(([role, roleLabel]) => (
+                                  <Form.Check
+                                    inline
+                                    key={role}
+                                    id={`${idPrefix}-event-role-${role}`}
+                                    label={roleLabel}
+                                    checked={eventRoles.includes(role)}
+                                    onChange={() => toggleEventRole(role)}
+                                  />
+                                ))}
+                              </div>
+                            </Form.Group>
+                            <Form.Check
+                              id={`${idPrefix}-event-include-past`}
+                              label="Include past events"
+                              checked={includePastEvents}
+                              onChange={(event) =>
+                                onIncludePastEventsChange(event.target.checked)
+                              }
+                            />
+                          </>
+                        )}
+                        {type === "PROFILE" && (
+                          <Form.Group>
+                            <Form.Label>Profile type</Form.Label>
+                            <div className="d-flex gap-2 flex-wrap">
+                              {(["USER", "CLUB"] as const).map(
+                                (profileType) => (
+                                  <Form.Check
+                                    inline
+                                    key={profileType}
+                                    id={`${idPrefix}-profile-type-${profileType}`}
+                                    label={readable(profileType)}
+                                    checked={profileTypes.includes(profileType)}
+                                    onChange={() =>
+                                      onProfileTypesChange(
+                                        toggle(profileTypes, profileType),
+                                      )
+                                    }
+                                  />
+                                ),
+                              )}
+                            </div>
+                          </Form.Group>
+                        )}
                       </div>
                     </details>
                   ) : (
@@ -232,7 +240,12 @@ export default function MapEntityFilterControls({
         <PeriodFilter
           idPrefix={idPrefix}
           periods={periods}
-          onChange={onPeriodsChange}
+          onChange={(nextPeriods) => {
+            onPeriodsChange(nextPeriods);
+            if (nextPeriods.length) onPeriodsEnabledChange(true);
+          }}
+          enabled={periodsEnabled}
+          onEnabledChange={onPeriodsEnabledChange}
           open={openDisclosure === "PERIOD"}
           onToggle={() =>
             setOpenDisclosure((current) =>
@@ -249,40 +262,53 @@ function PeriodFilter({
   idPrefix,
   periods,
   onChange,
+  enabled,
+  onEnabledChange,
   open,
   onToggle,
 }: {
   idPrefix: string;
   periods: string[];
   onChange: (periods: string[]) => void;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
   open: boolean;
   onToggle: () => void;
 }) {
   return (
-    <details
-      className="map-period-filter map-period-filter--global"
-      open={open}
-    >
-      <summary
-        onClick={(event) => {
-          event.preventDefault();
-          onToggle();
-        }}
+    <div className="map-period-filter-row">
+      <Form.Check
+        id={`${idPrefix}-period-filter-enabled`}
+        aria-label="Enable period filter"
+        checked={enabled}
+        onChange={(event) => onEnabledChange(event.target.checked)}
+        className="mb-0"
+      />
+      <details
+        className="map-period-filter map-period-filter--global"
+        open={open}
       >
-        Period
-      </summary>
-      <div className="map-period-filter-content">
-        {PERIODS.map((period) => (
-          <Form.Check
-            key={period}
-            id={`${idPrefix}-period-${period}`}
-            label={readable(period)}
-            checked={periods.includes(period)}
-            onChange={() => onChange(toggle(periods, period))}
-          />
-        ))}
-      </div>
-    </details>
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            onToggle();
+          }}
+        >
+          Period
+        </summary>
+        <div className="map-period-filter-content">
+          {PERIODS.map((period) => (
+            <Form.Check
+              key={period}
+              id={`${idPrefix}-period-${period}`}
+              label={readable(period)}
+              checked={periods.includes(period)}
+              onChange={() => onChange(toggle(periods, period))}
+            />
+          ))}
+        </div>
+      </details>
+    </div>
   );
 }
 
