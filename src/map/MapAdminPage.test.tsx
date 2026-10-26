@@ -35,6 +35,11 @@ jest.mock("./MapCanvas", () => ({
   default: () => <div data-testid="proposal-map-preview" />,
 }));
 
+jest.mock("../profile/profileApi", () => ({
+  getUserProfilesByUserIds: jest.fn().mockResolvedValue([]),
+  searchProfiles: jest.fn().mockResolvedValue([]),
+}));
+
 import { getViewer } from "../auth/viewerApi";
 import {
   approveMapPlace,
@@ -351,7 +356,7 @@ test("shows an immutable field diff when a proposal was amended", async () => {
   expect(screen.getByText("47.534000, 7.720000")).toBeInTheDocument();
 });
 
-test("paginates Map role requests and confirms operational-role removal", async () => {
+test("paginates Map role requests and confirms Map member removal", async () => {
   getViewerMock.mockResolvedValue({
     userId: "map-admin-1",
     roles: ["MAP_ADMIN"],
@@ -405,9 +410,11 @@ test("paginates Map role requests and confirms operational-role removal", async 
   expect(await screen.findByText("user-2")).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("tab", { name: "Map members" }));
-  fireEvent.click(screen.getByRole("button", { name: "Remove Reviewer" }));
-  expect(await screen.findByText("Remove Map role")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Remove role" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Remove Map Member from the Map" }),
+  );
+  expect(await screen.findByText("Remove Map member")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Yes" }));
   await waitFor(() =>
     expect(removeMapMemberRoleMock).toHaveBeenCalledWith(
       "member-1",
@@ -416,7 +423,7 @@ test("paginates Map role requests and confirms operational-role removal", async 
   );
 });
 
-test("keeps direct member assignment with Map members instead of role requests", async () => {
+test("keeps direct member assignment in the Map members modal", async () => {
   getViewerMock.mockResolvedValue({
     userId: "map-admin-1",
     roles: ["MAP_ADMIN"],
@@ -431,8 +438,9 @@ test("keeps direct member assignment with Map members instead of role requests",
   ).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("tab", { name: "Map members" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Add Map member" }));
   expect(
-    await screen.findByLabelText("Find a user profile to assign a Map role"),
+    await screen.findByLabelText("Search user profiles to add"),
   ).toBeInTheDocument();
-  expect(screen.getByText("Personal profiles only")).toBeInTheDocument();
+  expect(screen.getByText("Add Map member")).toBeInTheDocument();
 });

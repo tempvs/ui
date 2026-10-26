@@ -616,98 +616,6 @@
   display: none;
 }
 
-.map-member-assignment {
-  display: grid;
-  gap: 0.7rem;
-  margin: 1rem 0 1.1rem;
-  padding: 0.85rem;
-  border: 1px solid rgb(91 75 49 / 18%);
-  border-radius: 0.55rem;
-  background: #fffdf7;
-}
-
-.map-member-assignment-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.map-member-assignment-note,
-.map-member-role-list span {
-  display: inline-flex;
-  width: fit-content;
-  padding: 0.15rem 0.42rem;
-  border-radius: 999px;
-  background: rgb(107 89 61 / 10%);
-  color: #514332;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.map-member-assignment-controls {
-  display: grid;
-  grid-template-columns: minmax(14rem, 1fr) minmax(11rem, 13rem);
-  gap: 0.55rem;
-}
-
-.map-member-search-empty {
-  color: #6f6250;
-  font-size: 0.82rem;
-}
-
-.map-member-search-results {
-  overflow: hidden;
-  border: 1px solid rgb(91 75 49 / 16%);
-  border-radius: 0.4rem;
-  background: #fff;
-}
-
-.map-member-search-results li,
-.map-member-list > li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.6rem 0.7rem;
-}
-
-.map-member-search-results li + li,
-.map-member-list > li + li {
-  border-top: 1px solid rgb(91 75 49 / 14%);
-}
-
-.map-member-search-results strong,
-.map-member-details strong {
-  display: block;
-}
-
-.map-member-search-results span,
-.map-member-email {
-  display: block;
-  margin-top: 0.1rem;
-  color: #716553;
-  font-size: 0.78rem;
-}
-
-.map-member-list {
-  overflow: hidden;
-  border: 1px solid rgb(91 75 49 / 16%);
-  border-radius: 0.45rem;
-  background: #fff;
-}
-
-.map-member-details {
-  min-width: 0;
-}
-
-.map-member-role-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.35rem;
-}
-
 /* A stored map attachment is used by posts and chat alike. Keeping its
  * presentation here means neither feature owns the shared map surface. */
 .map-reference-attachment {
@@ -747,14 +655,4 @@
     bottom: 1.4rem;
   }
 
-  .map-member-assignment-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .map-member-assignment-heading,
-  .map-member-search-results li,
-  .map-member-list > li {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }

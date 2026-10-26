@@ -16,12 +16,15 @@ export type ProfileThumbnailLinkTarget = Pick<
 type ProfileThumbnailLinkProps = {
   profile: ProfileThumbnailLinkTarget;
   className?: string;
+  /** Member cards already render the label beside the avatar. */
+  displayLabel?: boolean;
 };
 
 /** A consistent profile destination with a refreshed avatar thumbnail. */
 export default function ProfileThumbnailLink({
   profile,
   className,
+  displayLabel = true,
 }: ProfileThumbnailLinkProps) {
   const label =
     profile.name?.trim() || buildProfileLabel(profile, `Profile ${profile.id}`);
@@ -43,7 +46,7 @@ export default function ProfileThumbnailLink({
         alt=""
         loading="lazy"
       />
-      <span>{label}</span>
+      {displayLabel && <span>{label}</span>}
     </Link>
   );
 }
