@@ -209,6 +209,39 @@ export type MapPlaceProposalActivity = {
 };
 
 export type MapRole = "MAP_REVIEWER" | "MAP_EDITOR" | "MAP_ADMIN";
+export type MapSnapshot = {
+  id: string;
+  profileId?: string;
+  title: string;
+  reference: {
+    placeId?: string;
+    placeName?: string;
+    latitude: number;
+    longitude: number;
+    radiusKm: number;
+    entityTypes: MapEntityLocation["entityType"][];
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function saveMapSnapshot(input: Omit<MapSnapshot, "id" | "createdAt" | "updatedAt">): Promise<MapSnapshot> {
+  const response = await fetch("/api/map/snapshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  if (!response.ok) throw new Error("Unable to save this map view");
+  return (await responseJson(response)) as MapSnapshot;
+}
+
+export async function listMyMapSnapshots(): Promise<MapSnapshot[]> {
+  const response = await fetch("/api/map/snapshots/mine");
+  if (!response.ok) throw new Error("Unable to load saved maps");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items) ? (body?.items as MapSnapshot[]) : [];
+}
+
+export async function deleteMapSnapshot(id: string): Promise<void> {
+  const response = await fetch(`/api/map/snapshots/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!response.ok) throw new Error("Unable to delete saved map");
+}
 export type MapRoleRequest = {
   id: string;
   userId: string;

@@ -24,6 +24,7 @@ import {
   type MapPlaceProposalRecord,
   type MapSourceFilters,
   type SourceLocationRole,
+  saveMapSnapshot,
 } from "./mapApi";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import MapEntityFilterControls from "./MapEntityFilterControls";
@@ -138,6 +139,7 @@ export default function MapPage() {
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
+  const [snapshotStatus, setSnapshotStatus] = useState("");
   const suggestionRequest = useRef(0);
   const entityFilterRequest = useRef(0);
   const appliedEntityFilterSignature = useRef<string | null>(null);
@@ -834,6 +836,23 @@ export default function MapPage() {
       setCopyStatus("Copy the address from your browser to share this map.");
     }
   };
+  const saveCurrentMap = async () => {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setSnapshotStatus("Choose a place or coordinates before saving a map.");
+      return;
+    }
+    const title = window.prompt("Name this saved map", selectedPlace?.canonicalName || "Saved map");
+    if (!title?.trim()) return;
+    try {
+      await saveMapSnapshot({ title: title.trim(), reference: {
+        ...(selectedPlace ? { placeId: selectedPlace.id, placeName: selectedPlace.canonicalName } : {}),
+        latitude: lat, longitude: lng, radiusKm: Number(radius), entityTypes: types,
+      }});
+      setSnapshotStatus("Saved to your maps.");
+    } catch (caught) { setSnapshotStatus((caught as Error).message); }
+  };
 
   return (
     <PageLayout
@@ -1020,8 +1039,12 @@ export default function MapPage() {
               <Button type="button" size="sm" variant="outline-dark" onClick={() => void copyMapLink()}>
                 Copy map link
               </Button>
+              <Button type="button" size="sm" variant="outline-dark" onClick={() => void saveCurrentMap()}>
+                Save map
+              </Button>
             </div>
             {copyStatus && <span className="small text-muted">{copyStatus}</span>}
+            {snapshotStatus && <span className="small text-muted">{snapshotStatus}</span>}
           </section>
         )}
       </section>
