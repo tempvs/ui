@@ -243,6 +243,15 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     );
 
   const historicalNames = otherHistoricalNames(place);
+  const contentCount = Object.values(entityCounts).reduce(
+    (total, count) => total + (count || 0),
+    0,
+  );
+  const timelineEvents = [...(place.historicalEvents || [])].sort(
+    (left, right) =>
+      (left.validFrom ?? left.validTo ?? Number.POSITIVE_INFINITY) -
+      (right.validFrom ?? right.validTo ?? Number.POSITIVE_INFINITY),
+  );
 
   return (
     <PageLayout
@@ -268,6 +277,28 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
     >
       <section className="club-panel" aria-label="Place details">
         <h1>{place.canonicalName}</h1>
+        <div className="place-at-a-glance" aria-label="Place at a glance">
+          <div>
+            <span>Type</span>
+            <strong>{place.featureType.replaceAll("_", " ")}</strong>
+          </div>
+          <div>
+            <span>Location</span>
+            <strong>
+              {place.latitude.toFixed(4)}, {place.longitude.toFixed(4)}
+            </strong>
+          </div>
+          {place.periods?.length ? (
+            <div>
+              <span>Periods</span>
+              <strong>{place.periods.join(", ")}</strong>
+            </div>
+          ) : null}
+          <a href="#place-content">
+            <span>Linked content</span>
+            <strong>{contentCount}</strong>
+          </a>
+        </div>
         {historicalNames.length > 0 && (
           <div className="mb-3" aria-label="Historical names">
             <h2 className="h6 mb-1">Historical names</h2>
@@ -283,10 +314,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             </ul>
           </div>
         )}
-        <p className="text-muted mb-2">
-          {place.featureType} · {place.latitude.toFixed(4)},{" "}
-          {place.longitude.toFixed(4)}
-        </p>
         {place.confidence && (
           <p className="small text-muted mb-2">
             Confidence: {place.confidence.replaceAll("_", " ").toLowerCase()}
@@ -375,11 +402,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           </div>
         )}
         {place.description && <p className="mb-2">{place.description}</p>}
-        {place.historicalEvents?.length ? (
+        {timelineEvents.length ? (
           <div className="mb-2" aria-label="Important dates and events">
-            <h2 className="h6 mb-1">Important dates and events</h2>
-            <ul className="mb-0 ps-3">
-              {place.historicalEvents.map((event, index) => (
+            <h2 className="h6 mb-1">Timeline</h2>
+            <ol className="place-timeline mb-0 ps-3">
+              {timelineEvents.map((event, index) => (
                 <li
                   key={`${event.description}-${event.validFrom ?? ""}-${event.validTo ?? ""}-${index}`}
                 >
@@ -392,7 +419,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
                   {event.description}
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
         ) : null}
         <Form.Check
@@ -496,6 +523,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         {error && <p className="small text-muted mt-2 mb-0">{error}</p>}
       </section>
       <section
+        id="place-content"
         className="club-panel mt-3"
         aria-label="Public content at this place"
       >

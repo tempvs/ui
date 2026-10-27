@@ -672,10 +672,6 @@ function addMarkerLayers(
       });
     });
   });
-  map.on("click", "map-entity-points", (event) => {
-    const key = event.features?.[0]?.properties?.key;
-    if (typeof key === "string") onEntitySelect(key);
-  });
   let entityHoverPopup: maplibregl.Popup | null = null;
   let entityHoverCloseTimer: number | undefined;
   const closeEntityHoverPopup = () => {
@@ -691,56 +687,67 @@ function addMarkerLayers(
       window.clearTimeout(entityHoverCloseTimer);
     entityHoverCloseTimer = window.setTimeout(closeEntityHoverPopup, 160);
   };
-  map.on("mouseenter", "map-entity-points", (event) => {
-    const feature = event.features?.[0];
-    const properties = feature?.properties;
+  const markerFromFeature = (feature: maplibregl.MapGeoJSONFeature) => {
+    const properties = feature.properties;
     const entityType = properties?.kind;
     const entityId = properties?.entityId;
     const placeId = properties?.placeId;
     const placeName = properties?.placeName;
     const label = properties?.label;
     if (
-      !feature ||
       !isEntityType(entityType) ||
       typeof entityId !== "string" ||
       typeof placeId !== "string" ||
       typeof placeName !== "string" ||
       typeof label !== "string"
     )
-      return;
-    closeEntityHoverPopup();
-    const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
-      number,
-      number,
-    ];
+      return null;
+    return { entityType, entityId, placeId, placeName, label };
+  };
+  const coordinatesFromFeature = (feature: maplibregl.MapGeoJSONFeature) =>
+    (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+  const openEntityPopup = (
+    feature: maplibregl.MapGeoJSONFeature,
+    persistent: boolean,
+  ) => {
+    const marker = markerFromFeature(feature);
+    if (!marker) return;
     const popup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
+      closeButton: persistent,
+      closeOnClick: persistent,
       anchor: "left",
       offset: [14, 0],
       maxWidth: "18rem",
     })
-      .setLngLat(coordinates)
-      .setDOMContent(
-        markerLinksPopover({
-          entityType,
-          entityId,
-          placeId,
-          placeName,
-          label,
-        }),
-      )
+      .setLngLat(coordinatesFromFeature(feature))
+      .setDOMContent(markerLinksPopover(marker))
       .addTo(map);
-    entityHoverPopup = popup;
-    popup.getElement()?.addEventListener("mouseenter", () => {
-      if (entityHoverCloseTimer !== undefined) {
-        window.clearTimeout(entityHoverCloseTimer);
-        entityHoverCloseTimer = undefined;
-      }
-    });
-    popup
-      .getElement()
-      ?.addEventListener("mouseleave", scheduleEntityHoverClose);
+    if (!persistent) {
+      entityHoverPopup = popup;
+      popup.getElement()?.addEventListener("mouseenter", () => {
+        if (entityHoverCloseTimer !== undefined) {
+          window.clearTimeout(entityHoverCloseTimer);
+          entityHoverCloseTimer = undefined;
+        }
+      });
+      popup
+        .getElement()
+        ?.addEventListener("mouseleave", scheduleEntityHoverClose);
+    }
+  };
+  map.on("click", "map-entity-points", (event) => {
+    const feature = event.features?.[0];
+    const key = feature?.properties?.key;
+    if (typeof key === "string") onEntitySelect(key);
+    // Hover gives desktop users a lightweight preview; a click deliberately
+    // keeps the same two links open for touch users.
+    if (feature) openEntityPopup(feature, true);
+  });
+  map.on("mouseenter", "map-entity-points", (event) => {
+    const feature = event.features?.[0];
+    if (!feature || !markerFromFeature(feature)) return;
+    closeEntityHoverPopup();
+    openEntityPopup(feature, false);
   });
   map.on("mouseleave", "map-entity-points", scheduleEntityHoverClose);
   const openPlace = (event: maplibregl.MapLayerMouseEvent) => {

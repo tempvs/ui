@@ -28,6 +28,29 @@ type HistoricalEventDraft = {
   validTo: string;
 };
 
+type PlaceEditDraft = {
+  name: string;
+  featureType: string;
+  latitude: string;
+  longitude: string;
+  description: string;
+  citationUrl: string;
+  names: NameDraft[];
+  historicalEvents: HistoricalEventDraft[];
+  note: string;
+  savedAt: string;
+};
+
+const featureTypes = [
+  "SETTLEMENT",
+  "HISTORIC_SETTLEMENT",
+  "ARCHAEOLOGICAL_SITE",
+  "BUILDING",
+  "REGION",
+  "BATTLEFIELD",
+  "OTHER",
+];
+
 const canContribute = (viewer: Viewer | null) =>
   Boolean(
     viewer?.roles.some((role) =>
@@ -64,6 +87,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<PlaceEditDraft | null>(null);
 
   useEffect(() => {
     void getViewer({ refreshRoles: true }).then(setViewer);
@@ -88,6 +112,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         setCitationUrl(value.citationUrl || "");
         setNames(nameDrafts(value));
         setHistoricalEvents(historicalEventDrafts(value));
+        setSavedDraft(readDraft(value.id));
       })
       .catch(() => !controller.signal.aborted && setPlace(null));
     return () => controller.abort();
@@ -131,12 +156,12 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
       mode === "UPDATE" &&
       (!name.trim() ||
         !featureType.trim() ||
-        !Number.isFinite(Number(latitude)) ||
-        !Number.isFinite(Number(longitude)) ||
+        !validCoordinates(latitude, longitude) ||
         names.filter((entry) => entry.preferred).length !== 1 ||
         !names.some(
           (entry) => entry.preferred && entry.value.trim() === name.trim(),
         ) ||
+        names.some((entry) => invalidDatedEntry(entry)) ||
         historicalEvents.some(
           (entry) =>
             !entry.description.trim() ||
@@ -195,6 +220,8 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 })),
               };
       await proposeMapPlaceChangeset(place.id, changeset);
+      window.localStorage.removeItem(draftKey(place.id));
+      setSavedDraft(null);
       setSubmitted(true);
     } catch (caught) {
       setError((caught as Error).message || "Unable to submit this changeset.");
@@ -217,6 +244,39 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
     );
 
   const editable = canContribute(viewer);
+  const saveDraft = () => {
+    if (!place) return;
+    const draft: PlaceEditDraft = {
+      name,
+      featureType,
+      latitude,
+      longitude,
+      description,
+      citationUrl,
+      names,
+      historicalEvents,
+      note,
+      savedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(draftKey(place.id), JSON.stringify(draft));
+    setSavedDraft(draft);
+  };
+  const restoreDraft = () => {
+    if (!savedDraft) return;
+    setName(savedDraft.name);
+    setFeatureType(savedDraft.featureType);
+    setLatitude(savedDraft.latitude);
+    setLongitude(savedDraft.longitude);
+    setDescription(savedDraft.description);
+    setCitationUrl(savedDraft.citationUrl);
+    setNames(savedDraft.names);
+    setHistoricalEvents(savedDraft.historicalEvents);
+    setNote(savedDraft.note);
+  };
+  const discardDraft = () => {
+    window.localStorage.removeItem(draftKey(place.id));
+    setSavedDraft(null);
+  };
   return (
     <PageLayout
       className="map-page"
@@ -241,6 +301,19 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
           <Alert variant="warning">
             A Map reviewer role is required. Request one from Map
             administration before submitting changes.
+          </Alert>
+        )}
+        {editable && savedDraft && !submitted && (
+          <Alert variant="secondary" className="d-flex flex-wrap align-items-center gap-2">
+            <span>
+              An unsent local draft was saved {new Date(savedDraft.savedAt).toLocaleString()}.
+            </span>
+            <Button type="button" size="sm" variant="outline-dark" onClick={restoreDraft}>
+              Restore draft
+            </Button>
+            <Button type="button" size="sm" variant="link" onClick={discardDraft}>
+              Discard
+            </Button>
           </Alert>
         )}
         {submitted ? (
@@ -276,11 +349,17 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 </Form.Group>
                 <Form.Group className="mb-2">
                   <Form.Label>Feature type</Form.Label>
-                  <Form.Control
+                  <Form.Select
                     value={featureType}
                     onChange={(event) => setFeatureType(event.target.value)}
                     disabled={!editable}
-                  />
+                  >
+                    {featureTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.replaceAll("_", " ")}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
                 <div className="d-flex gap-2">
                   <Form.Group className="mb-2 flex-fill">
@@ -561,6 +640,14 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 Cancel
               </Link>
               <Button
+                type="button"
+                variant="outline-dark"
+                disabled={!editable || saving || mode !== "UPDATE"}
+                onClick={saveDraft}
+              >
+                Save draft
+              </Button>
+              <Button
                 type="submit"
                 variant={mode === "DELETE" ? "outline-danger" : "dark"}
                 disabled={!editable || saving}
@@ -617,4 +704,49 @@ function replaceHistoricalEvent(
 
 function isWholeYearOrBlank(value: string): boolean {
   return !value.trim() || Number.isSafeInteger(Number(value));
+}
+
+function invalidDatedEntry(entry: Pick<NameDraft, "value" | "validFrom" | "validTo">): boolean {
+  return (
+    !entry.value.trim() ||
+    !isWholeYearOrBlank(entry.validFrom) ||
+    !isWholeYearOrBlank(entry.validTo) ||
+    (Boolean(entry.validFrom.trim()) &&
+      Boolean(entry.validTo.trim()) &&
+      Number(entry.validFrom) > Number(entry.validTo))
+  );
+}
+
+function validCoordinates(latitude: string, longitude: string): boolean {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+function draftKey(placeId: string): string {
+  return `tempvs:map-place-edit:${placeId}`;
+}
+
+function readDraft(placeId: string): PlaceEditDraft | null {
+  try {
+    const value = window.localStorage.getItem(draftKey(placeId));
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<PlaceEditDraft>;
+    if (
+      typeof parsed.name !== "string" ||
+      typeof parsed.featureType !== "string" ||
+      typeof parsed.latitude !== "string" ||
+      typeof parsed.longitude !== "string" ||
+      typeof parsed.description !== "string" ||
+      typeof parsed.citationUrl !== "string" ||
+      typeof parsed.note !== "string" ||
+      typeof parsed.savedAt !== "string" ||
+      !Array.isArray(parsed.names) ||
+      !Array.isArray(parsed.historicalEvents)
+    )
+      return null;
+    return parsed as PlaceEditDraft;
+  } catch {
+    return null;
+  }
 }
