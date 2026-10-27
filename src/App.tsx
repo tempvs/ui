@@ -35,6 +35,7 @@ import MapAdminPage from "./map/MapAdminPage";
 import MapPlacePage from "./map/MapPlacePage";
 import MapPlaceEditPage from "./map/MapPlaceEditPage";
 import MapPage from "./map/MapPage";
+import SavedMapsPage from "./map/SavedMapsPage";
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -202,6 +203,7 @@ function App() {
             <Route path="/events/:eventId/admin" element={<EventAdminPage />} />
             <Route path="/events/:eventId" element={<EventPage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/map/saved" element={<SavedMapsPage />} />
             <Route path="/map/admin" element={<MapAdminPage />} />
             <Route path="/map/place/:placeId" element={<MapPlacePageWithParam />} />
             <Route path="/map/place/:placeId/edit" element={<MapPlaceEditPageWithParam />} />

@@ -19,7 +19,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import MapReferenceAttachment, { type PublicMapReference } from "../map/MapReferenceAttachment";
-import MapSnapshotPicker from "../map/MapSnapshotPicker";
+import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
 import {
   activeProfileNotFoundId,
   createConversation,
@@ -993,6 +993,7 @@ export default function ChatPage() {
                 />
                 <div className="chat-composer-actions">
                   <MapSnapshotPicker onSelect={setSelectedMapReference} />
+                  {selectedMapReference && <SelectedMapPreview reference={selectedMapReference} onRemove={() => setSelectedMapReference(null)} />}
                   {!canSend && (
                     <span className="chat-composer-hint">
                       <FormattedMessage

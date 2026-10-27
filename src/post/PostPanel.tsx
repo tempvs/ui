@@ -17,7 +17,7 @@ import CommentThread from "../comment/CommentThread";
 import MapReferenceAttachment, {
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
-import MapSnapshotPicker from "../map/MapSnapshotPicker";
+import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
 import {
   buildProfileLabel,
   resolveCurrentOwnedProfileId,
@@ -365,6 +365,7 @@ export default function PostPanel({
               <SendIcon aria-hidden />
             </IconActionButton>
             <MapSnapshotPicker onSelect={setSelectedMapReference} />
+            {selectedMapReference && <SelectedMapPreview reference={selectedMapReference} onRemove={() => setSelectedMapReference(null)} />}
           </div>
         </div>
       )}

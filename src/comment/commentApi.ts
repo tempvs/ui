@@ -9,6 +9,7 @@ export type Comment = {
   createdAt: string;
   updatedAt: string;
   edited: boolean;
+  mapReference?: import("../map/MapReferenceAttachment").PublicMapReference;
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -47,6 +48,7 @@ export function createComment(
   targetId: string | number,
   authorProfileId: string,
   content: string,
+  mapReference?: Comment["mapReference"],
 ) {
   return request<Comment>("/comments", {
     method: "POST",
@@ -55,6 +57,7 @@ export function createComment(
       targetId: String(targetId),
       authorProfileId,
       content,
+      ...(mapReference ? { mapReference } : {}),
     }),
   });
 }

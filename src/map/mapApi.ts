@@ -212,6 +212,7 @@ export type MapRole = "MAP_REVIEWER" | "MAP_EDITOR" | "MAP_ADMIN";
 export type MapSnapshot = {
   id: string;
   profileId?: string;
+  scope?: { type: "PERSONAL" | "PROFILE" | "CLUB" | "EVENT" | "SOURCE"; id?: string };
   title: string;
   reference: {
     placeId?: string;
@@ -241,6 +242,12 @@ export async function listMyMapSnapshots(): Promise<MapSnapshot[]> {
 export async function deleteMapSnapshot(id: string): Promise<void> {
   const response = await fetch(`/api/map/snapshots/${encodeURIComponent(id)}`, { method: "DELETE" });
   if (!response.ok) throw new Error("Unable to delete saved map");
+}
+
+export async function renameMapSnapshot(id: string, title: string): Promise<MapSnapshot> {
+  const response = await fetch(`/api/map/snapshots/${encodeURIComponent(id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) });
+  if (!response.ok) throw new Error("Unable to rename saved map");
+  return (await responseJson(response)) as MapSnapshot;
 }
 export type MapRoleRequest = {
   id: string;

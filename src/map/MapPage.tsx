@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { FaFloppyDisk as FloppyDiskIcon, FaLink as LinkIcon, FaPaperPlane as PaperPlaneIcon } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
@@ -45,6 +46,9 @@ const entityTypes: MapEntityLocation["entityType"][] = [
   "EVENT",
   "SOURCE",
 ];
+const FaLink = LinkIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
+const FaFloppyDisk = FloppyDiskIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
+const FaPaperPlane = PaperPlaneIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
 
 function canProposePlace(viewer: Viewer | null): boolean {
   return Boolean(
@@ -140,6 +144,7 @@ export default function MapPage() {
     useState<MapPlaceProposalRecord | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
   const [snapshotStatus, setSnapshotStatus] = useState("");
+  const [showShare, setShowShare] = useState(false);
   const suggestionRequest = useRef(0);
   const entityFilterRequest = useRef(0);
   const appliedEntityFilterSignature = useRef<string | null>(null);
@@ -849,7 +854,7 @@ export default function MapPage() {
       await saveMapSnapshot({ title: title.trim(), reference: {
         ...(selectedPlace ? { placeId: selectedPlace.id, placeName: selectedPlace.canonicalName } : {}),
         latitude: lat, longitude: lng, radiusKm: Number(radius), entityTypes: types,
-      }});
+      }, ...(sharedScope?.type === "PROFILE" ? { profileId: sharedScope.id } : {}), ...(sharedScope ? { scope: { type: sharedScope.type === "USER" ? "PERSONAL" : sharedScope.type, ...(sharedScope.type === "USER" ? {} : { id: sharedScope.id }) } } : {})});
       setSnapshotStatus("Saved to your maps.");
     } catch (caught) { setSnapshotStatus((caught as Error).message); }
   };
@@ -893,6 +898,7 @@ export default function MapPage() {
           <p className="text-muted mb-0">
             Start with a place, then refine what appears on the map.
           </p>
+          {viewer && <Link className="btn btn-sm btn-outline-dark mt-2" to="/map/saved">Saved maps</Link>}
         </div>
         <div className="map-discovery-controls">
           <div className="map-place-search-and-coordinates">
@@ -1036,18 +1042,16 @@ export default function MapPage() {
               <Link className="btn btn-sm btn-dark" to={`/map/place/${encodeURIComponent(selectedPlace.id)}`}>
                 Open place
               </Link>
-              <Button type="button" size="sm" variant="outline-dark" onClick={() => void copyMapLink()}>
-                Copy map link
-              </Button>
-              <Button type="button" size="sm" variant="outline-dark" onClick={() => void saveCurrentMap()}>
-                Save map
-              </Button>
+              <Button type="button" size="sm" variant="outline-dark" title="Copy public map link" aria-label="Copy public map link" onClick={() => void copyMapLink()}><FaLink aria-hidden /></Button>
+              <Button type="button" size="sm" variant="outline-dark" title="Save map" aria-label="Save map" onClick={() => void saveCurrentMap()}><FaFloppyDisk aria-hidden /></Button>
+              <Button type="button" size="sm" variant="outline-dark" title="Send map" aria-label="Send map" onClick={() => setShowShare(true)}><FaPaperPlane aria-hidden /></Button>
             </div>
             {copyStatus && <span className="small text-muted">{copyStatus}</span>}
             {snapshotStatus && <span className="small text-muted">{snapshotStatus}</span>}
           </section>
         )}
       </section>
+      <Modal show={showShare} onHide={() => setShowShare(false)} centered><Modal.Header closeButton><Modal.Title>Send this map</Modal.Title></Modal.Header><Modal.Body><p>Save this map, then use the globe button in a chat, post, or comment to attach it. Attachments include only the public map view; entries a recipient cannot access remain hidden.</p><div className="d-flex gap-2"><Button variant="dark" onClick={() => { setShowShare(false); void saveCurrentMap(); }}>Save map</Button><Link className="btn btn-outline-dark" to="/chat" onClick={() => setShowShare(false)}>Open messages</Link></div></Modal.Body></Modal>
       {viewer && ownProposals.length > 0 && (
         <section className="club-panel mt-3" aria-label="Your place proposals">
           <h2 className="h5">Your place proposals</h2>

@@ -19,6 +19,9 @@ import {
   useCurrentProfileValue,
 } from "../profile/currentProfile";
 import type { Profile } from "../profile/profileTypes";
+import MapReferenceAttachment from "../map/MapReferenceAttachment";
+import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import type { PublicMapReference } from "../map/MapReferenceAttachment";
 import {
   createComment,
   deleteComment,
@@ -70,6 +73,7 @@ export default function CommentThread({
   const [owned, setOwned] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [mapReference, setMapReference] = useState<PublicMapReference | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [removing, setRemoving] = useState<Comment | null>(null);
@@ -149,7 +153,7 @@ export default function CommentThread({
     [owned],
   );
   const submit = async () => {
-    if (!draft.trim() || !selectedProfile) return;
+    if ((!draft.trim() && !mapReference) || !selectedProfile) return;
     setBusy(true);
     setError("");
     try {
@@ -157,10 +161,12 @@ export default function CommentThread({
         targetType,
         targetId,
         selectedProfile,
-        draft,
+        draft.trim() || "Shared a map",
+        mapReference || undefined,
       );
       setComments((current) => [...current, comment]);
       setDraft("");
+      setMapReference(null);
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -295,6 +301,7 @@ export default function CommentThread({
             ) : (
               <p className="comment-content">{comment.content}</p>
             )}
+            {comment.mapReference && <MapReferenceAttachment reference={comment.mapReference} />}
             <time className="text-muted small" dateTime={comment.createdAt}>
               {formatAppDateTime(comment.createdAt)}
               {comment.edited ? " · Edited" : ""}
@@ -334,11 +341,13 @@ export default function CommentThread({
               title="Post comment"
               size="1.75rem"
               fontSize="0.72rem"
-              disabled={busy || !draft.trim() || !selectedProfile}
+              disabled={busy || (!draft.trim() && !mapReference) || !selectedProfile}
               onClick={() => void submit()}
             >
               <SendIcon aria-hidden />
             </IconActionButton>
+            <MapSnapshotPicker onSelect={setMapReference} />
+            {mapReference && <SelectedMapPreview reference={mapReference} onRemove={() => setMapReference(null)} />}
           </div>
         </div>
       )}
