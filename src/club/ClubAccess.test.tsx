@@ -47,7 +47,7 @@ test('a failed optional members read leaves the Club page usable and shows a loc
     ? response({ detail: 'Profile service is unavailable' }, 503)
     : String(input).includes('/followers') ? response({ content: [], hasMore: false }) : response(club));
   const view = wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
-  expect(await screen.findByText('Name')).toBeInTheDocument();
+  expect(await screen.findByText('Club name')).toBeInTheDocument();
   expect(view.container.querySelector('.clubs-page')).not.toHaveClass('club-service-unavailable');
   expect(await screen.findByRole('alert')).toHaveTextContent('Profile service is unavailable');
 });

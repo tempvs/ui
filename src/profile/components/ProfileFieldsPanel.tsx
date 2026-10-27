@@ -95,7 +95,7 @@ export default function ProfileFieldsPanel({
       <EditableTextFieldRow
         label={
           isClubProfile
-            ? t("profile.field.clubNameRequired", "Club name *")
+            ? t("profile.field.nameRequired", "Name *")
             : t("profile.field.firstNameRequired", "First name *")
         }
         editable={editable}
