@@ -137,6 +137,7 @@ export default function MapPage() {
   );
   const [editingProposal, setEditingProposal] =
     useState<MapPlaceProposalRecord | null>(null);
+  const [copyStatus, setCopyStatus] = useState("");
   const suggestionRequest = useRef(0);
   const entityFilterRequest = useRef(0);
   const appliedEntityFilterSignature = useRef<string | null>(null);
@@ -821,6 +822,18 @@ export default function MapPage() {
   // view. Before that graph arrives, retain the focal place as feedback that
   // the copied link itself was understood.
   const mapFocus = sharedScope && visibleOwnedMarkers.length ? null : focus;
+  const selectedPlace = useMemo(
+    () => items.find((place) => place.id === selectedPlaceId) || null,
+    [items, selectedPlaceId],
+  );
+  const copyMapLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopyStatus("Map link copied.");
+    } catch {
+      setCopyStatus("Copy the address from your browser to share this map.");
+    }
+  };
 
   return (
     <PageLayout
@@ -990,6 +1003,26 @@ export default function MapPage() {
           <Alert className="mt-3 mb-0" variant="danger">
             {error}
           </Alert>
+        )}
+        {selectedPlace && (
+          <section className="map-selected-place-card" aria-label="Selected place">
+            <div>
+              <span className="small text-muted">Selected place</span>
+              <strong>{selectedPlace.matchedName || selectedPlace.canonicalName}</strong>
+              <span className="small text-muted">
+                {selectedPlace.featureType.replaceAll("_", " ")} · {visibleEntities.length} nearby item{visibleEntities.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <div className="d-flex gap-2 flex-wrap">
+              <Link className="btn btn-sm btn-dark" to={`/map/place/${encodeURIComponent(selectedPlace.id)}`}>
+                Open place
+              </Link>
+              <Button type="button" size="sm" variant="outline-dark" onClick={() => void copyMapLink()}>
+                Copy map link
+              </Button>
+            </div>
+            {copyStatus && <span className="small text-muted">{copyStatus}</span>}
+          </section>
         )}
       </section>
       {viewer && ownProposals.length > 0 && (

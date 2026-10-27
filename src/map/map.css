@@ -105,6 +105,58 @@
   color: #8c704a;
 }
 
+.place-editor-steps {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: place-editor-step;
+}
+
+.place-editor-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  background: #f0eadc;
+  color: #5c4b37;
+  font-size: 0.78rem;
+}
+
+.place-editor-steps li::before {
+  content: counter(place-editor-step);
+  counter-increment: place-editor-step;
+  display: grid;
+  width: 1.1rem;
+  height: 1.1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #584732;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.place-editor-summary {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #d4c9b5;
+  border-radius: 0.45rem;
+  background: #fffdf7;
+}
+
+.place-editor-summary summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.map-page .club-panel > .map-canvas-shell {
+  min-height: 20rem;
+  margin-bottom: 0.3rem;
+}
+
 .map-place-suggestions {
   position: absolute;
   z-index: 4;
@@ -310,6 +362,27 @@
   font-size: inherit;
 }
 
+.map-selected-place-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbb58a;
+  border-radius: 0.5rem;
+  background: #faf3e5;
+}
+
+.map-selected-place-card > div:first-child {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.map-selected-place-card strong {
+  color: #332c24;
+}
+
 .map-coordinate-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -364,6 +437,11 @@
     justify-self: start;
   }
   .map-active-filter-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .map-selected-place-card {
     align-items: flex-start;
     flex-direction: column;
   }

@@ -8,11 +8,13 @@ import PlaceSearchAutocomplete from "../component/PlaceSearchAutocomplete";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
 import {
+  findLikelyDuplicateMapPlaces,
   getMapPlace,
   proposeMapPlaceChangeset,
   searchMapPlaces,
   type MapPlace,
 } from "./mapApi";
+import MapCanvas from "./MapCanvas";
 
 type MapPlaceEditPageProps = { id?: string };
 type ChangeMode = "UPDATE" | "DELETE" | "MERGE";
@@ -88,6 +90,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [savedDraft, setSavedDraft] = useState<PlaceEditDraft | null>(null);
+  const [likelyDuplicates, setLikelyDuplicates] = useState<MapPlace[]>([]);
 
   useEffect(() => {
     void getViewer({ refreshRoles: true }).then(setViewer);
@@ -140,6 +143,35 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
       window.clearTimeout(timer);
     };
   }, [mergeQuery, mode, place?.id]);
+
+  useEffect(() => {
+    if (
+      mode !== "UPDATE" ||
+      name.trim().length < 2 ||
+      !validCoordinates(latitude, longitude)
+    ) {
+      setLikelyDuplicates([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void findLikelyDuplicateMapPlaces(
+        name.trim(),
+        Number(latitude),
+        Number(longitude),
+        controller.signal,
+      )
+        .then((results) =>
+          !controller.signal.aborted &&
+          setLikelyDuplicates(results.filter((result) => result.id !== place?.id)),
+        )
+        .catch(() => !controller.signal.aborted && setLikelyDuplicates([]));
+    }, 300);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [latitude, longitude, mode, name, place?.id]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -277,6 +309,16 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
     window.localStorage.removeItem(draftKey(place.id));
     setSavedDraft(null);
   };
+  const changeSummary = place ? summarizeChanges(place, {
+    name,
+    featureType,
+    latitude,
+    longitude,
+    description,
+    citationUrl,
+    names,
+    historicalEvents,
+  }) : [];
   return (
     <PageLayout
       className="map-page"
@@ -303,6 +345,12 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
             administration before submitting changes.
           </Alert>
         )}
+        <ol className="place-editor-steps" aria-label="Place editing steps">
+          <li>Name and type</li>
+          <li>Location</li>
+          <li>Historical context</li>
+          <li>Evidence and review</li>
+        </ol>
         {editable && savedDraft && !submitted && (
           <Alert variant="secondary" className="d-flex flex-wrap align-items-center gap-2">
             <span>
@@ -339,7 +387,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
             </Form.Group>
             {mode === "UPDATE" && (
               <>
-                <Form.Group className="mb-2">
+                <Form.Group id="place-editor-name" className="mb-2">
                   <Form.Label>Canonical name</Form.Label>
                   <Form.Control
                     value={name}
@@ -361,7 +409,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     ))}
                   </Form.Select>
                 </Form.Group>
-                <div className="d-flex gap-2">
+                <div id="place-editor-location" className="d-flex gap-2">
                   <Form.Group className="mb-2 flex-fill">
                     <Form.Label>Latitude</Form.Label>
                     <Form.Control
@@ -381,6 +429,38 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     />
                   </Form.Group>
                 </div>
+                <MapCanvas
+                  places={[place]}
+                  entities={[]}
+                  focus={{ latitude: Number(latitude) || place.latitude, longitude: Number(longitude) || place.longitude }}
+                  pickedCoordinate={validCoordinates(latitude, longitude) ? { latitude: Number(latitude), longitude: Number(longitude) } : null}
+                  showModernBorders={false}
+                  onEntitySelect={() => undefined}
+                  onCoordinatePick={(coordinate) => {
+                    setLatitude(coordinate.latitude.toFixed(6));
+                    setLongitude(coordinate.longitude.toFixed(6));
+                  }}
+                  onMapError={() => undefined}
+                />
+                <Form.Text className="d-block mb-3">
+                  Click the map to refine the coordinates. The pin is the proposed location.
+                </Form.Text>
+                {likelyDuplicates.length > 0 && (
+                  <Alert variant="warning">
+                    <strong>Possible existing places nearby</strong>
+                    <ul className="mb-0 mt-1">
+                      {likelyDuplicates.map((candidate) => (
+                        <li key={candidate.id}>
+                          <Link to={`/map/place/${encodeURIComponent(candidate.id)}`}>
+                            {candidate.canonicalName}
+                          </Link>{" "}
+                          ({candidate.featureType.replaceAll("_", " ")})
+                        </li>
+                      ))}
+                    </ul>
+                    Open an existing place if it represents the same location, or continue when this is genuinely distinct.
+                  </Alert>
+                )}
                 <Form.Group className="mb-2">
                   <Form.Label>Description</Form.Label>
                   <Form.Control
@@ -400,7 +480,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     disabled={!editable}
                   />
                 </Form.Group>
-                <fieldset className="border rounded p-3 mb-3">
+                <fieldset id="place-editor-history" className="border rounded p-3 mb-3">
                   <legend className="float-none w-auto px-2 fs-6 mb-0">
                     Historical names
                   </legend>
@@ -618,7 +698,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 Merge instead to retain and reassign resources.
               </Alert>
             )}
-            <Form.Group className="mb-3">
+            <Form.Group id="place-editor-review" className="mb-3">
               <Form.Label>Reason for review</Form.Label>
               <Form.Control
                 as="textarea"
@@ -632,6 +712,14 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
               />
             </Form.Group>
             {error && <Alert variant="danger">{error}</Alert>}
+            {mode === "UPDATE" && changeSummary.length > 0 && (
+              <details className="place-editor-summary mb-3">
+                <summary>Review proposed changes ({changeSummary.length})</summary>
+                <ul className="mb-0 mt-2">
+                  {changeSummary.map((change) => <li key={change}>{change}</li>)}
+                </ul>
+              </details>
+            )}
             <div className="d-flex gap-2">
               <Link
                 className="btn btn-outline-secondary"
@@ -749,4 +837,34 @@ function readDraft(placeId: string): PlaceEditDraft | null {
   } catch {
     return null;
   }
+}
+
+function summarizeChanges(
+  place: MapPlace,
+  draft: Pick<
+    PlaceEditDraft,
+    | "name"
+    | "featureType"
+    | "latitude"
+    | "longitude"
+    | "description"
+    | "citationUrl"
+    | "names"
+    | "historicalEvents"
+  >,
+): string[] {
+  const changes: string[] = [];
+  if (draft.name.trim() !== place.canonicalName) changes.push("Changed canonical name");
+  if (draft.featureType !== place.featureType) changes.push("Changed place type");
+  if (Number(draft.latitude) !== place.latitude || Number(draft.longitude) !== place.longitude)
+    changes.push("Changed map coordinates");
+  if (draft.description.trim() !== (place.description || "").trim())
+    changes.push("Changed description");
+  if (draft.citationUrl.trim() !== (place.citationUrl || "").trim())
+    changes.push("Changed evidence URL");
+  if (JSON.stringify(draft.names) !== JSON.stringify(nameDrafts(place)))
+    changes.push("Changed historical names");
+  if (JSON.stringify(draft.historicalEvents) !== JSON.stringify(historicalEventDrafts(place)))
+    changes.push("Changed important dates or events");
+  return changes;
 }
