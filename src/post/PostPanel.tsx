@@ -18,6 +18,7 @@ import MapReferenceAttachment, {
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
 import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import { takeStagedMapAttachment } from "../map/pendingMapAttachment";
 import {
   buildProfileLabel,
   resolveCurrentOwnedProfileId,
@@ -89,6 +90,8 @@ export default function PostPanel({
   >(null);
   const [draft, setDraft] = useState("");
   const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
+  const [editMapReference, setEditMapReference] = useState<PublicMapReference | null>(null);
+  const [editMapChanged, setEditMapChanged] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editAuthorProfileId, setEditAuthorProfileId] = useState<string | null>(
@@ -136,6 +139,7 @@ export default function PostPanel({
       active = false;
     };
   }, []);
+  useEffect(() => { const staged = takeStagedMapAttachment(); if (staged) setSelectedMapReference(staged); }, []);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
@@ -275,7 +279,7 @@ export default function PostPanel({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             content: editDraft,
-            authorProfileId: editAuthorProfileId,
+            authorProfileId: editAuthorProfileId, ...(editMapChanged ? { mapReference: editMapReference } : {}),
           }),
         },
       );
@@ -299,6 +303,8 @@ export default function PostPanel({
   const beginEditing = (post: Post) => {
     setEditingPostId(post.id);
     setEditDraft(post.content);
+    setEditMapReference(post.mapReference || null);
+    setEditMapChanged(false);
     // Editing starts with the author already assigned to the post. The
     // current picker selection is only a fallback for legacy posts which did
     // not persist an author profile.
@@ -466,6 +472,8 @@ export default function PostPanel({
                             setEditingPostId(null);
                             setEditDraft("");
                             setEditAuthorProfileId(null);
+      setEditMapReference(null);
+      setEditMapChanged(false);
                           }}
                           size="1.75rem"
                           fontSize="0.72rem"
@@ -473,6 +481,8 @@ export default function PostPanel({
                           <CancelIcon aria-hidden />
                         </IconActionButton>
                       </div>
+                      <MapSnapshotPicker onSelect={(reference) => { setEditMapReference(reference); setEditMapChanged(true); }} />
+                      {editMapReference && <SelectedMapPreview reference={editMapReference} onRemove={() => { setEditMapReference(null); setEditMapChanged(true); }} />}
                     </div>
                   </div>
                 ) : (

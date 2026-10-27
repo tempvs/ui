@@ -39,6 +39,8 @@ import { appendSharedMapScope, parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
 import { matchingPlaceName } from "./placeNames";
 import { preferSourceDiscoveryLocations } from "./sourceLocationPreference";
+import { stageMapAttachment } from "./pendingMapAttachment";
+import type { PublicMapReference } from "./MapReferenceAttachment";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -841,22 +843,24 @@ export default function MapPage() {
       setCopyStatus("Copy the address from your browser to share this map.");
     }
   };
-  const saveCurrentMap = async () => {
+  const saveCurrentMap = async (): Promise<PublicMapReference | null> => {
     const lat = Number(latitude);
     const lng = Number(longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       setSnapshotStatus("Choose a place or coordinates before saving a map.");
-      return;
+      return null;
     }
     const title = window.prompt("Name this saved map", selectedPlace?.canonicalName || "Saved map");
-    if (!title?.trim()) return;
+    if (!title?.trim()) return null;
     try {
-      await saveMapSnapshot({ title: title.trim(), reference: {
+      const reference: PublicMapReference = {
         ...(selectedPlace ? { placeId: selectedPlace.id, placeName: selectedPlace.canonicalName } : {}),
         latitude: lat, longitude: lng, radiusKm: Number(radius), entityTypes: types,
-      }, ...(sharedScope?.type === "PROFILE" ? { profileId: sharedScope.id } : {}), ...(sharedScope ? { scope: { type: sharedScope.type === "USER" ? "PERSONAL" : sharedScope.type, ...(sharedScope.type === "USER" ? {} : { id: sharedScope.id }) } } : {})});
+      };
+      await saveMapSnapshot({ title: title.trim(), reference, ...(sharedScope?.type === "PROFILE" ? { profileId: sharedScope.id } : {}), ...(sharedScope ? { scope: { type: sharedScope.type === "USER" ? "PERSONAL" : sharedScope.type, ...(sharedScope.type === "USER" ? {} : { id: sharedScope.id }) } } : {})});
       setSnapshotStatus("Saved to your maps.");
-    } catch (caught) { setSnapshotStatus((caught as Error).message); }
+      return reference;
+    } catch (caught) { setSnapshotStatus((caught as Error).message); return null; }
   };
 
   return (
@@ -1051,7 +1055,7 @@ export default function MapPage() {
           </section>
         )}
       </section>
-      <Modal show={showShare} onHide={() => setShowShare(false)} centered><Modal.Header closeButton><Modal.Title>Send this map</Modal.Title></Modal.Header><Modal.Body><p>Save this map, then use the globe button in a chat, post, or comment to attach it. Attachments include only the public map view; entries a recipient cannot access remain hidden.</p><div className="d-flex gap-2"><Button variant="dark" onClick={() => { setShowShare(false); void saveCurrentMap(); }}>Save map</Button><Link className="btn btn-outline-dark" to="/chat" onClick={() => setShowShare(false)}>Open messages</Link></div></Modal.Body></Modal>
+      <Modal show={showShare} onHide={() => setShowShare(false)} centered><Modal.Header closeButton><Modal.Title>Send this map</Modal.Title></Modal.Header><Modal.Body><p>Choose a destination. The map is saved first, then attached to the destination composer. Attachments include only the public map view; entries a recipient cannot access remain hidden.</p><div className="d-flex gap-2 flex-wrap"><Button variant="dark" onClick={() => { void saveCurrentMap(); }}>Save only</Button><Link className="btn btn-outline-dark" to="/chat" onClick={(event) => { event.preventDefault(); void saveCurrentMap().then((reference) => { if (reference) { stageMapAttachment(reference); navigate("/chat"); setShowShare(false); } }); }}>Direct or group chat</Link>{sharedScope && sharedScope.type !== "USER" && <Link className="btn btn-outline-dark" to={sharedScope.type === "PROFILE" ? `/profile/${sharedScope.id}` : sharedScope.type === "CLUB" ? `/clubs/${sharedScope.id}` : `/events/${sharedScope.id}`} onClick={(event) => { event.preventDefault(); void saveCurrentMap().then((reference) => { if (reference) { stageMapAttachment(reference); navigate(sharedScope.type === "PROFILE" ? `/profile/${sharedScope.id}` : sharedScope.type === "CLUB" ? `/clubs/${sharedScope.id}` : `/events/${sharedScope.id}`); setShowShare(false); } }); }}>{sharedScope.type[0] + sharedScope.type.slice(1).toLowerCase()} wall</Link>}</div></Modal.Body></Modal>
       {viewer && ownProposals.length > 0 && (
         <section className="club-panel mt-3" aria-label="Your place proposals">
           <h2 className="h5">Your place proposals</h2>

@@ -20,6 +20,7 @@ import {
 import { Profile } from "../profile/profileTypes";
 import MapReferenceAttachment, { type PublicMapReference } from "../map/MapReferenceAttachment";
 import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import { takeStagedMapAttachment } from "../map/pendingMapAttachment";
 import {
   activeProfileNotFoundId,
   createConversation,
@@ -163,6 +164,7 @@ export default function ChatPage() {
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [messageDraft, setMessageDraft] = useState("");
   const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
+  useEffect(() => { const staged = takeStagedMapAttachment(); if (staged) setSelectedMapReference(staged); }, []);
   const [participantQuery, setParticipantQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<Profile[]>([]);
   const [participantLoading, setParticipantLoading] = useState(false);
