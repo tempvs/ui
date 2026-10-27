@@ -44,7 +44,7 @@ export default function ClubFieldsPanel({
   return (
     <section className="club-panel">
       <EditableTextFieldRow
-        label="Club name"
+        label="Name"
         editable={editable}
         value={club.name}
         readOnlyValue={club.name}
