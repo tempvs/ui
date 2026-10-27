@@ -1,6 +1,5 @@
 import React from 'react';
 
-import ConfirmingTrashButton from '../../../component/ConfirmingTrashButton';
 import InlineEditableText from '../../../component/InlineEditableText';
 import PlusActionButton from '../../../component/PlusActionButton';
 import { SaveStatus } from '../../../component/EditableFieldRow';
@@ -18,7 +17,6 @@ type StashCollectionHeaderProps = {
   onFieldChange: (field: FieldName, value: string) => void;
   onFieldBlur: (field: FieldName) => void;
   onAddItem: () => void;
-  onDelete: () => void;
 };
 
 export default function StashCollectionHeader({
@@ -31,7 +29,6 @@ export default function StashCollectionHeader({
   onFieldChange,
   onFieldBlur,
   onAddItem,
-  onDelete,
 }: StashCollectionHeaderProps) {
   const groupDescription = draft?.description || group.description || '';
   const groupDescriptionMissing = !groupDescription;
@@ -74,17 +71,6 @@ export default function StashCollectionHeader({
           <PlusActionButton
             title={t('profile.stash.itemCreate', 'Add item')}
             onClick={onAddItem}
-          />
-          <ConfirmingTrashButton
-            title={t('profile.stash.groupDelete', 'Delete collection')}
-            confirmTitle={t('profile.stash.groupDelete', 'Delete collection')}
-            confirmMessage={t('profile.stash.groupDeleteConfirm', 'Delete this collection and all of its items?')}
-            onConfirm={onDelete}
-            borderColor="#c77d7d"
-            color="#8e2323"
-            backgroundColor="#fff"
-            size="1.9rem"
-            fontSize="0.9rem"
           />
         </div>
       )}

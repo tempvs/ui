@@ -31,22 +31,29 @@ export default function DismissibleCoachmark({
   const anchorRef = useRef<HTMLSpanElement>(null);
   const coachmarkRef = useRef<HTMLSpanElement>(null);
   const [position, setPosition] = useState<CoachmarkPosition | null>(null);
-  const [dismissed, setDismissed] = useState(() => {
+  const dismissedFor = useRef<string | null>(null);
+  const isDismissed = () => {
+    if (dismissedFor.current === id) {
+      return true;
+    }
+
     try {
       return window.sessionStorage.getItem(storageKey) === "dismissed";
     } catch {
       return false;
     }
-  });
+  };
+  const [, setDismissalVersion] = useState(0);
   const close = () => {
-    setDismissed(true);
+    dismissedFor.current = id;
+    setDismissalVersion((version) => version + 1);
     try {
       window.sessionStorage.setItem(storageKey, "dismissed");
     } catch {
       // The hint remains dismissible even where browser storage is unavailable.
     }
   };
-  const shown = visible && !dismissed;
+  const shown = visible && !isDismissed();
 
   const updatePosition = useCallback(() => {
     const anchor = anchorRef.current;
@@ -73,7 +80,10 @@ export default function DismissibleCoachmark({
 
     const desiredLeft = side === "right" ? rightLeft : leftLeft;
     const left = Math.max(margin, Math.min(desiredLeft, viewportWidth - coachmarkRect.width - margin));
-    const desiredTop = anchorRect.top + anchorRect.height / 2 - coachmarkRect.height / 2;
+    // Keep the comic-style pointer in the upper portion of the hint instead of
+    // its centre, where it reads more clearly as connected to the action.
+    const desiredTop =
+      anchorRect.top + anchorRect.height / 2 - coachmarkRect.height * 0.3;
     const top = Math.max(margin, Math.min(desiredTop, viewportHeight - coachmarkRect.height - margin));
     const pointerTop = Math.max(
       14,

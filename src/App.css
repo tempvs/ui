@@ -82,7 +82,7 @@ html {
 
 .dismissible-coachmark::before {
   position: absolute;
-  top: calc(var(--coachmark-pointer-top) - 0.55rem);
+  top: calc(var(--coachmark-pointer-top) - 0.75rem);
   width: 0;
   height: 0;
   content: "";
@@ -90,38 +90,38 @@ html {
 
 .dismissible-coachmark::after {
   position: absolute;
-  top: calc(var(--coachmark-pointer-top) - 0.42rem);
+  top: calc(var(--coachmark-pointer-top) - 0.58rem);
   width: 0;
   height: 0;
   content: "";
 }
 
 .dismissible-coachmark--right::before {
-  left: -0.6rem;
-  border-top: 0.55rem solid transparent;
-  border-right: 0.6rem solid rgba(125, 94, 47, 0.55);
-  border-bottom: 0.55rem solid transparent;
+  left: -0.82rem;
+  border-top: 0.75rem solid transparent;
+  border-right: 0.82rem solid rgba(125, 94, 47, 0.72);
+  border-bottom: 0.75rem solid transparent;
 }
 
 .dismissible-coachmark--right::after {
-  left: -0.48rem;
-  border-top: 0.42rem solid transparent;
-  border-right: 0.48rem solid #fffefd;
-  border-bottom: 0.42rem solid transparent;
+  left: -0.66rem;
+  border-top: 0.58rem solid transparent;
+  border-right: 0.66rem solid #fffefd;
+  border-bottom: 0.58rem solid transparent;
 }
 
 .dismissible-coachmark--left::before {
-  right: -0.6rem;
-  border-top: 0.55rem solid transparent;
-  border-bottom: 0.55rem solid transparent;
-  border-left: 0.6rem solid rgba(125, 94, 47, 0.55);
+  right: -0.82rem;
+  border-top: 0.75rem solid transparent;
+  border-bottom: 0.75rem solid transparent;
+  border-left: 0.82rem solid rgba(125, 94, 47, 0.72);
 }
 
 .dismissible-coachmark--left::after {
-  right: -0.48rem;
-  border-top: 0.42rem solid transparent;
-  border-bottom: 0.42rem solid transparent;
-  border-left: 0.48rem solid #fffefd;
+  right: -0.66rem;
+  border-top: 0.58rem solid transparent;
+  border-bottom: 0.58rem solid transparent;
+  border-left: 0.66rem solid #fffefd;
 }
 
 .dismissible-coachmark button {
@@ -2367,11 +2367,22 @@ button.stash-item-media-empty:disabled {
   text-align: left;
 }
 
-.stash-hero-manage {
-  display: flex;
-  flex-wrap: wrap;
+.stash-management-list {
+  display: grid;
   gap: 0.5rem;
-  margin-top: 0.8rem;
+}
+
+.stash-management-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(138, 123, 91, 0.18);
+}
+
+.stash-management-row:last-child {
+  border-bottom: 0;
 }
 
 .stash-items-pane,

@@ -7,13 +7,14 @@ import React, {
   useState,
 } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { FaArrowLeft, FaPlus, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaPlus, FaTimes, FaTrashAlt } from "react-icons/fa";
 import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import ConfirmationModal from "../component/ConfirmationModal";
 import DismissibleCoachmark from "../component/DismissibleCoachmark";
+import IconActionButton from "../component/IconActionButton";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import InlineEditableText from "../component/InlineEditableText";
 import ImmediateImageUploadModal from "../component/ImmediateImageUploadModal";
@@ -64,6 +65,7 @@ const ArrowLeftIcon = FaArrowLeft as React.ComponentType<{
 }>;
 const CloseIcon = FaTimes as React.ComponentType<{ className?: string }>;
 const PlusIcon = FaPlus as React.ComponentType<{ className?: string }>;
+const TrashIcon = FaTrashAlt as React.ComponentType<{ className?: string }>;
 
 type IdRecord<T> = Record<string, T>;
 
@@ -388,6 +390,7 @@ export default function StashOverview({
     null,
   );
   const [groupDeleteSubmitting, setGroupDeleteSubmitting] = useState(false);
+  const [stashManagementVisible, setStashManagementVisible] = useState(false);
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(
     null,
   );
@@ -1393,6 +1396,15 @@ export default function StashOverview({
               )}
             </div>
           </div>
+          {isEditable && (
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setStashManagementVisible(true)}
+            >
+              {t("profile.stash.manage", "Manage stash")}
+            </Button>
+          )}
         </div>
 
         {feedback && <div className="stash-feedback-note">{feedback}</div>}
@@ -1408,7 +1420,7 @@ export default function StashOverview({
               <div className="stash-collection-tab-list" />
               {isEditable && (
                 <DismissibleCoachmark
-                  id={`create-first-collection:${profile.id}:v2`}
+                  id={`create-first-collection:${profile.id}:v3`}
                   visible
                   message="Add a photo of yourself, then add your items and their images."
                 >
@@ -1761,17 +1773,6 @@ export default function StashOverview({
                           "profile.stash.markerHelper",
                           "Click on the image to place or move the arrow.",
                         )}
-                      </div>
-                    )}
-                    {isEditable && (
-                      <div className="stash-hero-manage">
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => setGroupDeleteTarget(activeGroup)}
-                        >
-                          {t("profile.stash.groupDelete", "Delete collection")}
-                        </Button>
                       </div>
                     )}
                   </div>
@@ -2193,6 +2194,57 @@ export default function StashOverview({
         uploading={groupImageUploading}
         uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
       />
+
+      <Modal
+        show={stashManagementVisible}
+        onHide={() => !groupDeleteSubmitting && setStashManagementVisible(false)}
+        centered
+      >
+        <Modal.Header closeButton={!groupDeleteSubmitting}>
+          <Modal.Title>{t("profile.stash.manage", "Manage stash")}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {groups.length > 0 ? (
+            <div className="stash-management-list">
+              {groups.map((group) => (
+                <div className="stash-management-row" key={group.id}>
+                  <div>
+                    <div className="fw-semibold">
+                      {group.name || t("profile.stash.groupName", "Collection")}
+                    </div>
+                    <div className="small text-muted">
+                      {(itemsByGroup[toRecordKey(group.id)] || []).length}{" "}
+                      {t("profile.stash.itemsCount", "item(s)")}
+                    </div>
+                  </div>
+                  <IconActionButton
+                    title={t("profile.stash.groupDelete", "Delete collection")}
+                    onClick={() => setGroupDeleteTarget(group)}
+                    borderColor="#c77d7d"
+                    color="#8e2323"
+                    backgroundColor="#fff"
+                  >
+                    <TrashIcon />
+                  </IconActionButton>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-muted small">
+              {t("profile.stash.emptyTitle", "No collections yet")}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setStashManagementVisible(false)}
+            disabled={groupDeleteSubmitting}
+          >
+            {t("profile.action.close", "Close")}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <ConfirmationModal
         show={Boolean(groupDeleteTarget)}
