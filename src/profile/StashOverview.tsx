@@ -1398,7 +1398,7 @@ export default function StashOverview({
               <div className="stash-collection-tab-list" />
               {isEditable && (
                 <DismissibleCoachmark
-                  id={`create-first-collection:${profile.id}`}
+                  id={`create-first-collection:${profile.id}:v2`}
                   visible
                   message="Add a photo of yourself, then add your items and their images."
                 >
