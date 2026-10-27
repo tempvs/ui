@@ -16,6 +16,7 @@ import {
   nearbyMapPlaces,
   searchMapPlaces,
   nearbyMapEntitiesPage,
+  saveMapSnapshot,
 } from "./mapApi";
 import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
@@ -72,6 +73,7 @@ jest.mock("./mapApi", () => ({
   nearbyMapEntitiesPage: jest.fn(),
   getMapPlace: jest.fn(),
   listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),
+  saveMapSnapshot: jest.fn(),
 }));
 
 jest.mock("./ownedMapContent", () => ({
@@ -93,6 +95,7 @@ const mockGetViewer = jest.mocked(getViewer);
 const mockGetMapPlace = jest.mocked(getMapPlace);
 const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
 const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
+const mockSaveMapSnapshot = jest.mocked(saveMapSnapshot);
 
 function LocationProbe() {
   const location = useLocation();
@@ -115,6 +118,7 @@ beforeEach(() => {
   mockListMyMapPlaceProposals.mockResolvedValue([]);
   mockLoadSharedMapScope.mockResolvedValue({ markers: [], connections: [] });
   mockLoadOwnedMapContent.mockResolvedValue({ markers: [], connections: [] });
+  mockSaveMapSnapshot.mockResolvedValue({} as never);
 });
 
 test("starts with empty temporal filters", () => {
@@ -661,4 +665,19 @@ test("frames every related marker after a shared graph has loaded", async () => 
     ),
   );
   expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-focus", "");
+});
+
+test("saves a selected map and opens the send-destination dialog", async () => {
+  const prompt = jest.spyOn(window, "prompt").mockReturnValue("Rome map");
+  render(
+    <MemoryRouter initialEntries={["/map?placeId=seed%3Arome&q=Rome&lat=41.9&lng=12.5&radiusKm=25"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  const save = await screen.findByRole("button", { name: "Save map" });
+  fireEvent.click(save);
+  await waitFor(() => expect(mockSaveMapSnapshot).toHaveBeenCalledWith(expect.objectContaining({ title: "Rome map", reference: expect.objectContaining({ placeId: "seed:rome" }) })));
+  fireEvent.click(screen.getByRole("button", { name: "Send map" }));
+  expect(await screen.findByText("Send this map")).toBeInTheDocument();
+  prompt.mockRestore();
 });
