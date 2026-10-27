@@ -52,7 +52,9 @@ html {
 
 .dismissible-coachmark {
   position: fixed;
-  z-index: 20;
+  /* Coachmarks are rendered through a portal and must remain above the fixed
+     page header and its menus. */
+  z-index: 1300;
   display: flex;
   align-items: center;
   gap: 0.35rem;

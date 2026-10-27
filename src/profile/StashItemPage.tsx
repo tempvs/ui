@@ -899,7 +899,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
             </div>
             {isEditable && (
               <DismissibleCoachmark
-                id={`link-first-source:${profile.id}:v2`}
+                id={`link-first-source:${profile.id}:v3`}
                 visible={!profileHasLinkedSources}
                 message="Support your items with known sources."
               >

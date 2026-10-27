@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { injectIntl, IntlShape } from "react-intl";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
 import { PageColumn, PageColumns } from "../component/PageColumns";
@@ -201,6 +201,14 @@ function StashPage({ intl }: StashPageProps) {
             ]}
           />
         ),
+        rightContent: isEditable ? (
+          <Link
+            className="btn btn-outline-dark"
+            to={`/stash/${profile.alias || profile.id}/admin`}
+          >
+            {t("profile.stash.manage", "Manage stash")}
+          </Link>
+        ) : null,
         backgroundColor: "#f8f4ea",
         borderColor: "#d8c7a1",
       }}
