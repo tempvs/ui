@@ -12,6 +12,7 @@ import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
+import ConfirmationModal from "../component/ConfirmationModal";
 import DismissibleCoachmark from "../component/DismissibleCoachmark";
 import EditableDescriptionField from "../component/EditableDescriptionField";
 import InlineEditableText from "../component/InlineEditableText";
@@ -383,6 +384,10 @@ export default function StashOverview({
   const [itemOrderByGroup, setItemOrderByGroup] = useState<IdRecord<Id[]>>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
   const [groupCreateSubmitting, setGroupCreateSubmitting] = useState(false);
+  const [groupDeleteTarget, setGroupDeleteTarget] = useState<StashGroup | null>(
+    null,
+  );
+  const [groupDeleteSubmitting, setGroupDeleteSubmitting] = useState(false);
   const [itemCreateTarget, setItemCreateTarget] = useState<StashGroup | null>(
     null,
   );
@@ -1148,8 +1153,11 @@ export default function StashOverview({
   }
 
   async function handleDeleteGroup(group: StashGroup) {
+    setGroupDeleteSubmitting(true);
+    setFeedback(null);
     try {
       await deleteStashGroup(group.id);
+      setGroupDeleteTarget(null);
       await loadStash();
     } catch (error) {
       setFeedback(
@@ -1158,6 +1166,8 @@ export default function StashOverview({
           "Unable to delete this collection.",
         ),
       );
+    } finally {
+      setGroupDeleteSubmitting(false);
     }
   }
 
@@ -1758,7 +1768,7 @@ export default function StashOverview({
                         <Button
                           variant="outline-danger"
                           size="sm"
-                          onClick={() => handleDeleteGroup(activeGroup)}
+                          onClick={() => setGroupDeleteTarget(activeGroup)}
                         >
                           {t("profile.stash.groupDelete", "Delete collection")}
                         </Button>
@@ -2182,6 +2192,22 @@ export default function StashOverview({
         onFileChange={handleUploadGroupImage}
         uploading={groupImageUploading}
         uploadingText={t("profile.stash.itemImageUploading", "Uploading...")}
+      />
+
+      <ConfirmationModal
+        show={Boolean(groupDeleteTarget)}
+        title={t("profile.stash.groupDelete", "Delete collection")}
+        message={t(
+          "profile.stash.groupDeleteConfirm",
+          "Delete this collection and all of its items, images, and source assignments? Sources themselves will not be deleted.",
+        )}
+        confirmLabel={t("profile.stash.groupDelete", "Delete collection")}
+        cancelLabel={t("profile.action.cancel", "Cancel")}
+        busy={groupDeleteSubmitting}
+        onHide={() => setGroupDeleteTarget(null)}
+        onConfirm={() => {
+          if (groupDeleteTarget) void handleDeleteGroup(groupDeleteTarget);
+        }}
       />
     </div>
   );

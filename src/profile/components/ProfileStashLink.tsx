@@ -40,7 +40,7 @@ export default function ProfileStashLink({
 
   return (
     <DismissibleCoachmark
-      id={`open-owned-items:${profileId}`}
+      id={`open-owned-items:${profileId}:v2`}
       visible={editable && !hasItems}
       message="Add items you own."
       className="profile-stash-coachmark"
