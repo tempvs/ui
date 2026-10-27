@@ -18,7 +18,8 @@ import {
   searchProfiles,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import MapReferenceAttachment from "../map/MapReferenceAttachment";
+import MapReferenceAttachment, { type PublicMapReference } from "../map/MapReferenceAttachment";
+import MapSnapshotPicker from "../map/MapSnapshotPicker";
 import {
   activeProfileNotFoundId,
   createConversation,
@@ -161,6 +162,7 @@ export default function ChatPage() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [messageDraft, setMessageDraft] = useState("");
+  const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
   const [participantQuery, setParticipantQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<Profile[]>([]);
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -662,7 +664,7 @@ export default function ChatPage() {
     if (
       !selectedConversation ||
       selectedSenderId == null ||
-      !messageDraft.trim()
+      (!messageDraft.trim() && !selectedMapReference)
     ) {
       return;
     }
@@ -670,7 +672,8 @@ export default function ChatPage() {
     try {
       const payload = {
         senderProfileId: selectedSenderId,
-        text: messageDraft,
+        text: messageDraft.trim() || "Shared a map",
+        ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify({
         conversationId: selectedConversation.id,
@@ -688,6 +691,7 @@ export default function ChatPage() {
       );
       sendRequestRef.current = null;
       setMessageDraft("");
+      setSelectedMapReference(null);
       setSelectedConversation(details);
       setFeedback(null);
       await refreshConversations(details.id);
@@ -988,6 +992,7 @@ export default function ChatPage() {
                   disabled={!canSend}
                 />
                 <div className="chat-composer-actions">
+                  <MapSnapshotPicker onSelect={setSelectedMapReference} />
                   {!canSend && (
                     <span className="chat-composer-hint">
                       <FormattedMessage
@@ -999,7 +1004,7 @@ export default function ChatPage() {
                   <Button
                     className="chat-action-button"
                     type="submit"
-                    disabled={!canSend || !messageDraft.trim()}
+                    disabled={!canSend || (!messageDraft.trim() && !selectedMapReference)}
                   >
                     <FormattedMessage
                       id="chat.sendButton"

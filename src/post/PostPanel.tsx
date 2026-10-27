@@ -17,6 +17,7 @@ import CommentThread from "../comment/CommentThread";
 import MapReferenceAttachment, {
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
+import MapSnapshotPicker from "../map/MapSnapshotPicker";
 import {
   buildProfileLabel,
   resolveCurrentOwnedProfileId,
@@ -87,6 +88,7 @@ export default function PostPanel({
     string | null
   >(null);
   const [draft, setDraft] = useState("");
+  const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editAuthorProfileId, setEditAuthorProfileId] = useState<string | null>(
@@ -232,7 +234,7 @@ export default function PostPanel({
   }, [authorReferences, authors]);
 
   const publish = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() && !selectedMapReference) return;
     setBusy(true);
     setError("");
     try {
@@ -244,13 +246,15 @@ export default function PostPanel({
           targetType,
           targetId: String(targetId),
           authorProfileId: selectedAuthorProfileId,
-          content: draft,
+          content: draft.trim() || "Shared a map",
+          ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
         }),
       });
       if (!response.ok) throw new Error();
       const post = (await response.json()) as Post;
       setPosts((current) => [post, ...current]);
       setDraft("");
+      setSelectedMapReference(null);
     } catch {
       setError("Unable to publish this post right now.");
     } finally {
@@ -350,7 +354,7 @@ export default function PostPanel({
             </div>
             <IconActionButton
               title="Publish post"
-              disabled={busy || !draft.trim() || !selectedAuthorProfileId}
+              disabled={busy || (!draft.trim() && !selectedMapReference) || !selectedAuthorProfileId}
               onClick={() => void publish()}
               size="2rem"
               fontSize="0.8rem"
@@ -360,6 +364,7 @@ export default function PostPanel({
             >
               <SendIcon aria-hidden />
             </IconActionButton>
+            <MapSnapshotPicker onSelect={setSelectedMapReference} />
           </div>
         </div>
       )}
