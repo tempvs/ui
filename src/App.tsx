@@ -34,6 +34,7 @@ import NotificationsPage from "./notification/NotificationsPage";
 import MapAdminPage from "./map/MapAdminPage";
 import MapPlacePage from "./map/MapPlacePage";
 import MapPlaceProposalsPage from "./map/MapPlaceProposalsPage";
+import MapProposalPage from "./map/MapProposalPage";
 import MapPlaceEditPage from "./map/MapPlaceEditPage";
 import MapPage from "./map/MapPage";
 import SavedMapsPage from "./map/SavedMapsPage";
@@ -124,6 +125,13 @@ function MapPlaceProposalsPageWithParam() {
       key={`map-place-proposals:${placeId || ""}`}
       id={placeId}
     />
+  );
+}
+
+function MapProposalPageWithParam() {
+  const { proposalId } = useParams();
+  return (
+    <MapProposalPage key={`map-proposal:${proposalId || ""}`} id={proposalId} />
   );
 }
 
@@ -225,6 +233,10 @@ function App() {
             <Route
               path="/map/place/:placeId/proposals"
               element={<MapPlaceProposalsPageWithParam />}
+            />
+            <Route
+              path="/map/proposals/:proposalId"
+              element={<MapProposalPageWithParam />}
             />
             <Route
               path="/map/place/:placeId/edit"

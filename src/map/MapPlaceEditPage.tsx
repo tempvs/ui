@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
@@ -56,12 +56,9 @@ const featureTypes = [
 const canContribute = (viewer: Viewer | null) =>
   Boolean(
     viewer?.roles.some((role) =>
-      [
-        "TEMPVS_ADMIN",
-        "MAP_ADMIN",
-        "MAP_EDITOR",
-        "MAP_REVIEWER",
-      ].includes(role),
+      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER"].includes(
+        role,
+      ),
     ),
   );
 
@@ -69,6 +66,7 @@ const canContribute = (viewer: Viewer | null) =>
  * never writes the public place directly, matching the Library source review
  * flow and preserving an editor-visible audit record for every mutation. */
 export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
+  const navigate = useNavigate();
   const [viewer, setViewer] = useState<Viewer | null | undefined>(undefined);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [mode, setMode] = useState<ChangeMode>("UPDATE");
@@ -161,9 +159,12 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         Number(longitude),
         controller.signal,
       )
-        .then((results) =>
-          !controller.signal.aborted &&
-          setLikelyDuplicates(results.filter((result) => result.id !== place?.id)),
+        .then(
+          (results) =>
+            !controller.signal.aborted &&
+            setLikelyDuplicates(
+              results.filter((result) => result.id !== place?.id),
+            ),
         )
         .catch(() => !controller.signal.aborted && setLikelyDuplicates([]));
     }, 300);
@@ -254,7 +255,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
       await proposeMapPlaceChangeset(place.id, changeset);
       window.localStorage.removeItem(draftKey(place.id));
       setSavedDraft(null);
-      setSubmitted(true);
+      navigate(`/map/place/${encodeURIComponent(place.id)}/proposals`);
     } catch (caught) {
       setError((caught as Error).message || "Unable to submit this changeset.");
     } finally {
@@ -309,16 +310,18 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
     window.localStorage.removeItem(draftKey(place.id));
     setSavedDraft(null);
   };
-  const changeSummary = place ? summarizeChanges(place, {
-    name,
-    featureType,
-    latitude,
-    longitude,
-    description,
-    citationUrl,
-    names,
-    historicalEvents,
-  }) : [];
+  const changeSummary = place
+    ? summarizeChanges(place, {
+        name,
+        featureType,
+        latitude,
+        longitude,
+        description,
+        citationUrl,
+        names,
+        historicalEvents,
+      })
+    : [];
   return (
     <PageLayout
       className="map-page"
@@ -341,8 +344,8 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         </p>
         {!editable && (
           <Alert variant="warning">
-            A Map reviewer role is required. Request one from Map
-            administration before submitting changes.
+            A Map reviewer role is required. Request one from Map administration
+            before submitting changes.
           </Alert>
         )}
         <ol className="place-editor-steps" aria-label="Place editing steps">
@@ -352,14 +355,28 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
           <li>Evidence and review</li>
         </ol>
         {editable && savedDraft && !submitted && (
-          <Alert variant="secondary" className="d-flex flex-wrap align-items-center gap-2">
+          <Alert
+            variant="secondary"
+            className="d-flex flex-wrap align-items-center gap-2"
+          >
             <span>
-              An unsent local draft was saved {new Date(savedDraft.savedAt).toLocaleString()}.
+              An unsent local draft was saved{" "}
+              {new Date(savedDraft.savedAt).toLocaleString()}.
             </span>
-            <Button type="button" size="sm" variant="outline-dark" onClick={restoreDraft}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-dark"
+              onClick={restoreDraft}
+            >
               Restore draft
             </Button>
-            <Button type="button" size="sm" variant="link" onClick={discardDraft}>
+            <Button
+              type="button"
+              size="sm"
+              variant="link"
+              onClick={discardDraft}
+            >
               Discard
             </Button>
           </Alert>
@@ -432,8 +449,18 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 <MapCanvas
                   places={[place]}
                   entities={[]}
-                  focus={{ latitude: Number(latitude) || place.latitude, longitude: Number(longitude) || place.longitude }}
-                  pickedCoordinate={validCoordinates(latitude, longitude) ? { latitude: Number(latitude), longitude: Number(longitude) } : null}
+                  focus={{
+                    latitude: Number(latitude) || place.latitude,
+                    longitude: Number(longitude) || place.longitude,
+                  }}
+                  pickedCoordinate={
+                    validCoordinates(latitude, longitude)
+                      ? {
+                          latitude: Number(latitude),
+                          longitude: Number(longitude),
+                        }
+                      : null
+                  }
                   showModernBorders={false}
                   onEntitySelect={() => undefined}
                   onCoordinatePick={(coordinate) => {
@@ -443,7 +470,8 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                   onMapError={() => undefined}
                 />
                 <Form.Text className="d-block mb-3">
-                  Click the map to refine the coordinates. The pin is the proposed location.
+                  Click the map to refine the coordinates. The pin is the
+                  proposed location.
                 </Form.Text>
                 {likelyDuplicates.length > 0 && (
                   <Alert variant="warning">
@@ -451,14 +479,17 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     <ul className="mb-0 mt-1">
                       {likelyDuplicates.map((candidate) => (
                         <li key={candidate.id}>
-                          <Link to={`/map/place/${encodeURIComponent(candidate.id)}`}>
+                          <Link
+                            to={`/map/place/${encodeURIComponent(candidate.id)}`}
+                          >
                             {candidate.canonicalName}
                           </Link>{" "}
                           ({candidate.featureType.replaceAll("_", " ")})
                         </li>
                       ))}
                     </ul>
-                    Open an existing place if it represents the same location, or continue when this is genuinely distinct.
+                    Open an existing place if it represents the same location,
+                    or continue when this is genuinely distinct.
                   </Alert>
                 )}
                 <Form.Group className="mb-2">
@@ -480,7 +511,10 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     disabled={!editable}
                   />
                 </Form.Group>
-                <fieldset id="place-editor-history" className="border rounded p-3 mb-3">
+                <fieldset
+                  id="place-editor-history"
+                  className="border rounded p-3 mb-3"
+                >
                   <legend className="float-none w-auto px-2 fs-6 mb-0">
                     Historical names
                   </legend>
@@ -714,9 +748,13 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
             {error && <Alert variant="danger">{error}</Alert>}
             {mode === "UPDATE" && changeSummary.length > 0 && (
               <details className="place-editor-summary mb-3">
-                <summary>Review proposed changes ({changeSummary.length})</summary>
+                <summary>
+                  Review proposed changes ({changeSummary.length})
+                </summary>
                 <ul className="mb-0 mt-2">
-                  {changeSummary.map((change) => <li key={change}>{change}</li>)}
+                  {changeSummary.map((change) => (
+                    <li key={change}>{change}</li>
+                  ))}
                 </ul>
               </details>
             )}
@@ -794,7 +832,9 @@ function isWholeYearOrBlank(value: string): boolean {
   return !value.trim() || Number.isSafeInteger(Number(value));
 }
 
-function invalidDatedEntry(entry: Pick<NameDraft, "value" | "validFrom" | "validTo">): boolean {
+function invalidDatedEntry(
+  entry: Pick<NameDraft, "value" | "validFrom" | "validTo">,
+): boolean {
   return (
     !entry.value.trim() ||
     !isWholeYearOrBlank(entry.validFrom) ||
@@ -808,7 +848,14 @@ function invalidDatedEntry(entry: Pick<NameDraft, "value" | "validFrom" | "valid
 function validCoordinates(latitude: string, longitude: string): boolean {
   const lat = Number(latitude);
   const lng = Number(longitude);
-  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
 }
 
 function draftKey(placeId: string): string {
@@ -854,9 +901,14 @@ function summarizeChanges(
   >,
 ): string[] {
   const changes: string[] = [];
-  if (draft.name.trim() !== place.canonicalName) changes.push("Changed canonical name");
-  if (draft.featureType !== place.featureType) changes.push("Changed place type");
-  if (Number(draft.latitude) !== place.latitude || Number(draft.longitude) !== place.longitude)
+  if (draft.name.trim() !== place.canonicalName)
+    changes.push("Changed canonical name");
+  if (draft.featureType !== place.featureType)
+    changes.push("Changed place type");
+  if (
+    Number(draft.latitude) !== place.latitude ||
+    Number(draft.longitude) !== place.longitude
+  )
     changes.push("Changed map coordinates");
   if (draft.description.trim() !== (place.description || "").trim())
     changes.push("Changed description");
@@ -864,7 +916,10 @@ function summarizeChanges(
     changes.push("Changed evidence URL");
   if (JSON.stringify(draft.names) !== JSON.stringify(nameDrafts(place)))
     changes.push("Changed historical names");
-  if (JSON.stringify(draft.historicalEvents) !== JSON.stringify(historicalEventDrafts(place)))
+  if (
+    JSON.stringify(draft.historicalEvents) !==
+    JSON.stringify(historicalEventDrafts(place))
+  )
     changes.push("Changed important dates or events");
   return changes;
 }

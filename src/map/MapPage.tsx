@@ -1399,7 +1399,7 @@ export default function MapPage() {
         initialLatitude={latitude}
         initialLongitude={longitude}
         proposal={editingProposal}
-        onSubmitted={(proposal) =>
+        onSubmitted={(proposal) => {
           setOwnProposals((current) => {
             const existing = current.findIndex(
               (item) => item.id === proposal.id,
@@ -1408,8 +1408,11 @@ export default function MapPage() {
             return current.map((item) =>
               item.id === proposal.id ? proposal : item,
             );
-          })
-        }
+          });
+          setShowProposalModal(false);
+          setEditingProposal(null);
+          navigate(`/map/proposals/${encodeURIComponent(proposal.id)}`);
+        }}
         onHide={() => {
           setShowProposalModal(false);
           setEditingProposal(null);
