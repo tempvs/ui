@@ -85,6 +85,8 @@ export default function RelatedMapModal({
   const [snapshotStatus, setSnapshotStatus] = useState("");
   const [showShare, setShowShare] = useState(false);
   const [shareTitle, setShareTitle] = useState(displayName);
+  const [showSave, setShowSave] = useState(false);
+  const [saveTitle, setSaveTitle] = useState(displayName);
   const navigate = useNavigate();
 
   const mapPath = place
@@ -105,11 +107,10 @@ export default function RelatedMapModal({
     : null;
 
   const saveCurrentMap = async (
-    requestedTitle?: string,
+    requestedTitle: string,
   ): Promise<PublicMapReference | null> => {
     if (!mapReference) return null;
-    const title =
-      requestedTitle ?? window.prompt("Name this saved map", displayName);
+    const title = requestedTitle;
     if (!title?.trim()) return null;
     try {
       await saveMapSnapshot({
@@ -380,7 +381,10 @@ export default function RelatedMapModal({
               variant="outline-dark"
               title="Save map"
               aria-label="Save map"
-              onClick={() => void saveCurrentMap()}
+              onClick={() => {
+                setSaveTitle(displayName);
+                setShowSave(true);
+              }}
             >
               <FloppyDiskIconButton aria-hidden />
             </Button>
@@ -400,6 +404,45 @@ export default function RelatedMapModal({
             )}
           </Modal.Footer>
         )}
+      </Modal>
+      <Modal show={showSave} onHide={() => setShowSave(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Save map</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label htmlFor={`related-map-save-title-${placeId}`}>
+              Saved map name
+            </Form.Label>
+            <Form.Control
+              id={`related-map-save-title-${placeId}`}
+              value={saveTitle}
+              maxLength={200}
+              autoFocus
+              onChange={(event) => setSaveTitle(event.target.value)}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setShowSave(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="dark"
+            onClick={() => {
+              void saveCurrentMap(saveTitle).then((reference) => {
+                if (!reference) return;
+                setShowSave(false);
+                setShow(false);
+              });
+            }}
+          >
+            Save map
+          </Button>
+        </Modal.Footer>
       </Modal>
       <Modal show={showShare} onHide={() => setShowShare(false)} centered>
         <Modal.Header closeButton>
