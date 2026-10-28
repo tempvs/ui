@@ -62,6 +62,16 @@ export type LibraryRoleRequest = {
   roleLabel?: string | null;
 };
 
+export type LibraryRoleAuditEntry = {
+  id: string;
+  userId: string;
+  actorUserId: string;
+  role: string | null;
+  previousRole: string | null;
+  action: "APPROVED" | "REJECTED" | "ASSIGNED" | "REMOVED";
+  occurredAt: string;
+};
+
 export type LibraryMember = {
   userId: string;
   email: string | null;
@@ -151,11 +161,18 @@ export function projectApprovedSourceImages(
     }
     if (operation.kind === "UPDATE_DESCRIPTION") {
       const current = images.get(operation.imageId);
-      if (current) images.set(operation.imageId, { ...current, description: operation.description });
+      if (current)
+        images.set(operation.imageId, {
+          ...current,
+          description: operation.description,
+        });
       continue;
     }
     const staged = stagedById.get(operation.stagedImageId);
-    const id = operation.kind === "REPLACE" ? operation.imageId : operation.stagedImageId;
+    const id =
+      operation.kind === "REPLACE"
+        ? operation.imageId
+        : operation.stagedImageId;
     images.set(id, {
       ...(staged || { id }),
       id,
@@ -197,6 +214,11 @@ export type SourceChangeLogEntry = {
 
 type LibraryAdminRoleRequests = {
   roleRequests?: LibraryRoleRequest[] | null;
+  nextToken?: string | null;
+};
+
+type LibraryRoleAuditPage = {
+  entries?: LibraryRoleAuditEntry[] | null;
   nextToken?: string | null;
 };
 
@@ -372,6 +394,20 @@ export function getAdminRoleRequests({
   );
 }
 
+export function getAdminRoleAudit({
+  size = 40,
+  nextToken,
+}: {
+  size?: number;
+  nextToken?: string;
+}) {
+  const params = new URLSearchParams({ limit: String(size) });
+  if (nextToken) params.set("nextToken", nextToken);
+  return fetchJson<LibraryRoleAuditPage>(
+    `/api/library/library/admin/role-history?${params}`,
+  );
+}
+
 export function updateAdminRoleRequest(
   role: string,
   userId: string,
@@ -410,7 +446,9 @@ export async function getSourcesByIds(
   const ids = Array.from(new Set(sourceIds.filter(Boolean)));
   const sources: LibrarySource[] = [];
   for (let offset = 0; offset < ids.length; offset += 20) {
-    const q = window.btoa(JSON.stringify({ ids: ids.slice(offset, offset + 20) }));
+    const q = window.btoa(
+      JSON.stringify({ ids: ids.slice(offset, offset + 20) }),
+    );
     const result = await fetchJson<LibrarySource[]>(
       `/api/library/source?q=${encodeURIComponent(q)}`,
     );

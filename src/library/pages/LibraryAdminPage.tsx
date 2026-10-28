@@ -16,8 +16,10 @@ import { Profile } from "../../profile/profileTypes";
 import { getErrorMessage } from "../../util/errors";
 import {
   getAdminMembers,
+  getAdminRoleAudit,
   getAdminRoleRequests,
   LibraryMember,
+  LibraryRoleAuditEntry,
   LibraryRoleRequest,
   LibraryViewer,
   getLibraryViewer,
@@ -44,6 +46,7 @@ export default function LibraryAdminPage() {
   const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
   const [roleRequests, setRoleRequests] = useState<LibraryRoleRequest[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
+  const [roleAudit, setRoleAudit] = useState<LibraryRoleAuditEntry[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -71,9 +74,7 @@ export default function LibraryAdminPage() {
     setMemberProfiles(Object.fromEntries(resolvedProfiles));
   };
 
-  const hydrateRoleRequestProfiles = async (
-    requests: LibraryRoleRequest[],
-  ) => {
+  const hydrateRoleRequestProfiles = async (requests: LibraryRoleRequest[]) => {
     try {
       const profiles = await getUserProfilesByUserIds(
         requests.map((request) => request.userId),
@@ -128,8 +129,11 @@ export default function LibraryAdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAdminRoleRequests({ size: PAGE_SIZE });
-      if (!result.ok)
+      const [result, auditResult] = await Promise.all([
+        getAdminRoleRequests({ size: PAGE_SIZE }),
+        getAdminRoleAudit({ size: PAGE_SIZE }),
+      ]);
+      if (!result.ok || !auditResult.ok)
         throw new Error(
           result.status === 403
             ? "Admin access is required."
@@ -138,6 +142,7 @@ export default function LibraryAdminPage() {
       const requests = result.data?.roleRequests || [];
       setRoleRequests(requests);
       setNextToken(result.data?.nextToken || null);
+      setRoleAudit(auditResult.data?.entries || []);
       // Resolve the requesters in one Profile API call so the moderation list
       // uses the same linked avatar/name treatment as every other profile
       // list. A historical request can outlive a deleted profile, so retain
@@ -311,6 +316,30 @@ export default function LibraryAdminPage() {
       {tab === "proposals" && <LibraryPendingProposalsContent />}
       {!loading && tab === "requests" && (
         <div className="d-flex flex-column gap-3">
+          <section
+            className="tempvs-plain-message mb-0"
+            aria-label="Role request history"
+          >
+            <h2 className="h5">Role request history</h2>
+            {roleAudit.length === 0 ? (
+              <p className="text-muted mb-0">
+                No approvals, rejections, or direct assignments yet.
+              </p>
+            ) : (
+              <ul className="mb-0 ps-3">
+                {roleAudit.map((entry) => (
+                  <li key={entry.id}>
+                    <strong>{roleAuditLabel(entry)}</strong> for {entry.userId}{" "}
+                    by {entry.actorUserId}
+                    {" · "}
+                    <time dateTime={entry.occurredAt}>
+                      {new Date(entry.occurredAt).toLocaleString()}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           {roleRequests.length === 0 && (
             <div className="tempvs-plain-message text-muted mb-0">
               No pending role requests.
@@ -339,32 +368,32 @@ export default function LibraryAdminPage() {
                     <div className="text-muted small">{request.roleLabel}</div>
                   </div>
                   <div className="d-flex gap-2">
-                  <Button
-                    variant="outline-success"
-                    disabled={updating !== null}
-                    onClick={() =>
-                      void updateRoleRequest(
-                        request.role,
-                        request.userId,
-                        "POST",
-                      )
-                    }
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    variant="outline-danger"
-                    disabled={updating !== null}
-                    onClick={() =>
-                      void updateRoleRequest(
-                        request.role,
-                        request.userId,
-                        "DELETE",
-                      )
-                    }
-                  >
-                    Reject
-                  </Button>
+                    <Button
+                      variant="outline-success"
+                      disabled={updating !== null}
+                      onClick={() =>
+                        void updateRoleRequest(
+                          request.role,
+                          request.userId,
+                          "POST",
+                        )
+                      }
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      disabled={updating !== null}
+                      onClick={() =>
+                        void updateRoleRequest(
+                          request.role,
+                          request.userId,
+                          "DELETE",
+                        )
+                      }
+                    >
+                      Reject
+                    </Button>
                   </div>
                 </Card.Body>
               </Card>
@@ -383,4 +412,15 @@ export default function LibraryAdminPage() {
       )}
     </div>
   );
+}
+
+function roleAuditLabel(entry: LibraryRoleAuditEntry): string {
+  const role =
+    entry.role?.replaceAll("_", " ").toLocaleLowerCase() || "Library role";
+  return {
+    APPROVED: `Approved ${role} request`,
+    REJECTED: `Rejected ${role} request`,
+    ASSIGNED: `Assigned ${role}`,
+    REMOVED: `Removed ${entry.previousRole?.replaceAll("_", " ").toLocaleLowerCase() || "Library role"}`,
+  }[entry.action];
 }

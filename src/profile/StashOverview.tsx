@@ -384,6 +384,7 @@ export default function StashOverview({
   const [itemOrderByGroup, setItemOrderByGroup] = useState<IdRecord<Id[]>>({});
   const [groupCreateVisible, setGroupCreateVisible] = useState(false);
   const [groupCreateSubmitting, setGroupCreateSubmitting] = useState(false);
+  const [groupCreateImages, setGroupCreateImages] = useState<File[]>([]);
   const [groupDeleteTarget, setGroupDeleteTarget] = useState<StashGroup | null>(
     null,
   );
@@ -1089,7 +1090,14 @@ export default function StashOverview({
 
     try {
       const createdGroup = await createStashGroup(profileId, groupForm);
+      if (groupCreateImages[0]) {
+        await uploadStashGroupImage(
+          createdGroup.id,
+          await prepareImageFile(groupCreateImages[0]),
+        );
+      }
       setGroupForm(emptyGroupForm);
+      setGroupCreateImages([]);
       setGroupCreateVisible(false);
       await loadStash();
       setActiveGroupId(createdGroup.id);
@@ -1416,7 +1424,10 @@ export default function StashOverview({
                     type="button"
                     className="stash-inline-icon-button"
                     title={t("profile.stash.groupCreate", "Create collection")}
-                    aria-label={t("profile.stash.groupCreate", "Create collection")}
+                    aria-label={t(
+                      "profile.stash.groupCreate",
+                      "Create collection",
+                    )}
                     onClick={() => setGroupCreateVisible(true)}
                   >
                     <PlusIcon />
@@ -1746,13 +1757,22 @@ export default function StashOverview({
                     </div>
                     {activeTemporalSummary && (
                       <div className="stash-temporal-summary">
-                        {t("profile.stash.temporal.collection", "Collection temporal fit")}: {activeTemporalSummary}
-                        {profileTemporalSummary && allItems.length !== activeItems.length && (
-                          <>
-                            {" · "}
-                            {t("profile.stash.temporal.profile", "Across profile")}: {profileTemporalSummary}
-                          </>
+                        {t(
+                          "profile.stash.temporal.collection",
+                          "Collection temporal fit",
                         )}
+                        : {activeTemporalSummary}
+                        {profileTemporalSummary &&
+                          allItems.length !== activeItems.length && (
+                            <>
+                              {" · "}
+                              {t(
+                                "profile.stash.temporal.profile",
+                                "Across profile",
+                              )}
+                              : {profileTemporalSummary}
+                            </>
+                          )}
                       </div>
                     )}
                     {markerPlacement && (
@@ -1785,7 +1805,9 @@ export default function StashOverview({
                     {isEditable && (
                       <DismissibleCoachmark
                         id={`create-first-item:${profile.id}:${activeGroup.id}`}
-                        visible={groups.length === 1 && activeItems.length === 0}
+                        visible={
+                          groups.length === 1 && activeItems.length === 0
+                        }
                         message="Create your first item and upload its images, then mark it on your collection photo."
                       >
                         <button
@@ -1985,11 +2007,10 @@ export default function StashOverview({
                           <div className="stash-item-list-description">
                             {item.description
                               ? truncateDescription(item.description)
-                              :
-                              t(
-                                "profile.stash.noDescription",
-                                "No description",
-                              )}
+                              : t(
+                                  "profile.stash.noDescription",
+                                  "No description",
+                                )}
                           </div>
                           <div className="stash-meta-row">
                             <TemporalFitBadge fit={item.temporalFit} t={t} />
@@ -2023,7 +2044,12 @@ export default function StashOverview({
 
       <Modal
         show={groupCreateVisible}
-        onHide={() => !groupCreateSubmitting && setGroupCreateVisible(false)}
+        onHide={() => {
+          if (!groupCreateSubmitting) {
+            setGroupCreateImages([]);
+            setGroupCreateVisible(false);
+          }
+        }}
         centered
       >
         <Modal.Header closeButton={!groupCreateSubmitting}>
@@ -2049,7 +2075,7 @@ export default function StashOverview({
             </Form.Group>
             <Form.Group>
               <Form.Label>
-                {t("profile.stash.groupDescription", "Collection note")}
+                {t("profile.stash.groupDescription", "Description")}
               </Form.Label>
               <Form.Control
                 value={groupForm.description}
@@ -2061,11 +2087,21 @@ export default function StashOverview({
                 }
               />
             </Form.Group>
+            <MultiImageFilePicker
+              files={groupCreateImages}
+              onFilesChange={setGroupCreateImages}
+              disabled={groupCreateSubmitting}
+              label={t("profile.stash.groupPicture", "Picture")}
+              maxFiles={1}
+            />
           </Modal.Body>
           <Modal.Footer>
             <Button
               variant="outline-secondary"
-              onClick={() => setGroupCreateVisible(false)}
+              onClick={() => {
+                setGroupCreateImages([]);
+                setGroupCreateVisible(false);
+              }}
               disabled={groupCreateSubmitting}
             >
               {t("profile.action.cancel", "Cancel")}
