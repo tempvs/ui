@@ -393,8 +393,11 @@ export default function RelatedMapModal({
               title="Send map"
               aria-label="Send map"
               onClick={() => {
-                setShareTitle(displayName);
-                setShowShare(true);
+                setShow(false);
+                // All map sharing routes through MapPage's destination picker.
+                // This keeps profile, club, source, and map-page shares in one
+                // consistent flow rather than maintaining parallel send UIs.
+                navigate(`${mapPath}${mapPath.includes("?") ? "&" : "?"}share=true`);
               }}
             >
               <PaperPlaneIconButton aria-hidden />

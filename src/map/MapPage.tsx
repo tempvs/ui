@@ -184,6 +184,15 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
+    if (params.get("share") !== "true") return;
+    setShareTitle(params.get("q") || "Saved map");
+    setShowShare(true);
+    const next = new URLSearchParams(params);
+    next.delete("share");
+    setParams(next, { replace: true });
+  }, [params, setParams]);
+
+  useEffect(() => {
     if (!showShare || !viewer) return;
     let active = true;
     setShareDestinationsLoading(true);

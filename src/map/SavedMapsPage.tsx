@@ -22,7 +22,7 @@ export default function SavedMapsPage() {
   const profiles = useMemo(() => Array.from(new Set(items.map((item) => item.profileId).filter((value): value is string => Boolean(value)))), [items]);
   const visible = items
     .filter((item) => profile === "all" || (profile === "none" ? !item.profileId : item.profileId === profile))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   const copy = async (item: MapSnapshot) => { try { await navigator.clipboard.writeText(`${window.location.origin}${publicMapReferencePath(item.reference)}`); } catch { setError("Copy the map link from the opened map instead."); } };
   const rename = async (item: MapSnapshot) => { const next = title.trim(); if (!next) return; try { const updated = await renameMapSnapshot(item.id, next); setItems((current) => current.map((value) => value.id === updated.id ? updated : value)); setEditing(null); } catch { setError("Unable to rename saved map."); } };
   const remove = async (item: MapSnapshot) => { if (!window.confirm(`Delete saved map “${item.title}”?`)) return; try { await deleteMapSnapshot(item.id); setItems((current) => current.filter((value) => value.id !== item.id)); } catch { setError("Unable to delete saved map."); } };
