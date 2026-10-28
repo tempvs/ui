@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-bootstrap";
 import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
 
@@ -17,7 +17,9 @@ import CommentThread from "../comment/CommentThread";
 import MapReferenceAttachment, {
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
-import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import MapSnapshotPicker, {
+  SelectedMapPreview,
+} from "../map/MapSnapshotPicker";
 import { takeStagedMapAttachment } from "../map/pendingMapAttachment";
 import {
   buildProfileLabel,
@@ -81,6 +83,7 @@ export default function PostPanel({
 }: PostPanelProps) {
   const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
+  const postElements = useRef<Record<string, HTMLElement | null>>({});
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
@@ -89,8 +92,10 @@ export default function PostPanel({
     string | null
   >(null);
   const [draft, setDraft] = useState("");
-  const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
-  const [editMapReference, setEditMapReference] = useState<PublicMapReference | null>(null);
+  const [selectedMapReference, setSelectedMapReference] =
+    useState<PublicMapReference | null>(null);
+  const [editMapReference, setEditMapReference] =
+    useState<PublicMapReference | null>(null);
   const [editMapChanged, setEditMapChanged] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
@@ -139,7 +144,10 @@ export default function PostPanel({
       active = false;
     };
   }, []);
-  useEffect(() => { const staged = takeStagedMapAttachment(); if (staged) setSelectedMapReference(staged); }, []);
+  useEffect(() => {
+    const staged = takeStagedMapAttachment();
+    if (staged) setSelectedMapReference(staged);
+  }, []);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
@@ -251,12 +259,20 @@ export default function PostPanel({
           targetId: String(targetId),
           authorProfileId: selectedAuthorProfileId,
           content: draft.trim() || "Shared a map",
-          ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
+          ...(selectedMapReference
+            ? { mapReference: selectedMapReference }
+            : {}),
         }),
       });
       if (!response.ok) throw new Error();
       const post = (await response.json()) as Post;
       setPosts((current) => [post, ...current]);
+      window.requestAnimationFrame(() =>
+        postElements.current[post.id]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      );
       setDraft("");
       setSelectedMapReference(null);
     } catch {
@@ -279,7 +295,8 @@ export default function PostPanel({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             content: editDraft,
-            authorProfileId: editAuthorProfileId, ...(editMapChanged ? { mapReference: editMapReference } : {}),
+            authorProfileId: editAuthorProfileId,
+            ...(editMapChanged ? { mapReference: editMapReference } : {}),
           }),
         },
       );
@@ -360,7 +377,11 @@ export default function PostPanel({
             </div>
             <IconActionButton
               title="Publish post"
-              disabled={busy || (!draft.trim() && !selectedMapReference) || !selectedAuthorProfileId}
+              disabled={
+                busy ||
+                (!draft.trim() && !selectedMapReference) ||
+                !selectedAuthorProfileId
+              }
               onClick={() => void publish()}
               size="2rem"
               fontSize="0.8rem"
@@ -371,7 +392,12 @@ export default function PostPanel({
               <SendIcon aria-hidden />
             </IconActionButton>
             <MapSnapshotPicker onSelect={setSelectedMapReference} />
-            {selectedMapReference && <SelectedMapPreview reference={selectedMapReference} onRemove={() => setSelectedMapReference(null)} />}
+            {selectedMapReference && (
+              <SelectedMapPreview
+                reference={selectedMapReference}
+                onRemove={() => setSelectedMapReference(null)}
+              />
+            )}
           </div>
         </div>
       )}
@@ -387,7 +413,13 @@ export default function PostPanel({
             const canManagePost = currentUserId === post.authorUserId;
             const editing = editingPostId === post.id;
             return (
-              <article key={post.id} className="post-entry">
+              <article
+                key={post.id}
+                ref={(element) => {
+                  postElements.current[post.id] = element;
+                }}
+                className="post-entry"
+              >
                 <div className="post-entry-header">
                   {author ? (
                     <ProfileThumbnailLink
@@ -472,8 +504,8 @@ export default function PostPanel({
                             setEditingPostId(null);
                             setEditDraft("");
                             setEditAuthorProfileId(null);
-      setEditMapReference(null);
-      setEditMapChanged(false);
+                            setEditMapReference(null);
+                            setEditMapChanged(false);
                           }}
                           size="1.75rem"
                           fontSize="0.72rem"
@@ -481,8 +513,21 @@ export default function PostPanel({
                           <CancelIcon aria-hidden />
                         </IconActionButton>
                       </div>
-                      <MapSnapshotPicker onSelect={(reference) => { setEditMapReference(reference); setEditMapChanged(true); }} />
-                      {editMapReference && <SelectedMapPreview reference={editMapReference} onRemove={() => { setEditMapReference(null); setEditMapChanged(true); }} />}
+                      <MapSnapshotPicker
+                        onSelect={(reference) => {
+                          setEditMapReference(reference);
+                          setEditMapChanged(true);
+                        }}
+                      />
+                      {editMapReference && (
+                        <SelectedMapPreview
+                          reference={editMapReference}
+                          onRemove={() => {
+                            setEditMapReference(null);
+                            setEditMapChanged(true);
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 ) : (

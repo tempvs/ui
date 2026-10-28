@@ -1090,17 +1090,47 @@ export default function StashOverview({
 
     try {
       const createdGroup = await createStashGroup(profileId, groupForm);
+      let createdImage: EntityImage | null = null;
       if (groupCreateImages[0]) {
-        await uploadStashGroupImage(
+        const uploadedImage = await uploadStashGroupImage(
           createdGroup.id,
           await prepareImageFile(groupCreateImages[0]),
         );
+        createdImage = {
+          ...uploadedImage,
+          entityId: createdGroup.id,
+          belongsTo: "item-group",
+          resourceId: createdGroup.id,
+          resourceType: "item-group",
+        };
+      }
+      // The creation response and image-upload response are sufficient to
+      // render the new collection immediately. Avoid a second stash load so
+      // the user lands on its tab with its picture already present.
+      setStash((current) =>
+        current
+          ? { ...current, groups: [...(current.groups || []), createdGroup] }
+          : ({ groups: [createdGroup] } as Stash),
+      );
+      setItemsByGroup((current) => ({
+        ...current,
+        [toRecordKey(createdGroup.id)]: [],
+      }));
+      setMarkersByGroup((current) => ({
+        ...current,
+        [toRecordKey(createdGroup.id)]: [],
+      }));
+      if (createdImage) {
+        setGroupImages((current) => ({
+          ...current,
+          [toRecordKey(createdGroup.id)]: createdImage as EntityImage,
+        }));
       }
       setGroupForm(emptyGroupForm);
       setGroupCreateImages([]);
       setGroupCreateVisible(false);
-      await loadStash();
       setActiveGroupId(createdGroup.id);
+      setActiveGroupOverrideId(createdGroup.id);
     } catch (error) {
       setFeedback(
         t("profile.stash.groupCreateFailed", "Unable to create a collection."),

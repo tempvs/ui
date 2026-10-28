@@ -51,6 +51,12 @@ const FloppyDiskIconButton = FloppyDiskIcon as React.ComponentType<{
 const PaperPlaneIconButton = PaperPlaneIcon as React.ComponentType<{
   "aria-hidden"?: boolean;
 }>;
+const allEntityTypes: MapEntityLocation["entityType"][] = [
+  "PROFILE",
+  "CLUB",
+  "EVENT",
+  "SOURCE",
+];
 
 /**
  * Shared entry point from location fields. A place remains the focus, while
@@ -78,6 +84,7 @@ export default function RelatedMapModal({
   const [copied, setCopied] = useState(false);
   const [snapshotStatus, setSnapshotStatus] = useState("");
   const [showShare, setShowShare] = useState(false);
+  const [shareTitle, setShareTitle] = useState(displayName);
   const navigate = useNavigate();
 
   const mapPath = place
@@ -93,13 +100,16 @@ export default function RelatedMapModal({
         latitude: place.latitude,
         longitude: place.longitude,
         radiusKm,
-        entityTypes: [],
+        entityTypes: allEntityTypes,
       }
     : null;
 
-  const saveCurrentMap = async (): Promise<PublicMapReference | null> => {
+  const saveCurrentMap = async (
+    requestedTitle?: string,
+  ): Promise<PublicMapReference | null> => {
     if (!mapReference) return null;
-    const title = window.prompt("Name this saved map", displayName);
+    const title =
+      requestedTitle ?? window.prompt("Name this saved map", displayName);
     if (!title?.trim()) return null;
     try {
       await saveMapSnapshot({
@@ -378,7 +388,10 @@ export default function RelatedMapModal({
               variant="outline-dark"
               title="Send map"
               aria-label="Send map"
-              onClick={() => setShowShare(true)}
+              onClick={() => {
+                setShareTitle(displayName);
+                setShowShare(true);
+              }}
             >
               <PaperPlaneIconButton aria-hidden />
             </Button>
@@ -394,17 +407,33 @@ export default function RelatedMapModal({
         </Modal.Header>
         <Modal.Body>
           <p>
-            Choose a destination. The map is saved first, then attached to the
-            destination composer.
+            Choose a destination. It saves the map automatically, then opens the
+            destination composer with the attachment ready.
           </p>
+          <Form.Group className="mb-3">
+            <Form.Label htmlFor={`related-map-share-title-${placeId}`}>
+              Saved map name
+            </Form.Label>
+            <Form.Control
+              id={`related-map-share-title-${placeId}`}
+              value={shareTitle}
+              maxLength={200}
+              onChange={(event) => setShareTitle(event.target.value)}
+            />
+          </Form.Group>
           <div className="d-flex gap-2 flex-wrap">
-            <Button variant="dark" onClick={() => void saveCurrentMap()}>
-              Save only
+            <Button
+              variant="outline-dark"
+              onClick={() => {
+                void saveCurrentMap(shareTitle).then(() => setShowShare(false));
+              }}
+            >
+              Save map
             </Button>
             <LinkButton
               className="btn btn-outline-dark"
               onClick={() => {
-                void saveCurrentMap().then((reference) => {
+                void saveCurrentMap(shareTitle).then((reference) => {
                   if (!reference) return;
                   stageMapAttachment(reference);
                   navigate("/chat");
@@ -418,7 +447,7 @@ export default function RelatedMapModal({
               <LinkButton
                 className="btn btn-outline-dark"
                 onClick={() => {
-                  void saveCurrentMap().then((reference) => {
+                  void saveCurrentMap(shareTitle).then((reference) => {
                     if (!reference) return;
                     stageMapAttachment(reference);
                     navigate(destinationPath);

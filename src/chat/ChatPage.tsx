@@ -18,8 +18,12 @@ import {
   searchProfiles,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import MapReferenceAttachment, { type PublicMapReference } from "../map/MapReferenceAttachment";
-import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import MapReferenceAttachment, {
+  type PublicMapReference,
+} from "../map/MapReferenceAttachment";
+import MapSnapshotPicker, {
+  SelectedMapPreview,
+} from "../map/MapSnapshotPicker";
 import { takeStagedMapAttachment } from "../map/pendingMapAttachment";
 import {
   activeProfileNotFoundId,
@@ -163,8 +167,14 @@ export default function ChatPage() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [messageDraft, setMessageDraft] = useState("");
-  const [selectedMapReference, setSelectedMapReference] = useState<PublicMapReference | null>(null);
-  useEffect(() => { const staged = takeStagedMapAttachment(); if (staged) setSelectedMapReference(staged); }, []);
+  const [selectedMapReference, setSelectedMapReference] =
+    useState<PublicMapReference | null>(null);
+  const [messageToReveal, setMessageToReveal] = useState<string | null>(null);
+  const messageElements = useRef<Record<string, HTMLElement | null>>({});
+  useEffect(() => {
+    const staged = takeStagedMapAttachment();
+    if (staged) setSelectedMapReference(staged);
+  }, []);
   const [participantQuery, setParticipantQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<Profile[]>([]);
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -695,6 +705,9 @@ export default function ChatPage() {
       setMessageDraft("");
       setSelectedMapReference(null);
       setSelectedConversation(details);
+      setMessageToReveal(
+        details.messages[details.messages.length - 1]?.id || null,
+      );
       setFeedback(null);
       await refreshConversations(details.id);
     } catch (error) {
@@ -713,6 +726,17 @@ export default function ChatPage() {
       setFeedback(message);
     }
   }
+
+  useEffect(() => {
+    if (!messageToReveal) return;
+    window.requestAnimationFrame(() => {
+      messageElements.current[messageToReveal]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      setMessageToReveal(null);
+    });
+  }, [messageToReveal, selectedConversation]);
 
   function addParticipant(profile: Profile) {
     setSelectedParticipants((current) => {
@@ -963,6 +987,9 @@ export default function ChatPage() {
                 {selectedConversation.messages.map((message) => (
                   <article
                     key={message.id}
+                    ref={(element) => {
+                      messageElements.current[message.id] = element;
+                    }}
                     className={`chat-message-card${message.senderProfileId === selectedSenderId ? " chat-message-card-own" : ""}`}
                   >
                     <div className="chat-message-author">
@@ -995,7 +1022,12 @@ export default function ChatPage() {
                 />
                 <div className="chat-composer-actions">
                   <MapSnapshotPicker onSelect={setSelectedMapReference} />
-                  {selectedMapReference && <SelectedMapPreview reference={selectedMapReference} onRemove={() => setSelectedMapReference(null)} />}
+                  {selectedMapReference && (
+                    <SelectedMapPreview
+                      reference={selectedMapReference}
+                      onRemove={() => setSelectedMapReference(null)}
+                    />
+                  )}
                   {!canSend && (
                     <span className="chat-composer-hint">
                       <FormattedMessage
@@ -1007,7 +1039,10 @@ export default function ChatPage() {
                   <Button
                     className="chat-action-button"
                     type="submit"
-                    disabled={!canSend || (!messageDraft.trim() && !selectedMapReference)}
+                    disabled={
+                      !canSend ||
+                      (!messageDraft.trim() && !selectedMapReference)
+                    }
                   >
                     <FormattedMessage
                       id="chat.sendButton"
