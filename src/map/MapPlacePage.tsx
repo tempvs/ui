@@ -529,13 +529,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
                     ? { onDetails: () => setSelectedHistory(entry) }
                     : {})}
                 />
-                <span className="visually-hidden">
-                  {entry.actorUserId}
-                  {" · "}
-                  <time dateTime={entry.occurredAt}>
-                    {new Date(entry.occurredAt).toLocaleString()}
-                  </time>
-                </span>
                 {entry.globalAdminOverride && " · Tempvs admin override"}
                 {entry.note && (
                   <div className="small text-muted">{entry.note}</div>

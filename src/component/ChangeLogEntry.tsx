@@ -8,6 +8,8 @@ import type { Profile } from "../profile/profileTypes";
 type Props = {
   actorUserId: string;
   proposerUserId?: string;
+  relatedUserId?: string;
+  relatedUserLabel?: string;
   action: string;
   occurredAt: string;
   currentUserId?: string | null;
@@ -20,6 +22,8 @@ type Props = {
 export default function ChangeLogEntry({
   actorUserId,
   proposerUserId,
+  relatedUserId,
+  relatedUserLabel,
   action,
   occurredAt,
   currentUserId,
@@ -49,10 +53,12 @@ export default function ChangeLogEntry({
     <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
       <div>
         {user(actorUserId)} {action}
-        {proposerUserId && (
+        {(relatedUserId || proposerUserId) && (
           <>
-            <span className="text-muted">, proposed by </span>
-            {user(proposerUserId)}
+            <span className="text-muted">
+              , {relatedUserLabel || "proposed by"} {" "}
+            </span>
+            {user(relatedUserId || proposerUserId!)}
           </>
         )}{" "}
         <time className="text-muted">{formatAppDateTime(occurredAt)}</time>

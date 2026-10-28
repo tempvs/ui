@@ -8,6 +8,7 @@ import React, {
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
+import ChangeLogEntry from "../../component/ChangeLogEntry";
 import { PageColumn, PageColumns } from "../../component/PageColumns";
 import EditableDescriptionField from "../../component/EditableDescriptionField";
 import EntityDetailPage from "../../component/EntityDetailPage";
@@ -16,7 +17,6 @@ import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import EditableHistoricalRangeField from "../../component/EditableHistoricalRangeField";
 import PlacePickerField from "../../component/PlacePickerField";
-import { formatAppDateTime } from "../../i18n/appLocale";
 import {
   getSource,
   getSourceImages,
@@ -37,7 +37,6 @@ import ProfileList from "../../profile/components/ProfileList";
 import { getUserProfilesByUserIds } from "../../profile/profileApi";
 import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
-import { buildProfileLabel } from "../../profile/currentProfile";
 import PostPanel from "../../post/PostPanel";
 import SourceChangeLogDiffModal from "../components/SourceChangeLogDiffModal";
 
@@ -441,61 +440,21 @@ export default function LibrarySourcePage() {
           <p className="text-muted mb-0">No recorded changes yet.</p>
         ) : (
           <ol className="list-unstyled d-flex flex-column gap-3 mb-0">
-            {changeLog.map((entry) => {
-              const actor = actors[entry.actorId];
-              const actorLabel = actor
-                ? buildProfileLabel(actor)
-                : entry.actorId;
-              const actorPath = actor
-                ? `/profile/${actor.alias || actor.id}`
-                : `/profile/user/${entry.actorId}`;
-              const proposer = entry.proposerId
-                ? actors[entry.proposerId]
-                : null;
-              const proposerPath = proposer
-                ? `/profile/${proposer.alias || proposer.id}`
-                : entry.proposerId
-                  ? `/profile/user/${entry.proposerId}`
-                  : null;
-              const action = sourceChangeActionLabel(entry.action);
-              return (
-                <li key={entry.id} className="border-bottom pb-2">
-                  <div>
-                    <Link to={actorPath}>
-                      {entry.actorId === userInfo?.userId ? "You" : actorLabel}
-                    </Link>{" "}
-                    {action}{" "}
-                    {entry.proposerId && proposerPath && (
-                      <>
-                        <span className="text-muted">, proposed by </span>
-                        <Link to={proposerPath}>
-                          {entry.proposerId === userInfo?.userId
-                            ? "You"
-                            : proposer
-                              ? buildProfileLabel(proposer)
-                              : "Unknown profile"}
-                        </Link>{" "}
-                      </>
-                    )}
-                    <time className="text-muted">
-                      {formatAppDateTime(entry.createdAt)}
-                    </time>
-                    {entry.changesetId && (
-                      <>
-                        <span className="text-muted"> · </span>
-                        <button
-                          type="button"
-                          className="source-change-details-link"
-                          onClick={() => setSelectedChange(entry)}
-                        >
-                          View changes
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
+            {changeLog.map((entry) => (
+              <li key={entry.id} className="border-bottom pb-2">
+                <ChangeLogEntry
+                  actorUserId={entry.actorId}
+                  proposerUserId={entry.proposerId}
+                  action={sourceChangeActionLabel(entry.action)}
+                  occurredAt={entry.createdAt}
+                  currentUserId={userInfo?.userId}
+                  profiles={actors}
+                  {...(entry.changesetId
+                    ? { onDetails: () => setSelectedChange(entry) }
+                    : {})}
+                />
+              </li>
+            ))}
           </ol>
         )}
       </section>

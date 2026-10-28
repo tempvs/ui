@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 
+import { getViewer, type Viewer } from "../auth/viewerApi";
+import ChangeLogEntry from "../component/ChangeLogEntry";
 import Spinner from "../component/Spinner";
+import { getUserProfilesByUserIds } from "../profile/profileApi";
+import type { Profile } from "../profile/profileTypes";
 import {
   listMyMapRoleRequests,
   requestMapRole,
@@ -40,13 +44,37 @@ export default function MapRoleRequestModal({
   const [submitting, setSubmitting] = useState(false);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
 
   useEffect(() => {
     if (!show) return;
     setLoading(true);
     setError("");
-    void listMyMapRoleRequests()
-      .then(setRequests)
+    void Promise.all([listMyMapRoleRequests(), getViewer()])
+      .then(([nextRequests, nextViewer]) => {
+        setRequests(nextRequests);
+        setViewer(nextViewer);
+        const userIds = Array.from(
+          new Set(
+            nextRequests.flatMap((request) => [
+              request.userId,
+              request.decidedByUserId,
+            ]).filter((value): value is string => Boolean(value)),
+          ),
+        );
+        void getUserProfilesByUserIds(userIds)
+          .then((items) =>
+            setProfiles(
+              Object.fromEntries(
+                items
+                  .filter((profile) => Boolean(profile.userId))
+                  .map((profile) => [String(profile.userId), profile]),
+              ),
+            ),
+          )
+          .catch(() => undefined);
+      })
       .catch((caught: unknown) =>
         setError((caught as Error).message || "Unable to load Map roles."),
       )
@@ -133,10 +161,19 @@ export default function MapRoleRequestModal({
                 className="border-top py-2 small d-flex justify-content-between align-items-start gap-2"
               >
                 <div>
-                  <strong>{formatRole(request.role)}</strong>
-                  <span className="text-muted ms-2">
-                    {formatStatus(request.status)}
-                  </span>
+                  <ChangeLogEntry
+                    actorUserId={request.decidedByUserId || request.userId}
+                    {...(request.decidedByUserId
+                      ? {
+                          relatedUserId: request.userId,
+                          relatedUserLabel: "requested by",
+                        }
+                      : {})}
+                    action={mapRoleRequestAction(request)}
+                    occurredAt={request.updatedAt}
+                    currentUserId={viewer?.userId}
+                    profiles={profiles}
+                  />
                   {request.decisionNote && (
                     <div className="text-muted">{request.decisionNote}</div>
                   )}
@@ -179,8 +216,12 @@ function formatRole(role: string): string {
     .replace(/^./, (value) => value.toLocaleUpperCase());
 }
 
-function formatStatus(status: string): string {
-  return status
-    .toLocaleLowerCase()
-    .replace(/^./, (value) => value.toLocaleUpperCase());
+function mapRoleRequestAction(request: MapRoleRequest): string {
+  const role = `${formatRole(request.role)} access`;
+  return {
+    PENDING: `requested ${role}`,
+    APPROVED: `approved ${role} request`,
+    REJECTED: `rejected ${role} request`,
+    WITHDRAWN: `withdrew ${role} request`,
+  }[request.status];
 }

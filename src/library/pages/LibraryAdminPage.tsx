@@ -3,6 +3,7 @@ import { Button, Card } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 
 import AdministrationTabs from "../../component/AdministrationTabs";
+import ChangeLogEntry from "../../component/ChangeLogEntry";
 import RoleMemberPanel from "../../component/RoleMemberPanel";
 import SectionBreadcrumb from "../../component/SectionBreadcrumb";
 import Spinner from "../../component/Spinner";
@@ -74,10 +75,18 @@ export default function LibraryAdminPage() {
     setMemberProfiles(Object.fromEntries(resolvedProfiles));
   };
 
-  const hydrateRoleRequestProfiles = async (requests: LibraryRoleRequest[]) => {
+  const hydrateRoleRequestProfiles = async (
+    requests: LibraryRoleRequest[],
+    audit: LibraryRoleAuditEntry[] = [],
+  ) => {
     try {
       const profiles = await getUserProfilesByUserIds(
-        requests.map((request) => request.userId),
+        Array.from(
+          new Set([
+            ...requests.map((request) => request.userId),
+            ...audit.flatMap((entry) => [entry.userId, entry.actorUserId]),
+          ]),
+        ),
       );
       setRoleRequestProfiles((current) => ({
         ...current,
@@ -147,7 +156,7 @@ export default function LibraryAdminPage() {
       // uses the same linked avatar/name treatment as every other profile
       // list. A historical request can outlive a deleted profile, so retain
       // the Library-provided name as a safe fallback below.
-      void hydrateRoleRequestProfiles(requests);
+      void hydrateRoleRequestProfiles(requests, auditResult.data?.entries || []);
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
     } finally {
@@ -326,18 +335,25 @@ export default function LibraryAdminPage() {
                 No approvals, rejections, or direct assignments yet.
               </p>
             ) : (
-              <ul className="mb-0 ps-3">
+              <ol className="list-unstyled d-flex flex-column gap-3 mb-0">
                 {roleAudit.map((entry) => (
-                  <li key={entry.id}>
-                    <strong>{roleAuditLabel(entry)}</strong> for {entry.userId}{" "}
-                    by {entry.actorUserId}
-                    {" · "}
-                    <time dateTime={entry.occurredAt}>
-                      {new Date(entry.occurredAt).toLocaleString()}
-                    </time>
+                  <li key={entry.id} className="border-bottom pb-2">
+                    <ChangeLogEntry
+                      actorUserId={entry.actorUserId}
+                      relatedUserId={entry.userId}
+                      relatedUserLabel={
+                        entry.action === "APPROVED" || entry.action === "REJECTED"
+                          ? "requested by"
+                          : "for"
+                      }
+                      action={roleAuditLabel(entry)}
+                      occurredAt={entry.occurredAt}
+                      currentUserId={userInfo?.userId}
+                      profiles={roleRequestProfiles}
+                    />
                   </li>
                 ))}
-              </ul>
+              </ol>
             )}
           </section>
           {roleRequests.length === 0 && (
