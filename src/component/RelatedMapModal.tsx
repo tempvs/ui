@@ -425,7 +425,12 @@ export default function RelatedMapModal({
             <Button
               variant="outline-dark"
               onClick={() => {
-                void saveCurrentMap(shareTitle).then(() => setShowShare(false));
+                void saveCurrentMap(shareTitle).then((reference) => {
+                  if (!reference) return;
+                  setShowShare(false);
+                  setShow(false);
+                  navigate("/map/saved");
+                });
               }}
             >
               Save map

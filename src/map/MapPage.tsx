@@ -1168,7 +1168,11 @@ export default function MapPage() {
             <Button
               variant="outline-dark"
               onClick={() => {
-                void saveCurrentMap(shareTitle).then(() => setShowShare(false));
+                void saveCurrentMap(shareTitle).then((reference) => {
+                  if (!reference) return;
+                  setShowShare(false);
+                  navigate("/map/saved");
+                });
               }}
             >
               Save map

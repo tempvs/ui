@@ -269,7 +269,10 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         ),
         rightContent: canPropose ? (
           <div className="d-flex gap-2 flex-wrap justify-content-end">
-            <Link to="/map/admin" className="btn btn-outline-dark btn-sm">
+            <Link
+              to={`/map/place/${encodeURIComponent(place.id)}/proposals`}
+              className="btn btn-outline-dark btn-sm"
+            >
               Pending proposals
             </Link>
             <Link
