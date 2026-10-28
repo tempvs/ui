@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Button, Modal } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 
 import MapCanvas from "./MapCanvas";
-import type { MapEntityLocation } from "./mapApi";
+import { saveMapSnapshot, type MapEntityLocation } from "./mapApi";
+import { stageMapAttachment } from "./pendingMapAttachment";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -107,51 +109,82 @@ export default function MapReferenceAttachment({
   reference: PublicMapReference;
 }) {
   const [mapError, setMapError] = useState(false);
+  const [show, setShow] = useState(false);
+  const [status, setStatus] = useState("");
+  const navigate = useNavigate();
   const path = publicMapReferencePath(reference);
   const name = reference.placeName || "Shared map";
+  const save = async () => {
+    const title = window.prompt("Name this saved map", name);
+    if (!title?.trim()) return;
+    try {
+      await saveMapSnapshot({ title: title.trim(), reference });
+      setStatus("Saved to your maps.");
+    } catch {
+      setStatus("Unable to save this map.");
+    }
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`);
+      setStatus("Map link copied.");
+    } catch {
+      setStatus("Copy the link from the opened map instead.");
+    }
+  };
   return (
-    <section className="map-reference-attachment" aria-label={`Map: ${name}`}>
-      <div className="map-reference-heading">
-        <strong>{name}</strong>
-        <span className="text-muted small">
-          {reference.radiusKm} km · {reference.entityTypes.length} layer
-          {reference.entityTypes.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      {!mapError && (
-        <div className="map-reference-canvas">
-          <MapCanvas
-            places={[]}
-            entities={[]}
-            focus={{
-              latitude: reference.latitude,
-              longitude: reference.longitude,
-            }}
-            pickedCoordinate={{
-              latitude: reference.latitude,
-              longitude: reference.longitude,
-            }}
-            initialFitPoints={[
-              {
-                key: "map-reference-focus",
-                latitude: reference.latitude,
-                longitude: reference.longitude,
-              },
-            ]}
-            showModernBorders={false}
-            onEntitySelect={() => undefined}
-            onMapError={() => setMapError(true)}
-          />
+    <>
+      <section className="map-reference-attachment" aria-label={`Map: ${name}`}>
+        <div
+          className="map-reference-open"
+          role="button"
+          tabIndex={0}
+          onClick={() => setShow(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setShow(true);
+            }
+          }}
+          aria-label={`Open shared map: ${name}`}
+        >
+          <div className="map-reference-heading">
+            <strong>{name}</strong>
+            <span className="text-muted small">
+              {reference.radiusKm} km · {reference.entityTypes.length} layer
+              {reference.entityTypes.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {!mapError && <MapPreview reference={reference} onError={() => setMapError(true)} />}
+          {mapError && (
+            <p className="small text-muted mb-1 px-2">
+              Map preview unavailable. Open the map for the full view.
+            </p>
+          )}
         </div>
-      )}
-      {mapError && (
-        <p className="small text-muted mb-1">
-          Map preview unavailable. The public map link remains available.
-        </p>
-      )}
-      <Link to={path} className="small">
-        Open in Map
-      </Link>
-    </section>
+        <button type="button" className="map-reference-open-link" onClick={() => setShow(true)}>
+          Open map preview
+        </button>
+      </section>
+      <Modal show={show} onHide={() => setShow(false)} centered size="xl">
+        <Modal.Header closeButton><Modal.Title>{name}</Modal.Title></Modal.Header>
+        <Modal.Body>
+          <div className="map-reference-modal-canvas">
+            <MapPreview reference={reference} onError={() => setStatus("Map preview unavailable.")} />
+          </div>
+          {status && <p className="small text-muted mt-2 mb-0">{status}</p>}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-dark" onClick={() => { setShow(false); navigate(path); }}>Open in Map</Button>
+          <Button variant="outline-dark" onClick={() => void copy()}>Copy link</Button>
+          <Button variant="outline-dark" onClick={() => void save()}>Save map</Button>
+          <Button variant="dark" onClick={() => { stageMapAttachment(reference); setShow(false); navigate("/chat", { state: { composeMap: true } }); }}>Send</Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
+}
+
+function MapPreview({ reference, onError }: { reference: PublicMapReference; onError: () => void }) {
+  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={[]} focus={{ latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={{ latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={[{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }]} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
 }

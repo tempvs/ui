@@ -797,6 +797,30 @@
   border-bottom: 1px solid rgba(107, 89, 61, 0.16);
 }
 
+.map-reference-open {
+  cursor: pointer;
+}
+
+.map-reference-open:focus-visible {
+  outline: 2px solid #6b593d;
+  outline-offset: -2px;
+}
+
+.map-reference-open-link {
+  display: inline-block;
+  padding: 0.4rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: #4d3d24;
+  font-size: 0.875rem;
+  text-decoration: underline;
+}
+
+.map-reference-modal-canvas .map-reference-canvas {
+  height: min(62vh, 34rem);
+  border: 1px solid rgba(107, 89, 61, 0.16);
+}
+
 .map-reference-attachment > a {
   display: inline-block;
   padding: 0.4rem 0.65rem;

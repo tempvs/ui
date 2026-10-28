@@ -2,7 +2,9 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Button, Modal } from "react-bootstrap";
 import { FaGlobeAmericas as GlobeIcon, FaTimes as TimesIcon } from "react-icons/fa";
 import { listMyMapSnapshots, type MapSnapshot } from "./mapApi";
-import type { PublicMapReference } from "./MapReferenceAttachment";
+import MapReferenceAttachment, {
+  type PublicMapReference,
+} from "./MapReferenceAttachment";
 const FaGlobeAmericas = GlobeIcon as ComponentType<{ "aria-hidden"?: boolean }>;
 const FaTimes = TimesIcon as ComponentType<{ "aria-hidden"?: boolean }>;
 
@@ -22,5 +24,5 @@ export default function MapSnapshotPicker({ onSelect }: { onSelect: (reference: 
 }
 
 export function SelectedMapPreview({ reference, onRemove }: { reference: PublicMapReference; onRemove: () => void }) {
-  return <div className="selected-map-preview" role="status"><FaGlobeAmericas aria-hidden /> <span><strong>Map attached:</strong> {reference.placeName || `${reference.latitude.toFixed(3)}, ${reference.longitude.toFixed(3)}`}</span><Button type="button" variant="link" size="sm" className="p-0" onClick={onRemove} aria-label="Remove attached map"><FaTimes aria-hidden /></Button></div>;
+  return <div className="selected-map-preview" role="status"><div className="flex-grow-1"><MapReferenceAttachment reference={reference} /></div><Button type="button" variant="link" size="sm" className="p-0 align-self-start" onClick={onRemove} aria-label="Remove attached map"><FaTimes aria-hidden /></Button></div>;
 }
