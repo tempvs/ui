@@ -275,7 +275,7 @@ export default function LibrarySourcePage() {
     >
       <EntityDetailPage>
         <PageColumns variant="two" className="library-source-columns">
-        <PageColumn>
+        <PageColumn className="library-source-details">
           <div className="stash-source-copy stash-item-display-copy text-start">
             <div className="stash-item-title">{source.name}</div>
             <EditableDescriptionField
@@ -346,58 +346,61 @@ export default function LibrarySourcePage() {
               />
             </div>
           </div>
+        </PageColumn>
+        <PageColumn className="library-source-images">
+          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <div className="stash-subheading mb-0">Images</div>
+          </div>
+
+          <StackedImageGallery
+            images={images.map((image) => ({
+              ...image,
+              resourceType: image.resourceType || "source",
+              resourceId: image.resourceId || sourceId,
+            }))}
+            title={source.name || undefined}
+            emptyText="No images uploaded for this source yet."
+            previewSize="compact"
+            previewStyle={{ width: "100%" }}
+            previewImageStyle={{
+              // Source pictures should fill the available gallery width while
+              // preserving their own aspect ratio. `auto` left narrow images
+              // looking like a squeezed strip in the responsive side panel.
+              width: "100%",
+              maxWidth: "100%",
+              height: "auto",
+              maxHeight: "24rem",
+              margin: "0 auto",
+            }}
+            fitPreviewHeightToImage
+            editable={false}
+            canAddImage={false}
+            wrapperClassName="source-image-gallery"
+          />
+        </PageColumn>
+        <PageColumn className="library-source-posts">
           <PostPanel
             targetType="SOURCE"
             targetId={source.id}
             canCreate={canContribute(userInfo)}
           />
         </PageColumn>
-        <PageColumn>
-          <section>
-            <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-              <div className="stash-subheading mb-0">Images</div>
-            </div>
-
-            <StackedImageGallery
-              images={images.map((image) => ({
-                ...image,
-                resourceType: image.resourceType || "source",
-                resourceId: image.resourceId || sourceId,
-              }))}
-              title={source.name || undefined}
-              emptyText="No images uploaded for this source yet."
-              previewSize="compact"
-              previewStyle={{ width: "100%" }}
-              previewImageStyle={{
-                // Source pictures should fill the available gallery width while
-                // preserving their own aspect ratio. `auto` left narrow images
-                // looking like a squeezed strip in the responsive side panel.
-                width: "100%",
-                maxWidth: "100%",
-                height: "auto",
-                maxHeight: "24rem",
-                margin: "0 auto",
-              }}
-              fitPreviewHeightToImage
-              editable={false}
-              canAddImage={false}
-              wrapperClassName="source-image-gallery"
-            />
-            <section
-              className="source-profile-links mt-4"
-              aria-label="Profiles using this source"
-            >
-              <div className="source-profile-links-heading">
-                <div className="stash-subheading mb-0">
-                  Profiles using this source
-                </div>
-                <TextFilterInput
-                  value={profileFilter}
-                  onChange={setProfileFilter}
-                  placeholder="Filter profiles"
-                  className="source-profile-filter"
-                />
+        <PageColumn className="library-source-profiles">
+          <section
+            className="source-profile-links"
+            aria-label="Profiles using this source"
+          >
+            <div className="source-profile-links-heading">
+              <div className="stash-subheading mb-0">
+                Profiles using this source
               </div>
+              <TextFilterInput
+                value={profileFilter}
+                onChange={setProfileFilter}
+                placeholder="Filter profiles"
+                className="source-profile-filter"
+              />
+            </div>
               {!sourceProfilesLoaded && (
                 <p className="text-muted mt-2 mb-0">Loading profiles...</p>
               )}
@@ -427,7 +430,6 @@ export default function LibrarySourcePage() {
                     className="source-profile-list"
                   />
                 )}
-            </section>
           </section>
         </PageColumn>
         </PageColumns>

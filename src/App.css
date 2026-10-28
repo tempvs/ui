@@ -166,6 +166,29 @@ html {
   min-width: 0;
 }
 
+/* Source pages use four logical sections. The desktop grid keeps related
+   content in two columns, while the DOM remains in the intended reading order
+   for the phone layout below. */
+.library-source-details,
+.library-source-posts {
+  grid-column: 1;
+}
+
+.library-source-images,
+.library-source-profiles {
+  grid-column: 2;
+}
+
+.library-source-details,
+.library-source-images {
+  grid-row: 1;
+}
+
+.library-source-posts,
+.library-source-profiles {
+  grid-row: 2;
+}
+
 @media (max-width: 991.98px) {
   .page-columns--three {
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
@@ -186,6 +209,14 @@ html {
   }
   .page-columns--three > :last-child {
     grid-column: auto;
+  }
+
+  .library-source-details,
+  .library-source-images,
+  .library-source-posts,
+  .library-source-profiles {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .page-columns {
@@ -217,24 +248,19 @@ html {
      so the feed can follow every information, people, and media section. */
   .profile-page-columns > .page-column:nth-child(2),
   .club-page-columns > .page-column:nth-child(2),
-  .event-page-layout > .page-column:nth-child(2),
-  .library-source-columns > .page-column:first-child,
-  .library-source-columns > .page-column:nth-child(2),
-  .library-source-columns > .page-column:nth-child(2) > section {
+  .event-page-layout > .page-column:nth-child(2) {
     display: contents;
   }
 
   .profile-page-columns > .page-column:first-child,
   .club-page-columns > .page-column:first-child,
-  .event-page-layout > .page-column:first-child,
-  .library-source-columns > .page-column:first-child > :not(.post-panel) {
+  .event-page-layout > .page-column:first-child {
     order: 1;
   }
 
   .profile-page-columns > .page-column:nth-child(2) > :not(.post-panel),
   .club-page-columns > .page-column:nth-child(2) > :not(.post-panel),
-  .event-page-layout > .page-column:nth-child(2) > :not(.post-panel),
-  .library-source-columns > .page-column:nth-child(2) > section > :not(.source-profile-links) {
+  .event-page-layout > .page-column:nth-child(2) > :not(.post-panel) {
     order: 2;
   }
 
@@ -246,13 +272,8 @@ html {
 
   .profile-page-columns .post-panel,
   .club-page-columns .post-panel,
-  .event-page-layout .post-panel,
-  .library-source-columns .post-panel {
+  .event-page-layout .post-panel {
     order: 3;
-  }
-
-  .library-source-columns .source-profile-links {
-    order: 4;
   }
 }
 
