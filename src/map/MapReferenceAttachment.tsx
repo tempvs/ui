@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
 import MapCanvas from "./MapCanvas";
 import { saveMapSnapshot, type MapEntityLocation } from "./mapApi";
 import { stageMapAttachment } from "./pendingMapAttachment";
+import { loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
+import type { SharedMapScope } from "./sharedMapScope";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -13,9 +15,9 @@ const entityTypes: MapEntityLocation["entityType"][] = [
   "SOURCE",
 ];
 
-/** Deliberately public, bounded data that can be stored in a post or chat
- * message. It cannot contain the `scope` parameters used by personal/page
- * relationship overlays or an arbitrary private coordinate. */
+/** A bounded map viewport that can be stored in a post or chat message.
+ * Scope is an explicitly approved, shareable resource graph. The resource
+ * APIs resolve it for the current recipient and omit unreadable data. */
 export type PublicMapReference = {
   placeId?: string;
   placeName?: string;
@@ -24,6 +26,7 @@ export type PublicMapReference = {
   radiusKm: number;
   entityTypes: MapEntityLocation["entityType"][];
   query?: string;
+  scope?: SharedMapScope;
 };
 
 export function publicMapReferencePath(reference: PublicMapReference): string {
@@ -39,12 +42,14 @@ export function publicMapReferencePath(reference: PublicMapReference): string {
   if (reference.placeId) params.set("placeId", reference.placeId);
   if (reference.placeName) params.set("q", reference.placeName);
   if (reference.query) params.set("content", reference.query);
+  if (reference.scope) {
+    params.set("scope", reference.scope.type);
+    params.set("scopeId", reference.scope.id);
+  }
   return `/map?${params.toString()}`;
 }
 
-/** Parse a copied public Map URL into the safe server-side attachment shape.
- * Scopes are deliberately rejected: they may render relationship overlays that
- * are appropriate only on an originating page, never in stored content. */
+/** Parse a copied map URL into the shareable server-side attachment shape. */
 export function publicMapReferenceFromUrl(
   value: string,
 ): PublicMapReference | null {
@@ -57,8 +62,6 @@ export function publicMapReferenceFromUrl(
     return null;
   }
   if (url.origin !== window.location.origin || url.pathname !== "/map")
-    return null;
-  if (url.searchParams.has("scope") || url.searchParams.has("scopeId"))
     return null;
   const latitude = Number(url.searchParams.get("lat"));
   const longitude = Number(url.searchParams.get("lng"));
@@ -92,6 +95,10 @@ export function publicMapReferenceFromUrl(
   const placeId = text("placeId", 256);
   const placeName = text("q", 200);
   const query = text("content", 200);
+  const scopeType = url.searchParams.get("scope");
+  const scopeId = url.searchParams.get("scopeId")?.trim();
+  if ((scopeType || scopeId) && (!scopeId || !isScopeType(scopeType)))
+    return null;
   return {
     ...(placeId ? { placeId } : {}),
     ...(placeName ? { placeName } : {}),
@@ -100,6 +107,7 @@ export function publicMapReferenceFromUrl(
     radiusKm,
     entityTypes: Array.from(new Set(selectedTypes)),
     ...(query ? { query } : {}),
+    ...(scopeId && scopeType ? { scope: { type: scopeType as SharedMapScope["type"], id: scopeId } } : {}),
   };
 }
 
@@ -186,5 +194,24 @@ export default function MapReferenceAttachment({
 }
 
 function MapPreview({ reference, onError }: { reference: PublicMapReference; onError: () => void }) {
-  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={[]} focus={{ latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={{ latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={[{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }]} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
+  const [content, setContent] = useState<OwnedMapContent>({ markers: [], connections: [] });
+  useEffect(() => {
+    let active = true;
+    if (!reference.scope) {
+      setContent({ markers: [], connections: [] });
+      return () => { active = false; };
+    }
+    void loadSharedMapScope(reference.scope)
+      .then((next) => { if (active) setContent(next); })
+      .catch(onError);
+    return () => { active = false; };
+  }, [reference.scope, onError]);
+  const fitPoints = content.markers.length
+    ? content.markers.map((marker) => ({ key: marker.key, latitude: marker.latitude, longitude: marker.longitude }))
+    : [{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }];
+  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={[]} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
+}
+
+function isScopeType(value: string | null): value is SharedMapScope["type"] {
+  return value === "USER" || value === "PROFILE" || value === "CLUB" || value === "EVENT" || value === "SOURCE";
 }

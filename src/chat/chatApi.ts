@@ -248,6 +248,11 @@ function mapReferenceValue(value: unknown): PublicMapReference {
     throw new Error();
   const optional = (field: string): string | undefined =>
     typeof object[field] === "string" ? (object[field] as string) : undefined;
+  const scopeObject = objectValue(object.scope);
+  const scopeId = scopeObject && optionalString(scopeObject.id)?.trim();
+  const scopeType = scopeObject?.type;
+  const scope = scopeId && (scopeType === "USER" || scopeType === "PROFILE" || scopeType === "CLUB" || scopeType === "EVENT" || scopeType === "SOURCE")
+    ? { type: scopeType as NonNullable<PublicMapReference["scope"]>["type"], id: scopeId } : undefined;
   return {
     ...(optional("placeId") ? { placeId: optional("placeId") } : {}),
     ...(optional("placeName") ? { placeName: optional("placeName") } : {}),
@@ -256,6 +261,7 @@ function mapReferenceValue(value: unknown): PublicMapReference {
     radiusKm: object.radiusKm,
     entityTypes: entityTypes as PublicMapReference["entityTypes"],
     ...(optional("query") ? { query: optional("query") } : {}),
+    ...(scope ? { scope } : {}),
   };
 }
 

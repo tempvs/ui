@@ -31,10 +31,10 @@ test("renders a bounded public map reference and opens its public map URL", () =
   );
 });
 
-test("refuses a personal relationship-map URL", () => {
+test("preserves an approved relationship-map scope", () => {
   expect(
     publicMapReferenceFromUrl(
       "/map?lat=41.9&lng=12.5&radiusKm=25&scope=PROFILE&scopeId=private",
     ),
-  ).toBeNull();
+  ).toMatchObject({ scope: { type: "PROFILE", id: "private" } });
 });

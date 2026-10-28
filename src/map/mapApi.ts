@@ -221,6 +221,7 @@ export type MapSnapshot = {
     longitude: number;
     radiusKm: number;
     entityTypes: MapEntityLocation["entityType"][];
+    scope?: { type: "USER" | "PROFILE" | "CLUB" | "EVENT" | "SOURCE"; id: string };
   };
   createdAt: string;
   updatedAt: string;

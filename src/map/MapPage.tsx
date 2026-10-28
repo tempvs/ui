@@ -969,6 +969,7 @@ export default function MapPage() {
         longitude: lng,
         radiusKm: Number(radius),
         entityTypes: types.length ? types : entityTypes,
+        ...(sharedScope ? { scope: sharedScope } : {}),
       };
       await saveMapSnapshot({
         title: title.trim(),
