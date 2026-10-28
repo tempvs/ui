@@ -86,7 +86,6 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
   const [mergeTarget, setMergeTarget] = useState<MapPlace | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [savedDraft, setSavedDraft] = useState<PlaceEditDraft | null>(null);
   const [likelyDuplicates, setLikelyDuplicates] = useState<MapPlace[]>([]);
 
@@ -354,7 +353,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
           <li>Historical context</li>
           <li>Evidence and review</li>
         </ol>
-        {editable && savedDraft && !submitted && (
+        {editable && savedDraft && (
           <Alert
             variant="secondary"
             className="d-flex flex-wrap align-items-center gap-2"
@@ -381,15 +380,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
             </Button>
           </Alert>
         )}
-        {submitted ? (
-          <Alert variant="success">
-            Submitted for Map review.{" "}
-            <Link to={`/map/place/${encodeURIComponent(place.id)}`}>
-              Return to the place
-            </Link>
-          </Alert>
-        ) : (
-          <Form onSubmit={submit}>
+        <Form onSubmit={submit}>
             <Form.Group className="mb-3">
               <Form.Label>Change type</Form.Label>
               <Form.Select
@@ -781,8 +772,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 {saving ? "Submitting…" : "Submit changeset for review"}
               </Button>
             </div>
-          </Form>
-        )}
+        </Form>
       </section>
     </PageLayout>
   );
