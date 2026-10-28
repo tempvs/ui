@@ -221,7 +221,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
 
   const canPropose = Boolean(
     viewer?.roles.some((role) =>
-      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER"].includes(role),
+      ["TEMPVS_ADMIN", "MAP_ADMIN", "MAP_EDITOR", "MAP_REVIEWER"].includes(
+        role,
+      ),
     ),
   );
 
@@ -266,12 +268,17 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           />
         ),
         rightContent: canPropose ? (
-          <Link
-            to={`/map/place/${encodeURIComponent(place.id)}/edit`}
-            className="btn btn-dark btn-sm"
-          >
-            Propose edit
-          </Link>
+          <div className="d-flex gap-2 flex-wrap justify-content-end">
+            <Link to="/map/admin" className="btn btn-outline-dark btn-sm">
+              Pending proposals
+            </Link>
+            <Link
+              to={`/map/place/${encodeURIComponent(place.id)}/edit`}
+              className="btn btn-dark btn-sm"
+            >
+              Propose edit
+            </Link>
+          </div>
         ) : null,
       }}
     >
@@ -481,16 +488,20 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           <ol className="mb-0 ps-3">
             {history.map((entry) => (
               <li key={entry.id} className="mb-2">
-                <strong>{historyLabel(entry.kind)}</strong> by {entry.actorUserId}
+                <strong>{historyLabel(entry.kind)}</strong> by{" "}
+                {entry.actorUserId}
                 {" · "}
                 <time dateTime={entry.occurredAt}>
                   {new Date(entry.occurredAt).toLocaleString()}
                 </time>
                 {entry.globalAdminOverride && " · Tempvs admin override"}
-                {entry.note && <div className="small text-muted">{entry.note}</div>}
+                {entry.note && (
+                  <div className="small text-muted">{entry.note}</div>
+                )}
                 {entry.revision && (
                   <div className="small text-muted">
-                    {entry.revision.changeKind || "UPDATE"}: {entry.revision.canonicalName}
+                    {entry.revision.changeKind || "UPDATE"}:{" "}
+                    {entry.revision.canonicalName}
                   </div>
                 )}
               </li>
@@ -498,7 +509,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           </ol>
         )}
         {historyCursor && (
-          <Button size="sm" variant="outline-dark" className="mt-2" disabled={historyLoading} onClick={() => void loadMoreHistory()}>
+          <Button
+            size="sm"
+            variant="outline-dark"
+            className="mt-2"
+            disabled={historyLoading}
+            onClick={() => void loadMoreHistory()}
+          >
             {historyLoading ? "Loading…" : "Show more"}
           </Button>
         )}

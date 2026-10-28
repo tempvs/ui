@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { FaGlobeAmericas } from "react-icons/fa";
+import {
+  FaFloppyDisk as FloppyDiskIcon,
+  FaLink as LinkIcon,
+  FaPaperPlane as PaperPlaneIcon,
+} from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
@@ -15,9 +20,12 @@ import {
 import {
   getMapPlace,
   nearbyMapEntities,
+  saveMapSnapshot,
   type MapEntityLocation,
   type MapPlace,
 } from "../map/mapApi";
+import type { PublicMapReference } from "../map/MapReferenceAttachment";
+import { stageMapAttachment } from "../map/pendingMapAttachment";
 
 type RelatedMapModalProps = {
   placeId: string;
@@ -33,6 +41,15 @@ type RelatedMapModalProps = {
 
 const GlobeIcon = FaGlobeAmericas as React.ComponentType<{
   className?: string;
+}>;
+const LinkIconButton = LinkIcon as React.ComponentType<{
+  "aria-hidden"?: boolean;
+}>;
+const FloppyDiskIconButton = FloppyDiskIcon as React.ComponentType<{
+  "aria-hidden"?: boolean;
+}>;
+const PaperPlaneIconButton = PaperPlaneIcon as React.ComponentType<{
+  "aria-hidden"?: boolean;
 }>;
 
 /**
@@ -59,7 +76,64 @@ export default function RelatedMapModal({
   const [showNearby, setShowNearby] = useState(true);
   const [showRelated, setShowRelated] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [snapshotStatus, setSnapshotStatus] = useState("");
+  const [showShare, setShowShare] = useState(false);
   const navigate = useNavigate();
+
+  const mapPath = place
+    ? `/map?${appendSharedMapScope(
+        fullMapParameters(place, displayName, radiusKm),
+        scope,
+      ).toString()}`
+    : "";
+  const mapReference = place
+    ? {
+        placeId: place.id,
+        placeName: displayName,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        radiusKm,
+        entityTypes: [],
+      }
+    : null;
+
+  const saveCurrentMap = async (): Promise<PublicMapReference | null> => {
+    if (!mapReference) return null;
+    const title = window.prompt("Name this saved map", displayName);
+    if (!title?.trim()) return null;
+    try {
+      await saveMapSnapshot({
+        title: title.trim(),
+        reference: mapReference,
+        ...(scope?.type === "PROFILE" ? { profileId: scope.id } : {}),
+        ...(scope
+          ? {
+              scope: {
+                type: scope.type === "USER" ? "PERSONAL" : scope.type,
+                ...(scope.type === "USER" ? {} : { id: scope.id }),
+              },
+            }
+          : {}),
+      });
+      setSnapshotStatus("Saved to your maps.");
+      return mapReference;
+    } catch (caught) {
+      setSnapshotStatus(
+        (caught as Error).message || "Unable to save this map.",
+      );
+      return null;
+    }
+  };
+
+  const destinationPath = scope
+    ? scope.type === "PROFILE"
+      ? `/profile/${scope.id}`
+      : scope.type === "CLUB"
+        ? `/clubs/${scope.id}`
+        : scope.type === "EVENT"
+          ? `/events/${scope.id}`
+          : null
+    : null;
 
   useEffect(() => {
     if (!show) return undefined;
@@ -267,28 +341,22 @@ export default function RelatedMapModal({
             <Button
               variant="outline-dark"
               onClick={() => {
-                const path = `/map?${appendSharedMapScope(
-                  fullMapParameters(place, displayName, radiusKm),
-                  scope,
-                ).toString()}`;
                 setShow(false);
-                navigate(path);
+                navigate(mapPath);
               }}
             >
               Open in Map
             </Button>
             <Button
               variant="outline-dark"
+              title="Copy public map link"
+              aria-label="Copy public map link"
               onClick={() => {
                 // Keep the public page/user scope. Without it, the recipient
                 // would see their own personal map rather than the graph the
                 // sender had open.
-                const path = `/map?${appendSharedMapScope(
-                  fullMapParameters(place, displayName, radiusKm),
-                  scope,
-                ).toString()}`;
                 void navigator.clipboard
-                  ?.writeText(`${window.location.origin}${path}`)
+                  ?.writeText(`${window.location.origin}${mapPath}`)
                   .then(() => {
                     setCopied(true);
                     window.setTimeout(() => setCopied(false), 2500);
@@ -296,12 +364,96 @@ export default function RelatedMapModal({
                   .catch(() => setCopied(false));
               }}
             >
-              {copied ? "Copied" : "Copy public map link"}
+              {copied ? "Copied" : <LinkIconButton aria-hidden />}
             </Button>
+            <Button
+              variant="outline-dark"
+              title="Save map"
+              aria-label="Save map"
+              onClick={() => void saveCurrentMap()}
+            >
+              <FloppyDiskIconButton aria-hidden />
+            </Button>
+            <Button
+              variant="outline-dark"
+              title="Send map"
+              aria-label="Send map"
+              onClick={() => setShowShare(true)}
+            >
+              <PaperPlaneIconButton aria-hidden />
+            </Button>
+            {snapshotStatus && (
+              <span className="small text-muted">{snapshotStatus}</span>
+            )}
           </Modal.Footer>
         )}
       </Modal>
+      <Modal show={showShare} onHide={() => setShowShare(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Send this map</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Choose a destination. The map is saved first, then attached to the
+            destination composer.
+          </p>
+          <div className="d-flex gap-2 flex-wrap">
+            <Button variant="dark" onClick={() => void saveCurrentMap()}>
+              Save only
+            </Button>
+            <LinkButton
+              className="btn btn-outline-dark"
+              onClick={() => {
+                void saveCurrentMap().then((reference) => {
+                  if (!reference) return;
+                  stageMapAttachment(reference);
+                  navigate("/chat");
+                  setShowShare(false);
+                });
+              }}
+            >
+              Direct or group chat
+            </LinkButton>
+            {destinationPath && scope && (
+              <LinkButton
+                className="btn btn-outline-dark"
+                onClick={() => {
+                  void saveCurrentMap().then((reference) => {
+                    if (!reference) return;
+                    stageMapAttachment(reference);
+                    navigate(destinationPath);
+                    setShowShare(false);
+                  });
+                }}
+              >
+                {scope.type[0] + scope.type.slice(1).toLowerCase()} wall
+              </LinkButton>
+            )}
+          </div>
+        </Modal.Body>
+      </Modal>
     </>
+  );
+}
+
+function LinkButton({
+  className,
+  children,
+  onClick,
+}: {
+  className: string;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      className={className}
+      variant="outline-dark"
+      onClick={onClick}
+    >
+      {children}
+    </Button>
   );
 }
 

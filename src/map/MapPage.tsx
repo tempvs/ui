@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
-import { FaFloppyDisk as FloppyDiskIcon, FaLink as LinkIcon, FaPaperPlane as PaperPlaneIcon } from "react-icons/fa6";
+import {
+  FaFloppyDisk as FloppyDiskIcon,
+  FaLink as LinkIcon,
+  FaPaperPlane as PaperPlaneIcon,
+} from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
@@ -49,8 +53,12 @@ const entityTypes: MapEntityLocation["entityType"][] = [
   "SOURCE",
 ];
 const FaLink = LinkIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
-const FaFloppyDisk = FloppyDiskIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
-const FaPaperPlane = PaperPlaneIcon as React.ComponentType<{ "aria-hidden"?: boolean }>;
+const FaFloppyDisk = FloppyDiskIcon as React.ComponentType<{
+  "aria-hidden"?: boolean;
+}>;
+const FaPaperPlane = PaperPlaneIcon as React.ComponentType<{
+  "aria-hidden"?: boolean;
+}>;
 
 function canProposePlace(viewer: Viewer | null): boolean {
   return Boolean(
@@ -850,17 +858,46 @@ export default function MapPage() {
       setSnapshotStatus("Choose a place or coordinates before saving a map.");
       return null;
     }
-    const title = window.prompt("Name this saved map", selectedPlace?.canonicalName || "Saved map");
+    const title = window.prompt(
+      "Name this saved map",
+      selectedPlace?.canonicalName || "Saved map",
+    );
     if (!title?.trim()) return null;
     try {
       const reference: PublicMapReference = {
-        ...(selectedPlace ? { placeId: selectedPlace.id, placeName: selectedPlace.canonicalName } : {}),
-        latitude: lat, longitude: lng, radiusKm: Number(radius), entityTypes: types,
+        ...(selectedPlace
+          ? {
+              placeId: selectedPlace.id,
+              placeName: selectedPlace.canonicalName,
+            }
+          : {}),
+        latitude: lat,
+        longitude: lng,
+        radiusKm: Number(radius),
+        entityTypes: types,
       };
-      await saveMapSnapshot({ title: title.trim(), reference, ...(sharedScope?.type === "PROFILE" ? { profileId: sharedScope.id } : {}), ...(sharedScope ? { scope: { type: sharedScope.type === "USER" ? "PERSONAL" : sharedScope.type, ...(sharedScope.type === "USER" ? {} : { id: sharedScope.id }) } } : {})});
+      await saveMapSnapshot({
+        title: title.trim(),
+        reference,
+        ...(sharedScope?.type === "PROFILE"
+          ? { profileId: sharedScope.id }
+          : {}),
+        ...(sharedScope
+          ? {
+              scope: {
+                type:
+                  sharedScope.type === "USER" ? "PERSONAL" : sharedScope.type,
+                ...(sharedScope.type === "USER" ? {} : { id: sharedScope.id }),
+              },
+            }
+          : {}),
+      });
       setSnapshotStatus("Saved to your maps.");
       return reference;
-    } catch (caught) { setSnapshotStatus((caught as Error).message); return null; }
+    } catch (caught) {
+      setSnapshotStatus((caught as Error).message);
+      return null;
+    }
   };
 
   return (
@@ -902,7 +939,48 @@ export default function MapPage() {
           <p className="text-muted mb-0">
             Start with a place, then refine what appears on the map.
           </p>
-          {viewer && <Link className="btn btn-sm btn-outline-dark mt-2" to="/map/saved">Saved maps</Link>}
+          {viewer && (
+            <Link className="btn btn-sm btn-outline-dark mt-2" to="/map/saved">
+              Saved maps
+            </Link>
+          )}
+          <div className="d-flex gap-2 flex-wrap mt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-dark"
+              title="Copy public map link"
+              aria-label="Copy public map link"
+              onClick={() => void copyMapLink()}
+            >
+              <FaLink aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-dark"
+              title="Save map"
+              aria-label="Save map"
+              onClick={() => void saveCurrentMap()}
+            >
+              <FaFloppyDisk aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline-dark"
+              title="Send map"
+              aria-label="Send map"
+              onClick={() => setShowShare(true)}
+            >
+              <FaPaperPlane aria-hidden />
+            </Button>
+          </div>
+          {(copyStatus || snapshotStatus) && (
+            <span className="small text-muted d-block mt-1">
+              {copyStatus || snapshotStatus}
+            </span>
+          )}
         </div>
         <div className="map-discovery-controls">
           <div className="map-place-search-and-coordinates">
@@ -1034,28 +1112,101 @@ export default function MapPage() {
           </Alert>
         )}
         {selectedPlace && (
-          <section className="map-selected-place-card" aria-label="Selected place">
+          <section
+            className="map-selected-place-card"
+            aria-label="Selected place"
+          >
             <div>
               <span className="small text-muted">Selected place</span>
-              <strong>{selectedPlace.matchedName || selectedPlace.canonicalName}</strong>
+              <strong>
+                {selectedPlace.matchedName || selectedPlace.canonicalName}
+              </strong>
               <span className="small text-muted">
-                {selectedPlace.featureType.replaceAll("_", " ")} · {visibleEntities.length} nearby item{visibleEntities.length === 1 ? "" : "s"}
+                {selectedPlace.featureType.replaceAll("_", " ")} ·{" "}
+                {visibleEntities.length} nearby item
+                {visibleEntities.length === 1 ? "" : "s"}
               </span>
             </div>
             <div className="d-flex gap-2 flex-wrap">
-              <Link className="btn btn-sm btn-dark" to={`/map/place/${encodeURIComponent(selectedPlace.id)}`}>
+              <Link
+                className="btn btn-sm btn-dark"
+                to={`/map/place/${encodeURIComponent(selectedPlace.id)}`}
+              >
                 Open place
               </Link>
-              <Button type="button" size="sm" variant="outline-dark" title="Copy public map link" aria-label="Copy public map link" onClick={() => void copyMapLink()}><FaLink aria-hidden /></Button>
-              <Button type="button" size="sm" variant="outline-dark" title="Save map" aria-label="Save map" onClick={() => void saveCurrentMap()}><FaFloppyDisk aria-hidden /></Button>
-              <Button type="button" size="sm" variant="outline-dark" title="Send map" aria-label="Send map" onClick={() => setShowShare(true)}><FaPaperPlane aria-hidden /></Button>
             </div>
-            {copyStatus && <span className="small text-muted">{copyStatus}</span>}
-            {snapshotStatus && <span className="small text-muted">{snapshotStatus}</span>}
           </section>
         )}
       </section>
-      <Modal show={showShare} onHide={() => setShowShare(false)} centered><Modal.Header closeButton><Modal.Title>Send this map</Modal.Title></Modal.Header><Modal.Body><p>Choose a destination. The map is saved first, then attached to the destination composer. Attachments include only the public map view; entries a recipient cannot access remain hidden.</p><div className="d-flex gap-2 flex-wrap"><Button variant="dark" onClick={() => { void saveCurrentMap(); }}>Save only</Button><Link className="btn btn-outline-dark" to="/chat" onClick={(event) => { event.preventDefault(); void saveCurrentMap().then((reference) => { if (reference) { stageMapAttachment(reference); navigate("/chat"); setShowShare(false); } }); }}>Direct or group chat</Link>{sharedScope && sharedScope.type !== "USER" && <Link className="btn btn-outline-dark" to={sharedScope.type === "PROFILE" ? `/profile/${sharedScope.id}` : sharedScope.type === "CLUB" ? `/clubs/${sharedScope.id}` : `/events/${sharedScope.id}`} onClick={(event) => { event.preventDefault(); void saveCurrentMap().then((reference) => { if (reference) { stageMapAttachment(reference); navigate(sharedScope.type === "PROFILE" ? `/profile/${sharedScope.id}` : sharedScope.type === "CLUB" ? `/clubs/${sharedScope.id}` : `/events/${sharedScope.id}`); setShowShare(false); } }); }}>{sharedScope.type[0] + sharedScope.type.slice(1).toLowerCase()} wall</Link>}</div></Modal.Body></Modal>
+      <Modal show={showShare} onHide={() => setShowShare(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Send this map</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Choose a destination. The map is saved first, then attached to the
+            destination composer. Attachments include only the public map view;
+            entries a recipient cannot access remain hidden.
+          </p>
+          <div className="d-flex gap-2 flex-wrap">
+            <Button
+              variant="dark"
+              onClick={() => {
+                void saveCurrentMap();
+              }}
+            >
+              Save only
+            </Button>
+            <Link
+              className="btn btn-outline-dark"
+              to="/chat"
+              onClick={(event) => {
+                event.preventDefault();
+                void saveCurrentMap().then((reference) => {
+                  if (reference) {
+                    stageMapAttachment(reference);
+                    navigate("/chat");
+                    setShowShare(false);
+                  }
+                });
+              }}
+            >
+              Direct or group chat
+            </Link>
+            {sharedScope && sharedScope.type !== "USER" && (
+              <Link
+                className="btn btn-outline-dark"
+                to={
+                  sharedScope.type === "PROFILE"
+                    ? `/profile/${sharedScope.id}`
+                    : sharedScope.type === "CLUB"
+                      ? `/clubs/${sharedScope.id}`
+                      : `/events/${sharedScope.id}`
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  void saveCurrentMap().then((reference) => {
+                    if (reference) {
+                      stageMapAttachment(reference);
+                      navigate(
+                        sharedScope.type === "PROFILE"
+                          ? `/profile/${sharedScope.id}`
+                          : sharedScope.type === "CLUB"
+                            ? `/clubs/${sharedScope.id}`
+                            : `/events/${sharedScope.id}`,
+                      );
+                      setShowShare(false);
+                    }
+                  });
+                }}
+              >
+                {sharedScope.type[0] + sharedScope.type.slice(1).toLowerCase()}{" "}
+                wall
+              </Link>
+            )}
+          </div>
+        </Modal.Body>
+      </Modal>
       {viewer && ownProposals.length > 0 && (
         <section className="club-panel mt-3" aria-label="Your place proposals">
           <h2 className="h5">Your place proposals</h2>
