@@ -569,6 +569,39 @@ h3 {
 
   .entity-detail-page .library-source-columns .inline-editable-row-label {
     flex: 0 0 6.25rem;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Source details use the shared field rows. At phone widths their inline
+     controls must become a real two-column grid; flex shrink previously put
+     labels on top of year/place values and compressed image previews. */
+  .entity-detail-page .library-source-columns .editable-field-row,
+  .entity-detail-page .library-source-columns .place-picker-field {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.45rem;
+  }
+
+  .entity-detail-page .library-source-columns .editable-field-row > *,
+  .entity-detail-page .library-source-columns .place-picker-field > * {
+    min-width: 0;
+  }
+
+  .entity-detail-page .library-source-columns .source-image-gallery,
+  .entity-detail-page .library-source-columns .source-image-gallery button,
+  .entity-detail-page .library-source-columns .source-image-gallery .position-relative {
+    max-width: 100% !important;
+    min-width: 0;
+  }
+
+  .entity-detail-page .library-source-columns .source-image-gallery img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: min(60vh, 24rem) !important;
+    object-fit: contain !important;
   }
 
   .entity-detail-page .library-source-columns .historical-range-field-slot {
