@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Modal } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import MapCanvas from "./MapCanvas";
 import { saveMapSnapshot, type MapEntityLocation } from "./mapApi";
@@ -162,9 +162,9 @@ export default function MapReferenceAttachment({
             </p>
           )}
         </div>
-        <button type="button" className="map-reference-open-link" onClick={() => setShow(true)}>
-          Open map preview
-        </button>
+        <Link to={path} className="map-reference-open-link">
+          Open in Map
+        </Link>
       </section>
       <Modal show={show} onHide={() => setShow(false)} centered size="xl">
         <Modal.Header closeButton><Modal.Title>{name}</Modal.Title></Modal.Header>
