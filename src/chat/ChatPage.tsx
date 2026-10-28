@@ -1,6 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form, Modal } from "react-bootstrap";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { FaPlus } from "react-icons/fa";
 
@@ -145,6 +145,7 @@ function conversationIncludesProfile(
 export default function ChatPage() {
   const intl = useIntl();
   const navigate = useNavigate();
+  const location = useLocation();
   const { conversationId } = useParams();
   const currentProfileValue = useCurrentProfileValue();
 
@@ -175,6 +176,12 @@ export default function ChatPage() {
     const staged = takeStagedMapAttachment();
     if (staged) setSelectedMapReference(staged);
   }, []);
+  useEffect(() => {
+    if (!(location.state as { composeMap?: boolean } | null)?.composeMap)
+      return;
+    setCreateModalVisible(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
   const [participantQuery, setParticipantQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<Profile[]>([]);
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -587,7 +594,7 @@ export default function ChatPage() {
     if (currentProfileId == null) {
       return;
     }
-    if (!initialMessage.trim()) {
+    if (!initialMessage.trim() && !selectedMapReference) {
       setFeedback(
         intl.formatMessage({
           id: "chat.initialMessage.required",
@@ -617,7 +624,10 @@ export default function ChatPage() {
         senderProfileId: currentProfileId,
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
-        initialMessage: initialMessage.trim(),
+        initialMessage: initialMessage.trim() || null,
+        ...(selectedMapReference
+          ? { mapReference: selectedMapReference }
+          : {}),
       };
       const fingerprint = JSON.stringify(payload);
       const pending =
@@ -632,6 +642,7 @@ export default function ChatPage() {
       setParticipantQuery("");
       setGroupTitle("");
       setInitialMessage("");
+      setSelectedMapReference(null);
       setCreateModalVisible(false);
       setFeedback(null);
       await refreshConversations(details.id);
@@ -809,7 +820,7 @@ export default function ChatPage() {
     null;
   const currentProfileName = buildProfileLabel(currentProfile);
   const canCreateConversation =
-    !loadingProfiles && Boolean(initialMessage.trim());
+    !loadingProfiles && Boolean(initialMessage.trim() || selectedMapReference);
 
   return (
     <PageLayout
@@ -1178,6 +1189,17 @@ export default function ChatPage() {
                   })}
                 />
               </Form.Group>
+            )}
+            {selectedMapReference && (
+              <div className="mb-3">
+                <span className="chat-form-label d-block mb-1">
+                  Map to send
+                </span>
+                <SelectedMapPreview
+                  reference={selectedMapReference}
+                  onRemove={() => setSelectedMapReference(null)}
+                />
+              </div>
             )}
             <Form.Group className="chat-form-group">
               <Form.Label className="chat-form-label">

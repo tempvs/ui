@@ -40,6 +40,7 @@ export type CreateChatConversationPayload = {
   participantProfileIds: string[];
   title?: string | null;
   initialMessage?: string | null;
+  mapReference?: PublicMapReference;
 };
 
 export type SendChatMessagePayload = {
