@@ -52,6 +52,7 @@ import {
 import { buildProfileLabel } from "../profile/currentProfile";
 import type { Profile } from "../profile/profileTypes";
 import { listEvents, type TempvsEvent } from "../event/eventApi";
+import { getProfileClubs, type Club } from "../club/clubApi";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -168,6 +169,7 @@ export default function MapPage() {
   >("chat");
   const [shareProfiles, setShareProfiles] = useState<Profile[]>([]);
   const [shareEvents, setShareEvents] = useState<TempvsEvent[]>([]);
+  const [shareClubs, setShareClubs] = useState<Club[]>([]);
   const [shareDestinationsLoading, setShareDestinationsLoading] =
     useState(false);
   const suggestionRequest = useRef(0);
@@ -210,6 +212,18 @@ export default function MapPage() {
               event.adminProfileIds.some((id) => profileIds.has(String(id))),
           ),
         );
+        void Promise.all(
+          profiles.map((profile) => getProfileClubs(profile.id).catch(() => [])),
+        ).then((clubGroups) => {
+          if (active)
+            setShareClubs(
+              Array.from(
+                new Map(
+                  clubGroups.flat().map((club) => [String(club.id), club]),
+                ).values(),
+              ),
+            );
+        });
       })
       .finally(() => active && setShareDestinationsLoading(false));
     return () => {
@@ -905,9 +919,25 @@ export default function MapPage() {
   const saveCurrentMap = async (
     requestedTitle?: string,
   ): Promise<PublicMapReference | null> => {
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    const viewportAnchor =
+      focus ||
+      visibleOwnedMarkers[0] ||
+      visibleEntities[0] ||
+      null;
+    const lat =
+      latitude.trim() && longitude.trim()
+        ? Number(latitude)
+        : viewportAnchor?.latitude;
+    const lng =
+      latitude.trim() && longitude.trim()
+        ? Number(longitude)
+        : viewportAnchor?.longitude;
+    if (
+      lat === undefined ||
+      lng === undefined ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
       setSnapshotStatus("Choose a place or coordinates before saving a map.");
       return null;
     }
@@ -1278,19 +1308,17 @@ export default function MapPage() {
                           label: event.name,
                           path: `/events/${event.id}`,
                         }))
-                      : shareProfiles
-                          .filter((profile) =>
-                            shareDestination === "club"
-                              ? profile.type === "CLUB"
-                              : profile.type !== "CLUB",
-                          )
+                      : shareDestination === "club"
+                        ? shareClubs.map((club) => ({
+                            id: String(club.id),
+                            label: club.name,
+                            path: `/clubs/${club.id}`,
+                          }))
+                        : shareProfiles
                           .map((profile) => ({
                             id: String(profile.id),
                             label: buildProfileLabel(profile),
-                            path:
-                              shareDestination === "club"
-                                ? `/clubs/${profile.id}`
-                                : `/profile/${profile.alias || profile.id}`,
+                            path: `/profile/${profile.alias || profile.id}`,
                           }))
                     ).map((destination) => (
                       <Button
