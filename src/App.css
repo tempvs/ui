@@ -218,7 +218,9 @@ html {
   .profile-page-columns > .page-column:nth-child(2),
   .club-page-columns > .page-column:nth-child(2),
   .event-page-layout > .page-column:nth-child(2),
-  .library-source-columns > .page-column:first-child {
+  .library-source-columns > .page-column:first-child,
+  .library-source-columns > .page-column:nth-child(2),
+  .library-source-columns > .page-column:nth-child(2) > section {
     display: contents;
   }
 
@@ -232,7 +234,7 @@ html {
   .profile-page-columns > .page-column:nth-child(2) > :not(.post-panel),
   .club-page-columns > .page-column:nth-child(2) > :not(.post-panel),
   .event-page-layout > .page-column:nth-child(2) > :not(.post-panel),
-  .library-source-columns > .page-column:nth-child(2) {
+  .library-source-columns > .page-column:nth-child(2) > section > :not(.source-profile-links) {
     order: 2;
   }
 
@@ -246,6 +248,10 @@ html {
   .club-page-columns .post-panel,
   .event-page-layout .post-panel,
   .library-source-columns .post-panel {
+    order: 3;
+  }
+
+  .library-source-columns .source-profile-links {
     order: 4;
   }
 }
