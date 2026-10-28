@@ -7,7 +7,10 @@ import PageLayout from "../component/PageLayout";
 import PlaceNamesList from "../component/PlaceNamesList";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
+import ChangeLogEntry from "../component/ChangeLogEntry";
 import { getImageThumbnails } from "../image/imageApi";
+import { getUserProfilesByUserIds } from "../profile/profileApi";
+import type { Profile } from "../profile/profileTypes";
 import MapCanvas, { entityKey } from "./MapCanvas";
 import { entityThumbnailMarkers } from "./entityThumbnailMarkers";
 import {
@@ -21,6 +24,7 @@ import {
   type MapPlaceName,
 } from "./mapApi";
 import { formatPlaceNameRange } from "./placeNames";
+import MapPlaceChangeLogDiffModal from "./MapPlaceChangeLogDiffModal";
 
 type MapPlacePageProps = { id?: string };
 type EntityTypeFilter = MapEntityLocation["entityType"] | "ALL";
@@ -61,6 +65,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [history, setHistory] = useState<MapPlaceProposalActivity[]>([]);
   const [historyCursor, setHistoryCursor] = useState<string | undefined>();
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyProfiles, setHistoryProfiles] = useState<
+    Record<string, Profile>
+  >({});
+  const [selectedHistory, setSelectedHistory] =
+    useState<MapPlaceProposalActivity | null>(null);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -172,6 +181,24 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       active = false;
     };
   }, [entities]);
+
+  useEffect(() => {
+    const userIds = Array.from(
+      new Set(history.map((entry) => entry.actorUserId)),
+    );
+    if (!userIds.length) return;
+    void getUserProfilesByUserIds(userIds)
+      .then((profiles) =>
+        setHistoryProfiles(
+          Object.fromEntries(
+            profiles
+              .filter((profile) => Boolean(profile.userId))
+              .map((profile) => [String(profile.userId), profile]),
+          ),
+        ),
+      )
+      .catch(() => undefined);
+  }, [history]);
 
   const loadMoreEntities = async () => {
     if (!id || !entityCursor || entitiesLoading) return;
@@ -491,12 +518,24 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           <ol className="mb-0 ps-3">
             {history.map((entry) => (
               <li key={entry.id} className="mb-2">
-                <strong>{historyLabel(entry.kind)}</strong> by{" "}
-                {entry.actorUserId}
-                {" · "}
-                <time dateTime={entry.occurredAt}>
-                  {new Date(entry.occurredAt).toLocaleString()}
-                </time>
+                <ChangeLogEntry
+                  actorUserId={entry.actorUserId}
+                  proposerUserId={proposalAuthor(history, entry)}
+                  action={historyLabel(entry.kind)}
+                  occurredAt={entry.occurredAt}
+                  currentUserId={viewer?.userId}
+                  profiles={historyProfiles}
+                  {...(entry.revision
+                    ? { onDetails: () => setSelectedHistory(entry) }
+                    : {})}
+                />
+                <span className="visually-hidden">
+                  {entry.actorUserId}
+                  {" · "}
+                  <time dateTime={entry.occurredAt}>
+                    {new Date(entry.occurredAt).toLocaleString()}
+                  </time>
+                </span>
                 {entry.globalAdminOverride && " · Tempvs admin override"}
                 {entry.note && (
                   <div className="small text-muted">{entry.note}</div>
@@ -523,6 +562,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           </Button>
         )}
       </section>
+      <MapPlaceChangeLogDiffModal
+        entry={selectedHistory}
+        previous={previousRevision(history, selectedHistory)}
+        onHide={() => setSelectedHistory(null)}
+      />
       <section className="club-panel mt-3" aria-label="Place on map">
         <MapCanvas
           places={[place]}
@@ -631,6 +675,34 @@ function historyLabel(kind: MapPlaceProposalActivity["kind"]): string {
     MERGED: "Places merged",
     COMMENTED: "Comment added",
   }[kind];
+}
+
+function previousRevision(
+  history: MapPlaceProposalActivity[],
+  entry: MapPlaceProposalActivity | null,
+) {
+  if (!entry) return undefined;
+  const index = history.findIndex((candidate) => candidate.id === entry.id);
+  for (let current = index - 1; current >= 0; current -= 1) {
+    if (history[current].revision) return history[current].revision;
+  }
+  return undefined;
+}
+
+function proposalAuthor(
+  history: MapPlaceProposalActivity[],
+  entry: MapPlaceProposalActivity,
+): string | undefined {
+  if (
+    !["APPROVED", "REJECTED", "CHANGES_REQUESTED", "MERGED"].includes(
+      entry.kind,
+    )
+  )
+    return undefined;
+  return history.find(
+    (candidate) =>
+      candidate.placeId === entry.placeId && candidate.kind === "SUBMITTED",
+  )?.actorUserId;
 }
 
 /** Names other than the canonical label are historical/contextual labels and
