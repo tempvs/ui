@@ -1353,6 +1353,7 @@ export default function MapPage() {
                             stageMapAttachment(
                               reference,
                               authorProfileId ? String(authorProfileId) : undefined,
+                              { type: shareDestination.toUpperCase(), id: destination.id },
                             );
                             setShowShare(false);
                             navigate(destination.path);

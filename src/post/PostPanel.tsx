@@ -21,7 +21,7 @@ import MapSnapshotPicker, {
   SelectedMapPreview,
 } from "../map/MapSnapshotPicker";
 import {
-  takeStagedMapAttachment,
+  takeStagedMapAttachmentForTarget,
   takeStagedMapAuthorProfile,
 } from "../map/pendingMapAttachment";
 import {
@@ -150,15 +150,18 @@ export default function PostPanel({
     return () => {
       active = false;
     };
-  }, []);
+  }, [targetId, targetType]);
   useEffect(() => {
-    const staged = takeStagedMapAttachment();
+    const staged = takeStagedMapAttachmentForTarget({
+      type: targetType,
+      id: String(targetId),
+    });
     if (staged) {
       setSelectedMapReference(staged);
       const authorProfileId = takeStagedMapAuthorProfile();
       if (authorProfileId) setSelectedAuthorProfileId(authorProfileId);
     }
-  }, []);
+  }, [targetId, targetType]);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
