@@ -23,8 +23,8 @@
   },
   "scripts": {
     "postinstall": "node scripts/fix-formatjs-sourcemap.js",
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "node scripts/build-map-basemap.js && react-scripts start",
+    "build": "node scripts/build-map-basemap.js && react-scripts build",
     "typecheck": "tsc --noEmit",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

@@ -77,7 +77,7 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
 
 /**
  * A deliberately small, self-hosted Natural Earth style. The background is the
- * ocean; land, lakes and country boundaries are static public-domain GeoJSON.
+ * ocean; land, lakes and country boundaries are one static public-domain GeoJSON.
  * Dynamic Map API results are the only per-request source.
  */
 export default function MapCanvas({
@@ -513,12 +513,7 @@ function mapStyle(): maplibregl.StyleSpecification {
   return {
     version: 8,
     sources: {
-      land: { type: "geojson", data: "/maps/ne_110m_land.geojson" },
-      lakes: { type: "geojson", data: "/maps/ne_110m_lakes.geojson" },
-      borders: {
-        type: "geojson",
-        data: "/maps/ne_110m_admin_0_boundary_lines_land.geojson",
-      },
+      basemap: { type: "geojson", data: "/maps/basemap.geojson" },
     },
     layers: [
       {
@@ -529,19 +524,22 @@ function mapStyle(): maplibregl.StyleSpecification {
       {
         id: "land",
         type: "fill",
-        source: "land",
+        source: "basemap",
+        filter: ["==", ["get", "tempvsBasemapKind"], "land"],
         paint: { "fill-color": "#eee7d6", "fill-outline-color": "#b4a98e" },
       },
       {
         id: "lakes",
         type: "fill",
-        source: "lakes",
+        source: "basemap",
+        filter: ["==", ["get", "tempvsBasemapKind"], "lakes"],
         paint: { "fill-color": "#b9d7e5" },
       },
       {
         id: "borders",
         type: "line",
-        source: "borders",
+        source: "basemap",
+        filter: ["==", ["get", "tempvsBasemapKind"], "borders"],
         layout: { visibility: "none" },
         paint: {
           "line-color": "#b9af9e",

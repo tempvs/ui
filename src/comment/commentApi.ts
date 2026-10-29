@@ -11,6 +11,7 @@ export type Comment = {
   edited: boolean;
   mapReference?: import("../map/MapReferenceAttachment").PublicMapReference;
 };
+export type CommentPage = { content: Comment[]; nextToken?: string | null };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // The edge route represents the comments collection itself; keeping the
@@ -38,9 +39,26 @@ export function listComments(
     targetId: String(targetId),
   });
   if (nextToken) query.set("nextToken", nextToken);
-  return request<{ content: Comment[]; nextToken?: string | null }>(
-    `/comments?${query}`,
-  );
+  return request<CommentPage>(`/comments?${query}`);
+}
+
+export function listCommentsBatch(
+  targetType: CommentTargetType,
+  targetIds: readonly (string | number)[],
+) {
+  const ids = Array.from(new Set(targetIds.map(String).filter(Boolean)));
+  if (!ids.length)
+    return Promise.resolve(
+      {} as Record<string, { content: Comment[]; nextToken?: string | null }>,
+    );
+  return request<{
+    itemsByTargetId: Record<
+      string,
+      { content: Comment[]; nextToken?: string | null }
+    >;
+  }>(
+    `/comments/batch?${new URLSearchParams({ targetType, targetIds: ids.join(",") })}`,
+  ).then((result) => result.itemsByTargetId);
 }
 
 export function createComment(

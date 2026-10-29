@@ -34,6 +34,10 @@ type UserProfileRead = {
   profile: Profile | null;
   missing: boolean;
 };
+type ProfileRead = {
+  profile: Profile | null;
+  missing: boolean;
+};
 
 type CachedRead<T> = {
   expiresAt: number;
@@ -45,6 +49,7 @@ type CachedRead<T> = {
 // burst without turning the browser into a second source of profile data.
 const PROFILE_READ_CACHE_MS = 10_000;
 const userProfileReads = new Map<string, CachedRead<UserProfileRead>>();
+const profileReads = new Map<string, CachedRead<ProfileRead>>();
 const clubProfileReads = new Map<string, CachedRead<Profile[]>>();
 let currentUserInfoRead: CachedRead<CurrentUserInfo> | undefined;
 
@@ -76,6 +81,7 @@ function cachedRead<T>(
 
 export function invalidateProfileReadCache() {
   userProfileReads.clear();
+  profileReads.clear();
   clubProfileReads.clear();
   currentUserInfoRead = undefined;
 }
@@ -119,12 +125,53 @@ export function fetchProfileById(
   id: Id | null | undefined,
   handlers: ProfileHandlers<Profile>,
 ): void {
+  if (id) {
+    void readProfileById(id)
+      .then((result) => {
+        if (result.missing) handlers.onMissing?.();
+        else if (result.profile) handlers.onSuccess(result.profile);
+      })
+      .catch(() => handlers.onError?.());
+    return;
+  }
   const url = id ? `/api/profile/profile/${id}` : "/api/profile/profile";
   doFetch(url, "GET", null, {
     200: (profile) => handlers.onSuccess(profile as Profile),
     404: () => handlers.onMissing?.(),
     default: () => handlers.onError?.(),
   });
+}
+
+function readProfileById(id: Id): Promise<ProfileRead> {
+  const key = String(id);
+  return cachedRead(profileReads, key, async () => {
+    const response = await requestJson(
+      `/api/profile/profile/${encodeURIComponent(key)}`,
+    );
+    if (response.status === 404) return { profile: null, missing: true };
+    if (!response.ok)
+      throw new Error(`Request failed with status ${response.status}`);
+    return { profile: (await response.json()) as Profile, missing: false };
+  });
+}
+
+/** Resolve public profile cards in a few requests instead of one per post or comment. */
+export async function getProfilesByIds(
+  profileIds: readonly Id[],
+): Promise<Profile[]> {
+  const ids = Array.from(new Set(profileIds.map(String).filter(Boolean)));
+  if (!ids.length) return [];
+  const profiles: Profile[] = [];
+  for (let offset = 0; offset < ids.length; offset += 40) {
+    const response = await requestJson(
+      `/api/profile/profiles?ids=${encodeURIComponent(ids.slice(offset, offset + 40).join(","))}`,
+    );
+    if (!response.ok)
+      throw new Error(`Request failed with status ${response.status}`);
+    const page = (await response.json()) as unknown;
+    if (Array.isArray(page)) profiles.push(...(page as Profile[]));
+  }
+  return profiles;
 }
 
 export function fetchUserProfileByUserId(
@@ -221,7 +268,9 @@ export async function getProfileAvatar(profileId: Id): Promise<Avatar | null> {
 
 /** All profile pictures. The first image remains the profile's thumbnail. */
 export async function getProfileImages(profileId: Id): Promise<Avatar[]> {
-  const response = await requestJson(`/api/images/profile/${profileId}?limit=100`);
+  const response = await requestJson(
+    `/api/images/profile/${profileId}?limit=100`,
+  );
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
   return response.ok && Array.isArray(data?.content)
@@ -582,10 +631,13 @@ export function updateProfileImageDescription(
   imageId: Id,
   description: string | null,
 ) {
-  return requestJson(`/api/profile/profile/${profileId}/images/${imageId}/description`, {
-    method: "PUT",
-    body: JSON.stringify({ description }),
-  });
+  return requestJson(
+    `/api/profile/profile/${profileId}/images/${imageId}/description`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ description }),
+    },
+  );
 }
 
 export function deleteProfileImage(profileId: Id, imageId: Id) {

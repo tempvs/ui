@@ -9,12 +9,14 @@ import { formatAppDateTime } from "../i18n/appLocale";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
-  fetchProfileById,
+  getProfilesByIds,
   getUserProfileByUserId,
+  getUserProfilesByUserIds,
 } from "../profile/profileApi";
 import ProfileThumbnailLink from "../profile/components/ProfileThumbnailLink";
 import ProfilePicker from "../profile/components/ProfilePicker";
 import CommentThread from "../comment/CommentThread";
+import { listCommentsBatch, type CommentPage } from "../comment/commentApi";
 import MapReferenceAttachment, {
   type PublicMapReference,
 } from "../map/MapReferenceAttachment";
@@ -61,16 +63,6 @@ function hasBeenEdited(post: Post) {
   return Boolean(post.updatedAt && post.updatedAt !== post.createdAt);
 }
 
-function getProfileById(profileId: string) {
-  return new Promise<Profile | null>((resolve) => {
-    fetchProfileById(profileId, {
-      onSuccess: (profile) => resolve(profile),
-      onMissing: () => resolve(null),
-      onError: () => resolve(null),
-    });
-  });
-}
-
 function getClubProfiles(userId: string) {
   return new Promise<Profile[]>((resolve) => {
     fetchClubProfiles(userId, {
@@ -88,6 +80,10 @@ export default function PostPanel({
   const location = useLocation();
   const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [commentPages, setCommentPages] = useState<Record<string, CommentPage>>(
+    {},
+  );
+  const [commentPagesReady, setCommentPagesReady] = useState(false);
   const postElements = useRef<Record<string, HTMLElement | null>>({});
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -136,7 +132,8 @@ export default function PostPanel({
           setOwnedProfiles(profiles);
           setCurrentProfileId(currentId);
           setSelectedAuthorProfileId((selected) =>
-            selected && profiles.some((profile) => String(profile.id) === selected)
+            selected &&
+            profiles.some((profile) => String(profile.id) === selected)
               ? selected
               : currentId,
           );
@@ -164,10 +161,12 @@ export default function PostPanel({
       navigationState.mapTarget.id === String(targetId)
         ? navigationState.mapAttachment
         : null;
-    const staged = stateAttachment || takeStagedMapAttachmentForTarget({
-      type: targetType,
-      id: String(targetId),
-    });
+    const staged =
+      stateAttachment ||
+      takeStagedMapAttachmentForTarget({
+        type: targetType,
+        id: String(targetId),
+      });
     if (staged) {
       setSelectedMapReference(staged);
       const authorProfileId =
@@ -182,7 +181,9 @@ export default function PostPanel({
     if (!ownedProfiles.length) return;
     if (
       selectedAuthorProfileId &&
-      ownedProfiles.some((profile) => String(profile.id) === selectedAuthorProfileId)
+      ownedProfiles.some(
+        (profile) => String(profile.id) === selectedAuthorProfileId,
+      )
     )
       return;
     const currentId = resolveCurrentOwnedProfileId(ownedProfiles);
@@ -252,30 +253,67 @@ export default function PostPanel({
       return () => {
         active = false;
       };
-    Promise.all(
-      missingAuthors.map(async (author) => {
-        try {
-          return [
-            author.key,
-            author.profileId
-              ? await getProfileById(author.profileId)
-              : await getUserProfileByUserId(author.userId),
-          ] as const;
-        } catch {
-          return [author.key, null] as const;
-        }
-      }),
-    ).then((entries) => {
-      if (active)
-        setAuthors((current) => ({
-          ...current,
-          ...Object.fromEntries(entries),
-        }));
-    });
+    const profileIds = missingAuthors.flatMap((author) =>
+      author.profileId ? [author.profileId] : [],
+    );
+    const userIds = missingAuthors
+      .filter((author) => !author.profileId)
+      .map((author) => author.userId);
+    Promise.all([
+      getProfilesByIds(profileIds),
+      getUserProfilesByUserIds(userIds),
+    ])
+      .then(([profileAuthors, userAuthors]) => {
+        const byProfileId = new Map(
+          profileAuthors.map((profile) => [String(profile.id), profile]),
+        );
+        const byUserId = new Map(
+          userAuthors.map((profile) => [String(profile.userId), profile]),
+        );
+        const entries = missingAuthors.map(
+          (author) =>
+            [
+              author.key,
+              author.profileId
+                ? byProfileId.get(String(author.profileId)) || null
+                : byUserId.get(String(author.userId)) || null,
+            ] as const,
+        );
+        if (active)
+          setAuthors((current) => ({
+            ...current,
+            ...Object.fromEntries(entries),
+          }));
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
   }, [authorReferences, authors]);
+
+  useEffect(() => {
+    const ids = posts.map((post) => post.id);
+    if (!ids.length) {
+      setCommentPages({});
+      setCommentPagesReady(true);
+      return;
+    }
+    let active = true;
+    setCommentPagesReady(false);
+    void listCommentsBatch("POST", ids)
+      .then((pages) => {
+        if (active) setCommentPages(pages);
+      })
+      .catch(() => {
+        if (active) setCommentPages({});
+      })
+      .finally(() => {
+        if (active) setCommentPagesReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [posts]);
 
   const publish = async () => {
     if (!draft.trim() && !selectedMapReference) return;
@@ -579,7 +617,12 @@ export default function PostPanel({
                     <span className="post-edited">Edited</span>
                   )}
                 </div>
-                <CommentThread targetType="POST" targetId={post.id} />
+                <CommentThread
+                  targetType="POST"
+                  targetId={post.id}
+                  initialPage={commentPages[post.id]}
+                  deferInitialLoad={!commentPagesReady}
+                />
               </article>
             );
           })}

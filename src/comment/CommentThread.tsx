@@ -8,7 +8,7 @@ import { formatAppDateTime } from "../i18n/appLocale";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
-  fetchProfileById,
+  getProfilesByIds,
   getUserProfileByUserId,
 } from "../profile/profileApi";
 import ProfilePicker from "../profile/components/ProfilePicker";
@@ -20,13 +20,16 @@ import {
 } from "../profile/currentProfile";
 import type { Profile } from "../profile/profileTypes";
 import MapReferenceAttachment from "../map/MapReferenceAttachment";
-import MapSnapshotPicker, { SelectedMapPreview } from "../map/MapSnapshotPicker";
+import MapSnapshotPicker, {
+  SelectedMapPreview,
+} from "../map/MapSnapshotPicker";
 import type { PublicMapReference } from "../map/MapReferenceAttachment";
 import {
   createComment,
   deleteComment,
   listComments,
   type Comment,
+  type CommentPage,
   type CommentTargetType,
   updateComment,
 } from "./commentApi";
@@ -40,15 +43,6 @@ const DeleteIcon = FaTrash as React.ComponentType<{ "aria-hidden"?: boolean }>;
 const SaveIcon = FaCheck as React.ComponentType<{ "aria-hidden"?: boolean }>;
 const CancelIcon = FaTimes as React.ComponentType<{ "aria-hidden"?: boolean }>;
 
-function profileById(id: string) {
-  return new Promise<Profile | null>((resolve) =>
-    fetchProfileById(id, {
-      onSuccess: resolve,
-      onMissing: () => resolve(null),
-      onError: () => resolve(null),
-    }),
-  );
-}
 function clubProfiles(userId: string) {
   return new Promise<Profile[]>((resolve) =>
     fetchClubProfiles(userId, {
@@ -61,19 +55,29 @@ function clubProfiles(userId: string) {
 export default function CommentThread({
   targetType,
   targetId,
+  initialPage,
+  deferInitialLoad = false,
 }: {
   targetType: CommentTargetType;
   targetId: string | number;
+  initialPage?: CommentPage;
+  deferInitialLoad?: boolean;
 }) {
   const currentProfileValue = useCurrentProfileValue();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [nextToken, setNextToken] = useState<string | null>(null);
+  const [comments, setComments] = useState<Comment[]>(
+    initialPage?.content || [],
+  );
+  const [nextToken, setNextToken] = useState<string | null>(
+    initialPage?.nextToken || null,
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, Profile | null>>({});
   const [owned, setOwned] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [mapReference, setMapReference] = useState<PublicMapReference | null>(null);
+  const [mapReference, setMapReference] = useState<PublicMapReference | null>(
+    null,
+  );
   const [editing, setEditing] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [removing, setRemoving] = useState<Comment | null>(null);
@@ -81,6 +85,12 @@ export default function CommentThread({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (deferInitialLoad) return undefined;
+    if (initialPage) {
+      setComments(initialPage.content);
+      setNextToken(initialPage.nextToken || null);
+      return undefined;
+    }
     let active = true;
     setNextToken(null);
     listComments(targetType, targetId)
@@ -96,7 +106,7 @@ export default function CommentThread({
     return () => {
       active = false;
     };
-  }, [targetId, targetType]);
+  }, [deferInitialLoad, initialPage, targetId, targetType]);
   useEffect(() => {
     let active = true;
     fetchCurrentUserInfo((result) => {
@@ -130,15 +140,20 @@ export default function CommentThread({
       return () => {
         active = false;
       };
-    Promise.all(
-      missing.map(async (id) => [id, await profileById(id)] as const),
-    ).then((items) => {
-      if (active)
-        setProfiles((current) => ({
-          ...current,
-          ...Object.fromEntries(items),
-        }));
-    });
+    getProfilesByIds(missing)
+      .then((loaded) => {
+        if (active)
+          setProfiles((current) => ({
+            ...current,
+            ...Object.fromEntries(
+              missing.map((id) => [
+                id,
+                loaded.find((profile) => String(profile.id) === id) || null,
+              ]),
+            ),
+          }));
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -301,7 +316,9 @@ export default function CommentThread({
             ) : (
               <p className="comment-content">{comment.content}</p>
             )}
-            {comment.mapReference && <MapReferenceAttachment reference={comment.mapReference} />}
+            {comment.mapReference && (
+              <MapReferenceAttachment reference={comment.mapReference} />
+            )}
             <time className="text-muted small" dateTime={comment.createdAt}>
               {formatAppDateTime(comment.createdAt)}
               {comment.edited ? " · Edited" : ""}
@@ -341,13 +358,20 @@ export default function CommentThread({
               title="Post comment"
               size="1.75rem"
               fontSize="0.72rem"
-              disabled={busy || (!draft.trim() && !mapReference) || !selectedProfile}
+              disabled={
+                busy || (!draft.trim() && !mapReference) || !selectedProfile
+              }
               onClick={() => void submit()}
             >
               <SendIcon aria-hidden />
             </IconActionButton>
             <MapSnapshotPicker onSelect={setMapReference} />
-            {mapReference && <SelectedMapPreview reference={mapReference} onRemove={() => setMapReference(null)} />}
+            {mapReference && (
+              <SelectedMapPreview
+                reference={mapReference}
+                onRemove={() => setMapReference(null)}
+              />
+            )}
           </div>
         </div>
       )}
