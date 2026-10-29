@@ -195,11 +195,10 @@ export default function PostPanel({
     let active = true;
     setError("");
     // Keep post comment threads dormant until their shared first-page batch
-    // arrives. Without resetting this before posts render, a previous empty
-    // page leaves the flag true for one render and each thread starts its own
-    // legacy request.
+    // arrives. Clear an old wall before requesting a new one as well.
     setCommentPagesReady(false);
     setCommentPages({});
+    setPosts([]);
     fetch(
       `/api/post/posts?${new URLSearchParams({ targetType, targetId: String(targetId) })}`,
     )
@@ -208,7 +207,13 @@ export default function PostPanel({
         return response.json() as Promise<{ content: Post[] }>;
       })
       .then((page) => {
-        if (active) setPosts(page.content);
+        if (!active) return;
+        // This must happen in the same update as the new post rows. An effect
+        // runs after those rows mount, which previously left one render where
+        // every CommentThread started an individual legacy request.
+        setCommentPagesReady(false);
+        setCommentPages({});
+        setPosts(page.content);
       })
       .catch(() => {
         if (active) setError("Unable to load posts right now.");
