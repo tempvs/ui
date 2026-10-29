@@ -133,7 +133,11 @@ export default function PostPanel({
           const currentId = resolveCurrentOwnedProfileId(profiles);
           setOwnedProfiles(profiles);
           setCurrentProfileId(currentId);
-          setSelectedAuthorProfileId(currentId);
+          setSelectedAuthorProfileId((selected) =>
+            selected && profiles.some((profile) => String(profile.id) === selected)
+              ? selected
+              : currentId,
+          );
         })
         .catch(() => {
           if (active) {
