@@ -1338,7 +1338,22 @@ export default function MapPage() {
                         onClick={() => {
                           void saveCurrentMap(shareTitle).then((reference) => {
                             if (!reference) return;
-                            stageMapAttachment(reference);
+                            const club =
+                              shareDestination === "club"
+                                ? shareClubs.find(
+                                    (candidate) =>
+                                      String(candidate.id) === destination.id,
+                                  )
+                                : undefined;
+                            const authorProfileId = shareProfiles.find(
+                              (profile) =>
+                                String(profile.id) ===
+                                String(club?.ownerProfileId || ""),
+                            )?.id;
+                            stageMapAttachment(
+                              reference,
+                              authorProfileId ? String(authorProfileId) : undefined,
+                            );
                             setShowShare(false);
                             navigate(destination.path);
                           });

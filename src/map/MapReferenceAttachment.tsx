@@ -3,7 +3,11 @@ import { Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
 import MapCanvas from "./MapCanvas";
-import { saveMapSnapshot, type MapEntityLocation } from "./mapApi";
+import {
+  nearbyMapEntitiesPage,
+  saveMapSnapshot,
+  type MapEntityLocation,
+} from "./mapApi";
 import { stageMapAttachment } from "./pendingMapAttachment";
 import { loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
 import type { SharedMapScope } from "./sharedMapScope";
@@ -197,21 +201,28 @@ export default function MapReferenceAttachment({
 
 function MapPreview({ reference, onError }: { reference: PublicMapReference; onError: () => void }) {
   const [content, setContent] = useState<OwnedMapContent>({ markers: [], connections: [] });
+  const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   useEffect(() => {
     let active = true;
-    if (!reference.scope) {
-      setContent({ markers: [], connections: [] });
-      return () => { active = false; };
-    }
-    void loadSharedMapScope(reference.scope)
+    setContent({ markers: [], connections: [] });
+    setEntities([]);
+    void nearbyMapEntitiesPage(
+      reference.latitude,
+      reference.longitude,
+      reference.radiusKm,
+      reference.entityTypes,
+    )
+      .then((page) => { if (active) setEntities(page.items); })
+      .catch(onError);
+    if (reference.scope) void loadSharedMapScope(reference.scope)
       .then((next) => { if (active) setContent(next); })
       .catch(onError);
     return () => { active = false; };
-  }, [reference.scope, onError]);
+  }, [reference, onError]);
   const fitPoints = content.markers.length
     ? content.markers.map((marker) => ({ key: marker.key, latitude: marker.latitude, longitude: marker.longitude }))
     : [{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }];
-  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={[]} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
+  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={entities} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
 }
 
 function isScopeType(value: string | null): value is SharedMapScope["type"] {
