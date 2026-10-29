@@ -385,21 +385,20 @@ export default function LibrarySourcePage() {
           />
         </PageColumn>
         <PageColumn className="library-source-profiles">
-          <section
+          <details
             className="source-profile-links"
             aria-label="Profiles using this source"
           >
-            <div className="source-profile-links-heading">
-              <div className="stash-subheading mb-0">
+            <summary className="source-profile-links-heading stash-subheading mb-0">
                 Profiles using this source
-              </div>
+            </summary>
+            <div className="mt-2">
               <TextFilterInput
                 value={profileFilter}
                 onChange={setProfileFilter}
                 placeholder="Filter profiles"
                 className="source-profile-filter"
               />
-            </div>
               {!sourceProfilesLoaded && (
                 <p className="text-muted mt-2 mb-0">Loading profiles...</p>
               )}
@@ -429,13 +428,14 @@ export default function LibrarySourcePage() {
                     className="source-profile-list"
                   />
                 )}
-          </section>
+            </div>
+          </details>
         </PageColumn>
         </PageColumns>
       </EntityDetailPage>
 
-      <section className="stash-shell p-3 mt-4" aria-label="Source change log">
-        <div className="stash-subheading mb-2">Change log</div>
+      <details className="stash-shell p-3 mt-4" aria-label="Source change log">
+        <summary className="stash-subheading mb-2">Change log</summary>
         {changeLog.length === 0 ? (
           <p className="text-muted mb-0">No recorded changes yet.</p>
         ) : (
@@ -457,7 +457,7 @@ export default function LibrarySourcePage() {
             ))}
           </ol>
         )}
-      </section>
+      </details>
       <SourceChangeLogDiffModal
         entry={selectedChange}
         imagesById={imagesById}
