@@ -194,6 +194,12 @@ export default function PostPanel({
   useEffect(() => {
     let active = true;
     setError("");
+    // Keep post comment threads dormant until their shared first-page batch
+    // arrives. Without resetting this before posts render, a previous empty
+    // page leaves the flag true for one render and each thread starts its own
+    // legacy request.
+    setCommentPagesReady(false);
+    setCommentPages({});
     fetch(
       `/api/post/posts?${new URLSearchParams({ targetType, targetId: String(targetId) })}`,
     )
