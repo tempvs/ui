@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -202,7 +202,27 @@ export default function MapReferenceAttachment({
 function MapPreview({ reference, onError }: { reference: PublicMapReference; onError: () => void }) {
   const [content, setContent] = useState<OwnedMapContent>({ markers: [], connections: [] });
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
+  const [visible, setVisible] = useState(
+    () => typeof IntersectionObserver === "undefined",
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (visible || typeof IntersectionObserver === "undefined") return;
+    const root = rootRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setVisible(true);
+        observer.disconnect();
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [visible]);
+  useEffect(() => {
+    if (!visible) return;
     let active = true;
     setContent({ markers: [], connections: [] });
     setEntities([]);
@@ -225,11 +245,11 @@ function MapPreview({ reference, onError }: { reference: PublicMapReference; onE
         .catch(onError);
     }
     return () => { active = false; };
-  }, [reference, onError]);
+  }, [reference, onError, visible]);
   const fitPoints = content.markers.length
     ? content.markers.map((marker) => ({ key: marker.key, latitude: marker.latitude, longitude: marker.longitude }))
     : [{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }];
-  return <div className="map-reference-canvas"><MapCanvas places={[]} entities={entities} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} /></div>;
+  return <div ref={rootRef} className="map-reference-canvas">{visible && <MapCanvas places={[]} entities={entities} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} />}</div>;
 }
 
 function isScopeType(value: string | null): value is SharedMapScope["type"] {
