@@ -802,8 +802,8 @@
 }
 
 .chat-map-reference-attachment {
-  width: 70%;
-  max-width: 52rem;
+  width: 100%;
+  max-width: none;
 }
 
 .post-map-reference-attachment .map-reference-canvas {
@@ -856,7 +856,8 @@
   .chat-map-reference-attachment .map-reference-canvas {
     height: 15rem;
   }
-  .chat-map-reference-attachment {
+  .chat-message-card-map {
     width: 100%;
+    max-width: 100%;
   }
 }

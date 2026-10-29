@@ -3206,6 +3206,16 @@ button.stash-item-media-empty:disabled {
   box-shadow: inset 0 0 0 1px rgba(176, 146, 82, 0.16);
 }
 
+.chat-message-card-map {
+  width: 70%;
+  max-width: min(52rem, 70%);
+}
+
+.chat-message-card-map .chat-map-reference-attachment {
+  width: 100%;
+  max-width: none;
+}
+
 .chat-message-author {
   color: #29453c;
   font-size: 0.72rem;

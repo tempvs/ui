@@ -1001,7 +1001,7 @@ export default function ChatPage() {
                     ref={(element) => {
                       messageElements.current[message.id] = element;
                     }}
-                    className={`chat-message-card${message.senderProfileId === selectedSenderId ? " chat-message-card-own" : ""}`}
+                    className={`chat-message-card${message.senderProfileId === selectedSenderId ? " chat-message-card-own" : ""}${message.mapReference ? " chat-message-card-map" : ""}`}
                   >
                     <div className="chat-message-author">
                       {message.senderName}
