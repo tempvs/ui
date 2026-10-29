@@ -206,17 +206,24 @@ function MapPreview({ reference, onError }: { reference: PublicMapReference; onE
     let active = true;
     setContent({ markers: [], connections: [] });
     setEntities([]);
-    void nearbyMapEntitiesPage(
-      reference.latitude,
-      reference.longitude,
-      reference.radiusKm,
-      reference.entityTypes,
-    )
-      .then((page) => { if (active) setEntities(page.items); })
-      .catch(onError);
-    if (reference.scope) void loadSharedMapScope(reference.scope)
-      .then((next) => { if (active) setContent(next); })
-      .catch(onError);
+    // A scoped snapshot already describes the exact public graph being
+    // shared. Loading the generic nearby layer as well is redundant and, on a
+    // club wall with several embedded maps, creates an avoidable Map API
+    // request burst. Unscoped copied map links retain nearby discovery.
+    if (reference.scope) {
+      void loadSharedMapScope(reference.scope)
+        .then((next) => { if (active) setContent(next); })
+        .catch(onError);
+    } else {
+      void nearbyMapEntitiesPage(
+        reference.latitude,
+        reference.longitude,
+        reference.radiusKm,
+        reference.entityTypes,
+      )
+        .then((page) => { if (active) setEntities(page.items); })
+        .catch(onError);
+    }
     return () => { active = false; };
   }, [reference, onError]);
   const fitPoints = content.markers.length

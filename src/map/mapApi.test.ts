@@ -1,4 +1,37 @@
-import { listMapPlaceEntities, nearbyMapEntitiesPage } from "./mapApi";
+import {
+  getMapPlaces,
+  listMapPlaceEntities,
+  nearbyMapEntitiesPage,
+} from "./mapApi";
+
+test("coalesces concurrent place reads into one bounded batch request", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
+    ok: true,
+    text: async () =>
+      JSON.stringify({
+        items: [
+          { id: "batch-a", canonicalName: "A", latitude: 1, longitude: 1, featureType: "SETTLEMENT" },
+          { id: "batch-b", canonicalName: "B", latitude: 2, longitude: 2, featureType: "SETTLEMENT" },
+          { id: "batch-c", canonicalName: "C", latitude: 3, longitude: 3, featureType: "SETTLEMENT" },
+        ],
+      }),
+  } as Response);
+
+  await expect(
+    Promise.all([
+      getMapPlaces(["batch-a", "batch-b"]),
+      getMapPlaces(["batch-b", "batch-c"]),
+    ]),
+  ).resolves.toEqual([
+    [expect.objectContaining({ id: "batch-a" }), expect.objectContaining({ id: "batch-b" })],
+    [expect.objectContaining({ id: "batch-b" }), expect.objectContaining({ id: "batch-c" })],
+  ]);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledWith(
+    "/api/map/places?ids=batch-a%2Cbatch-b%2Cbatch-c",
+  );
+  fetchMock.mockRestore();
+});
 
 test("sends exact-place role refinements as a bounded query parameter", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({

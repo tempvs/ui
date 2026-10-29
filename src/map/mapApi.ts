@@ -327,13 +327,84 @@ export async function getMapPlace(
   return (await responseJson(response)) as MapPlace;
 }
 
+/**
+ * Place coordinates are immutable enough for a short-lived client cache. More
+ * importantly, embedded map cards often mount together on a wall: sharing the
+ * queue turns their many per-scope lookups into a small number of bounded
+ * `/places?ids=…` requests instead of a request burst that can trigger API
+ * throttling.
+ */
+const mapPlaceCache = new Map<string, { place: MapPlace; expiresAt: number }>();
+const queuedMapPlaceReads = new Map<string, MapPlaceRead>();
+const inFlightMapPlaceReads = new Map<string, MapPlaceRead>();
+const mapPlaceCacheTtlMs = 2 * 60 * 1000;
+const mapPlaceBatchSize = 100;
+let mapPlaceFlushScheduled = false;
+
+type MapPlaceRead = {
+  waiters: Array<{
+    resolve: (place: MapPlace | null) => void;
+    reject: (reason: unknown) => void;
+  }>;
+};
+
 export async function getMapPlaces(ids: string[]): Promise<MapPlace[]> {
-  const unique = Array.from(new Set(ids)).slice(0, 100);
+  const unique = Array.from(new Set(ids)).slice(0, mapPlaceBatchSize);
   if (!unique.length) return [];
-  const response = await fetch(`/api/map/places?ids=${encodeURIComponent(unique.join(","))}`);
-  if (!response.ok) throw new Error("Unable to load places");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
-  return body && Array.isArray(body.items) ? (body.items as MapPlace[]) : [];
+  const places = await Promise.all(unique.map(readMapPlaceBatched));
+  return places.filter((place): place is MapPlace => Boolean(place));
+}
+
+function readMapPlaceBatched(id: string): Promise<MapPlace | null> {
+  const cached = mapPlaceCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.place);
+  if (cached) mapPlaceCache.delete(id);
+  return new Promise<MapPlace | null>((resolve, reject) => {
+    const existing = queuedMapPlaceReads.get(id) || inFlightMapPlaceReads.get(id);
+    if (existing) {
+      existing.waiters.push({ resolve, reject });
+      return;
+    }
+    queuedMapPlaceReads.set(id, { waiters: [{ resolve, reject }] });
+    scheduleMapPlaceFlush();
+  });
+}
+
+function scheduleMapPlaceFlush() {
+  if (mapPlaceFlushScheduled) return;
+  mapPlaceFlushScheduled = true;
+  queueMicrotask(() => void flushMapPlaceReads());
+}
+
+async function flushMapPlaceReads() {
+  mapPlaceFlushScheduled = false;
+  const entries = Array.from(queuedMapPlaceReads.entries()).slice(0, mapPlaceBatchSize);
+  if (!entries.length) return;
+  entries.forEach(([id, read]) => {
+    queuedMapPlaceReads.delete(id);
+    inFlightMapPlaceReads.set(id, read);
+  });
+  try {
+    const ids = entries.map(([id]) => id);
+    const response = await fetch(`/api/map/places?ids=${encodeURIComponent(ids.join(","))}`);
+    if (!response.ok) throw new Error("Unable to load places");
+    const body = (await responseJson(response)) as { items?: unknown } | null;
+    const places = body && Array.isArray(body.items) ? (body.items as MapPlace[]) : [];
+    const byId = new Map(places.map((place) => [place.id, place]));
+    entries.forEach(([id, read]) => {
+      const place = byId.get(id) || null;
+      if (place) mapPlaceCache.set(id, { place, expiresAt: Date.now() + mapPlaceCacheTtlMs });
+      inFlightMapPlaceReads.delete(id);
+      read.waiters.forEach(({ resolve }) => resolve(place));
+    });
+  } catch (error) {
+    entries.forEach(([id, read]) => {
+      inFlightMapPlaceReads.delete(id);
+      read.waiters.forEach(({ reject }) => reject(error));
+    });
+  } finally {
+    if (queuedMapPlaceReads.size) scheduleMapPlaceFlush();
+  }
 }
 
 /** Public, append-only record of proposed and approved place changes. */
