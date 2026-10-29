@@ -430,12 +430,16 @@ async function sourceMapMarkers(
   resolvePlace: PlaceResolver,
   primaryLocationOnly = false,
 ): Promise<OwnedMapMarker[]> {
-  const [sources, thumbnails] = await Promise.all([
+  const [initialSources, thumbnails] = await Promise.all([
     getSourcesByIds(sourceIds).catch(() => []),
     thumbnailUrls(
       sourceIds.map((resourceId) => ({ resourceType: "source", resourceId })),
     ),
   ]);
+  const sources =
+    initialSources.length || sourceIds.length === 0
+      ? initialSources
+      : await getSourcesByIds(sourceIds).catch(() => []);
   const sourceLocationsToResolve = sources.flatMap((source) =>
     sourceLocations(source, primaryLocationOnly).map((location) => ({
       source,

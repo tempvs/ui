@@ -113,8 +113,10 @@ export function publicMapReferenceFromUrl(
 
 export default function MapReferenceAttachment({
   reference,
+  className = "",
 }: {
   reference: PublicMapReference;
+  className?: string;
 }) {
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
@@ -142,7 +144,7 @@ export default function MapReferenceAttachment({
   };
   return (
     <>
-      <section className="map-reference-attachment" aria-label={`Map: ${name}`}>
+      <section className={`map-reference-attachment ${className}`.trim()} aria-label={`Map: ${name}`}>
         <div
           className="map-reference-open"
           role="button"

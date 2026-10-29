@@ -1010,6 +1010,7 @@ export default function ChatPage() {
                     {message.mapReference && (
                       <MapReferenceAttachment
                         reference={message.mapReference}
+                        className="chat-map-reference-attachment"
                       />
                     )}
                     <div className="chat-message-date">
