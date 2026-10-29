@@ -389,7 +389,7 @@ export default function LibrarySourcePage() {
             className="source-profile-links"
             aria-label="Profiles using this source"
           >
-            <summary className="source-profile-links-heading stash-subheading mb-0">
+            <summary className="source-profile-links-heading stash-subheading mb-0 source-collapsible-summary">
                 Profiles using this source
             </summary>
             <div className="mt-2">

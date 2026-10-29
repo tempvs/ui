@@ -839,6 +839,10 @@
   padding: 0.4rem 0.65rem;
 }
 
+.source-collapsible-summary {
+  cursor: pointer;
+}
+
 .selected-map-preview { display: flex; align-items: center; gap: .45rem; width: 100%; padding: .35rem .5rem; border: 1px solid rgba(107,89,61,.22); border-radius: .35rem; background: #fcfaf6; font-size: .82rem; }
 .selected-map-preview button { margin-left: auto; color: #8d3434; }
 .saved-map-card { display: flex; gap: .8rem; align-items: center; padding: .75rem; border: 1px solid #d4c9b5; border-radius: .55rem; background: #fffdf7; }

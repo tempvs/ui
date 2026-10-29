@@ -32,7 +32,7 @@ import {
 import { Profile } from "../profile/profileTypes";
 import "./posts.css";
 
-type TargetType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE";
+type TargetType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE" | "ITEM";
 type Post = {
   id: string;
   content: string;

@@ -33,6 +33,7 @@ import { prepareImageFile } from "../util/fileUtils";
 import RefreshingImage from "../image/RefreshingImage";
 import { buildClubProfileLabel, buildProfileLabel } from "./profileLabels";
 import TemporalFitBadge from "./TemporalFitBadge";
+import PostPanel from "../post/PostPanel";
 import {
   fetchCurrentUserInfo,
   fetchOwnerUserProfile,
@@ -1008,6 +1009,8 @@ function StashItemPage({ intl }: StashItemPageProps) {
           })}
         </section>
       </EntityDetailPage>
+
+      <PostPanel targetType="ITEM" targetId={item.id} canCreate={isEditable} />
 
       <Modal
         show={sourceLinkModalVisible}

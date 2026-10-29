@@ -327,6 +327,15 @@ export async function getMapPlace(
   return (await responseJson(response)) as MapPlace;
 }
 
+export async function getMapPlaces(ids: string[]): Promise<MapPlace[]> {
+  const unique = Array.from(new Set(ids)).slice(0, 100);
+  if (!unique.length) return [];
+  const response = await fetch(`/api/map/places?ids=${encodeURIComponent(unique.join(","))}`);
+  if (!response.ok) throw new Error("Unable to load places");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return body && Array.isArray(body.items) ? (body.items as MapPlace[]) : [];
+}
+
 /** Public, append-only record of proposed and approved place changes. */
 export async function listMapPlaceHistory(
   id: string,

@@ -18,7 +18,7 @@ import {
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import { getEvent, type TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
-import { getMapPlace, type MapPlace } from "./mapApi";
+import { getMapPlaces, type MapPlace } from "./mapApi";
 import type { SharedMapScope } from "./sharedMapScope";
 
 export type OwnedMapMarker = {
@@ -554,10 +554,44 @@ type PlaceResolver = (placeId: string) => Promise<MapPlace | null>;
 
 function placeResolver(): PlaceResolver {
   const reads = new Map<string, Promise<MapPlace | null>>();
+  const waiting = new Map<
+    string,
+    Array<(place: MapPlace | null) => void>
+  >();
+  let scheduled = false;
+  const flush = () => {
+    scheduled = false;
+    const ids = Array.from(waiting.keys());
+    if (!ids.length) return;
+    void getMapPlaces(ids)
+      .then((places) => {
+        const byId = new Map(places.map((place) => [place.id, place]));
+        ids.forEach((id) => {
+          const resolvers = waiting.get(id) || [];
+          waiting.delete(id);
+          resolvers.forEach((resolve) => resolve(byId.get(id) || null));
+        });
+      })
+      .catch(() => {
+        ids.forEach((id) => {
+          const resolvers = waiting.get(id) || [];
+          waiting.delete(id);
+          resolvers.forEach((resolve) => resolve(null));
+        });
+      });
+  };
   return (placeId) => {
     const existing = reads.get(placeId);
     if (existing) return existing;
-    const read = getMapPlace(placeId).catch(() => null);
+    const read = new Promise<MapPlace | null>((resolve) => {
+      const resolvers = waiting.get(placeId) || [];
+      resolvers.push(resolve);
+      waiting.set(placeId, resolvers);
+      if (!scheduled) {
+        scheduled = true;
+        queueMicrotask(flush);
+      }
+    });
     reads.set(placeId, read);
     return read;
   };

@@ -174,8 +174,7 @@ html {
   grid-column: 1;
 }
 
-.library-source-images,
-.library-source-profiles {
+.library-source-images {
   grid-column: 2;
 }
 
@@ -184,9 +183,13 @@ html {
   grid-row: 1;
 }
 
-.library-source-posts,
-.library-source-profiles {
+.library-source-posts {
   grid-row: 2;
+}
+
+.library-source-profiles {
+  grid-column: 1 / -1;
+  grid-row: 3;
 }
 
 @media (max-width: 991.98px) {
@@ -219,8 +222,8 @@ html {
     grid-row: auto;
   }
 
-  .library-source-posts {
-    order: 5;
+  .library-source-profiles {
+    order: 6;
   }
 
   .page-columns {
