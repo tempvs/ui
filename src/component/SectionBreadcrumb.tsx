@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 export type SectionBreadcrumbSwitcherItem = {
@@ -40,7 +40,16 @@ function isInternalPath(value?: string): value is string {
 
 function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const [alignEnd, setAlignEnd] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    if (rect.left < 8) setAlignEnd(false);
+    else if (rect.right > window.innerWidth - 8) setAlignEnd(true);
+  }, [open, alignEnd]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -64,7 +73,7 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
   }
 
   return (
-    <div ref={rootRef} className="dropdown position-relative">
+    <div ref={rootRef} className="dropdown position-relative breadcrumb-switcher">
       <button
         type="button"
         className="btn btn-link btn-sm p-0 text-decoration-none dropdown-toggle"
@@ -76,7 +85,8 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
       />
       {open && (
         <div
-          className="dropdown-menu dropdown-menu-end show"
+          ref={menuRef}
+          className={`dropdown-menu show ${alignEnd ? "dropdown-menu-end" : ""}`}
           role="menu"
           aria-labelledby={switcher.id}
         >

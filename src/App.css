@@ -3200,6 +3200,12 @@ button.stash-item-media-empty:disabled {
   text-align: left;
 }
 
+.breadcrumb-switcher .dropdown-menu {
+  max-width: calc(100vw - 1rem);
+  max-height: min(60vh, 24rem);
+  overflow-y: auto;
+}
+
 .chat-message-card-own {
   justify-self: end;
   background: rgba(255, 249, 236, 0.96);
