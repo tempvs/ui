@@ -59,6 +59,12 @@ export type OwnedMapContent = {
   connections: OwnedMapConnection[];
 };
 
+const sharedScopeReadTtlMs = 30_000;
+const sharedScopeReads = new Map<
+  string,
+  { expiresAt: number; request: Promise<OwnedMapContent> }
+>();
+
 /**
  * A deliberately bounded public-page overlay. It is assembled from the same
  * public profile, club, collection and source reads already used by the page;
@@ -196,6 +202,22 @@ export async function loadEventRelatedMapContent(
 /** Resolve a URL-addressable public page slice. Do not substitute the viewer
  * here: a copied URL must show the same resource graph to every recipient. */
 export async function loadSharedMapScope(
+  scope: SharedMapScope,
+): Promise<OwnedMapContent> {
+  const key = `${scope.type}:${scope.id}`;
+  const now = Date.now();
+  const existing = sharedScopeReads.get(key);
+  if (existing && existing.expiresAt > now) return existing.request;
+  const request = loadSharedMapScopeUncached(scope);
+  const entry = { expiresAt: now + sharedScopeReadTtlMs, request };
+  sharedScopeReads.set(key, entry);
+  request.catch(() => {
+    if (sharedScopeReads.get(key) === entry) sharedScopeReads.delete(key);
+  });
+  return request;
+}
+
+async function loadSharedMapScopeUncached(
   scope: SharedMapScope,
 ): Promise<OwnedMapContent> {
   switch (scope.type) {

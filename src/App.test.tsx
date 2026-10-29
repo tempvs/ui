@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { IntlProvider } from 'react-intl';
 
 import App from './App';
+import { invalidateProfileReadCache } from './profile/profileApi';
 
 test('renders an app', () => {
   render(
@@ -15,6 +16,7 @@ test('renders an app', () => {
 });
 
 test('uses relative same-origin paths while rendering the application shell', () => {
+  invalidateProfileReadCache();
   const fetch = jest.spyOn(window, 'fetch').mockResolvedValue({ status: 404, text: async () => '' } as Response);
 
   render(<IntlProvider locale="en" messages={{}}><App /></IntlProvider>);

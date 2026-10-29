@@ -351,8 +351,24 @@ export const transferClubOwnership = async (id: Id, profileId: Id) =>
       "PUT",
     ),
   );
-export const getProfileClubs = async (id: Id) =>
-  arrayValue(await request<unknown>(`/profiles/${id}/clubs`), clubValue);
+const profileClubReads = new Map<string, Promise<Club[]>>();
+
+export const getProfileClubs = async (id: Id) => {
+  const key = String(id);
+  const existing = profileClubReads.get(key);
+  if (existing) return existing;
+  const read = (async () =>
+    arrayValue(
+      await request<unknown>(`/profiles/${id}/clubs`),
+      clubValue,
+    ))();
+  profileClubReads.set(key, read);
+  try {
+    return await read;
+  } finally {
+    if (profileClubReads.get(key) === read) profileClubReads.delete(key);
+  }
+};
 export type JoinOption = {
   club: Club;
   status: "MEMBER" | "PENDING" | "REJECTED" | null;

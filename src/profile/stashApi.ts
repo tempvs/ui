@@ -46,6 +46,27 @@ type SourceSearchParams = {
   nextToken?: string;
 };
 
+const stashReadTtlMs = 10_000;
+const profileStashReads = new Map<string, { expiresAt: number; request: Promise<Stash> }>();
+const groupItemReads = new Map<string, { expiresAt: number; request: Promise<StashItem[]> }>();
+
+function cachedStashRead<T>(
+  cache: Map<string, { expiresAt: number; request: Promise<T> }>,
+  key: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  const now = Date.now();
+  const existing = cache.get(key);
+  if (existing && existing.expiresAt > now) return existing.request;
+  const request = load();
+  const entry = { request, expiresAt: now + stashReadTtlMs };
+  cache.set(key, entry);
+  request.catch(() => {
+    if (cache.get(key) === entry) cache.delete(key);
+  });
+  return request;
+}
+
 function encodeLibraryQuery(payload: JsonRecord) {
   return window.btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 }
@@ -76,6 +97,10 @@ async function requestJson<TData = unknown>(url: string, options: RequestOptions
 }
 
 export async function getProfileStash(profileId: Id) {
+  return cachedStashRead(profileStashReads, String(profileId), () => loadProfileStash(profileId));
+}
+
+async function loadProfileStash(profileId: Id) {
   let nextToken: string | undefined;
   let result: (Stash & CursorPage<StashGroup>) | undefined;
   const groups: StashGroup[] = [];
@@ -94,6 +119,10 @@ export async function getProfileStash(profileId: Id) {
 
 export async function getGroupItems(groupId: Id, { page = 0, size = 40 }: PageRequest = {}) {
   if (page > 0) throw new Error('Offset Stash pages are no longer supported');
+  return cachedStashRead(groupItemReads, `${groupId}:${size}`, () => loadGroupItems(groupId, size));
+}
+
+async function loadGroupItems(groupId: Id, size: number) {
   const items: StashItem[] = [];
   let nextToken: string | undefined;
   do {

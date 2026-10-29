@@ -46,6 +46,7 @@ type CachedRead<T> = {
 const PROFILE_READ_CACHE_MS = 10_000;
 const userProfileReads = new Map<string, CachedRead<UserProfileRead>>();
 const clubProfileReads = new Map<string, CachedRead<Profile[]>>();
+let currentUserInfoRead: CachedRead<CurrentUserInfo> | undefined;
 
 function cachedRead<T>(
   cache: Map<string, CachedRead<T>>,
@@ -76,6 +77,7 @@ function cachedRead<T>(
 export function invalidateProfileReadCache() {
   userProfileReads.clear();
   clubProfileReads.clear();
+  currentUserInfoRead = undefined;
 }
 
 function requestJson(url: string, options: RequestOptions = {}) {
@@ -91,18 +93,26 @@ function requestJson(url: string, options: RequestOptions = {}) {
 export function fetchCurrentUserInfo(
   onResult: (result: CurrentUserInfo) => void,
 ): void {
-  doFetch("/api/user/me", "GET", null, {
-    200: (profile) => {
-      const data = (profile || {}) as OauthProfile;
-      onResult({
+  void readCurrentUserInfo().then(onResult);
+}
+
+function readCurrentUserInfo(): Promise<CurrentUserInfo> {
+  const now = Date.now();
+  if (currentUserInfoRead && currentUserInfoRead.expiresAt > now)
+    return currentUserInfoRead.request;
+  const request = requestJson("/api/user/me")
+    .then(async (response) => {
+      if (!response.ok) return { currentUserId: null, oauthProfile: null };
+      const text = await response.text();
+      const data = (text ? JSON.parse(text) : {}) as OauthProfile;
+      return {
         currentUserId: data.userId || null,
         oauthProfile: data || null,
-      });
-    },
-    401: () => onResult({ currentUserId: null, oauthProfile: null }),
-    404: () => onResult({ currentUserId: null, oauthProfile: null }),
-    default: () => onResult({ currentUserId: null, oauthProfile: null }),
-  });
+      };
+    })
+    .catch(() => ({ currentUserId: null, oauthProfile: null }));
+  currentUserInfoRead = { request, expiresAt: now + 60_000 };
+  return request;
 }
 
 export function fetchProfileById(
