@@ -5,7 +5,7 @@ import {
   getClubProfiles,
   getUserProfileByUserId,
 } from "../profile/profileApi";
-import { getGroupItems, getProfileStash } from "../profile/stashApi";
+import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent } from "../event/eventApi";
 import { getMapPlaces } from "./mapApi";
 import {
@@ -30,7 +30,7 @@ jest.mock("../profile/profileApi", () => ({
   fetchProfileById: jest.fn(),
 }));
 jest.mock("../profile/stashApi", () => ({
-  getGroupItems: jest.fn(),
+  getGroupItemsByIds: jest.fn(),
   getProfileStash: jest.fn(),
 }));
 jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
@@ -84,9 +84,9 @@ beforeEach(() => {
   jest.mocked(getProfileStash).mockResolvedValue({
     groups: [{ id: "stash-group" }],
   });
-  jest
-    .mocked(getGroupItems)
-    .mockResolvedValue([{ id: "item", sources: ["source"] } as never]);
+  jest.mocked(getGroupItemsByIds).mockResolvedValue(
+    new Map([["stash-group", [{ id: "item", sources: ["source"] } as never]]]),
+  );
   jest.mocked(getSource).mockResolvedValue({ ok: false, status: 404, data: null });
   jest.mocked(getSourcesByIds).mockResolvedValue([
     {
