@@ -1356,7 +1356,21 @@ export default function MapPage() {
                               { type: shareDestination.toUpperCase(), id: destination.id },
                             );
                             setShowShare(false);
-                            navigate(destination.path);
+                            navigate(destination.path, {
+                              state: {
+                                mapAttachment: reference,
+                                ...(authorProfileId
+                                  ? {
+                                      mapAuthorProfileId:
+                                        String(authorProfileId),
+                                    }
+                                  : {}),
+                                mapTarget: {
+                                  type: shareDestination.toUpperCase(),
+                                  id: destination.id,
+                                },
+                              },
+                            });
                           });
                         }}
                       >

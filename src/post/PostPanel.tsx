@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-bootstrap";
+import { useLocation } from "react-router-dom";
 import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
@@ -84,6 +85,7 @@ export default function PostPanel({
   targetId,
   canCreate = false,
 }: PostPanelProps) {
+  const location = useLocation();
   const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
   const postElements = useRef<Record<string, HTMLElement | null>>({});
@@ -152,16 +154,27 @@ export default function PostPanel({
     };
   }, [targetId, targetType]);
   useEffect(() => {
-    const staged = takeStagedMapAttachmentForTarget({
+    const navigationState = location.state as {
+      mapAttachment?: PublicMapReference;
+      mapAuthorProfileId?: string;
+      mapTarget?: { type?: string; id?: string };
+    } | null;
+    const stateAttachment =
+      navigationState?.mapTarget?.type === targetType &&
+      navigationState.mapTarget.id === String(targetId)
+        ? navigationState.mapAttachment
+        : null;
+    const staged = stateAttachment || takeStagedMapAttachmentForTarget({
       type: targetType,
       id: String(targetId),
     });
     if (staged) {
       setSelectedMapReference(staged);
-      const authorProfileId = takeStagedMapAuthorProfile();
+      const authorProfileId =
+        navigationState?.mapAuthorProfileId || takeStagedMapAuthorProfile();
       if (authorProfileId) setSelectedAuthorProfileId(authorProfileId);
     }
-  }, [targetId, targetType]);
+  }, [location.state, targetId, targetType]);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
