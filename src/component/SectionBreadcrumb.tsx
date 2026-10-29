@@ -47,6 +47,7 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
   useLayoutEffect(() => {
     if (!open || !menuRef.current) return;
     const rect = menuRef.current.getBoundingClientRect();
+    if (!rect.width) return;
     if (rect.left < 8) setAlignEnd(false);
     else if (rect.right > window.innerWidth - 8) setAlignEnd(true);
   }, [open, alignEnd]);
