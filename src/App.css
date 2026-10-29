@@ -219,6 +219,10 @@ html {
     grid-row: auto;
   }
 
+  .library-source-posts {
+    order: 5;
+  }
+
   .page-columns {
     gap: 1rem;
   }

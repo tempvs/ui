@@ -40,17 +40,22 @@ function isInternalPath(value?: string): value is string {
 
 function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const [alignEnd, setAlignEnd] = useState(true);
+  const [menuPosition, setMenuPosition] = useState<React.CSSProperties>({});
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (!open || !menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
-    if (!rect.width) return;
-    if (rect.left < 8) setAlignEnd(false);
-    else if (rect.right > window.innerWidth - 8) setAlignEnd(true);
-  }, [open, alignEnd]);
+    const menu = menuRef.current.getBoundingClientRect();
+    const toggle = rootRef.current?.getBoundingClientRect();
+    if (!menu.width || !toggle) return;
+    const gap = 8;
+    setMenuPosition({
+      position: "fixed",
+      left: Math.max(gap, Math.min(toggle.right - menu.width, window.innerWidth - menu.width - gap)),
+      top: Math.max(gap, Math.min(toggle.bottom + 4, window.innerHeight - Math.min(menu.height, window.innerHeight - gap * 2) - gap)),
+    });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -87,7 +92,8 @@ function BreadcrumbSwitcher({ switcher }: BreadcrumbSwitcherProps) {
       {open && (
         <div
           ref={menuRef}
-          className={`dropdown-menu show ${alignEnd ? "dropdown-menu-end" : ""}`}
+          className="dropdown-menu dropdown-menu-end show"
+          style={menuPosition}
           role="menu"
           aria-labelledby={switcher.id}
         >
