@@ -122,6 +122,12 @@ export async function getGroupItems(groupId: Id, { page = 0, size = 40 }: PageRe
   return cachedStashRead(groupItemReads, `${groupId}:${size}`, () => loadGroupItems(groupId, size));
 }
 
+export async function getGroupItemsByIds(groupIds: readonly Id[]): Promise<Map<string, StashItem[]>> {
+  const ids = Array.from(new Set(groupIds.map(String).filter(Boolean)));
+  const pages = await Promise.all(ids.slice(0, 40).length ? [requestJson<{ content?: Array<{ groupId: string; items: StashItem[] }> }>(`/api/stash/groups/items?groupIds=${encodeURIComponent(ids.slice(0, 40).join(","))}`)] : []);
+  return new Map((pages[0]?.content || []).map((page) => [page.groupId, page.items]));
+}
+
 async function loadGroupItems(groupId: Id, size: number) {
   const items: StashItem[] = [];
   let nextToken: string | undefined;

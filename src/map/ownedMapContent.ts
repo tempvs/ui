@@ -15,9 +15,10 @@ import {
   getUserProfileByUserId,
   fetchProfileById,
 } from "../profile/profileApi";
-import { getGroupItems, getProfileStash } from "../profile/stashApi";
+import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent, type TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
+import type { StashItem } from "../profile/profileTypes";
 import { getMapPlaces, type MapPlace } from "./mapApi";
 import type { SharedMapScope } from "./sharedMapScope";
 
@@ -423,27 +424,13 @@ async function sourceIdsUsedByProfiles(
   const stashes = await Promise.allSettled(
     profiles.map((profile) => getProfileStash(profile.id)),
   );
-  const sourceIds = await Promise.all(
-    profiles.map(async (profile, index) => {
-      const stash = stashes[index];
-      if (stash.status !== "fulfilled") return [profile.id, []] as const;
-      const pages = await Promise.allSettled(
-        (stash.value.groups || []).map((group) => getGroupItems(group.id)),
-      );
-      return [
-        profile.id,
-        Array.from(
-          new Set(
-            pages.flatMap((result) =>
-              result.status === "fulfilled"
-                ? result.value.flatMap((item) => item.sources || [])
-                : [],
-            ),
-          ),
-        ),
-      ] as const;
-    }),
-  );
+  const groupIds = stashes.flatMap((stash) => stash.status === "fulfilled" ? (stash.value.groups || []).map((group) => group.id) : []);
+  const itemsByGroup: Map<string, StashItem[]> = await getGroupItemsByIds(groupIds).catch(() => new Map<string, StashItem[]>());
+  const sourceIds = profiles.map((profile, index) => {
+    const stash = stashes[index];
+    const ids = stash.status === "fulfilled" ? (stash.value.groups || []).flatMap((group) => (itemsByGroup.get(String(group.id)) || []).flatMap((item) => item.sources || [])) : [];
+    return [profile.id, Array.from(new Set(ids))] as const;
+  });
   return new Map(sourceIds.map(([profileId, ids]) => [profileId, [...ids]]));
 }
 
