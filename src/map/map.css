@@ -801,6 +801,15 @@
   height: 19rem;
 }
 
+.chat-map-reference-attachment {
+  width: 70%;
+  max-width: 52rem;
+}
+
+.post-map-reference-attachment .map-reference-canvas {
+  height: 16.5rem;
+}
+
 .map-reference-open {
   cursor: pointer;
 }
@@ -846,5 +855,8 @@
   }
   .chat-map-reference-attachment .map-reference-canvas {
     height: 15rem;
+  }
+  .chat-map-reference-attachment {
+    width: 100%;
   }
 }

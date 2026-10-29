@@ -534,7 +534,10 @@ export default function PostPanel({
                   <div className="post-entry-content">{post.content}</div>
                 )}
                 {post.mapReference && (
-                  <MapReferenceAttachment reference={post.mapReference} />
+                  <MapReferenceAttachment
+                    reference={post.mapReference}
+                    className="post-map-reference-attachment"
+                  />
                 )}
                 <div className="post-entry-meta">
                   <time className="text-muted small" dateTime={post.createdAt}>
