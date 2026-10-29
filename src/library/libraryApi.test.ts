@@ -1,6 +1,7 @@
 import {
   findSources,
   getAdminRoleRequests,
+  getSourcesByIds,
   getSourceProfiles,
   patchSourceField,
   removeSource,
@@ -19,6 +20,36 @@ function response(body: unknown, status = 200) {
 }
 
 afterEach(() => jest.restoreAllMocks());
+
+test("coalesces concurrent linked-source reads into one Library API batch", async () => {
+  const fetchMock = jest.spyOn(window, "fetch").mockResolvedValue(
+    response([
+      { id: "batch-source-a", version: 1, name: "A" },
+      { id: "batch-source-b", version: 1, name: "B" },
+      { id: "batch-source-c", version: 1, name: "C" },
+    ]),
+  );
+
+  await expect(
+    Promise.all([
+      getSourcesByIds(["batch-source-a", "batch-source-b"]),
+      getSourcesByIds(["batch-source-b", "batch-source-c"]),
+    ]),
+  ).resolves.toEqual([
+    [
+      expect.objectContaining({ id: "batch-source-a" }),
+      expect.objectContaining({ id: "batch-source-b" }),
+    ],
+    [
+      expect.objectContaining({ id: "batch-source-b" }),
+      expect.objectContaining({ id: "batch-source-c" }),
+    ],
+  ]);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const request = new URL(String(fetchMock.mock.calls[0][0]), window.location.origin);
+  const ids = JSON.parse(window.atob(request.searchParams.get("q") || ""));
+  expect(ids).toEqual({ ids: ["batch-source-a", "batch-source-b", "batch-source-c"] });
+});
 
 test("Library search and admin lists use opaque cursor envelopes", async () => {
   const fetchMock = jest

@@ -437,25 +437,95 @@ export function getSource(sourceId: string | undefined) {
   return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`);
 }
 
-/** Bounded ordered lookup used by map and collection summaries. The Library
- * API accepts at most 20 IDs per request, so callers never create an N+1
- * request burst for a page of linked sources. */
+/**
+ * Shared source lookup broker for map cards and collection summaries. A club
+ * wall can mount several embedded maps at once, so batching must happen
+ * across callers—not merely within each map card.
+ */
+const sourceCache = new Map<string, { source: LibrarySource; expiresAt: number }>();
+const queuedSourceReads = new Map<string, SourceRead>();
+const inFlightSourceReads = new Map<string, SourceRead>();
+const sourceCacheTtlMs = 2 * 60 * 1000;
+const sourceBatchSize = 20;
+let sourceFlushScheduled = false;
+
+type SourceRead = {
+  waiters: Array<{
+    resolve: (source: LibrarySource | null) => void;
+    reject: (reason: unknown) => void;
+  }>;
+};
+
+/** Bounded lookup used by map and collection summaries. The Library API
+ * accepts at most 20 IDs per request. */
 export async function getSourcesByIds(
   sourceIds: readonly string[],
 ): Promise<LibrarySource[]> {
   const ids = Array.from(new Set(sourceIds.filter(Boolean)));
-  const sources: LibrarySource[] = [];
-  for (let offset = 0; offset < ids.length; offset += 20) {
-    const q = window.btoa(
-      JSON.stringify({ ids: ids.slice(offset, offset + 20) }),
-    );
+  const sources = await Promise.all(ids.map(readSourceBatched));
+  return sources.filter((source): source is LibrarySource => Boolean(source));
+}
+
+function readSourceBatched(sourceId: string): Promise<LibrarySource | null> {
+  const cached = sourceCache.get(sourceId);
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.source);
+  if (cached) sourceCache.delete(sourceId);
+  return new Promise<LibrarySource | null>((resolve, reject) => {
+    const existing = queuedSourceReads.get(sourceId) || inFlightSourceReads.get(sourceId);
+    if (existing) {
+      existing.waiters.push({ resolve, reject });
+      return;
+    }
+    queuedSourceReads.set(sourceId, { waiters: [{ resolve, reject }] });
+    scheduleSourceFlush();
+  });
+}
+
+function scheduleSourceFlush() {
+  if (sourceFlushScheduled) return;
+  sourceFlushScheduled = true;
+  queueMicrotask(() => void flushSourceReads());
+}
+
+async function flushSourceReads() {
+  sourceFlushScheduled = false;
+  const entries = Array.from(queuedSourceReads.entries()).slice(0, sourceBatchSize);
+  if (!entries.length) return;
+  entries.forEach(([sourceId, read]) => {
+    queuedSourceReads.delete(sourceId);
+    inFlightSourceReads.set(sourceId, read);
+  });
+  try {
+    const ids = entries.map(([sourceId]) => sourceId);
+    const q = window.btoa(JSON.stringify({ ids }));
     const result = await fetchJson<LibrarySource[]>(
       `/api/library/source?q=${encodeURIComponent(q)}`,
     );
     if (!result.ok) throw new Error("Unable to load linked sources");
-    if (Array.isArray(result.data)) sources.push(...result.data);
+    const byId = new Map(
+      (Array.isArray(result.data) ? result.data : []).map((source) => [
+        source.id,
+        source,
+      ]),
+    );
+    entries.forEach(([sourceId, read]) => {
+      const source = byId.get(sourceId) || null;
+      if (source)
+        sourceCache.set(sourceId, {
+          source,
+          expiresAt: Date.now() + sourceCacheTtlMs,
+        });
+      inFlightSourceReads.delete(sourceId);
+      read.waiters.forEach(({ resolve }) => resolve(source));
+    });
+  } catch (error) {
+    entries.forEach(([sourceId, read]) => {
+      inFlightSourceReads.delete(sourceId);
+      read.waiters.forEach(({ reject }) => reject(error));
+    });
+  } finally {
+    if (queuedSourceReads.size) scheduleSourceFlush();
   }
-  return sources;
 }
 
 export function getSourceImages(sourceId: string | undefined) {

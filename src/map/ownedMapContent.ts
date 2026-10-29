@@ -436,10 +436,7 @@ async function sourceMapMarkers(
       sourceIds.map((resourceId) => ({ resourceType: "source", resourceId })),
     ),
   ]);
-  const sources =
-    initialSources.length || sourceIds.length === 0
-      ? initialSources
-      : await getSourcesByIds(sourceIds).catch(() => []);
+  const sources = initialSources;
   const sourceLocationsToResolve = sources.flatMap((source) =>
     sourceLocations(source, primaryLocationOnly).map((location) => ({
       source,
