@@ -7,7 +7,7 @@ import {
 } from "../profile/profileApi";
 import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import { getEvent } from "../event/eventApi";
-import { getMapPlace } from "./mapApi";
+import { getMapPlaces } from "./mapApi";
 import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
@@ -34,7 +34,7 @@ jest.mock("../profile/stashApi", () => ({
   getProfileStash: jest.fn(),
 }));
 jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
-jest.mock("./mapApi", () => ({ getMapPlace: jest.fn() }));
+jest.mock("./mapApi", () => ({ getMapPlaces: jest.fn() }));
 
 const place = {
   id: "rome",
@@ -111,7 +111,9 @@ beforeEach(() => {
       image: { thumbnailUrl: "https://images.test/source-thumb.jpg" },
     },
   ]);
-  jest.mocked(getMapPlace).mockResolvedValue(place);
+  jest.mocked(getMapPlaces).mockImplementation(async (placeIds) =>
+    placeIds.map((placeId) => ({ ...place, id: placeId })),
+  );
   jest.mocked(getEvent).mockResolvedValue({
     id: "event",
     name: "Roman festival",
@@ -170,7 +172,8 @@ test("composes profile, membership club, and club-stash source markers", async (
   // Personal profile, club membership, and source all share Rome; the map
   // overlay must resolve that canonical place once instead of fanning out a
   // duplicate map request for every marker.
-  expect(getMapPlace).toHaveBeenCalledTimes(1);
+  expect(getMapPlaces).toHaveBeenCalledTimes(1);
+  expect(getMapPlaces).toHaveBeenCalledWith(["rome"]);
   expect(getSourcesByIds).toHaveBeenCalledWith(["source"]);
   expect(getImageThumbnails).toHaveBeenCalledTimes(3);
   expect(
@@ -210,10 +213,9 @@ test("uses discovery only for a source on the general owned map", async () => {
       heldAtPlaceName: "Museum",
     },
   ]);
-  jest.mocked(getMapPlace).mockImplementation(async (placeId) => ({
-    ...place,
-    id: placeId,
-  }));
+  jest.mocked(getMapPlaces).mockImplementation(async (placeIds) =>
+    placeIds.map((placeId) => ({ ...place, id: placeId })),
+  );
 
   const content = await loadOwnedMapContent("viewer");
 
