@@ -26,6 +26,7 @@ import {
 } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
 import ProfilePicker from "../profile/components/ProfilePicker";
+import DismissibleCoachmark from "../component/DismissibleCoachmark";
 
 import "./Header.css";
 
@@ -44,6 +45,7 @@ type HeaderState = {
   currentProfileValue: string | null;
   currentProfilePath: string;
   profileOptions: CurrentProfileOption[];
+  showProfilePickerCoachmark: boolean;
 };
 
 type HeaderProps = {
@@ -62,14 +64,32 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       currentProfileValue: null,
       currentProfilePath: "/profile",
       profileOptions: [],
+      showProfilePickerCoachmark: false,
     };
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
     this.handleCurrentProfileChange =
       this.handleCurrentProfileChange.bind(this);
+    this.reloadOwnedProfiles = this.reloadOwnedProfiles.bind(this);
   }
 
   componentDidMount() {
     this.loadOAuthProfile();
+    window.addEventListener(
+      "tempvs:owned-profiles-changed",
+      this.reloadOwnedProfiles,
+    );
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener(
+      "tempvs:owned-profiles-changed",
+      this.reloadOwnedProfiles,
+    );
+  }
+
+  reloadOwnedProfiles() {
+    if (this.state.currentUserId)
+      this.loadOwnedProfiles(this.state.currentUserId);
   }
 
   loadOAuthProfile() {
@@ -108,7 +128,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
     const toPromiseUserProfile = () =>
       new Promise<{ profile: Profile | null; missing: boolean }>((resolve) => {
         fetchUserProfileByUserId(userId, {
-          onSuccess: (profile) => resolve({ profile: profile || null, missing: false }),
+          onSuccess: (profile) =>
+            resolve({ profile: profile || null, missing: false }),
           onMissing: () => resolve({ profile: null, missing: true }),
           // A transient profile-service error must never send an established
           // user into profile creation. Only an explicit 404 is a new user.
@@ -133,15 +154,28 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           clubProfiles,
         );
         const currentProfile = resolveCurrentProfileOption(profileOptions);
+        const showProfilePickerCoachmark =
+          clubProfiles.length > 0 &&
+          window.sessionStorage.getItem(
+            "tempvs:coachmark:pick-current-profile",
+          ) === "pending";
+        if (showProfilePickerCoachmark)
+          window.sessionStorage.removeItem(
+            "tempvs:coachmark:pick-current-profile",
+          );
         this.setState({
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
+          showProfilePickerCoachmark,
         });
         // A new Cognito user has no personal profile yet. Apply this guard in
         // the persistent header so it covers both password and Google sign-in
         // from any public page, not merely the landing page.
-        if (userProfileResult.missing && this.props.locationPath !== "/profile") {
+        if (
+          userProfileResult.missing &&
+          this.props.locationPath !== "/profile"
+        ) {
           this.props.navigate("/profile", { replace: true });
         }
       })
@@ -163,12 +197,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       (option) => option.value === nextValue,
     );
     setStoredCurrentProfileValue(nextValue);
-    this.setState(
-      {
-        currentProfileValue: nextValue,
-        currentProfilePath: selectedOption?.path || "/profile",
-      },
-    );
+    this.setState({
+      currentProfileValue: nextValue,
+      currentProfilePath: selectedOption?.path || "/profile",
+    });
   }
 
   buildAvatarText(profile?: OAuthProfile | null) {
@@ -205,14 +237,25 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
               <HomeButton to="/" />
               {this.state.loggedIn && (
                 <>
-                  <ProfileButton to={this.state.currentProfilePath} />
-                  <ProfilePicker
-                    className="header-profile-select"
-                    ariaLabel="Current profile"
-                    value={this.state.currentProfileValue}
-                    options={this.state.profileOptions}
-                    onChange={this.handleCurrentProfileChange}
+                  <ProfileButton
+                    to={this.state.currentProfilePath}
+                    showNavigationCoachmark={
+                      this.state.profileOptions.length === 1
+                    }
                   />
+                  <DismissibleCoachmark
+                    id="pick-current-profile"
+                    visible={this.state.showProfilePickerCoachmark}
+                    message="Pick your current profile here."
+                  >
+                    <ProfilePicker
+                      className="header-profile-select"
+                      ariaLabel="Current profile"
+                      value={this.state.currentProfileValue}
+                      options={this.state.profileOptions}
+                      onChange={this.handleCurrentProfileChange}
+                    />
+                  </DismissibleCoachmark>
                 </>
               )}
             </div>

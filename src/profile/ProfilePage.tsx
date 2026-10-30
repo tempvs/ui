@@ -200,7 +200,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       this.setState(result, () => {
         if (result.currentUserId) {
           this.fetchCurrentOwnedProfiles(result.currentUserId);
-          if (this.state.profileId && this.state.userId === result.currentUserId) {
+          if (
+            this.state.profileId &&
+            this.state.userId === result.currentUserId
+          ) {
             this.loadPrivatePin(this.state.profileId, this.state.userId);
           }
 
@@ -550,22 +553,29 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         if (this.state.profileId === profileId) this.setState({ privatePin });
       })
       .catch(() => {
-        if (this.state.profileId === profileId) this.setState({ privatePin: null });
+        if (this.state.profileId === profileId)
+          this.setState({ privatePin: null });
       });
   };
 
   handlePrivatePinChange = async (
-    privatePin: { latitude: number; longitude: number; label?: string | null } | null,
+    privatePin: {
+      latitude: number;
+      longitude: number;
+      label?: string | null;
+    } | null,
   ) => {
     if (!this.state.profileId || !this.isEditableProfile()) return false;
     const profileId = this.state.profileId;
     try {
       if (privatePin) {
         const saved = await savePrivateProfilePin(profileId, privatePin);
-        if (this.state.profileId === profileId) this.setState({ privatePin: saved });
+        if (this.state.profileId === profileId)
+          this.setState({ privatePin: saved });
       } else {
         await deletePrivateProfilePin(profileId);
-        if (this.state.profileId === profileId) this.setState({ privatePin: null });
+        if (this.state.profileId === profileId)
+          this.setState({ privatePin: null });
       }
       return true;
     } catch {
@@ -892,6 +902,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     const renderCreatedClubProfile = (result: unknown) => {
       const profile = result as Profile;
+      try {
+        window.sessionStorage.setItem(
+          "tempvs:coachmark:pick-current-profile",
+          "pending",
+        );
+        window.dispatchEvent(new Event("tempvs:owned-profiles-changed"));
+      } catch {
+        // The profile is still created where session storage is unavailable.
+      }
       this.invalidateClubProfiles(profile.userId);
       this.renderProfile(profile);
     };
@@ -1328,7 +1347,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     const key = String(imageId);
     this.setState((previous) => ({
       avatarImageDrafts: { ...previous.avatarImageDrafts, [key]: value },
-      avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "pending" },
+      avatarImageStatuses: {
+        ...previous.avatarImageStatuses,
+        [key]: "pending",
+      },
     }));
     this.clearFieldTimer(`avatarDescription:${key}`);
     this.autoSaveTimers[`avatarDescription:${key}`] = setTimeout(() => {
@@ -1344,7 +1366,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   handleAvatarDescriptionSave = async (imageId: Id) => {
     if (!this.isEditableProfile() || !this.state.profileId) return;
     const key = String(imageId);
-    const image = this.state.avatarImages.find((candidate) => candidate.id === imageId);
+    const image = this.state.avatarImages.find(
+      (candidate) => candidate.id === imageId,
+    );
     const draft = this.state.avatarImageDrafts[key] || "";
     if (!image || draft === (image.description || "")) {
       this.setState((previous) => ({
@@ -1364,7 +1388,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       if (!response.ok) throw new Error("Update failed");
       this.setState((previous) => {
         const avatarImages = previous.avatarImages.map((candidate) =>
-          candidate.id === imageId ? { ...candidate, description: draft } : candidate,
+          candidate.id === imageId
+            ? { ...candidate, description: draft }
+            : candidate,
         );
         const first = avatarImages[0];
         return {
@@ -1372,7 +1398,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           avatarInfo: first?.description || "",
           avatarDescriptionDraft: first?.description || "",
           avatarDescriptionPersisted: first?.description || "",
-          avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "saved" },
+          avatarImageStatuses: {
+            ...previous.avatarImageStatuses,
+            [key]: "saved",
+          },
         };
       });
       setTimeout(() => {
@@ -1386,7 +1415,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           ...previous.avatarImageDrafts,
           [key]: image.description || "",
         },
-        avatarImageStatuses: { ...previous.avatarImageStatuses, [key]: "error" },
+        avatarImageStatuses: {
+          ...previous.avatarImageStatuses,
+          [key]: "error",
+        },
       }));
     }
   };
@@ -1397,7 +1429,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       const response = await deleteProfileImage(this.state.profileId, imageId);
       if (!response.ok) throw new Error("Delete failed");
       this.setState((previous) => {
-        const avatarImages = previous.avatarImages.filter((image) => image.id !== imageId);
+        const avatarImages = previous.avatarImages.filter(
+          (image) => image.id !== imageId,
+        );
         const first = avatarImages[0];
         return {
           avatarImages,
@@ -1413,7 +1447,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       });
     } catch {
       this.setState({
-        avatarUploadMessage: this.t("profile.avatar.deleteFailed", "Unable to delete profile picture."),
+        avatarUploadMessage: this.t(
+          "profile.avatar.deleteFailed",
+          "Unable to delete profile picture.",
+        ),
         avatarUploadStatus: "error",
       });
     }
@@ -1422,18 +1459,27 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   openAvatarReplacePicker = (image: GalleryImage) => {
     if (!image.id || this.state.avatarUploadStatus === "uploading") return;
     this.replacingAvatarId = image.id;
-    const input = document.getElementById("avatarReplaceInput") as HTMLInputElement | null;
+    const input = document.getElementById(
+      "avatarReplaceInput",
+    ) as HTMLInputElement | null;
     input?.click();
   };
 
-  handleAvatarReplace: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+  handleAvatarReplace: React.ChangeEventHandler<HTMLInputElement> = async (
+    event,
+  ) => {
     const file = event.target.files?.[0];
     const imageId = this.replacingAvatarId;
     event.target.value = "";
     if (!file || !imageId || !this.state.profileId) return;
-    this.setState({ avatarUploadStatus: "uploading", avatarUploadMessage: null });
+    this.setState({
+      avatarUploadStatus: "uploading",
+      avatarUploadMessage: null,
+    });
     try {
-      const current = this.state.avatarImages.find((image) => image.id === imageId);
+      const current = this.state.avatarImages.find(
+        (image) => image.id === imageId,
+      );
       const replacement = await replaceProfileImage(
         this.state.profileId,
         imageId,
@@ -1456,7 +1502,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     } catch (error) {
       this.setState({
         avatarUploadStatus: "error",
-        avatarUploadMessage: error instanceof Error ? error.message : "Unable to replace profile picture.",
+        avatarUploadMessage:
+          error instanceof Error
+            ? error.message
+            : "Unable to replace profile picture.",
       });
     } finally {
       this.replacingAvatarId = null;
@@ -1495,9 +1544,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   renderProfileView() {
     const isEditable = this.isEditableProfile();
     const isClubProfile = this.state.type === "CLUB";
-    const headerSubtitleDisplay = isClubProfile
-      ? "Name"
-      : "User profile";
+    const headerSubtitleDisplay = isClubProfile ? "Name" : "User profile";
     const ownerLink =
       isClubProfile && this.state.ownerUserProfile
         ? this.getCanonicalProfilePath(this.state.ownerUserProfile)
@@ -1592,230 +1639,230 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       >
         <EntityDetailPage>
           <PageColumns
-          variant="three"
-          className={`profile-page-columns ${
-            isClubProfile
-              ? "profile-page-columns--club"
-              : "profile-page-columns--user"
-          }`}
-        >
-          <PageColumn>
-            <ProfileAvatarPanel
-              avatarPanelWidth={AVATAR_PANEL_WIDTH}
-              avatarLoaded={this.state.avatarLoaded}
-              avatars={this.state.avatarImages}
-              profileId={this.state.profileId}
-              avatarUploadStatus={this.state.avatarUploadStatus}
-              avatarUploadMessage={this.state.avatarUploadMessage}
-              avatarImageDrafts={this.state.avatarImageDrafts}
-              avatarImageStatuses={this.state.avatarImageStatuses}
-              isEditable={isEditable}
-              initials={profileInitials}
-              t={this.t.bind(this)}
-              onUploadChange={this.handleAvatarUpload}
-              onReplaceChange={this.handleAvatarReplace}
-              onOpenFilePicker={this.openAvatarFilePicker}
-              onReplaceImage={this.openAvatarReplacePicker}
-              onDelete={this.handleDeleteAvatar}
-              onDescriptionChange={this.handleAvatarDescriptionChangeValue}
-              onDescriptionBlur={this.handleAvatarDescriptionBlur}
-            />
-            {canFollow && (
-              <Button
-                type="button"
-                className="w-100 mt-3 profile-follow-action"
-                variant={
-                  this.state.isFollowingCurrentProfile
-                    ? "danger"
-                    : "outline-dark"
-                }
-                onClick={this.handleToggleFollow}
-                disabled={!this.state.followStateLoaded}
-              >
-                {this.state.isFollowingCurrentProfile
-                  ? this.t("profile.unfollow.action", "Unfollow")
-                  : this.t("profile.follow.action", "Follow")}
-              </Button>
-            )}
-            {this.state.profileId && (
-              <PhotoAlbumsPanel
-                targetType="profile"
-                targetId={this.state.profileId}
-                editable={isEditable}
-              />
-            )}
-            <div
-              className={`profile-relationship-group profile-following-group mt-3 ${
-                isClubProfile
-                  ? "profile-following-group--club"
-                  : "profile-following-group--user"
-              }`}
-            >
-              <h2 className="profile-relationship-group-title">
-                {this.t("profile.following.group", "Following")}
-              </h2>
-              <ProfileFollowingPanel
-                profiles={this.state.followingProfiles}
-                loaded={this.state.followingProfilesLoaded}
+            variant="three"
+            className={`profile-page-columns ${
+              isClubProfile
+                ? "profile-page-columns--club"
+                : "profile-page-columns--user"
+            }`}
+          >
+            <PageColumn>
+              <ProfileAvatarPanel
+                avatarPanelWidth={AVATAR_PANEL_WIDTH}
+                avatarLoaded={this.state.avatarLoaded}
+                avatars={this.state.avatarImages}
+                profileId={this.state.profileId}
+                avatarUploadStatus={this.state.avatarUploadStatus}
+                avatarUploadMessage={this.state.avatarUploadMessage}
+                avatarImageDrafts={this.state.avatarImageDrafts}
+                avatarImageStatuses={this.state.avatarImageStatuses}
+                isEditable={isEditable}
+                initials={profileInitials}
                 t={this.t.bind(this)}
-                hideWhenEmpty
+                onUploadChange={this.handleAvatarUpload}
+                onReplaceChange={this.handleAvatarReplace}
+                onOpenFilePicker={this.openAvatarFilePicker}
+                onReplaceImage={this.openAvatarReplacePicker}
+                onDelete={this.handleDeleteAvatar}
+                onDescriptionChange={this.handleAvatarDescriptionChangeValue}
+                onDescriptionBlur={this.handleAvatarDescriptionBlur}
               />
-              {this.state.profileId && (
-                <ProfileFollowedClubsPanel
-                  profileId={this.state.profileId}
-                  hideWhenEmpty
-                />
+              {canFollow && (
+                <Button
+                  type="button"
+                  className="w-100 mt-3 profile-follow-action"
+                  variant={
+                    this.state.isFollowingCurrentProfile
+                      ? "danger"
+                      : "outline-dark"
+                  }
+                  onClick={this.handleToggleFollow}
+                  disabled={!this.state.followStateLoaded}
+                >
+                  {this.state.isFollowingCurrentProfile
+                    ? this.t("profile.unfollow.action", "Unfollow")
+                    : this.t("profile.follow.action", "Follow")}
+                </Button>
               )}
               {this.state.profileId && (
-                <ProfileEventsPanel
-                  profileId={String(this.state.profileId)}
-                  kind="followed"
-                  hideWhenEmpty
+                <PhotoAlbumsPanel
+                  targetType="profile"
+                  targetId={this.state.profileId}
+                  editable={isEditable}
                 />
               )}
-            </div>
-          </PageColumn>
-          <PageColumn>
-            <ProfileFieldsPanel
-              type={this.state.type}
-              state={this.state}
-              periods={[...PERIODS]}
-              t={this.t.bind(this)}
-              getPeriodLabel={this.getPeriodLabel.bind(this)}
-              editable={isEditable}
-              onInputChange={this.handleInputChange}
-              onFieldBlur={this.handleFieldBlur}
-              onLocationChange={this.handleLocationPlaceChange}
-              privatePin={this.state.privatePin}
-              onPrivatePinChange={
-                isEditable ? this.handlePrivatePinChange : undefined
-              }
-              onInheritClubLocation={this.handleInheritedClubLocation}
-              onInheritClubYears={this.handleInheritedClubYears}
-              relatedMapProfile={
-                this.state.profileId
-                  ? {
-                      id: String(this.state.profileId),
-                      type: this.state.type,
-                      firstName: this.state.firstName,
-                      lastName: this.state.lastName,
-                      nickName: this.state.nickName,
-                      alias: this.state.alias,
-                      avatarUrl: this.state.avatarUrl,
-                      locationPlaceId: this.state.locationPlaceId,
-                      location: this.state.location,
-                    }
-                  : undefined
-              }
-              rangeControl={
-                isClubProfile ? (
-                  <EditableHistoricalRangeField
-                    label={this.t("profile.field.years", "Years")}
-                    editable={isEditable}
-                    from={{
-                      year: this.state.fromYear,
-                      era: this.state.fromEra,
-                    }}
-                    to={{ year: this.state.toYear, era: this.state.toEra }}
-                    onFromChange={(value) =>
-                      this.setState({
-                        fromYear: value.year,
-                        fromEra: value.era,
-                      })
-                    }
-                    onToChange={(value) =>
-                      this.setState({ toYear: value.year, toEra: value.era })
-                    }
-                    onBlur={() => this.handleFieldBlur("fromYear")}
-                    status={this.state.fieldStatuses.fromYear}
-                    className="mb-0"
-                    fieldMaxWidth="13rem"
-                    labelWidth="auto"
+              <div
+                className={`profile-relationship-group profile-following-group mt-3 ${
+                  isClubProfile
+                    ? "profile-following-group--club"
+                    : "profile-following-group--user"
+                }`}
+              >
+                <h2 className="profile-relationship-group-title">
+                  {this.t("profile.following.group", "Following")}
+                </h2>
+                <ProfileFollowingPanel
+                  profiles={this.state.followingProfiles}
+                  loaded={this.state.followingProfilesLoaded}
+                  t={this.t.bind(this)}
+                  hideWhenEmpty
+                />
+                {this.state.profileId && (
+                  <ProfileFollowedClubsPanel
+                    profileId={this.state.profileId}
+                    hideWhenEmpty
                   />
-                ) : undefined
-              }
-            />
-            {this.state.profileId && (
-              <PostPanel
-                targetType="PROFILE"
-                targetId={this.state.profileId}
-                canCreate={isEditable}
+                )}
+                {this.state.profileId && (
+                  <ProfileEventsPanel
+                    profileId={String(this.state.profileId)}
+                    kind="followed"
+                    hideWhenEmpty
+                  />
+                )}
+              </div>
+            </PageColumn>
+            <PageColumn>
+              <ProfileFieldsPanel
+                type={this.state.type}
+                state={this.state}
+                periods={[...PERIODS]}
+                t={this.t.bind(this)}
+                getPeriodLabel={this.getPeriodLabel.bind(this)}
+                editable={isEditable}
+                onInputChange={this.handleInputChange}
+                onFieldBlur={this.handleFieldBlur}
+                onLocationChange={this.handleLocationPlaceChange}
+                privatePin={this.state.privatePin}
+                onPrivatePinChange={
+                  isEditable ? this.handlePrivatePinChange : undefined
+                }
+                onInheritClubLocation={this.handleInheritedClubLocation}
+                onInheritClubYears={this.handleInheritedClubYears}
+                relatedMapProfile={
+                  this.state.profileId
+                    ? {
+                        id: String(this.state.profileId),
+                        type: this.state.type,
+                        firstName: this.state.firstName,
+                        lastName: this.state.lastName,
+                        nickName: this.state.nickName,
+                        alias: this.state.alias,
+                        avatarUrl: this.state.avatarUrl,
+                        locationPlaceId: this.state.locationPlaceId,
+                        location: this.state.location,
+                      }
+                    : undefined
+                }
+                rangeControl={
+                  isClubProfile ? (
+                    <EditableHistoricalRangeField
+                      label={this.t("profile.field.years", "Years")}
+                      editable={isEditable}
+                      from={{
+                        year: this.state.fromYear,
+                        era: this.state.fromEra,
+                      }}
+                      to={{ year: this.state.toYear, era: this.state.toEra }}
+                      onFromChange={(value) =>
+                        this.setState({
+                          fromYear: value.year,
+                          fromEra: value.era,
+                        })
+                      }
+                      onToChange={(value) =>
+                        this.setState({ toYear: value.year, toEra: value.era })
+                      }
+                      onBlur={() => this.handleFieldBlur("fromYear")}
+                      status={this.state.fieldStatuses.fromYear}
+                      className="mb-0"
+                      fieldMaxWidth="13rem"
+                      labelWidth="auto"
+                    />
+                  ) : undefined
+                }
               />
-            )}
-          </PageColumn>
-          <PageColumn>
-            {isClubProfile && (
-              <div className="mb-3 profile-stash-action">
-                <div className="d-flex justify-content-start">
-                  <ProfileStashLink
-                    profileId={this.state.profileId || ""}
-                    alias={this.state.alias}
+              {this.state.profileId && (
+                <PostPanel
+                  targetType="PROFILE"
+                  targetId={this.state.profileId}
+                  canCreate={isEditable}
+                />
+              )}
+            </PageColumn>
+            <PageColumn>
+              {isClubProfile && (
+                <div className="mb-3 profile-stash-action">
+                  <div className="d-flex justify-content-start">
+                    <ProfileStashLink
+                      profileId={this.state.profileId || ""}
+                      alias={this.state.alias}
+                      editable={isEditable}
+                      label={this.t("profile.stash.button", "Owned items")}
+                    />
+                  </div>
+                </div>
+              )}
+              {isClubProfile && this.state.profileId && (
+                <div className="profile-relationship-group profile-membership-group">
+                  <h2 className="profile-relationship-group-title">
+                    {this.t("profile.membership.group", "Membership")}
+                  </h2>
+                  <ProfileClubPanel
+                    key={this.state.profileId}
+                    profileId={this.state.profileId}
+                    period={this.state.period}
                     editable={isEditable}
-                    label={this.t("profile.stash.button", "Owned items")}
+                    hideWhenEmpty
+                  />
+                  <ProfileEventsPanel
+                    profileId={String(this.state.profileId)}
+                    kind="participating"
+                    hideWhenEmpty
                   />
                 </div>
-              </div>
-            )}
-            {isClubProfile && this.state.profileId && (
-              <div className="profile-relationship-group profile-membership-group">
-                <h2 className="profile-relationship-group-title">
-                  {this.t("profile.membership.group", "Membership")}
-                </h2>
-                <ProfileClubPanel
-                  key={this.state.profileId}
-                  profileId={this.state.profileId}
-                  period={this.state.period}
-                  editable={isEditable}
-                  hideWhenEmpty
-                />
-                <ProfileEventsPanel
-                  profileId={String(this.state.profileId)}
-                  kind="participating"
-                  hideWhenEmpty
-                />
-              </div>
-            )}
-            <ClubProfilesSection
-              isUserProfile={this.state.type === "USER"}
-              canCreate={isEditable}
-              visibleClubProfiles={
-                this.state.type === "USER" ? visibleClubProfiles : []
-              }
-              showEmptyMessage={
-                this.state.type === "USER" ? showEmptyClubProfiles : false
-              }
-              clubProfilesLoaded={this.state.clubProfilesLoaded}
-              clubProfilesMessage={
-                this.state.type === "USER"
-                  ? this.state.clubProfilesMessage
-                  : null
-              }
-              clubProfileCreateVisible={this.state.clubProfileCreateVisible}
-              clubProfileCreateError={this.state.clubProfileCreateError}
-              clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
-              clubProfileDeleteError={this.state.clubProfileDeleteError}
-              periods={[...PERIODS]}
-              getPeriodLabel={this.getPeriodLabel.bind(this)}
-              t={this.t.bind(this)}
-              onShowCreate={() =>
-                this.setState({
-                  clubProfileCreateVisible: true,
-                  clubProfileCreateError: false,
-                })
-              }
-              onHideCreate={() =>
-                this.setState({
-                  clubProfileCreateVisible: false,
-                  clubProfileCreateError: false,
-                })
-              }
-              onCreate={this.handleCreateClubProfile}
-              onOpenProfile={this.handleOpenClubProfile}
-              onOpenDelete={this.openDeleteClubProfileModal}
-              onHideDelete={this.closeDeleteClubProfileModal}
-              onDelete={this.handleDeleteClubProfile}
-            />
-          </PageColumn>
+              )}
+              <ClubProfilesSection
+                isUserProfile={this.state.type === "USER"}
+                canCreate={isEditable}
+                visibleClubProfiles={
+                  this.state.type === "USER" ? visibleClubProfiles : []
+                }
+                showEmptyMessage={
+                  this.state.type === "USER" ? showEmptyClubProfiles : false
+                }
+                clubProfilesLoaded={this.state.clubProfilesLoaded}
+                clubProfilesMessage={
+                  this.state.type === "USER"
+                    ? this.state.clubProfilesMessage
+                    : null
+                }
+                clubProfileCreateVisible={this.state.clubProfileCreateVisible}
+                clubProfileCreateError={this.state.clubProfileCreateError}
+                clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
+                clubProfileDeleteError={this.state.clubProfileDeleteError}
+                periods={[...PERIODS]}
+                getPeriodLabel={this.getPeriodLabel.bind(this)}
+                t={this.t.bind(this)}
+                onShowCreate={() =>
+                  this.setState({
+                    clubProfileCreateVisible: true,
+                    clubProfileCreateError: false,
+                  })
+                }
+                onHideCreate={() =>
+                  this.setState({
+                    clubProfileCreateVisible: false,
+                    clubProfileCreateError: false,
+                  })
+                }
+                onCreate={this.handleCreateClubProfile}
+                onOpenProfile={this.handleOpenClubProfile}
+                onOpenDelete={this.openDeleteClubProfileModal}
+                onHideDelete={this.closeDeleteClubProfileModal}
+                onDelete={this.handleDeleteClubProfile}
+              />
+            </PageColumn>
           </PageColumns>
         </EntityDetailPage>
       </PageLayout>
