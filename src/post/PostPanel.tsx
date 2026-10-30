@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Form } from "react-bootstrap";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
@@ -10,6 +16,7 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   getProfilesByIds,
+  getFriendPostAccess,
   getUserProfileByUserId,
   getUserProfilesByUserIds,
 } from "../profile/profileApi";
@@ -81,6 +88,9 @@ export default function PostPanel({
   const navigate = useNavigate();
   const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [nextPostsToken, setNextPostsToken] = useState<string | null>(null);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const postLoadSentinel = useRef<HTMLDivElement | null>(null);
   const [commentPages, setCommentPages] = useState<Record<string, CommentPage>>(
     {},
   );
@@ -89,6 +99,7 @@ export default function PostPanel({
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  const [friendCanCreate, setFriendCanCreate] = useState(false);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [selectedAuthorProfileId, setSelectedAuthorProfileId] = useState<
     string | null
@@ -207,6 +218,22 @@ export default function PostPanel({
   }, [currentProfileValue, ownedProfiles, selectedAuthorProfileId]);
 
   useEffect(() => {
+    if (targetType !== "PROFILE" || !currentProfileId || canCreate) {
+      setFriendCanCreate(false);
+      return;
+    }
+    let active = true;
+    void getFriendPostAccess(String(targetId), currentProfileId).then(
+      (allowed) => {
+        if (active) setFriendCanCreate(allowed);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [canCreate, currentProfileId, targetId, targetType]);
+
+  useEffect(() => {
     let active = true;
     setError("");
     // Keep post comment threads dormant until their shared first-page batch
@@ -215,11 +242,14 @@ export default function PostPanel({
     setCommentPages({});
     setPosts([]);
     fetch(
-      `/api/post/posts?${new URLSearchParams({ targetType, targetId: String(targetId) })}`,
+      `/api/post/posts?${new URLSearchParams({ targetType, targetId: String(targetId), limit: "12" })}`,
     )
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load posts");
-        return response.json() as Promise<{ content: Post[] }>;
+        return response.json() as Promise<{
+          content: Post[];
+          nextToken?: string | null;
+        }>;
       })
       .then((page) => {
         if (!active) return;
@@ -229,6 +259,7 @@ export default function PostPanel({
         setCommentPagesReady(false);
         setCommentPages({});
         setPosts(page.content);
+        setNextPostsToken(page.nextToken || null);
       })
       .catch(() => {
         if (active) setError("Unable to load posts right now.");
@@ -237,6 +268,37 @@ export default function PostPanel({
       active = false;
     };
   }, [targetId, targetType]);
+
+  const loadMorePosts = useCallback(async () => {
+    if (!nextPostsToken || loadingMorePosts) return;
+    setLoadingMorePosts(true);
+    try {
+      const response = await fetch(
+        `/api/post/posts?${new URLSearchParams({ targetType, targetId: String(targetId), limit: "12", nextToken: nextPostsToken })}`,
+      );
+      if (!response.ok) throw new Error();
+      const page = (await response.json()) as {
+        content: Post[];
+        nextToken?: string | null;
+      };
+      setPosts((current) => [...current, ...page.content]);
+      setNextPostsToken(page.nextToken || null);
+    } finally {
+      setLoadingMorePosts(false);
+    }
+  }, [loadingMorePosts, nextPostsToken, targetId, targetType]);
+
+  useEffect(() => {
+    if (!nextPostsToken || !postLoadSentinel.current) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void loadMorePosts();
+      },
+      { rootMargin: "500px 0px" },
+    );
+    observer.observe(postLoadSentinel.current);
+    return () => observer.disconnect();
+  }, [loadMorePosts, nextPostsToken]);
 
   const authorReferences = useMemo(
     () =>
@@ -449,7 +511,7 @@ export default function PostPanel({
     <section className="post-panel" aria-label="Posts">
       <h2>Posts</h2>
       {error && <p className="text-danger">{error}</p>}
-      {canCreate && (
+      {(canCreate || friendCanCreate) && (
         <div className="post-composer-wrap">
           <Form.Control
             as="textarea"
@@ -652,6 +714,14 @@ export default function PostPanel({
               </article>
             );
           })}
+          {nextPostsToken && (
+            <div
+              ref={postLoadSentinel}
+              className="text-center small text-muted py-2"
+            >
+              {loadingMorePosts ? "Loading more posts…" : ""}
+            </div>
+          )}
         </div>
       )}
       <ConfirmationModal
