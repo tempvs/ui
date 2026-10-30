@@ -22,6 +22,7 @@ import {
   searchMapPlaces,
   type MapEntityLocation,
   type MapEntityLocationPage,
+  mapPlacePath,
   type MapClubFilters,
   type MapEventFilters,
   type MapProfileFilters,
@@ -1233,7 +1234,7 @@ export default function MapPage() {
             <div className="d-flex gap-2 flex-wrap">
               <Link
                 className="btn btn-sm btn-dark"
-                to={`/map/place/${encodeURIComponent(selectedPlace.id)}`}
+                to={mapPlacePath(selectedPlace)}
               >
                 Open place
               </Link>
@@ -1538,7 +1539,7 @@ export default function MapPage() {
               </span>
               <Link
                 className="ms-2"
-                to={`/map/place/${encodeURIComponent(place.id)}`}
+                to={mapPlacePath(place)}
               >
                 Place details
               </Link>

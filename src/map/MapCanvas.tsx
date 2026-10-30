@@ -333,7 +333,7 @@ export default function MapCanvas({
     const element = document.createElement("a");
     element.className = "map-selected-place-label";
     element.textContent = place.matchedName || place.canonicalName;
-    element.href = placePath(place.id);
+    element.href = placePath(place);
     element.setAttribute("aria-label", `Open ${element.textContent}`);
     const marker = new maplibregl.Marker({ element, anchor: "bottom" })
       .setLngLat([place.longitude, place.latitude])
@@ -887,8 +887,12 @@ function markerLinksPopover(marker: LinkedMarker): HTMLDivElement {
   return container;
 }
 
-function placePath(placeId: string): string {
-  return `/map/place/${encodeURIComponent(placeId)}`;
+function placePath(
+  place: Pick<MapPlace, "id" | "publicId" | "alias"> | string,
+): string {
+  const reference =
+    typeof place === "string" ? place : place.alias || place.publicId || place.id;
+  return `/map/place/${encodeURIComponent(reference)}`;
 }
 
 function entityPath(

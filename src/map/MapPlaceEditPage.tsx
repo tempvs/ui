@@ -12,6 +12,7 @@ import {
   getMapPlace,
   proposeMapPlaceChangeset,
   searchMapPlaces,
+  mapPlacePath,
   type MapPlace,
 } from "./mapApi";
 import MapCanvas from "./MapCanvas";
@@ -37,6 +38,7 @@ type PlaceEditDraft = {
   longitude: string;
   description: string;
   citationUrl: string;
+  alias: string;
   names: NameDraft[];
   historicalEvents: HistoricalEventDraft[];
   note: string;
@@ -76,6 +78,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
   const [longitude, setLongitude] = useState("");
   const [description, setDescription] = useState("");
   const [citationUrl, setCitationUrl] = useState("");
+  const [alias, setAlias] = useState("");
   const [names, setNames] = useState<NameDraft[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<
     HistoricalEventDraft[]
@@ -110,6 +113,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         setLongitude(String(value.longitude));
         setDescription(value.description || "");
         setCitationUrl(value.citationUrl || "");
+        setAlias(value.alias || "");
         setNames(nameDrafts(value));
         setHistoricalEvents(historicalEventDrafts(value));
         setSavedDraft(readDraft(value.id));
@@ -231,6 +235,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                 note: note.trim(),
                 description,
                 citationUrl,
+                ...(alias.trim() ? { alias: alias.trim() } : {}),
                 names: names.map((entry) => ({
                   value: entry.value.trim(),
                   preferred: entry.preferred,
@@ -254,7 +259,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
       await proposeMapPlaceChangeset(place.id, changeset);
       window.localStorage.removeItem(draftKey(place.id));
       setSavedDraft(null);
-      navigate(`/map/place/${encodeURIComponent(place.id)}/proposals`);
+      navigate(`${mapPlacePath(place)}/proposals`);
     } catch (caught) {
       setError((caught as Error).message || "Unable to submit this changeset.");
     } finally {
@@ -285,6 +290,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
       longitude,
       description,
       citationUrl,
+      alias,
       names,
       historicalEvents,
       note,
@@ -301,6 +307,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
     setLongitude(savedDraft.longitude);
     setDescription(savedDraft.description);
     setCitationUrl(savedDraft.citationUrl);
+    setAlias(savedDraft.alias);
     setNames(savedDraft.names);
     setHistoricalEvents(savedDraft.historicalEvents);
     setNote(savedDraft.note);
@@ -317,6 +324,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
         longitude,
         description,
         citationUrl,
+        alias,
         names,
         historicalEvents,
       })
@@ -471,7 +479,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                       {likelyDuplicates.map((candidate) => (
                         <li key={candidate.id}>
                           <Link
-                            to={`/map/place/${encodeURIComponent(candidate.id)}`}
+                            to={mapPlacePath(candidate)}
                           >
                             {candidate.canonicalName}
                           </Link>{" "}
@@ -501,6 +509,21 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                     onChange={(event) => setCitationUrl(event.target.value)}
                     disabled={!editable}
                   />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>URL alias (optional)</Form.Label>
+                  <Form.Control
+                    value={alias}
+                    onChange={(event) => setAlias(event.target.value)}
+                    placeholder="rome-italy"
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                    maxLength={96}
+                    disabled={!editable}
+                  />
+                  <Form.Text className="text-muted">
+                    Lowercase letters, numbers, and hyphens. This controls a
+                    readable public URL, not the historical names above.
+                  </Form.Text>
                 </Form.Group>
                 <fieldset
                   id="place-editor-history"
@@ -752,7 +775,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
             <div className="d-flex gap-2">
               <Link
                 className="btn btn-outline-secondary"
-                to={`/map/place/${encodeURIComponent(place.id)}`}
+                to={mapPlacePath(place)}
               >
                 Cancel
               </Link>
@@ -864,6 +887,7 @@ function readDraft(placeId: string): PlaceEditDraft | null {
       typeof parsed.longitude !== "string" ||
       typeof parsed.description !== "string" ||
       typeof parsed.citationUrl !== "string" ||
+      typeof parsed.alias !== "string" ||
       typeof parsed.note !== "string" ||
       typeof parsed.savedAt !== "string" ||
       !Array.isArray(parsed.names) ||
@@ -886,6 +910,7 @@ function summarizeChanges(
     | "longitude"
     | "description"
     | "citationUrl"
+    | "alias"
     | "names"
     | "historicalEvents"
   >,
@@ -904,6 +929,8 @@ function summarizeChanges(
     changes.push("Changed description");
   if (draft.citationUrl.trim() !== (place.citationUrl || "").trim())
     changes.push("Changed evidence URL");
+  if (draft.alias.trim() !== (place.alias || "").trim())
+    changes.push("Changed URL alias");
   if (JSON.stringify(draft.names) !== JSON.stringify(nameDrafts(place)))
     changes.push("Changed historical names");
   if (

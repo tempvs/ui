@@ -59,6 +59,7 @@ export default function PlaceProposalModal({
   const [description, setDescription] = useState(proposal?.description ?? "");
   const [note, setNote] = useState(proposal?.proposalNote ?? "");
   const [citationUrl, setCitationUrl] = useState(proposal?.citationUrl ?? "");
+  const [urlAlias, setUrlAlias] = useState(proposal?.alias ?? "");
   const [aliases, setAliases] = useState(placeAliases(proposal));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +75,7 @@ export default function PlaceProposalModal({
     setDescription(proposal?.description ?? "");
     setNote(proposal?.proposalNote ?? "");
     setCitationUrl(proposal?.citationUrl ?? "");
+    setUrlAlias(proposal?.alias ?? "");
     setAliases(placeAliases(proposal));
     setError("");
     setSubmitted(false);
@@ -150,6 +152,7 @@ export default function PlaceProposalModal({
         longitude: parsedLongitude,
         ...(description.trim() ? { description: description.trim() } : {}),
         citationUrl: citationUrl.trim(),
+        ...(urlAlias.trim() ? { alias: urlAlias.trim() } : {}),
         ...(aliases.trim()
           ? {
               aliases: aliases
@@ -247,6 +250,19 @@ export default function PlaceProposalModal({
                   onChange={(event) => setAliases(event.target.value)}
                   placeholder="Comma-separated aliases"
                 />
+              </Form.Group>
+              <Form.Group className="mb-2">
+                <Form.Label>URL alias (optional)</Form.Label>
+                <Form.Control
+                  value={urlAlias}
+                  onChange={(event) => setUrlAlias(event.target.value)}
+                  placeholder="rome-italy"
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  maxLength={96}
+                />
+                <Form.Text className="text-muted">
+                  Lowercase letters, numbers, and hyphens. Historical names above are separate.
+                </Form.Text>
               </Form.Group>
               <Form.Group>
                 <Form.Label>Description</Form.Label>

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Alert, Button, ButtonGroup, Form } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getViewer, type Viewer } from "../auth/viewerApi";
 import PageLayout from "../component/PageLayout";
@@ -22,6 +22,7 @@ import {
   type MapEntityLocation,
   type MapPlace,
   type MapPlaceName,
+  mapPlacePath,
 } from "./mapApi";
 import { formatPlaceNameRange } from "./placeNames";
 import MapPlaceChangeLogDiffModal from "./MapPlaceChangeLogDiffModal";
@@ -39,6 +40,7 @@ const entityTypeFilters: EntityTypeFilter[] = [
 /** Public landing page for one approved canonical point. It uses the exact
  * place-assignment API rather than an imprecise radius lookup. */
 export default function MapPlacePage({ id }: MapPlacePageProps) {
+  const navigate = useNavigate();
   const [viewer, setViewer] = useState<Viewer | null | undefined>(undefined);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [otherContainmentParents, setOtherContainmentParents] = useState<
@@ -68,6 +70,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [historyProfiles, setHistoryProfiles] = useState<
     Record<string, Profile>
   >({});
+
+  useEffect(() => {
+    if (!place || !id) return;
+    const canonicalReference = place.alias || place.publicId;
+    if (canonicalReference && id !== canonicalReference)
+      navigate(mapPlacePath(place), { replace: true });
+  }, [id, navigate, place]);
   const [selectedHistory, setSelectedHistory] =
     useState<MapPlaceProposalActivity | null>(null);
 
@@ -297,13 +306,13 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         rightContent: canPropose ? (
           <div className="d-flex gap-2 flex-wrap justify-content-end">
             <Link
-              to={`/map/place/${encodeURIComponent(place.id)}/proposals`}
+              to={`${mapPlacePath(place)}/proposals`}
               className="btn btn-outline-dark btn-sm"
             >
               Pending proposals
             </Link>
             <Link
-              to={`/map/place/${encodeURIComponent(place.id)}/edit`}
+              to={`${mapPlacePath(place)}/edit`}
               className="btn btn-dark btn-sm"
             >
               Propose edit
@@ -401,7 +410,11 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
                 }
               >
                 <Link
-                  to={`/map/place/${encodeURIComponent(relation.parentPlaceId)}`}
+                  to={mapPlacePath(
+                    otherContainmentParents[relation.parentPlaceId] || {
+                      id: relation.parentPlaceId,
+                    },
+                  )}
                 >
                   {otherContainmentParents[relation.parentPlaceId]
                     ?.canonicalName || relation.parentPlaceId}
@@ -420,7 +433,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             {children.map((child, index) => (
               <Fragment key={child.id}>
                 {index > 0 && ", "}
-                <Link to={`/map/place/${encodeURIComponent(child.id)}`}>
+                <Link to={mapPlacePath(child)}>
                   {child.canonicalName}
                 </Link>
               </Fragment>

@@ -23,6 +23,10 @@ export type MapHistoricalNameRange = {
 
 export type MapPlace = {
   id: string;
+  /** Stable UUID added lazily when a place is reviewed or edited. */
+  publicId?: string;
+  /** Optional human-readable URL alias. */
+  alias?: string;
   canonicalName: string;
   /** Names are returned by the public Map API so choosing a result does not
    * require a second request before its historical context can be displayed. */
@@ -148,10 +152,19 @@ export type MapPlaceProposal = {
   note: string;
   description?: string;
   citationUrl?: string;
+  alias?: string;
   aliases?: string[];
   names?: MapPlaceName[];
   historicalEvents?: MapPlaceHistoricalEvent[];
 };
+
+/** Prefer the human URL alias, then the stable UUID. The legacy storage ID
+ * remains a safe fallback while the catalogue migrates lazily. */
+export function mapPlacePath(
+  place: Pick<MapPlace, "id" | "publicId" | "alias">,
+): string {
+  return `/map/place/${encodeURIComponent(place.alias || place.publicId || place.id)}`;
+}
 
 export type MapPlaceChangeset =
   | ({ kind: "UPDATE" } & MapPlaceProposal)
@@ -391,6 +404,20 @@ async function flushMapPlaceReads() {
     const body = (await responseJson(response)) as { items?: unknown } | null;
     const places = body && Array.isArray(body.items) ? (body.items as MapPlace[]) : [];
     const byId = new Map(places.map((place) => [place.id, place]));
+    // A merged legacy ID resolves to its canonical place through the single
+    // place route. Keep the normal path as one batched request, and use this
+    // bounded fallback only for IDs absent from that response so old linked
+    // sources keep rendering without a catalogue-wide migration.
+    const missingIds = ids.filter((id) => !byId.has(id));
+    for (let start = 0; start < missingIds.length; start += 10) {
+      const resolved = await Promise.all(
+        missingIds.slice(start, start + 10).map((id) => getMapPlace(id)),
+      );
+      resolved.forEach((place, index) => {
+        const requestedId = missingIds[start + index];
+        if (place && requestedId) byId.set(requestedId, place);
+      });
+    }
     entries.forEach(([id, read]) => {
       const place = byId.get(id) || null;
       if (place) mapPlaceCache.set(id, { place, expiresAt: Date.now() + mapPlaceCacheTtlMs });

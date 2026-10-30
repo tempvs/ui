@@ -33,6 +33,36 @@ test("coalesces concurrent place reads into one bounded batch request", async ()
   fetchMock.mockRestore();
 });
 
+test("falls back only for a legacy place id resolved by a merge", async () => {
+  const fetchMock = jest
+    .spyOn(global, "fetch")
+    .mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify({ items: [] }),
+    } as Response)
+    .mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          id: "seed:canonical-rome",
+          canonicalName: "Rome",
+          latitude: 41.9,
+          longitude: 12.5,
+          featureType: "SETTLEMENT",
+        }),
+    } as Response);
+
+  await expect(getMapPlaces(["seed:merged-rome"])).resolves.toEqual([
+    expect.objectContaining({ id: "seed:canonical-rome" }),
+  ]);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "/api/map/places/seed%3Amerged-rome",
+    { signal: undefined },
+  );
+  fetchMock.mockRestore();
+});
+
 test("sends exact-place role refinements as a bounded query parameter", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
     ok: true,
