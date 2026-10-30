@@ -224,6 +224,7 @@ export default function MapCanvas({
     const offsets = markerOffsets(ownedMarkers);
     const popupDisposers: Array<() => void> = [];
     const instances = ownedMarkers.map((ownedMarker) => {
+      const markerOffset = offsets.get(ownedMarker.key) || [0, 0];
       const element = document.createElement("button");
       element.type = "button";
       element.className = `map-owned-marker map-owned-marker-${ownedMarker.entityType.toLowerCase()}`;
@@ -247,12 +248,12 @@ export default function MapCanvas({
         ownedMarkerSelectRef.current?.(ownedMarker);
       });
       popupDisposers.push(
-        addMarkerLinksPopup(mapInstance, element, ownedMarker),
+        addMarkerLinksPopup(mapInstance, element, ownedMarker, markerOffset),
       );
       return new maplibregl.Marker({
         element,
         anchor: "center",
-        offset: offsets.get(ownedMarker.key) || [0, 0],
+        offset: markerOffset,
       })
         .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
         .addTo(mapInstance);
@@ -272,6 +273,7 @@ export default function MapCanvas({
     const offsets = markerOffsets(thumbnailMarkers);
     const popupDisposers: Array<() => void> = [];
     const instances = thumbnailMarkers.map((thumbnailMarker) => {
+      const markerOffset = offsets.get(thumbnailMarker.key) || [0, 0];
       const markerElement = mapMarkerElement(thumbnailMarker, "thumbnail");
       markerElement.addEventListener("click", (event) => {
         event.preventDefault();
@@ -279,12 +281,17 @@ export default function MapCanvas({
         thumbnailMarkerSelectRef.current?.(thumbnailMarker);
       });
       popupDisposers.push(
-        addMarkerLinksPopup(mapInstance, markerElement, thumbnailMarker),
+        addMarkerLinksPopup(
+          mapInstance,
+          markerElement,
+          thumbnailMarker,
+          markerOffset,
+        ),
       );
       return new maplibregl.Marker({
         element: markerElement,
         anchor: "center",
-        offset: offsets.get(thumbnailMarker.key) || [0, 0],
+        offset: markerOffset,
       })
         .setLngLat([thumbnailMarker.longitude, thumbnailMarker.latitude])
         .addTo(mapInstance);
@@ -806,6 +813,7 @@ function addMarkerLinksPopup(
   map: maplibregl.Map,
   trigger: HTMLElement,
   marker: LinkableMarker,
+  markerOffset: [number, number],
 ): () => void {
   let popup: maplibregl.Popup | null = null;
   let closeTimer: number | undefined;
@@ -831,7 +839,10 @@ function addMarkerLinksPopup(
       closeButton: false,
       closeOnClick: false,
       anchor: "left",
-      offset: [14, 0],
+      // DOM markers may be deliberately spread around the same map point.
+      // Match that visual displacement and clear the thumbnail's right edge,
+      // so the hover card belongs to the image rather than its source point.
+      offset: [markerOffset[0] + 20, markerOffset[1]],
       maxWidth: "18rem",
     })
       .setLngLat([marker.longitude, marker.latitude])
