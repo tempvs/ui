@@ -708,7 +708,7 @@ export default function PostPanel({
                 <CommentThread
                   targetType="POST"
                   targetId={post.id}
-                  initialPage={commentPages[post.id]}
+                  initialPage={commentPages?.[post.id]}
                   deferInitialLoad={!commentPagesReady}
                 />
               </article>
