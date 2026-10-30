@@ -316,19 +316,8 @@ function MapPreview({
       active = false;
     };
   }, [reference, onError, visible]);
-  const fitPoints = content.markers.length
-    ? content.markers.map((marker) => ({
-        key: marker.key,
-        latitude: marker.latitude,
-        longitude: marker.longitude,
-      }))
-    : [
-        {
-          key: "map-reference-focus",
-          latitude: reference.latitude,
-          longitude: reference.longitude,
-        },
-      ];
+  const fitPoints = embeddedMapFitPoints(reference, content, entities);
+  const hasVisibleMapContent = content.markers.length > 0 || entities.length > 0;
   return (
     <div ref={rootRef} className="map-reference-canvas">
       {visible && (
@@ -338,12 +327,12 @@ function MapPreview({
           ownedMarkers={content.markers}
           ownedConnections={content.connections}
           focus={
-            content.markers.length
+            hasVisibleMapContent
               ? null
               : { latitude: reference.latitude, longitude: reference.longitude }
           }
           pickedCoordinate={
-            content.markers.length
+            hasVisibleMapContent
               ? null
               : { latitude: reference.latitude, longitude: reference.longitude }
           }
@@ -355,6 +344,45 @@ function MapPreview({
       )}
     </div>
   );
+}
+
+/**
+ * A map reference can resolve to either an explicitly shared graph or public
+ * nearby entities. Both sets must take part in the viewport calculation:
+ * fitting only the saved centre leaves distant, valid markers outside an
+ * embedded preview.
+ */
+export function embeddedMapFitPoints(
+  reference: PublicMapReference,
+  content: OwnedMapContent,
+  entities: MapEntityLocation[],
+) {
+  const points = [
+    ...content.markers.map((marker) => ({
+      key: marker.key,
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+    })),
+    ...entities.map((entity) => ({
+      key: `ENTITY:${entity.entityType}:${entity.entityId}:${entity.locationRole}:${entity.placeId}`,
+      latitude: entity.latitude,
+      longitude: entity.longitude,
+    })),
+  ].filter(
+    (point) =>
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude),
+  );
+
+  return points.length
+    ? points
+    : [
+        {
+          key: "map-reference-focus",
+          latitude: reference.latitude,
+          longitude: reference.longitude,
+        },
+      ];
 }
 
 function isScopeType(value: string | null): value is SharedMapScope["type"] {
