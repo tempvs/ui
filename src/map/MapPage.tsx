@@ -213,7 +213,9 @@ export default function MapPage() {
           ...clubProfiles,
         ];
         setShareProfiles(profiles);
-        const profileIds = new Set(profiles.map((profile) => String(profile.id)));
+        const profileIds = new Set(
+          profiles.map((profile) => String(profile.id)),
+        );
         setShareEvents(
           events.content.filter(
             (event) =>
@@ -222,7 +224,9 @@ export default function MapPage() {
           ),
         );
         void Promise.all(
-          profiles.map((profile) => getProfileClubs(profile.id).catch(() => [])),
+          profiles.map((profile) =>
+            getProfileClubs(profile.id).catch(() => []),
+          ),
         ).then((clubGroups) => {
           if (active)
             setShareClubs(
@@ -929,10 +933,7 @@ export default function MapPage() {
     requestedTitle?: string,
   ): Promise<PublicMapReference | null> => {
     const viewportAnchor =
-      focus ||
-      visibleOwnedMarkers[0] ||
-      visibleEntities[0] ||
-      null;
+      focus || visibleOwnedMarkers[0] || visibleEntities[0] || null;
     const lat =
       latitude.trim() && longitude.trim()
         ? Number(latitude)
@@ -1038,7 +1039,7 @@ export default function MapPage() {
             Start with a place, then refine what appears on the map.
           </p>
           <div className="d-flex gap-2 flex-wrap mt-2">
-            {viewer && <Button
+            <Button
               type="button"
               size="sm"
               variant="outline-dark"
@@ -1048,31 +1049,35 @@ export default function MapPage() {
             >
               <FaLink aria-hidden />
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline-dark"
-              title="Save map"
-              aria-label="Save map"
-              onClick={() => void saveCurrentMap()}
-            >
-              <FaFloppyDisk aria-hidden />
-            </Button>}
-            {viewer && <Button
-              type="button"
-              size="sm"
-              variant="outline-dark"
-              title="Send map"
-              aria-label="Send map"
-              onClick={() => {
-                setShareTitle(
-                  selectedPlace?.canonicalName || query.trim() || "Saved map",
-                );
-                setShowShare(true);
-              }}
-            >
-              <FaPaperPlane aria-hidden />
-            </Button>}
+            {viewer && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline-dark"
+                title="Save map"
+                aria-label="Save map"
+                onClick={() => void saveCurrentMap()}
+              >
+                <FaFloppyDisk aria-hidden />
+              </Button>
+            )}
+            {viewer && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline-dark"
+                title="Send map"
+                aria-label="Send map"
+                onClick={() => {
+                  setShareTitle(
+                    selectedPlace?.canonicalName || query.trim() || "Saved map",
+                  );
+                  setShowShare(true);
+                }}
+              >
+                <FaPaperPlane aria-hidden />
+              </Button>
+            )}
           </div>
           {(copyStatus || snapshotStatus) && (
             <span className="small text-muted d-block mt-1">
@@ -1236,154 +1241,165 @@ export default function MapPage() {
           </section>
         )}
       </section>
-      {viewer && <Modal show={showShare} onHide={() => setShowShare(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Send this map</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>
-            Choose a destination. It saves the map automatically, then opens the
-            composer with the attachment ready.
-          </p>
-          <Form.Group className="mb-3">
-            <Form.Label htmlFor="map-share-title">Saved map name</Form.Label>
-            <Form.Control
-              id="map-share-title"
-              value={shareTitle}
-              maxLength={200}
-              onChange={(event) => setShareTitle(event.target.value)}
-            />
-          </Form.Group>
-          <div className="d-flex gap-2 flex-wrap">
-            <Button
-              variant={shareDestination === "chat" ? "dark" : "outline-dark"}
-              onClick={() => setShareDestination("chat")}
-            >
-              Send to chat
-            </Button>
-            <Button
-              variant={shareDestination === "profile" ? "dark" : "outline-dark"}
-              onClick={() => setShareDestination("profile")}
-            >
-              Profile wall
-            </Button>
-            <Button
-              variant={shareDestination === "club" ? "dark" : "outline-dark"}
-              onClick={() => setShareDestination("club")}
-            >
-              Club wall
-            </Button>
-            <Button
-              variant={shareDestination === "event" ? "dark" : "outline-dark"}
-              onClick={() => setShareDestination("event")}
-            >
-              Event wall
-            </Button>
-          </div>
-          <div className="mt-3">
-            {shareDestination === "chat" && (
-              <>
-                <p className="small text-muted">
-                  Search for a profile in the next step. The map is sent with
-                  the first message and then the exact conversation opens.
-                </p>
-                <Button
-                  variant="dark"
-                  onClick={() => {
-                    void saveCurrentMap(shareTitle).then((reference) => {
-                      if (!reference) return;
-                      stageMapAttachment(reference);
-                      setShowShare(false);
-                      navigate("/chat", { state: { composeMap: true } });
-                    });
-                  }}
-                >
-                  Choose chat recipient
-                </Button>
-              </>
-            )}
-            {shareDestination !== "chat" && (
-              <>
-                <p className="small text-muted">
-                  Choose a wall you manage. Its post composer will open with
-                  the map attached, ready for your text.
-                </p>
-                {shareDestinationsLoading ? (
-                  <span className="small text-muted">Loading walls…</span>
-                ) : (
-                  <div className="d-flex flex-column gap-2">
-                    {(shareDestination === "event"
-                      ? shareEvents.map((event) => ({
-                          id: event.id,
-                          label: event.name,
-                          path: `/events/${event.id}`,
-                        }))
-                      : shareDestination === "club"
-                        ? shareClubs.map((club) => ({
-                            id: String(club.id),
-                            label: club.name,
-                            path: `/clubs/${club.id}`,
+      {viewer && (
+        <Modal show={showShare} onHide={() => setShowShare(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>Send this map</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>
+              Choose a destination. It saves the map automatically, then opens
+              the composer with the attachment ready.
+            </p>
+            <Form.Group className="mb-3">
+              <Form.Label htmlFor="map-share-title">Saved map name</Form.Label>
+              <Form.Control
+                id="map-share-title"
+                value={shareTitle}
+                maxLength={200}
+                onChange={(event) => setShareTitle(event.target.value)}
+              />
+            </Form.Group>
+            <div className="d-flex gap-2 flex-wrap">
+              <Button
+                variant={shareDestination === "chat" ? "dark" : "outline-dark"}
+                onClick={() => setShareDestination("chat")}
+              >
+                Send to chat
+              </Button>
+              <Button
+                variant={
+                  shareDestination === "profile" ? "dark" : "outline-dark"
+                }
+                onClick={() => setShareDestination("profile")}
+              >
+                Profile wall
+              </Button>
+              <Button
+                variant={shareDestination === "club" ? "dark" : "outline-dark"}
+                onClick={() => setShareDestination("club")}
+              >
+                Club wall
+              </Button>
+              <Button
+                variant={shareDestination === "event" ? "dark" : "outline-dark"}
+                onClick={() => setShareDestination("event")}
+              >
+                Event wall
+              </Button>
+            </div>
+            <div className="mt-3">
+              {shareDestination === "chat" && (
+                <>
+                  <p className="small text-muted">
+                    Search for a profile in the next step. The map is sent with
+                    the first message and then the exact conversation opens.
+                  </p>
+                  <Button
+                    variant="dark"
+                    onClick={() => {
+                      void saveCurrentMap(shareTitle).then((reference) => {
+                        if (!reference) return;
+                        stageMapAttachment(reference);
+                        setShowShare(false);
+                        navigate("/chat", { state: { composeMap: true } });
+                      });
+                    }}
+                  >
+                    Choose chat recipient
+                  </Button>
+                </>
+              )}
+              {shareDestination !== "chat" && (
+                <>
+                  <p className="small text-muted">
+                    Choose a wall you manage. Its post composer will open with
+                    the map attached, ready for your text.
+                  </p>
+                  {shareDestinationsLoading ? (
+                    <span className="small text-muted">Loading walls…</span>
+                  ) : (
+                    <div className="d-flex flex-column gap-2">
+                      {(shareDestination === "event"
+                        ? shareEvents.map((event) => ({
+                            id: event.id,
+                            label: event.name,
+                            path: `/events/${event.id}`,
                           }))
-                        : shareProfiles
-                          .map((profile) => ({
-                            id: String(profile.id),
-                            label: buildProfileLabel(profile),
-                            path: `/profile/${profile.alias || profile.id}`,
-                          }))
-                    ).map((destination) => (
-                      <Button
-                        key={destination.id}
-                        variant="outline-dark"
-                        className="text-start"
-                        onClick={() => {
-                          void saveCurrentMap(shareTitle).then((reference) => {
-                            if (!reference) return;
-                            const club =
-                              shareDestination === "club"
-                                ? shareClubs.find(
-                                    (candidate) =>
-                                      String(candidate.id) === destination.id,
-                                  )
-                                : undefined;
-                            const authorProfileId = shareProfiles.find(
-                              (profile) =>
-                                String(profile.id) ===
-                                String(club?.ownerProfileId || ""),
-                            )?.id;
-                            stageMapAttachment(
-                              reference,
-                              authorProfileId ? String(authorProfileId) : undefined,
-                              { type: shareDestination.toUpperCase(), id: destination.id },
-                            );
-                            setShowShare(false);
-                            navigate(destination.path, {
-                              state: {
-                                mapAttachment: reference,
-                                ...(authorProfileId
-                                  ? {
-                                      mapAuthorProfileId:
-                                        String(authorProfileId),
-                                    }
-                                  : {}),
-                                mapTarget: {
-                                  type: shareDestination.toUpperCase(),
-                                  id: destination.id,
-                                },
+                        : shareDestination === "club"
+                          ? shareClubs.map((club) => ({
+                              id: String(club.id),
+                              label: club.name,
+                              path: `/clubs/${club.id}`,
+                            }))
+                          : shareProfiles.map((profile) => ({
+                              id: String(profile.id),
+                              label: buildProfileLabel(profile),
+                              path: `/profile/${profile.alias || profile.id}`,
+                            }))
+                      ).map((destination) => (
+                        <Button
+                          key={destination.id}
+                          variant="outline-dark"
+                          className="text-start"
+                          onClick={() => {
+                            void saveCurrentMap(shareTitle).then(
+                              (reference) => {
+                                if (!reference) return;
+                                const club =
+                                  shareDestination === "club"
+                                    ? shareClubs.find(
+                                        (candidate) =>
+                                          String(candidate.id) ===
+                                          destination.id,
+                                      )
+                                    : undefined;
+                                const authorProfileId = shareProfiles.find(
+                                  (profile) =>
+                                    String(profile.id) ===
+                                    String(club?.ownerProfileId || ""),
+                                )?.id;
+                                stageMapAttachment(
+                                  reference,
+                                  authorProfileId
+                                    ? String(authorProfileId)
+                                    : undefined,
+                                  {
+                                    type: shareDestination.toUpperCase(),
+                                    id: destination.id,
+                                  },
+                                );
+                                setShowShare(false);
+                                navigate(destination.path, {
+                                  state: {
+                                    mapAttachment: reference,
+                                    ...(authorProfileId
+                                      ? {
+                                          mapAuthorProfileId:
+                                            String(authorProfileId),
+                                        }
+                                      : {}),
+                                    mapTarget: {
+                                      type: shareDestination.toUpperCase(),
+                                      id: destination.id,
+                                    },
+                                  },
+                                });
                               },
-                            });
-                          });
-                        }}
-                      >
-                        {destination.label}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </Modal.Body>
-      </Modal>}
+                            );
+                          }}
+                        >
+                          {destination.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </Modal.Body>
+        </Modal>
+      )}
       {viewer && ownProposals.length > 0 && (
         <section className="club-panel mt-3" aria-label="Your place proposals">
           <h2 className="h5">Your place proposals</h2>
