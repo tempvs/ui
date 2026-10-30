@@ -11,6 +11,7 @@ import {
 import { stageMapAttachment } from "./pendingMapAttachment";
 import { loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
 import type { SharedMapScope } from "./sharedMapScope";
+import { fetchCurrentUserInfo } from "../profile/profileApi";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -111,7 +112,9 @@ export function publicMapReferenceFromUrl(
     radiusKm,
     entityTypes: Array.from(new Set(selectedTypes)),
     ...(query ? { query } : {}),
-    ...(scopeId && scopeType ? { scope: { type: scopeType as SharedMapScope["type"], id: scopeId } } : {}),
+    ...(scopeId && scopeType
+      ? { scope: { type: scopeType as SharedMapScope["type"], id: scopeId } }
+      : {}),
   };
 }
 
@@ -125,6 +128,7 @@ export default function MapReferenceAttachment({
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
   const path = publicMapReferencePath(reference);
   const name = reference.placeName || "Shared map";
@@ -146,9 +150,21 @@ export default function MapReferenceAttachment({
       setStatus("Copy the link from the opened map instead.");
     }
   };
+  useEffect(() => {
+    let active = true;
+    fetchCurrentUserInfo((result) => {
+      if (active) setAuthenticated(Boolean(result.currentUserId));
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   return (
     <>
-      <section className={`map-reference-attachment ${className}`.trim()} aria-label={`Map: ${name}`}>
+      <section
+        className={`map-reference-attachment ${className}`.trim()}
+        aria-label={`Map: ${name}`}
+      >
         <div
           className="map-reference-open"
           role="button"
@@ -169,7 +185,12 @@ export default function MapReferenceAttachment({
               {reference.entityTypes.length === 1 ? "" : "s"}
             </span>
           </div>
-          {!mapError && <MapPreview reference={reference} onError={() => setMapError(true)} />}
+          {!mapError && (
+            <MapPreview
+              reference={reference}
+              onError={() => setMapError(true)}
+            />
+          )}
           {mapError && (
             <p className="small text-muted mb-1 px-2">
               Map preview unavailable. Open the map for the full view.
@@ -181,26 +202,65 @@ export default function MapReferenceAttachment({
         </Link>
       </section>
       <Modal show={show} onHide={() => setShow(false)} centered size="xl">
-        <Modal.Header closeButton><Modal.Title>{name}</Modal.Title></Modal.Header>
+        <Modal.Header closeButton>
+          <Modal.Title>{name}</Modal.Title>
+        </Modal.Header>
         <Modal.Body>
           <div className="map-reference-modal-canvas">
-            <MapPreview reference={reference} onError={() => setStatus("Map preview unavailable.")} />
+            <MapPreview
+              reference={reference}
+              onError={() => setStatus("Map preview unavailable.")}
+            />
           </div>
           {status && <p className="small text-muted mt-2 mb-0">{status}</p>}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-dark" onClick={() => { setShow(false); navigate(path); }}>Open in Map</Button>
-          <Button variant="outline-dark" onClick={() => void copy()}>Copy link</Button>
-          <Button variant="outline-dark" onClick={() => void save()}>Save map</Button>
-          <Button variant="dark" onClick={() => { stageMapAttachment(reference); setShow(false); navigate("/chat", { state: { composeMap: true } }); }}>Send</Button>
+          <Button
+            variant="outline-dark"
+            onClick={() => {
+              setShow(false);
+              navigate(path);
+            }}
+          >
+            Open in Map
+          </Button>
+          <Button variant="outline-dark" onClick={() => void copy()}>
+            Copy link
+          </Button>
+          {authenticated && (
+            <Button variant="outline-dark" onClick={() => void save()}>
+              Save map
+            </Button>
+          )}
+          {authenticated && (
+            <Button
+              variant="dark"
+              onClick={() => {
+                stageMapAttachment(reference);
+                setShow(false);
+                navigate("/chat", { state: { composeMap: true } });
+              }}
+            >
+              Send
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </>
   );
 }
 
-function MapPreview({ reference, onError }: { reference: PublicMapReference; onError: () => void }) {
-  const [content, setContent] = useState<OwnedMapContent>({ markers: [], connections: [] });
+function MapPreview({
+  reference,
+  onError,
+}: {
+  reference: PublicMapReference;
+  onError: () => void;
+}) {
+  const [content, setContent] = useState<OwnedMapContent>({
+    markers: [],
+    connections: [],
+  });
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [visible, setVisible] = useState(
     () => typeof IntersectionObserver === "undefined",
@@ -232,7 +292,9 @@ function MapPreview({ reference, onError }: { reference: PublicMapReference; onE
     // request burst. Unscoped copied map links retain nearby discovery.
     if (reference.scope) {
       void loadSharedMapScope(reference.scope)
-        .then((next) => { if (active) setContent(next); })
+        .then((next) => {
+          if (active) setContent(next);
+        })
         .catch(onError);
     } else {
       void nearbyMapEntitiesPage(
@@ -241,17 +303,62 @@ function MapPreview({ reference, onError }: { reference: PublicMapReference; onE
         reference.radiusKm,
         reference.entityTypes,
       )
-        .then((page) => { if (active) setEntities(page.items); })
+        .then((page) => {
+          if (active) setEntities(page.items);
+        })
         .catch(onError);
     }
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [reference, onError, visible]);
   const fitPoints = content.markers.length
-    ? content.markers.map((marker) => ({ key: marker.key, latitude: marker.latitude, longitude: marker.longitude }))
-    : [{ key: "map-reference-focus", latitude: reference.latitude, longitude: reference.longitude }];
-  return <div ref={rootRef} className="map-reference-canvas">{visible && <MapCanvas places={[]} entities={entities} ownedMarkers={content.markers} ownedConnections={content.connections} focus={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} pickedCoordinate={content.markers.length ? null : { latitude: reference.latitude, longitude: reference.longitude }} initialFitPoints={fitPoints} showModernBorders={false} onEntitySelect={() => undefined} onMapError={onError} />}</div>;
+    ? content.markers.map((marker) => ({
+        key: marker.key,
+        latitude: marker.latitude,
+        longitude: marker.longitude,
+      }))
+    : [
+        {
+          key: "map-reference-focus",
+          latitude: reference.latitude,
+          longitude: reference.longitude,
+        },
+      ];
+  return (
+    <div ref={rootRef} className="map-reference-canvas">
+      {visible && (
+        <MapCanvas
+          places={[]}
+          entities={entities}
+          ownedMarkers={content.markers}
+          ownedConnections={content.connections}
+          focus={
+            content.markers.length
+              ? null
+              : { latitude: reference.latitude, longitude: reference.longitude }
+          }
+          pickedCoordinate={
+            content.markers.length
+              ? null
+              : { latitude: reference.latitude, longitude: reference.longitude }
+          }
+          initialFitPoints={fitPoints}
+          showModernBorders={false}
+          onEntitySelect={() => undefined}
+          onMapError={onError}
+        />
+      )}
+    </div>
+  );
 }
 
 function isScopeType(value: string | null): value is SharedMapScope["type"] {
-  return value === "USER" || value === "PROFILE" || value === "CLUB" || value === "EVENT" || value === "SOURCE";
+  return (
+    value === "USER" ||
+    value === "PROFILE" ||
+    value === "CLUB" ||
+    value === "EVENT" ||
+    value === "SOURCE"
+  );
 }
