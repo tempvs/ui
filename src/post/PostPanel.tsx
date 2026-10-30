@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-bootstrap";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FaCheck, FaPaperPlane, FaPen, FaTimes, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
@@ -78,6 +78,7 @@ export default function PostPanel({
   canCreate = false,
 }: PostPanelProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentProfileValue = useCurrentProfileValue();
   const [posts, setPosts] = useState<Post[]>([]);
   const [commentPages, setCommentPages] = useState<Record<string, CommentPage>>(
@@ -172,8 +173,22 @@ export default function PostPanel({
       const authorProfileId =
         navigationState?.mapAuthorProfileId || takeStagedMapAuthorProfile();
       if (authorProfileId) setSelectedAuthorProfileId(authorProfileId);
+      // Browser history state survives a reload. Consume the one-shot handoff
+      // immediately so a successfully posted map is never offered again.
+      if (stateAttachment)
+        navigate(`${location.pathname}${location.search}`, {
+          replace: true,
+          state: null,
+        });
     }
-  }, [location.state, targetId, targetType]);
+  }, [
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    targetId,
+    targetType,
+  ]);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
