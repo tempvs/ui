@@ -391,13 +391,20 @@ export default function MapCanvas({
       .join("|");
     if (fittedPrivateMarkerSignature.current === signature) return;
     fittedPrivateMarkerSignature.current = signature;
+    // A map attachment is often mounted while the post containing it is being
+    // inserted. Its saved-centre fly animation may still be running when the
+    // resolved marker graph arrives. Stop that animation and measure the
+    // freshly laid-out canvas before calculating bounds; otherwise the old
+    // focal point can win and leave valid markers off-screen until a reload.
+    map.current.stop();
+    map.current.resize();
     if (initialFitPoints.length === 1) {
       const point = initialFitPoints[0];
       if (!point) return;
       map.current.flyTo({
         center: [point.longitude, point.latitude],
         zoom: 6,
-        duration: 750,
+        duration: 0,
         essential: true,
       });
       return;
@@ -409,7 +416,7 @@ export default function MapCanvas({
     map.current.fitBounds(bounds, {
       padding: 64,
       maxZoom: 7,
-      duration: 750,
+      duration: 0,
       essential: true,
     });
   }, [focus, initialFitPoints, ready]);
