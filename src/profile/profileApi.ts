@@ -395,19 +395,6 @@ export async function getFollowState(targetProfileId: Id, asProfileId: Id) {
   return Boolean(data?.following);
 }
 
-export async function getFriendPostAccess(
-  targetProfileId: Id,
-  asProfileId: Id,
-) {
-  const response = await requestJson(
-    `/api/profile/profile/${targetProfileId}/friend-post-access?asProfileId=${asProfileId}`,
-  );
-  if (!response.ok) return false;
-  return (
-    ((await response.json()) as { canCreate?: unknown }).canCreate === true
-  );
-}
-
 export function followProfile(targetProfileId: Id, asProfileId: Id) {
   return requestJson(
     `/api/profile/profile/${targetProfileId}/follow?asProfileId=${asProfileId}`,

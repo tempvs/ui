@@ -11,7 +11,7 @@ import {
 import { stageMapAttachment } from "./pendingMapAttachment";
 import { loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
 import type { SharedMapScope } from "./sharedMapScope";
-import { fetchCurrentUserInfo } from "../profile/profileApi";
+import { getViewer } from "../auth/viewerApi";
 
 const entityTypes: MapEntityLocation["entityType"][] = [
   "PROFILE",
@@ -152,9 +152,13 @@ export default function MapReferenceAttachment({
   };
   useEffect(() => {
     let active = true;
-    fetchCurrentUserInfo((result) => {
-      if (active) setAuthenticated(Boolean(result.currentUserId));
-    });
+    void getViewer()
+      .then((viewer) => {
+        if (active) setAuthenticated(Boolean(viewer));
+      })
+      .catch(() => {
+        if (active) setAuthenticated(false);
+      });
     return () => {
       active = false;
     };

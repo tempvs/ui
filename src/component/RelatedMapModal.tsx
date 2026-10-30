@@ -26,6 +26,7 @@ import {
 } from "../map/mapApi";
 import type { PublicMapReference } from "../map/MapReferenceAttachment";
 import { stageMapAttachment } from "../map/pendingMapAttachment";
+import { getViewer } from "../auth/viewerApi";
 
 type RelatedMapModalProps = {
   placeId: string;
@@ -87,6 +88,7 @@ export default function RelatedMapModal({
   const [shareTitle, setShareTitle] = useState(displayName);
   const [showSave, setShowSave] = useState(false);
   const [saveTitle, setSaveTitle] = useState(displayName);
+  const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   const mapPath = place
@@ -145,6 +147,20 @@ export default function RelatedMapModal({
           ? `/events/${scope.id}`
           : null
     : null;
+
+  useEffect(() => {
+    let active = true;
+    void getViewer()
+      .then((viewer) => {
+        if (active) setAuthenticated(Boolean(viewer));
+      })
+      .catch(() => {
+        if (active) setAuthenticated(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!show) return undefined;
@@ -377,31 +393,35 @@ export default function RelatedMapModal({
             >
               {copied ? "Copied" : <LinkIconButton aria-hidden />}
             </Button>
-            <Button
-              variant="outline-dark"
-              title="Save map"
-              aria-label="Save map"
-              onClick={() => {
-                setSaveTitle(displayName);
-                setShowSave(true);
-              }}
-            >
-              <FloppyDiskIconButton aria-hidden />
-            </Button>
-            <Button
-              variant="outline-dark"
-              title="Send map"
-              aria-label="Send map"
-              onClick={() => {
-                setShow(false);
-                // All map sharing routes through MapPage's destination picker.
-                // This keeps profile, club, source, and map-page shares in one
-                // consistent flow rather than maintaining parallel send UIs.
-                navigate(`${mapPath}${mapPath.includes("?") ? "&" : "?"}share=true`);
-              }}
-            >
-              <PaperPlaneIconButton aria-hidden />
-            </Button>
+            {authenticated && (
+              <Button
+                variant="outline-dark"
+                title="Save map"
+                aria-label="Save map"
+                onClick={() => {
+                  setSaveTitle(displayName);
+                  setShowSave(true);
+                }}
+              >
+                <FloppyDiskIconButton aria-hidden />
+              </Button>
+            )}
+            {authenticated && (
+              <Button
+                variant="outline-dark"
+                title="Send map"
+                aria-label="Send map"
+                onClick={() => {
+                  setShow(false);
+                  // All map sharing routes through MapPage's destination picker.
+                  // This keeps profile, club, source, and map-page shares in one
+                  // consistent flow rather than maintaining parallel send UIs.
+                  navigate(`${mapPath}${mapPath.includes("?") ? "&" : "?"}share=true`);
+                }}
+              >
+                <PaperPlaneIconButton aria-hidden />
+              </Button>
+            )}
             {snapshotStatus && (
               <span className="small text-muted">{snapshotStatus}</span>
             )}

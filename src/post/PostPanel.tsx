@@ -16,7 +16,6 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   getProfilesByIds,
-  getFriendPostAccess,
   getUserProfileByUserId,
   getUserProfilesByUserIds,
 } from "../profile/profileApi";
@@ -99,7 +98,6 @@ export default function PostPanel({
   const [authors, setAuthors] = useState<Record<string, Profile | null>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
-  const [friendCanCreate, setFriendCanCreate] = useState(false);
   const [ownedProfiles, setOwnedProfiles] = useState<Profile[]>([]);
   const [selectedAuthorProfileId, setSelectedAuthorProfileId] = useState<
     string | null
@@ -216,22 +214,6 @@ export default function PostPanel({
     setCurrentProfileId(currentId);
     setSelectedAuthorProfileId(currentId);
   }, [currentProfileValue, ownedProfiles, selectedAuthorProfileId]);
-
-  useEffect(() => {
-    if (targetType !== "PROFILE" || !currentProfileId || canCreate) {
-      setFriendCanCreate(false);
-      return;
-    }
-    let active = true;
-    void getFriendPostAccess(String(targetId), currentProfileId).then(
-      (allowed) => {
-        if (active) setFriendCanCreate(allowed);
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [canCreate, currentProfileId, targetId, targetType]);
 
   useEffect(() => {
     let active = true;
@@ -511,7 +493,7 @@ export default function PostPanel({
     <section className="post-panel" aria-label="Posts">
       <h2>Posts</h2>
       {error && <p className="text-danger">{error}</p>}
-      {(canCreate || friendCanCreate) && (
+      {(canCreate || (targetType === "PROFILE" && Boolean(currentProfileId))) && (
         <div className="post-composer-wrap">
           <Form.Control
             as="textarea"
