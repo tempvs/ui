@@ -668,6 +668,7 @@ test("frames every related marker after a shared graph has loaded", async () => 
 });
 
 test("saves a selected map and opens the send-destination dialog", async () => {
+  mockGetViewer.mockResolvedValue({ userId: "viewer-1", roles: [] });
   const prompt = jest.spyOn(window, "prompt").mockReturnValue("Rome map");
   render(
     <MemoryRouter initialEntries={["/map?placeId=seed%3Arome&q=Rome&lat=41.9&lng=12.5&radiusKm=25"]}>
