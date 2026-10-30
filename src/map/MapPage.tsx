@@ -1038,7 +1038,7 @@ export default function MapPage() {
             Start with a place, then refine what appears on the map.
           </p>
           <div className="d-flex gap-2 flex-wrap mt-2">
-            <Button
+            {viewer && <Button
               type="button"
               size="sm"
               variant="outline-dark"
@@ -1057,8 +1057,8 @@ export default function MapPage() {
               onClick={() => void saveCurrentMap()}
             >
               <FaFloppyDisk aria-hidden />
-            </Button>
-            <Button
+            </Button>}
+            {viewer && <Button
               type="button"
               size="sm"
               variant="outline-dark"
@@ -1072,7 +1072,7 @@ export default function MapPage() {
               }}
             >
               <FaPaperPlane aria-hidden />
-            </Button>
+            </Button>}
           </div>
           {(copyStatus || snapshotStatus) && (
             <span className="small text-muted d-block mt-1">
@@ -1236,7 +1236,7 @@ export default function MapPage() {
           </section>
         )}
       </section>
-      <Modal show={showShare} onHide={() => setShowShare(false)} centered>
+      {viewer && <Modal show={showShare} onHide={() => setShowShare(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Send this map</Modal.Title>
         </Modal.Header>
@@ -1383,7 +1383,7 @@ export default function MapPage() {
             )}
           </div>
         </Modal.Body>
-      </Modal>
+      </Modal>}
       {viewer && ownProposals.length > 0 && (
         <section className="club-panel mt-3" aria-label="Your place proposals">
           <h2 className="h5">Your place proposals</h2>
