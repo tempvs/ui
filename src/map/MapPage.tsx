@@ -49,7 +49,7 @@ import {
   fetchClubProfiles,
   getUserProfileByUserId,
 } from "../profile/profileApi";
-import { buildProfileLabel } from "../profile/currentProfile";
+import ProfileSearchPicker from "../profile/components/ProfileSearchPicker";
 import type { Profile } from "../profile/profileTypes";
 import { listEvents, type TempvsEvent } from "../event/eventApi";
 import { getProfileClubs, type Club } from "../club/clubApi";
@@ -1288,7 +1288,13 @@ export default function MapPage() {
                 Event wall
               </Button>
             </div>
-            <div className="mt-3">
+            <div
+              className={`mt-3 map-share-destination-content${
+                shareDestination === "profile"
+                  ? " map-share-destination-content--profile"
+                  : ""
+              }`}
+            >
               {shareDestination === "chat" && (
                 <>
                   <p className="small text-muted">
@@ -1310,7 +1316,50 @@ export default function MapPage() {
                   </Button>
                 </>
               )}
-              {shareDestination !== "chat" && (
+              {shareDestination === "profile" && (
+                <>
+                  <p className="small text-muted">
+                    Choose a profile wall. Your profiles are shown first; use
+                    search to send the map to another profile.
+                  </p>
+                  {shareDestinationsLoading ? (
+                    <span className="small text-muted">Loading profiles…</span>
+                  ) : (
+                    <section
+                      className="map-share-profile-picker"
+                      aria-label="Choose a profile wall"
+                    >
+                      <ProfileSearchPicker
+                        ownedProfiles={shareProfiles}
+                        includeOwnedMatchesWhenSearching={false}
+                        placeholder="Search profiles by name or alias"
+                        selectLabel="Post map"
+                        onSelect={(profile) => {
+                          void saveCurrentMap(shareTitle).then((reference) => {
+                            if (!reference) return;
+                            const destinationId = String(profile.id);
+                            stageMapAttachment(reference, undefined, {
+                              type: "PROFILE",
+                              id: destinationId,
+                            });
+                            setShowShare(false);
+                            navigate(`/profile/${profile.alias || profile.id}`, {
+                              state: {
+                                mapAttachment: reference,
+                                mapTarget: {
+                                  type: "PROFILE",
+                                  id: destinationId,
+                                },
+                              },
+                            });
+                          });
+                        }}
+                      />
+                    </section>
+                  )}
+                </>
+              )}
+              {shareDestination !== "chat" && shareDestination !== "profile" && (
                 <>
                   <p className="small text-muted">
                     Choose a wall you manage. Its post composer will open with
@@ -1332,12 +1381,7 @@ export default function MapPage() {
                               label: club.name,
                               path: `/clubs/${club.id}`,
                             }))
-                          : shareProfiles.map((profile) => ({
-                              id: String(profile.id),
-                              label: buildProfileLabel(profile),
-                              path: `/profile/${profile.alias || profile.id}`,
-                            }))
-                      ).map((destination) => (
+                          : []).map((destination) => (
                         <Button
                           key={destination.id}
                           variant="outline-dark"

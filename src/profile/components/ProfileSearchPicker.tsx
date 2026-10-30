@@ -17,6 +17,9 @@ type ProfileSearchPickerProps = {
   placeholder?: string;
   /** Profiles belonging to the current user are always listed first. */
   ownedProfiles?: Profile[];
+  /** A destination search can replace its default owned-profile list once the
+   * user starts typing, rather than mixing owned and public matches. */
+  includeOwnedMatchesWhenSearching?: boolean;
 };
 
 /** A debounced, reusable profile picker for any profile-scoped action. */
@@ -28,6 +31,7 @@ export default function ProfileSearchPicker({
   selectLabel = "Select",
   placeholder = "Search profiles by name or alias",
   ownedProfiles = [],
+  includeOwnedMatchesWhenSearching = true,
 }: ProfileSearchPickerProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[] | null>(null);
@@ -76,9 +80,10 @@ export default function ProfileSearchPicker({
   );
   const visibleResults = normalized
     ? [
-        ...ownMatches,
+        ...(includeOwnedMatchesWhenSearching ? ownMatches : []),
         ...(results || []).filter(
           (profile) =>
+            !includeOwnedMatchesWhenSearching ||
             !ownMatches.some((own) => String(own.id) === String(profile.id)),
         ),
       ]

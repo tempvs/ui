@@ -848,6 +848,50 @@
 .saved-map-card { display: flex; gap: .8rem; align-items: center; padding: .75rem; border: 1px solid #d4c9b5; border-radius: .55rem; background: #fffdf7; }
 .saved-map-thumbnail { display: grid; place-items: center; width: 7rem; min-height: 4.5rem; padding: .35rem; overflow: hidden; border-radius: .35rem; background: linear-gradient(135deg,#d9e8d3,#bad2dd); color: #364b38; font-size: .78rem; text-align: center; }
 
+/* Map sharing begins with the sender's profiles, but profile-wall selection
+ * can safely expand into a searchable, bounded layer without making the
+ * share modal itself grow beyond the viewport. */
+.map-share-destination-content {
+  position: relative;
+}
+
+.map-share-destination-content--profile {
+  min-height: min(23rem, 52vh);
+}
+
+.map-share-profile-picker {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  padding: 0.85rem;
+  overflow: hidden;
+  border: 1px solid #cfc0a8;
+  border-radius: 0.6rem;
+  background: #fffdf7;
+  box-shadow: 0 0.55rem 1.5rem rgb(54 43 27 / 24%);
+}
+
+.map-share-profile-picker .club-member-list {
+  max-height: min(18rem, 42vh);
+  margin-top: 0.65rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 575px) {
+  .map-share-profile-picker {
+    inset: -0.25rem;
+    padding: 0.65rem;
+  }
+
+  .map-share-destination-content--profile {
+    min-height: 58vh;
+  }
+
+  .map-share-profile-picker .club-member-list {
+    max-height: 48vh;
+  }
+}
+
 @media (max-width: 575px) {
   .map-canvas-shell {
     min-height: 22rem;
