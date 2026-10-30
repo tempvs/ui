@@ -902,11 +902,18 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
     const renderCreatedClubProfile = (result: unknown) => {
       const profile = result as Profile;
+      const createdFirstClubProfile =
+        this.state.clubProfilesLoaded && this.state.clubProfiles.length === 0;
       try {
         window.sessionStorage.setItem(
           "tempvs:coachmark:pick-current-profile",
           "pending",
         );
+        if (createdFirstClubProfile)
+          window.sessionStorage.setItem(
+            "tempvs:coachmark:open-current-profile-after-first-club",
+            "pending",
+          );
         window.dispatchEvent(new Event("tempvs:owned-profiles-changed"));
       } catch {
         // The profile is still created where session storage is unavailable.

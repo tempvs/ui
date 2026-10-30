@@ -8,11 +8,16 @@ import DismissibleCoachmark from "../component/DismissibleCoachmark";
 
 const UserIcon = FaUser as React.ComponentType;
 
-type ProfileButtonProps = { to?: string; showNavigationCoachmark?: boolean };
+type ProfileButtonProps = {
+  to?: string;
+  showNavigationCoachmark?: boolean;
+  navigationCoachmarkId?: string;
+};
 
 export default function ProfileButton({
   to,
   showNavigationCoachmark = false,
+  navigationCoachmarkId = "open-current-profile",
 }: ProfileButtonProps) {
   const button = to ? (
     <Link to={to} className="header-icon-button" aria-label="Profile">
@@ -26,9 +31,9 @@ export default function ProfileButton({
   return (
     <HeaderIconPopover text="profile.popover" defaultMessage="Profile">
       <DismissibleCoachmark
-        id="open-current-profile"
+        id={navigationCoachmarkId}
         visible={showNavigationCoachmark}
-        message="Click this icon to open your current profile."
+        message="Click this icon to navigate to your current profile."
       >
         {button}
       </DismissibleCoachmark>

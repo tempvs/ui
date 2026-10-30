@@ -45,6 +45,8 @@ type HeaderState = {
   currentProfileValue: string | null;
   currentProfilePath: string;
   profileOptions: CurrentProfileOption[];
+  showProfileNavigationCoachmark: boolean;
+  profileNavigationCoachmarkId: string;
   showProfilePickerCoachmark: boolean;
 };
 
@@ -64,6 +66,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       currentProfileValue: null,
       currentProfilePath: "/profile",
       profileOptions: [],
+      showProfileNavigationCoachmark: false,
+      profileNavigationCoachmarkId: "open-current-profile",
       showProfilePickerCoachmark: false,
     };
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
@@ -154,6 +158,14 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           clubProfiles,
         );
         const currentProfile = resolveCurrentProfileOption(profileOptions);
+        const showProfileNavigationAfterFirstClub =
+          window.sessionStorage.getItem(
+            "tempvs:coachmark:open-current-profile-after-first-club",
+          ) === "pending";
+        if (showProfileNavigationAfterFirstClub)
+          window.sessionStorage.removeItem(
+            "tempvs:coachmark:open-current-profile-after-first-club",
+          );
         const showProfilePickerCoachmark =
           clubProfiles.length > 0 &&
           window.sessionStorage.getItem(
@@ -167,6 +179,15 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
+          // When the user has no club profile, guide them back to their
+          // current personal profile. Creating their first club profile
+          // deliberately repeats this hint alongside the picker guidance.
+          showProfileNavigationCoachmark:
+            Boolean(userProfile) &&
+            (clubProfiles.length === 0 || showProfileNavigationAfterFirstClub),
+          profileNavigationCoachmarkId: showProfileNavigationAfterFirstClub
+            ? "open-current-profile-after-first-club"
+            : "open-current-profile",
           showProfilePickerCoachmark,
         });
         // A new Cognito user has no personal profile yet. Apply this guard in
@@ -240,7 +261,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                   <ProfileButton
                     to={this.state.currentProfilePath}
                     showNavigationCoachmark={
-                      this.state.profileOptions.length === 1
+                      this.state.showProfileNavigationCoachmark
+                    }
+                    navigationCoachmarkId={
+                      this.state.profileNavigationCoachmarkId
                     }
                   />
                   <DismissibleCoachmark
