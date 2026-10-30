@@ -49,11 +49,14 @@ export default function LibrarySourcePage() {
   const approvalNavigation = location.state as {
     approvedSource?: LibrarySource;
     approvedImages?: LibrarySourceImage[];
+    publishedImagesBeforeApproval?: LibrarySourceImage[];
     approvedImageOperations?: SourceImageOperation[];
   } | null;
   const approvedSource = approvalNavigation?.approvedSource;
   const approvedImages =
     approvalNavigation?.approvedImages || EMPTY_APPROVED_IMAGES;
+  const publishedImagesBeforeApproval =
+    approvalNavigation?.publishedImagesBeforeApproval || EMPTY_APPROVED_IMAGES;
   const approvedImageOperations =
     approvalNavigation?.approvedImageOperations ||
     EMPTY_APPROVED_IMAGE_OPERATIONS;
@@ -134,24 +137,17 @@ export default function LibrarySourcePage() {
       );
       const imageData = imageResult?.data;
       const loadedImages = Array.isArray(imageData) ? imageData : [];
-      const expectedPublishedImageIds = approvedImageOperations.flatMap(
-        (operation) =>
-          operation.kind === "ADD"
-            ? [operation.stagedImageId]
-            : operation.kind === "REPLACE"
-              ? [operation.imageId]
-              : [],
-      );
       const removedImageIds = new Set(
         approvedImageOperations.flatMap((operation) =>
           operation.kind === "REMOVE" ? [operation.imageId] : [],
         ),
       );
-      const publicPromotionComplete =
-        expectedPublishedImageIds.every((id) =>
-          loadedImages.some((image) => image.id === id),
-        ) &&
-        !loadedImages.some((image) => removedImageIds.has(image.id));
+      const publicPromotionComplete = approvedSourceImagePromotionComplete(
+        publishedImagesBeforeApproval,
+        loadedImages,
+        approvedImageOperations,
+        removedImageIds,
+      );
 
       // Do not briefly replace an approved staged image with an old public
       // list while EventBridge promotion is still running.
@@ -190,7 +186,52 @@ export default function LibrarySourcePage() {
     } finally {
       setLoading(false);
     }
-  }, [approvedImageOperations, approvedImages, sourceId]);
+  }, [
+    approvedImageOperations,
+    approvedImages,
+    publishedImagesBeforeApproval,
+    sourceId,
+  ]);
+
+  // Keep the staged replacement visible during Image's asynchronous promotion,
+  // then swap it for the durable public record without asking the visitor to
+  // reload the source page.
+  useEffect(() => {
+    if (!sourceId || !approvedImageOperations.length) return;
+    let active = true;
+    let attempts = 0;
+    const refresh = async () => {
+      const result = await getSourceImages(sourceId).catch(() => null);
+      if (!active || !result?.ok) return;
+      const next = Array.isArray(result.data) ? result.data : [];
+      const removed = new Set(
+        approvedImageOperations.flatMap((operation) =>
+          operation.kind === "REMOVE" ? [operation.imageId] : [],
+        ),
+      );
+      if (
+        approvedSourceImagePromotionComplete(
+          publishedImagesBeforeApproval,
+          next,
+          approvedImageOperations,
+          removed,
+        )
+      ) {
+        setImages(next);
+        return;
+      }
+      attempts += 1;
+      if (active && attempts < 40) window.setTimeout(refresh, 750);
+    };
+    void refresh();
+    return () => {
+      active = false;
+    };
+  }, [
+    approvedImageOperations,
+    publishedImagesBeforeApproval,
+    sourceId,
+  ]);
 
   useEffect(() => {
     loadSource();
@@ -487,4 +528,52 @@ function sourceChangeActionLabel(
 function formatSourceType(value: string | null | undefined): string {
   if (!value) return "Other";
   return `${value.slice(0, 1)}${value.slice(1).toLocaleLowerCase()}`;
+}
+
+/**
+ * Replacements retain the original public image ID. Checking only that ID
+ * therefore reports success while Image has not yet promoted the new bytes.
+ * Keep the staged image mounted until the public record's URL or thumbnail
+ * actually changes; ADD and REMOVE retain their simpler identity checks.
+ */
+export function approvedSourceImagePromotionComplete(
+  publishedBeforeApproval: LibrarySourceImage[],
+  publishedNow: LibrarySourceImage[],
+  operations: SourceImageOperation[],
+  removedImageIds = new Set<string>(),
+): boolean {
+  const beforeById = new Map(
+    publishedBeforeApproval.map((image) => [image.id, image]),
+  );
+  const nowById = new Map(publishedNow.map((image) => [image.id, image]));
+  const addedComplete = operations
+    .filter(
+      (
+        operation,
+      ): operation is Extract<SourceImageOperation, { kind: "ADD" }> =>
+        operation.kind === "ADD",
+    )
+    .every((operation) => nowById.has(operation.stagedImageId));
+  const replacementsComplete = operations
+    .filter(
+      (
+        operation,
+      ): operation is Extract<SourceImageOperation, { kind: "REPLACE" }> =>
+        operation.kind === "REPLACE",
+    )
+    .every((operation) => {
+      const before = beforeById.get(operation.imageId);
+      const current = nowById.get(operation.imageId);
+      if (!current || (!current.url && !current.thumbnailUrl)) return false;
+      if (!before) return true;
+      return (
+        current.url !== before.url ||
+        current.thumbnailUrl !== before.thumbnailUrl
+      );
+    });
+  return (
+    addedComplete &&
+    replacementsComplete &&
+    !publishedNow.some((image) => removedImageIds.has(image.id))
+  );
 }

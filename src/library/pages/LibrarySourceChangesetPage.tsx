@@ -204,6 +204,7 @@ export default function LibrarySourceChangesetPage() {
               ? {
                   approvedSource,
                   approvedImages,
+                  publishedImagesBeforeApproval: publishedImages,
                   approvedImageOperations: changeset.imageOperations,
                 }
               : undefined,
