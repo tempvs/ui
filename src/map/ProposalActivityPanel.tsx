@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button, Form } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 import {
   commentOnMapPlaceProposal,
   listMapPlaceProposalActivity,
   type MapPlaceProposalActivity,
 } from "./mapApi";
+import { getUserProfilesByUserIds } from "../profile/profileApi";
+import { buildProfileLabel } from "../profile/currentProfile";
+import type { Profile } from "../profile/profileTypes";
 
 /** Private, author-or-reviewer-only discussion for one proposed place. The
  * API enforces access; this component merely presents its audit trail. */
@@ -20,6 +24,7 @@ export default function ProposalActivityPanel({
   const [error, setError] = useState("");
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
 
   useEffect(() => {
     let active = true;
@@ -38,6 +43,21 @@ export default function ProposalActivityPanel({
       active = false;
     };
   }, [proposalId]);
+
+  useEffect(() => {
+    const userIds = Array.from(
+      new Set(activity.map((entry) => entry.actorUserId)),
+    );
+    if (!userIds.length) return;
+    let active = true;
+    void getUserProfilesByUserIds(userIds).then((items) => {
+      if (!active) return;
+      setProfiles(Object.fromEntries(items.map((profile) => [profile.userId, profile])));
+    });
+    return () => {
+      active = false;
+    };
+  }, [activity]);
 
   const addComment = async () => {
     const value = comment.trim();
@@ -63,7 +83,8 @@ export default function ProposalActivityPanel({
         {activity.map((entry, index) => (
           <li key={entry.id} className="border-top py-1">
             <strong>{activityLabel(entry.kind)}</strong>
-            <span className="text-muted"> by {entry.actorUserId}</span>
+            <span className="text-muted"> by </span>
+            <ProposalAuthor userId={entry.actorUserId} profiles={profiles} />
             {entry.note && <div>{entry.note}</div>}
             {entry.revision && (
               <>
@@ -113,6 +134,22 @@ export default function ProposalActivityPanel({
         </Button>
       </div>
     </div>
+  );
+}
+
+function ProposalAuthor({
+  userId,
+  profiles,
+}: {
+  userId: string;
+  profiles: Record<string, Profile>;
+}) {
+  const profile = profiles[userId];
+  if (!profile) return <span className="text-muted">Unknown profile</span>;
+  return (
+    <Link to={`/profile/${profile.alias || profile.id}`}>
+      {buildProfileLabel(profile)}
+    </Link>
   );
 }
 
