@@ -593,6 +593,7 @@ export default function MapPlaceEditPage({ id }: MapPlaceEditPageProps) {
                         disabled={!editable}
                       />
                       <Button
+                        type="button"
                         variant="outline-danger"
                         disabled={!editable || names.length === 1}
                         onClick={() =>
