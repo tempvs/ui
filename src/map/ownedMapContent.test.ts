@@ -7,7 +7,7 @@ import {
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent } from "../event/eventApi";
-import { getMapPlaces } from "./mapApi";
+import { getMapPlacesByReference } from "./mapApi";
 import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
@@ -34,7 +34,7 @@ jest.mock("../profile/stashApi", () => ({
   getProfileStash: jest.fn(),
 }));
 jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
-jest.mock("./mapApi", () => ({ getMapPlaces: jest.fn() }));
+jest.mock("./mapApi", () => ({ getMapPlacesByReference: jest.fn() }));
 
 const place = {
   id: "rome",
@@ -111,8 +111,8 @@ beforeEach(() => {
       image: { thumbnailUrl: "https://images.test/source-thumb.jpg" },
     },
   ]);
-  jest.mocked(getMapPlaces).mockImplementation(async (placeIds) =>
-    placeIds.map((placeId) => ({ ...place, id: placeId })),
+  jest.mocked(getMapPlacesByReference).mockImplementation(async (placeIds) =>
+    new Map(placeIds.map((placeId) => [placeId, { ...place, id: placeId }])),
   );
   jest.mocked(getEvent).mockResolvedValue({
     id: "event",
@@ -172,8 +172,8 @@ test("composes profile, membership club, and club-stash source markers", async (
   // Personal profile, club membership, and source all share Rome; the map
   // overlay must resolve that canonical place once instead of fanning out a
   // duplicate map request for every marker.
-  expect(getMapPlaces).toHaveBeenCalledTimes(1);
-  expect(getMapPlaces).toHaveBeenCalledWith(["rome"]);
+  expect(getMapPlacesByReference).toHaveBeenCalledTimes(1);
+  expect(getMapPlacesByReference).toHaveBeenCalledWith(["rome"]);
   expect(getSourcesByIds).toHaveBeenCalledWith(["source"]);
   expect(getImageThumbnails).toHaveBeenCalledTimes(3);
   expect(
@@ -213,8 +213,8 @@ test("uses discovery only for a source on the general owned map", async () => {
       heldAtPlaceName: "Museum",
     },
   ]);
-  jest.mocked(getMapPlaces).mockImplementation(async (placeIds) =>
-    placeIds.map((placeId) => ({ ...place, id: placeId })),
+  jest.mocked(getMapPlacesByReference).mockImplementation(async (placeIds) =>
+    new Map(placeIds.map((placeId) => [placeId, { ...place, id: placeId }])),
   );
 
   const content = await loadOwnedMapContent("viewer");

@@ -18,6 +18,7 @@ jest.mock("./mapApi", () => ({
   approveMapRoleRequest: jest.fn(),
   commentOnMapPlaceProposal: jest.fn(),
   findLikelyDuplicateMapPlaces: jest.fn().mockResolvedValue([]),
+  getMapPlace: jest.fn().mockResolvedValue(null),
   listMapPlaceProposalActivity: jest.fn(),
   listMapRoleMembers: jest.fn(),
   listPendingMapRoleRequests: jest.fn(),
@@ -41,6 +42,7 @@ jest.mock("../profile/profileApi", () => ({
 }));
 
 import { getViewer } from "../auth/viewerApi";
+import { getUserProfilesByUserIds } from "../profile/profileApi";
 import {
   approveMapPlace,
   commentOnMapPlaceProposal,
@@ -111,6 +113,7 @@ beforeEach(() => {
   listRoleRequestsMock.mockResolvedValue({ items: [] });
   listRoleMembersMock.mockResolvedValue([]);
   nearbyMapPlacesMock.mockResolvedValue([]);
+  jest.mocked(getUserProfilesByUserIds).mockResolvedValue([]);
 });
 
 function renderAdmin() {

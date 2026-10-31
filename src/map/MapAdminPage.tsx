@@ -820,7 +820,7 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
         if (!controller.signal.aborted) setBase(place);
       });
     return () => controller.abort();
-  }, [open, proposal.latitude, proposal.longitude]);
+  }, [open, proposal.latitude, proposal.longitude, proposal.targetPlaceId]);
 
   return (
     <details
