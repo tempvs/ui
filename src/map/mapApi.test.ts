@@ -1,8 +1,18 @@
 import {
   getMapPlaces,
   listMapPlaceEntities,
+  mapPlaceReference,
   nearbyMapEntitiesPage,
 } from "./mapApi";
+
+test("prefers a stable UUID over a legacy place id for shareable references", () => {
+  expect(
+    mapPlaceReference({
+      id: "seed:pleiades-places:109169",
+      publicId: "c56ec465-333c-40cd-bf7f-727419dced3a",
+    }),
+  ).toBe("c56ec465-333c-40cd-bf7f-727419dced3a");
+});
 
 test("coalesces concurrent place reads into one bounded batch request", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({

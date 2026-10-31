@@ -160,10 +160,16 @@ export type MapPlaceProposal = {
 
 /** Prefer the human URL alias, then the stable UUID. The legacy storage ID
  * remains a safe fallback while the catalogue migrates lazily. */
+export function mapPlaceReference(
+  place: Pick<MapPlace, "id" | "publicId" | "alias">,
+): string {
+  return place.alias || place.publicId || place.id;
+}
+
 export function mapPlacePath(
   place: Pick<MapPlace, "id" | "publicId" | "alias">,
 ): string {
-  return `/map/place/${encodeURIComponent(place.alias || place.publicId || place.id)}`;
+  return `/map/place/${encodeURIComponent(mapPlaceReference(place))}`;
 }
 
 export type MapPlaceChangeset =

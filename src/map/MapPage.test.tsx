@@ -72,6 +72,8 @@ jest.mock("./mapApi", () => ({
   nearbyMapPlaces: jest.fn(),
   nearbyMapEntitiesPage: jest.fn(),
   getMapPlace: jest.fn(),
+  mapPlaceReference: (place: { id: string; publicId?: string; alias?: string }) =>
+    place.alias || place.publicId || place.id,
   mapPlacePath: (place: { id: string; publicId?: string; alias?: string }) =>
     `/map/place/${place.alias || place.publicId || place.id}`,
   listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),

@@ -22,6 +22,7 @@ import {
   searchMapPlaces,
   type MapEntityLocation,
   type MapEntityLocationPage,
+  mapPlaceReference,
   mapPlacePath,
   type MapClubFilters,
   type MapEventFilters,
@@ -528,7 +529,7 @@ export default function MapPage() {
     setSelectedEntityKey(null);
     setSuggestions(null);
     const next = new URLSearchParams({
-      placeId: selected.id,
+      placeId: mapPlaceReference(selected),
       q: nextQuery,
       lat: String(selected.latitude),
       lng: String(selected.longitude),
@@ -628,7 +629,7 @@ export default function MapPage() {
         block: "start",
       });
     const next = new URLSearchParams();
-    if (linkedPlace) next.set("placeId", linkedPlace.id);
+    if (linkedPlace) next.set("placeId", mapPlaceReference(linkedPlace));
     // Keep the requested historical label in the URL. Replacing it with the
     // canonical/modern name makes a refreshed map silently lose the period
     // context the person deliberately selected.
@@ -963,7 +964,7 @@ export default function MapPage() {
       const reference: PublicMapReference = {
         ...(selectedPlace
           ? {
-              placeId: selectedPlace.id,
+              placeId: mapPlaceReference(selectedPlace),
               placeName: selectedPlace.canonicalName,
             }
           : {}),
@@ -1673,7 +1674,7 @@ function nearPlacePath(
   types: MapEntityLocation["entityType"][],
 ): string {
   const parameters = new URLSearchParams({
-    placeId: place.id,
+    placeId: mapPlaceReference(place),
     q: place.canonicalName,
     lat: String(place.latitude),
     lng: String(place.longitude),
