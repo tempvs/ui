@@ -38,7 +38,9 @@ export default function MapPlaceProposalsPage({ id }: { id?: string }) {
         if (!active) return;
         setPlace(nextPlace);
         setProposals(
-          page.items.filter((proposal) => proposal.targetPlaceId === id),
+          page.items.filter(
+            (proposal) => proposal.targetPlaceId === nextPlace?.id,
+          ),
         );
       })
       .catch((caught: unknown) => {
