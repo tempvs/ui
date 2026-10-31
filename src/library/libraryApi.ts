@@ -250,6 +250,7 @@ type SourceSearchParams = {
   from?: HistoricalYear | null;
   to?: HistoricalYear | null;
   discoveredAtPlaceId?: string;
+  discoveredAtPlaceNames?: string[];
   heldAtPlaceId?: string;
   page?: number;
   size?: number;
@@ -303,6 +304,7 @@ export function buildSearchQuery(
   from?: HistoricalYear | null,
   to?: HistoricalYear | null,
   discoveredAtPlaceId?: string,
+  discoveredAtPlaceNames?: string[],
   heldAtPlaceId?: string,
 ): string {
   return window.btoa(
@@ -314,6 +316,7 @@ export function buildSearchQuery(
         from,
         to,
         discoveredAtPlaceId,
+        discoveredAtPlaceNames,
         heldAtPlaceId,
       }),
     ),
@@ -337,6 +340,7 @@ export async function findSources({
   from,
   to,
   discoveredAtPlaceId,
+  discoveredAtPlaceNames,
   heldAtPlaceId,
   page = 0,
   size = 40,
@@ -351,6 +355,7 @@ export async function findSources({
     from,
     to,
     discoveredAtPlaceId,
+    discoveredAtPlaceNames,
     heldAtPlaceId,
   );
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });

@@ -148,7 +148,10 @@ export default function LibraryPeriodPage() {
             : {}),
           ...(rangeEnabled && sourceRange.to ? { to: sourceRange.to } : {}),
           ...(discoveredAtPlace
-            ? { discoveredAtPlaceId: discoveredAtPlace.id }
+            ? {
+                discoveredAtPlaceId: discoveredAtPlace.id,
+                discoveredAtPlaceNames: placeSearchNames(discoveredAtPlace),
+              }
             : {}),
           ...(heldAtPlace ? { heldAtPlaceId: heldAtPlace.id } : {}),
           page: 0,
@@ -207,7 +210,10 @@ export default function LibraryPeriodPage() {
         ...(rangeEnabled && sourceRange.from ? { from: sourceRange.from } : {}),
         ...(rangeEnabled && sourceRange.to ? { to: sourceRange.to } : {}),
         ...(discoveredAtPlace
-          ? { discoveredAtPlaceId: discoveredAtPlace.id }
+          ? {
+              discoveredAtPlaceId: discoveredAtPlace.id,
+              discoveredAtPlaceNames: placeSearchNames(discoveredAtPlace),
+            }
           : {}),
         ...(heldAtPlace ? { heldAtPlaceId: heldAtPlace.id } : {}),
         size: PAGE_SIZE,
@@ -692,6 +698,19 @@ function sourceSortYear(source: LibrarySource): number | null {
   const year = source.from || source.to;
   if (!year) return null;
   return year.era === "BC" ? 1 - year.year : year.year;
+}
+
+function placeSearchNames(place: MapPlace): string[] {
+  return [
+    place.canonicalName,
+    ...(place.names ?? []).map((name) => name.value),
+  ].filter((name, index, values) =>
+    Boolean(name.trim()) &&
+    values.findIndex(
+      (candidate) =>
+        candidate.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
+    ) === index,
+  );
 }
 
 function SourceResultsSkeleton() {
