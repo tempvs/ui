@@ -19,7 +19,7 @@ import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent, type TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
 import type { StashItem } from "../profile/profileTypes";
-import { getMapPlaces, type MapPlace } from "./mapApi";
+import { getMapPlacesByReference, type MapPlace } from "./mapApi";
 import type { SharedMapScope } from "./sharedMapScope";
 
 export type OwnedMapMarker = {
@@ -569,9 +569,8 @@ function placeResolver(): PlaceResolver {
     scheduled = false;
     const ids = Array.from(waiting.keys());
     if (!ids.length) return;
-    void getMapPlaces(ids)
-      .then((places) => {
-        const byId = new Map(places.map((place) => [place.id, place]));
+    void getMapPlacesByReference(ids)
+      .then((byId) => {
         ids.forEach((id) => {
           const resolvers = waiting.get(id) || [];
           waiting.delete(id);

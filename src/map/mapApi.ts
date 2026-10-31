@@ -368,6 +368,20 @@ export async function getMapPlaces(ids: string[]): Promise<MapPlace[]> {
   return places.filter((place): place is MapPlace => Boolean(place));
 }
 
+/** Batched lookup that preserves each caller-supplied UUID/alias as the key,
+ * even when Map returns the legacy storage ID in the place payload. */
+export async function getMapPlacesByReference(
+  ids: string[],
+): Promise<Map<string, MapPlace>> {
+  const unique = Array.from(new Set(ids)).slice(0, mapPlaceBatchSize);
+  const resolved = await Promise.all(
+    unique.map(async (id) => [id, await readMapPlaceBatched(id)] as const),
+  );
+  return new Map(
+    resolved.filter((entry): entry is readonly [string, MapPlace] => Boolean(entry[1])),
+  );
+}
+
 function readMapPlaceBatched(id: string): Promise<MapPlace | null> {
   const cached = mapPlaceCache.get(id);
   if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.place);
