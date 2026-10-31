@@ -15,6 +15,7 @@ import {
   addMapMemberRole,
   approveMapRoleRequest,
   findLikelyDuplicateMapPlaces,
+  getMapPlace,
   nearbyMapPlaces,
   listMapRoleMembers,
   listPendingMapRoleRequests,
@@ -38,6 +39,7 @@ import type { Profile } from "../profile/profileTypes";
 import MapCanvas from "./MapCanvas";
 import ProposalActivityPanel from "./ProposalActivityPanel";
 import MapRoleRequestModal from "./MapRoleRequestModal";
+import MapPlaceChangesetDiff from "./MapPlaceChangesetDiff";
 
 const MAP_ROLE_OPTIONS: Array<{ value: MapRole; label: string }> = [
   { value: "MAP_ADMIN", label: "Map administrator" },
@@ -786,6 +788,7 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
   const [open, setOpen] = useState(false);
   const [nearby, setNearby] = useState<MapPlace[]>([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [base, setBase] = useState<MapPlace | null>(null);
   const aliases = proposal.names?.filter((name) => !name.preferred) ?? [];
 
   useEffect(() => {
@@ -811,6 +814,10 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
       })
       .finally(() => {
         if (!controller.signal.aborted) setNearbyLoading(false);
+      });
+    if (proposal.targetPlaceId)
+      void getMapPlace(proposal.targetPlaceId).then((place) => {
+        if (!controller.signal.aborted) setBase(place);
       });
     return () => controller.abort();
   }, [open, proposal.latitude, proposal.longitude]);
@@ -877,6 +884,7 @@ function ProposalDetails({ proposal }: { proposal: PendingMapPlace }) {
               </>
             ) : null}
           </dl>
+          <MapPlaceChangesetDiff base={base} proposed={proposal} />
           <div
             className="map-admin-proposal-map"
             aria-label={`Proposed point for ${proposal.canonicalName}`}
