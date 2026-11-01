@@ -296,6 +296,7 @@ export default function MapCanvas({
     const mapInstance = map.current;
     const offsets = markerOffsets(ownedMarkers);
     const popupDisposers: Array<() => void> = [];
+    const mapGestureDisposers: Array<() => void> = [];
     const instances = ownedMarkers.map((ownedMarker) => {
       const markerOffset = offsets.get(ownedMarker.key) || [0, 0];
       const element = document.createElement("button");
@@ -315,6 +316,27 @@ export default function MapCanvas({
       } else {
         addMarkerFallback(element, ownedMarker);
       }
+      // A DOM marker sits on top of MapLibre's canvas. Stop the full pointer
+      // gesture, not just click, so tapping an object does not also start a
+      // canvas pan/focus operation underneath it.
+      const stopMapGesture = (event: Event) => event.stopPropagation();
+      const mapGestureEvents = [
+        "pointerdown",
+        "pointerup",
+        "mousedown",
+        "mouseup",
+        "touchstart",
+        "touchend",
+        "dblclick",
+      ];
+      mapGestureEvents.forEach((eventName) =>
+        element.addEventListener(eventName, stopMapGesture),
+      );
+      mapGestureDisposers.push(() =>
+        mapGestureEvents.forEach((eventName) =>
+          element.removeEventListener(eventName, stopMapGesture),
+        ),
+      );
       element.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -341,6 +363,7 @@ export default function MapCanvas({
     });
     ownedMarkerInstances.current = instances;
     return () => {
+      mapGestureDisposers.forEach((dispose) => dispose());
       popupDisposers.forEach((dispose) => dispose());
       instances.forEach((marker) => marker.remove());
       if (ownedMarkerInstances.current === instances)
@@ -353,9 +376,28 @@ export default function MapCanvas({
     const mapInstance = map.current;
     const offsets = markerOffsets(thumbnailMarkers);
     const popupDisposers: Array<() => void> = [];
+    const mapGestureDisposers: Array<() => void> = [];
     const instances = thumbnailMarkers.map((thumbnailMarker) => {
       const markerOffset = offsets.get(thumbnailMarker.key) || [0, 0];
       const markerElement = mapMarkerElement(thumbnailMarker, "thumbnail");
+      const stopMapGesture = (event: Event) => event.stopPropagation();
+      const mapGestureEvents = [
+        "pointerdown",
+        "pointerup",
+        "mousedown",
+        "mouseup",
+        "touchstart",
+        "touchend",
+        "dblclick",
+      ];
+      mapGestureEvents.forEach((eventName) =>
+        markerElement.addEventListener(eventName, stopMapGesture),
+      );
+      mapGestureDisposers.push(() =>
+        mapGestureEvents.forEach((eventName) =>
+          markerElement.removeEventListener(eventName, stopMapGesture),
+        ),
+      );
       markerElement.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -381,6 +423,7 @@ export default function MapCanvas({
         .addTo(mapInstance);
     });
     return () => {
+      mapGestureDisposers.forEach((dispose) => dispose());
       popupDisposers.forEach((dispose) => dispose());
       instances.forEach((marker) => marker.remove());
     };

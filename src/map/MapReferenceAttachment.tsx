@@ -235,7 +235,9 @@ export default function MapReferenceAttachment({
             />
           )}
           {!mapError && deferPreview && (
-            <StaticMapPreview entityTypes={reference.entityTypes} />
+            <div className="map-reference-canvas">
+              <StaticMapPreview entityTypes={reference.entityTypes} />
+            </div>
           )}
           {mapError && (
             <p className="small text-muted mb-1 px-2">
