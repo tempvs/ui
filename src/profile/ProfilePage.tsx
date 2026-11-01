@@ -1040,6 +1040,15 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         message: null,
         messageVariant: null,
         persistedProfile: this.buildPersistedProfile(profile),
+        avatarVisible: refreshAvatar ? false : prevState.avatarVisible,
+        avatarLoaded: refreshAvatar ? false : prevState.avatarLoaded,
+        avatarImages: refreshAvatar ? [] : prevState.avatarImages,
+        avatarImageDrafts: refreshAvatar
+          ? {}
+          : prevState.avatarImageDrafts,
+        avatarImageStatuses: refreshAvatar
+          ? {}
+          : prevState.avatarImageStatuses,
         fieldStatuses: savedField
           ? {
               ...prevState.fieldStatuses,
@@ -1062,13 +1071,6 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     }
 
     if (refreshAvatar) {
-      this.setState({
-        avatarVisible: false,
-        avatarLoaded: false,
-        avatarImages: [],
-        avatarImageDrafts: {},
-        avatarImageStatuses: {},
-      });
       this.fetchAvatar(profile.id);
     }
 

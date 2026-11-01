@@ -136,6 +136,10 @@ export default function MapReferenceAttachment({
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
+  // MapLibre creates a WebGL context per preview. On a phone, a post feed
+  // containing several map attachments can otherwise monopolize the GPU while
+  // the visitor is merely scrolling past it.
+  const [deferPreview] = useState(isNarrowViewport);
   const navigate = useNavigate();
   const relationshipScopeType = relationshipScope?.type;
   const relationshipScopeId = relationshipScope?.id;
@@ -174,6 +178,7 @@ export default function MapReferenceAttachment({
     }
   };
   useEffect(() => {
+    if (!show) return undefined;
     let active = true;
     void getViewer()
       .then((viewer) => {
@@ -185,7 +190,7 @@ export default function MapReferenceAttachment({
     return () => {
       active = false;
     };
-  }, []);
+  }, [show]);
   return (
     <>
       <section
@@ -212,7 +217,7 @@ export default function MapReferenceAttachment({
               {reference.entityTypes.length === 1 ? "" : "s"}
             </span>
           </div>
-          {!mapError && (
+          {!mapError && !deferPreview && (
             <MapPreview
               reference={resolvedReference}
               supplementalScope={
@@ -220,6 +225,11 @@ export default function MapReferenceAttachment({
               }
               onError={() => setMapError(true)}
             />
+          )}
+          {!mapError && deferPreview && (
+            <div className="map-reference-deferred-preview" aria-hidden>
+              <span>Tap to load the interactive map</span>
+            </div>
           )}
           {mapError && (
             <p className="small text-muted mb-1 px-2">
@@ -242,6 +252,7 @@ export default function MapReferenceAttachment({
               supplementalScope={
                 reference.scope ? stableRelationshipScope : undefined
               }
+              eager
               onError={() => setStatus("Map preview unavailable.")}
             />
           </div>
@@ -286,10 +297,12 @@ export default function MapReferenceAttachment({
 function MapPreview({
   reference,
   supplementalScope,
+  eager = false,
   onError,
 }: {
   reference: PublicMapReference;
   supplementalScope?: SharedMapScope;
+  eager?: boolean;
   onError: () => void;
 }) {
   const [content, setContent] = useState<OwnedMapContent>({
@@ -299,7 +312,7 @@ function MapPreview({
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [contentReady, setContentReady] = useState(false);
   const [visible, setVisible] = useState(
-    () => typeof IntersectionObserver === "undefined",
+    () => eager || typeof IntersectionObserver === "undefined",
   );
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -312,11 +325,11 @@ function MapPreview({
         setVisible(true);
         observer.disconnect();
       },
-      { rootMargin: "600px 0px" },
+      { rootMargin: "160px 0px" },
     );
     observer.observe(root);
     return () => observer.disconnect();
-  }, [visible]);
+  }, [eager, visible]);
   useEffect(() => {
     if (!visible) return;
     let active = true;
@@ -400,6 +413,14 @@ function MapPreview({
         />
       )}
     </div>
+  );
+}
+
+function isNarrowViewport() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 767.98px)").matches
   );
 }
 

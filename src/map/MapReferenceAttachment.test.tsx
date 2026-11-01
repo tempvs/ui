@@ -33,6 +33,35 @@ test("renders a bounded public map reference and opens its public map URL", () =
   );
 });
 
+test("defers WebGL previews on a narrow viewport until the map is opened", () => {
+  const originalMatchMedia = window.matchMedia;
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: jest.fn().mockReturnValue({ matches: true }),
+  });
+
+  render(
+    <MemoryRouter>
+      <MapReferenceAttachment
+        reference={{
+          latitude: 41.9,
+          longitude: 12.5,
+          radiusKm: 25,
+          entityTypes: ["PROFILE"],
+        }}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.queryByTestId("map-preview")).not.toBeInTheDocument();
+  expect(screen.getByText("Tap to load the interactive map")).toBeInTheDocument();
+
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: originalMatchMedia,
+  });
+});
+
 test("preserves an approved relationship-map scope", () => {
   expect(
     publicMapReferenceFromUrl(
