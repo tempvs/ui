@@ -266,6 +266,7 @@ function MapPreview({
     connections: [],
   });
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
+  const [contentReady, setContentReady] = useState(false);
   const [visible, setVisible] = useState(
     () => typeof IntersectionObserver === "undefined",
   );
@@ -288,6 +289,7 @@ function MapPreview({
   useEffect(() => {
     if (!visible) return;
     let active = true;
+    setContentReady(false);
     setContent({ markers: [], connections: [] });
     setEntities([]);
     // A scoped snapshot already describes the exact public graph being
@@ -297,9 +299,15 @@ function MapPreview({
     if (reference.scope) {
       void loadSharedMapScope(reference.scope)
         .then((next) => {
-          if (active) setContent(next);
+          if (active) {
+            setContent(next);
+            setContentReady(true);
+          }
         })
-        .catch(onError);
+        .catch(() => {
+          if (active) setContentReady(true);
+          onError();
+        });
     } else {
       void nearbyMapEntitiesPage(
         reference.latitude,
@@ -308,9 +316,15 @@ function MapPreview({
         reference.entityTypes,
       )
         .then((page) => {
-          if (active) setEntities(page.items);
+          if (active) {
+            setEntities(page.items);
+            setContentReady(true);
+          }
         })
-        .catch(onError);
+        .catch(() => {
+          if (active) setContentReady(true);
+          onError();
+        });
     }
     return () => {
       active = false;
@@ -327,16 +341,17 @@ function MapPreview({
           ownedMarkers={content.markers}
           ownedConnections={content.connections}
           focus={
-            hasVisibleMapContent
+            contentReady && hasVisibleMapContent
               ? null
               : { latitude: reference.latitude, longitude: reference.longitude }
           }
           pickedCoordinate={
-            hasVisibleMapContent
+            contentReady && hasVisibleMapContent
               ? null
               : { latitude: reference.latitude, longitude: reference.longitude }
           }
-          initialFitPoints={fitPoints}
+          initialFitPoints={contentReady ? fitPoints : []}
+          initialFitDelayMs={450}
           showModernBorders={false}
           onEntitySelect={() => undefined}
           onMapError={onError}

@@ -30,6 +30,9 @@ type MapCanvasProps = {
     latitude: number;
     longitude: number;
   }>;
+  /** Embedded attachments wait for their batched marker graph and a settled
+   * layout before framing it, avoiding a first-marker-only viewport. */
+  initialFitDelayMs?: number;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
   /** The one place deliberately chosen from map search. Its matched name is
@@ -88,6 +91,7 @@ export default function MapCanvas({
   ownedConnections = [],
   focus,
   initialFitPoints = [],
+  initialFitDelayMs = 0,
   showModernBorders,
   selectedEntityKey = null,
   selectedPlaceId = null,
@@ -390,36 +394,40 @@ export default function MapCanvas({
       .sort()
       .join("|");
     if (fittedPrivateMarkerSignature.current === signature) return;
-    fittedPrivateMarkerSignature.current = signature;
     // A map attachment is often mounted while the post containing it is being
     // inserted. Its saved-centre fly animation may still be running when the
     // resolved marker graph arrives. Stop that animation and measure the
     // freshly laid-out canvas before calculating bounds; otherwise the old
     // focal point can win and leave valid markers off-screen until a reload.
-    map.current.stop();
-    map.current.resize();
-    if (initialFitPoints.length === 1) {
-      const point = initialFitPoints[0];
-      if (!point) return;
-      map.current.flyTo({
-        center: [point.longitude, point.latitude],
-        zoom: 6,
+    const timer = window.setTimeout(() => {
+      if (!map.current) return;
+      fittedPrivateMarkerSignature.current = signature;
+      map.current.stop();
+      map.current.resize();
+      if (initialFitPoints.length === 1) {
+        const point = initialFitPoints[0];
+        if (!point) return;
+        map.current.flyTo({
+          center: [point.longitude, point.latitude],
+          zoom: 6,
+          duration: 0,
+          essential: true,
+        });
+        return;
+      }
+      const bounds = new maplibregl.LngLatBounds();
+      initialFitPoints.forEach((point) =>
+        bounds.extend([point.longitude, point.latitude]),
+      );
+      map.current.fitBounds(bounds, {
+        padding: 64,
+        maxZoom: 7,
         duration: 0,
         essential: true,
       });
-      return;
-    }
-    const bounds = new maplibregl.LngLatBounds();
-    initialFitPoints.forEach((point) =>
-      bounds.extend([point.longitude, point.latitude]),
-    );
-    map.current.fitBounds(bounds, {
-      padding: 64,
-      maxZoom: 7,
-      duration: 0,
-      essential: true,
-    });
-  }, [focus, initialFitPoints, ready]);
+    }, initialFitDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [focus, initialFitDelayMs, initialFitPoints, ready]);
 
   return (
     <div className="map-canvas-shell" aria-label="Interactive world map">
