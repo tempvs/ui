@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import MapReferenceAttachment, {
   embeddedMapFitPoints,
@@ -31,6 +31,29 @@ test("renders a bounded public map reference and opens its public map URL", () =
     "href",
     "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&placeId=seed%3Arome&q=Roma",
   );
+});
+
+test("opens the full map on the first link tap", () => {
+  function Pathname() {
+    return <output data-testid="pathname">{useLocation().pathname}</output>;
+  }
+
+  render(
+    <MemoryRouter initialEntries={["/profile/alex"]}>
+      <MapReferenceAttachment
+        reference={{
+          latitude: 41.9,
+          longitude: 12.5,
+          radiusKm: 25,
+          entityTypes: ["PROFILE"],
+        }}
+      />
+      <Pathname />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("link", { name: "Open in Map" }));
+  expect(screen.getByTestId("pathname")).toHaveTextContent("/map");
 });
 
 test("renders a real-map preview frame in feed cards", () => {

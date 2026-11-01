@@ -155,6 +155,12 @@ export default function MapReferenceAttachment({
   );
   const path = publicMapReferencePath(resolvedReference);
   const name = reference.placeName || "Shared map";
+  const openInMap = (event?: React.SyntheticEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setShow(false);
+    navigate(path);
+  };
   const save = async () => {
     const title = window.prompt("Name this saved map", name);
     if (!title?.trim()) return;
@@ -240,7 +246,8 @@ export default function MapReferenceAttachment({
         <Link
           to={path}
           className="map-reference-open-link"
-          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={openInMap}
         >
           Open in Map
         </Link>
@@ -272,8 +279,7 @@ export default function MapReferenceAttachment({
           <Button
             variant="outline-dark"
             onClick={() => {
-              setShow(false);
-              navigate(path);
+              openInMap();
             }}
           >
             Open in Map
