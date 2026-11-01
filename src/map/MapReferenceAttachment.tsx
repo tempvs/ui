@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -121,27 +121,29 @@ export function publicMapReferenceFromUrl(
 export default function MapReferenceAttachment({
   reference,
   className = "",
-  fallbackScope,
+  relationshipScope,
 }: {
   reference: PublicMapReference;
   className?: string;
   /**
-   * Legacy post attachments predate shareable graph scopes. A profile page
-   * already establishes which public profile owns the post, so it can supply
-   * that context to restore relationship lines without changing the stored
-   * attachment.
+   * A profile page establishes the public profile that owns its posts. Use
+   * that relationship graph alongside a saved attachment's own scope so both
+   * legacy and explicitly scoped attachments retain profile/source edges.
    */
-  fallbackScope?: SharedMapScope;
+  relationshipScope?: SharedMapScope;
 }) {
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const resolvedReference =
-    reference.scope || !fallbackScope
-      ? reference
-      : { ...reference, scope: fallbackScope };
+  const resolvedReference = useMemo(
+    () =>
+      reference.scope || !relationshipScope
+        ? reference
+        : { ...reference, scope: relationshipScope },
+    [reference, relationshipScope?.id, relationshipScope?.type],
+  );
   const path = publicMapReferencePath(resolvedReference);
   const name = reference.placeName || "Shared map";
   const save = async () => {
@@ -204,6 +206,9 @@ export default function MapReferenceAttachment({
           {!mapError && (
             <MapPreview
               reference={resolvedReference}
+              supplementalScope={
+                reference.scope ? relationshipScope : undefined
+              }
               onError={() => setMapError(true)}
             />
           )}
@@ -225,6 +230,9 @@ export default function MapReferenceAttachment({
           <div className="map-reference-modal-canvas">
             <MapPreview
               reference={resolvedReference}
+              supplementalScope={
+                reference.scope ? relationshipScope : undefined
+              }
               onError={() => setStatus("Map preview unavailable.")}
             />
           </div>
@@ -268,9 +276,11 @@ export default function MapReferenceAttachment({
 
 function MapPreview({
   reference,
+  supplementalScope,
   onError,
 }: {
   reference: PublicMapReference;
+  supplementalScope?: SharedMapScope;
   onError: () => void;
 }) {
   const [content, setContent] = useState<OwnedMapContent>({
@@ -309,10 +319,16 @@ function MapPreview({
     // club wall with several embedded maps, creates an avoidable Map API
     // request burst. Unscoped copied map links retain nearby discovery.
     if (reference.scope) {
-      void loadSharedMapScope(reference.scope)
-        .then((next) => {
+      const scopes = [reference.scope, supplementalScope].filter(
+        (scope): scope is SharedMapScope => Boolean(scope),
+      );
+      const uniqueScopes = Array.from(
+        new Map(scopes.map((scope) => [`${scope.type}:${scope.id}`, scope])),
+      ).map(([, scope]) => scope);
+      void Promise.all(uniqueScopes.map(loadSharedMapScope))
+        .then((parts) => {
           if (active) {
-            setContent(next);
+            setContent(mergeMapContent(parts));
             setContentReady(true);
           }
         })
@@ -341,7 +357,13 @@ function MapPreview({
     return () => {
       active = false;
     };
-  }, [reference, onError, visible]);
+  }, [
+    reference,
+    onError,
+    supplementalScope?.id,
+    supplementalScope?.type,
+    visible,
+  ]);
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
   const hasVisibleMapContent = content.markers.length > 0 || entities.length > 0;
   return (
@@ -371,6 +393,20 @@ function MapPreview({
       )}
     </div>
   );
+}
+
+/** Keep each attachment's saved map context while adding a profile relation
+ * graph. Keys are stable resource/location identifiers, so de-duplication is
+ * deterministic even where both scopes include the same marker or edge. */
+export function mergeMapContent(parts: OwnedMapContent[]): OwnedMapContent {
+  return {
+    markers: Array.from(
+      new Map(parts.flatMap((part) => part.markers.map((marker) => [marker.key, marker]))).values(),
+    ),
+    connections: Array.from(
+      new Map(parts.flatMap((part) => part.connections.map((edge) => [edge.key, edge]))).values(),
+    ),
+  };
 }
 
 /**

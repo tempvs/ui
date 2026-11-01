@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import MapReferenceAttachment, {
   embeddedMapFitPoints,
+  mergeMapContent,
   publicMapReferenceFromUrl,
 } from "./MapReferenceAttachment";
 
@@ -50,7 +51,7 @@ test("restores a profile relationship scope for legacy embedded maps", () => {
           radiusKm: 25,
           entityTypes: ["PROFILE", "SOURCE"],
         }}
-        fallbackScope={{ type: "PROFILE", id: "profile-1" }}
+        relationshipScope={{ type: "PROFILE", id: "profile-1" }}
       />
     </MemoryRouter>,
   );
@@ -59,6 +60,35 @@ test("restores a profile relationship scope for legacy embedded maps", () => {
     "href",
     "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&scope=PROFILE&scopeId=profile-1",
   );
+});
+
+test("keeps attachment content while adding profile relationship edges", () => {
+  const merged = mergeMapContent([
+    {
+      markers: [{ key: "SOURCE:source:DISCOVERED_AT" } as never],
+      connections: [],
+    },
+    {
+      markers: [
+        { key: "PROFILE:profile:CURRENT_RESIDENCE" } as never,
+        { key: "SOURCE:source:DISCOVERED_AT" } as never,
+      ],
+      connections: [
+        {
+          key: "PROFILE_SOURCE:profile:source",
+          fromKey: "PROFILE:profile:CURRENT_RESIDENCE",
+          toKey: "SOURCE:source:DISCOVERED_AT",
+          kind: "PROFILE_SOURCE",
+        },
+      ],
+    },
+  ]);
+
+  expect(merged.markers.map((marker) => marker.key)).toEqual([
+    "SOURCE:source:DISCOVERED_AT",
+    "PROFILE:profile:CURRENT_RESIDENCE",
+  ]);
+  expect(merged.connections).toHaveLength(1);
 });
 
 test("frames every nearby entity in an embedded public map", () => {

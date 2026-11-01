@@ -684,7 +684,7 @@ export default function PostPanel({
                   <MapReferenceAttachment
                     reference={post.mapReference}
                     className="post-map-reference-attachment"
-                    fallbackScope={
+                    relationshipScope={
                       targetType === "PROFILE"
                         ? { type: "PROFILE", id: String(targetId) }
                         : undefined
