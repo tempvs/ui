@@ -1104,7 +1104,7 @@ function placeCollection(
   };
 }
 
-function ownedConnectionCollection(
+export function ownedConnectionCollection(
   connections: OwnedMapConnection[],
   markers: OwnedMapMarker[],
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
@@ -1120,16 +1120,54 @@ function ownedConnectionCollection(
           type: "Feature" as const,
           geometry: {
             type: "LineString" as const,
-            coordinates: [
-              [from.longitude, from.latitude],
-              [to.longitude, to.latitude],
-            ],
+            coordinates: visibleConnectionCoordinates(from, to),
           },
           properties: { key: connection.key, kind: connection.kind },
         },
       ];
     }),
   };
+}
+
+/**
+ * A profile and one of its sources can legitimately use the exact same
+ * approved place. MapLibre does not paint a zero-length LineString, which made
+ * those real relationships appear to be missing. Render a compact loop from
+ * the shared pin in that case; geographically distinct relationships remain
+ * ordinary direct lines.
+ */
+function visibleConnectionCoordinates(
+  from: Pick<OwnedMapMarker, "latitude" | "longitude">,
+  to: Pick<OwnedMapMarker, "latitude" | "longitude">,
+): GeoJSON.Position[] {
+  const samePlace =
+    Math.abs(from.latitude - to.latitude) < 0.00001 &&
+    Math.abs(from.longitude - to.longitude) < 0.00001;
+  if (!samePlace) {
+    return [
+      [from.longitude, from.latitude],
+      [to.longitude, to.latitude],
+    ];
+  }
+
+  // About 20 km tall at the equator: large enough to survive a compact mobile
+  // preview, but still clearly anchored to the shared location. Longitude is
+  // scaled for latitude so the loop stays roughly circular.
+  const radius = 0.18;
+  const longitudeRadius =
+    radius /
+    Math.max(0.25, Math.cos((from.latitude * Math.PI) / 180));
+  const centerLatitude = Math.max(
+    -89.75,
+    Math.min(89.75, from.latitude + radius),
+  );
+  return Array.from({ length: 17 }, (_, index) => {
+    const angle = -Math.PI / 2 + (index / 16) * Math.PI * 2;
+    return [
+      from.longitude + longitudeRadius * Math.cos(angle),
+      centerLatitude + radius * Math.sin(angle),
+    ];
+  });
 }
 
 /** Build popup content with DOM nodes rather than HTML so imported place names
