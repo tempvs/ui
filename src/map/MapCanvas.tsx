@@ -648,6 +648,9 @@ function addMarkerLayers(
     id: "map-owned-connections",
     type: "line",
     source: "map-owned-connections",
+    layout: {
+      "line-cap": "round" as const,
+    },
     paint: {
       "line-color": [
         "match",
@@ -659,7 +662,11 @@ function addMarkerLayers(
         "#4f6d7a",
       ],
       "line-width": 2,
-      "line-opacity": 0.65,
+      // Keep relationship edges legible against both the parchment basemap
+      // and the photo markers. The DOM markers intentionally sit above this
+      // layer, so a slightly stronger stroke is necessary for lines to remain
+      // visible between their thumbnails.
+      "line-opacity": 0.82,
       "line-dasharray": [2, 1.5],
     },
   });
@@ -952,7 +959,10 @@ function markerLinksPopover(marker: LinkedMarker): HTMLDivElement {
   const placeLink = document.createElement("a");
   placeLink.className = "map-marker-place-link";
   placeLink.href = placePath(marker.placeReference || marker.placeId);
-  placeLink.textContent = marker.placeReference || marker.placeName;
+  // A reference (alias or UUID) belongs in the URL, not in the visible
+  // tooltip. The marker retains the exact historical/canonical name selected
+  // when the location was assigned to the resource.
+  placeLink.textContent = marker.placeName;
   container.append(entityLink, placeLink);
   return container;
 }
