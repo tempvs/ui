@@ -118,6 +118,8 @@ export default function MapCanvas({
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
   const coordinateMarker = useRef<maplibregl.Marker | null>(null);
   const ownedMarkerInstances = useRef<maplibregl.Marker[]>([]);
+  const initialOwnedMarkers = useRef(ownedMarkers);
+  const initialOwnedConnections = useRef(ownedConnections);
   const fittedPrivateMarkerSignature = useRef<string | null>(null);
   const selectRef = useRef(onEntitySelect);
   const placeSelectRef = useRef(onPlaceSelect);
@@ -245,6 +247,8 @@ export default function MapCanvas({
           if (place) placeSelectRef.current?.(place);
           return place;
         },
+        initialOwnedConnections.current,
+        initialOwnedMarkers.current,
       );
       setReady(true);
     });
@@ -728,6 +732,8 @@ function addMarkerLayers(
   map: maplibregl.Map,
   onEntitySelect: (key: string) => void,
   onPlaceSelect: (id: string) => MapPlace | undefined,
+  initialOwnedConnections: OwnedMapConnection[] = [],
+  initialOwnedMarkers: OwnedMapMarker[] = [],
 ): void {
   map.addSource("map-entities", {
     type: "geojson",
@@ -739,7 +745,10 @@ function addMarkerLayers(
   map.addSource("map-places", { type: "geojson", data: EMPTY_COLLECTION });
   map.addSource("map-owned-connections", {
     type: "geojson",
-    data: EMPTY_COLLECTION,
+    // Attachment previews already have their relationship graph before their
+    // MapLibre instance mounts. Seed it here so edges are in the first styled
+    // frame instead of waiting for React's post-ready effect.
+    data: ownedConnectionCollection(initialOwnedConnections, initialOwnedMarkers),
     lineMetrics: true,
   });
   map.addLayer({

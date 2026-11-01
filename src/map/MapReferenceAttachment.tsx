@@ -237,7 +237,11 @@ export default function MapReferenceAttachment({
             </p>
           )}
         </div>
-        <Link to={path} className="map-reference-open-link">
+        <Link
+          to={path}
+          className="map-reference-open-link"
+          onClick={(event) => event.stopPropagation()}
+        >
           Open in Map
         </Link>
       </section>
@@ -323,15 +327,15 @@ function MapPreview({
     () => eager || typeof IntersectionObserver === "undefined",
   );
   const rootRef = useRef<HTMLDivElement>(null);
+  const loadedContentKey = useRef<string | null>(null);
+  const contentKey = JSON.stringify({ reference, supplementalScope });
   useEffect(() => {
-    if (visible || typeof IntersectionObserver === "undefined") return;
+    if (eager || typeof IntersectionObserver === "undefined") return undefined;
     const root = rootRef.current;
     if (!root) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) return;
-        setVisible(true);
-        observer.disconnect();
+        setVisible(entry.isIntersecting);
       },
       { rootMargin: "160px 0px" },
     );
@@ -339,7 +343,7 @@ function MapPreview({
     return () => observer.disconnect();
   }, [eager, visible]);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || loadedContentKey.current === contentKey) return;
     let active = true;
     setContentReady(false);
     setContent({ markers: [], connections: [] });
@@ -360,6 +364,7 @@ function MapPreview({
           if (active) {
             setContent(mergeMapContent(parts));
             setContentReady(true);
+            loadedContentKey.current = contentKey;
           }
         })
         .catch(() => {
@@ -377,6 +382,7 @@ function MapPreview({
           if (active) {
             setEntities(page.items);
             setContentReady(true);
+            loadedContentKey.current = contentKey;
           }
         })
         .catch(() => {
@@ -388,9 +394,8 @@ function MapPreview({
       active = false;
     };
   }, [
-    reference,
+    contentKey,
     onError,
-    supplementalScope,
     visible,
   ]);
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
@@ -418,7 +423,7 @@ function MapPreview({
               : { latitude: reference.latitude, longitude: reference.longitude }
           }
           initialFitPoints={contentReady ? fitPoints : []}
-          initialFitDelayMs={450}
+          initialFitDelayMs={0}
           staticPreview={staticPreview}
           showModernBorders={false}
           onEntitySelect={() => undefined}
