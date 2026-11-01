@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
-import MapCanvas from "./MapCanvas";
+import MapCanvas from "./LazyMapCanvas";
 import {
   nearbyMapEntitiesPage,
   saveMapSnapshot,

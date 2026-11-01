@@ -57,11 +57,14 @@ export default function CommentThread({
   targetId,
   initialPage,
   deferInitialLoad = false,
+  viewer,
 }: {
   targetType: CommentTargetType;
   targetId: string | number;
   initialPage?: CommentPage;
   deferInitialLoad?: boolean;
+  /** Supplied by a feed so every visible thread shares one viewer lookup. */
+  viewer?: { ownedProfiles: Profile[]; currentProfileId: string | null };
 }) {
   const currentProfileValue = useCurrentProfileValue();
   const [comments, setComments] = useState<Comment[]>(
@@ -108,6 +111,16 @@ export default function CommentThread({
     };
   }, [deferInitialLoad, initialPage, targetId, targetType]);
   useEffect(() => {
+    if (viewer) {
+      setOwned(viewer.ownedProfiles);
+      setSelectedProfile((selected) =>
+        selected &&
+        viewer.ownedProfiles.some((profile) => String(profile.id) === selected)
+          ? selected
+          : viewer.currentProfileId,
+      );
+      return undefined;
+    }
     let active = true;
     fetchCurrentUserInfo((result) => {
       if (!active || !result.currentUserId) return;
@@ -124,7 +137,7 @@ export default function CommentThread({
     return () => {
       active = false;
     };
-  }, []);
+  }, [viewer]);
   useEffect(() => {
     if (owned.length) setSelectedProfile(resolveCurrentOwnedProfileId(owned));
   }, [currentProfileValue, owned]);

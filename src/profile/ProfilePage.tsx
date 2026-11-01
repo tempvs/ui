@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
 import EntityDetailPage from "../component/EntityDetailPage";
+import OnDemandPanel from "../component/OnDemandPanel";
 import { PageColumn, PageColumns } from "../component/PageColumns";
 import SectionBreadcrumb from "../component/SectionBreadcrumb";
 import Spinner from "../component/Spinner";
@@ -1050,7 +1051,6 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         clubProfileCreateError: false,
       }),
       () => {
-        this.fetchFollowingProfiles(profile.id);
         this.refreshFollowState();
         this.loadPrivatePin(profile.id, profile.userId);
       },
@@ -1692,42 +1692,55 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 </Button>
               )}
               {this.state.profileId && (
-                <PhotoAlbumsPanel
-                  targetType="profile"
-                  targetId={this.state.profileId}
-                  editable={isEditable}
-                />
+                <OnDemandPanel
+                  title={this.t("profile.photos.title", "Photos")}
+                  description={this.t("profile.photos.load", "Load albums and photo covers")}
+                  className="mt-3"
+                >
+                  <PhotoAlbumsPanel
+                    targetType="profile"
+                    targetId={this.state.profileId}
+                    editable={isEditable}
+                  />
+                </OnDemandPanel>
               )}
-              <div
-                className={`profile-relationship-group profile-following-group mt-3 ${
-                  isClubProfile
-                    ? "profile-following-group--club"
-                    : "profile-following-group--user"
-                }`}
+              <OnDemandPanel
+                title={this.t("profile.following.group", "Following")}
+                description={this.t("profile.following.load", "Load followed profiles, clubs, and events")}
+                className="mt-3"
+                onOpen={() => this.fetchFollowingProfiles(this.state.profileId)}
               >
-                <h2 className="profile-relationship-group-title">
-                  {this.t("profile.following.group", "Following")}
-                </h2>
-                <ProfileFollowingPanel
-                  profiles={this.state.followingProfiles}
-                  loaded={this.state.followingProfilesLoaded}
-                  t={this.t.bind(this)}
-                  hideWhenEmpty
-                />
-                {this.state.profileId && (
-                  <ProfileFollowedClubsPanel
-                    profileId={this.state.profileId}
+                <div
+                  className={`profile-relationship-group profile-following-group ${
+                    isClubProfile
+                      ? "profile-following-group--club"
+                      : "profile-following-group--user"
+                  }`}
+                >
+                  <h2 className="profile-relationship-group-title">
+                    {this.t("profile.following.group", "Following")}
+                  </h2>
+                  <ProfileFollowingPanel
+                    profiles={this.state.followingProfiles}
+                    loaded={this.state.followingProfilesLoaded}
+                    t={this.t.bind(this)}
                     hideWhenEmpty
                   />
-                )}
-                {this.state.profileId && (
-                  <ProfileEventsPanel
-                    profileId={String(this.state.profileId)}
-                    kind="followed"
-                    hideWhenEmpty
-                  />
-                )}
-              </div>
+                  {this.state.profileId && (
+                    <ProfileFollowedClubsPanel
+                      profileId={this.state.profileId}
+                      hideWhenEmpty
+                    />
+                  )}
+                  {this.state.profileId && (
+                    <ProfileEventsPanel
+                      profileId={String(this.state.profileId)}
+                      kind="followed"
+                      hideWhenEmpty
+                    />
+                  )}
+                </div>
+              </OnDemandPanel>
             </PageColumn>
             <PageColumn>
               <ProfileFieldsPanel
@@ -1790,11 +1803,17 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 }
               />
               {this.state.profileId && (
-                <PostPanel
-                  targetType="PROFILE"
-                  targetId={this.state.profileId}
-                  canCreate={isEditable}
-                />
+                <OnDemandPanel
+                  title={this.t("profile.posts.title", "Posts")}
+                  description={this.t("profile.posts.load", "Load posts and comments")}
+                  className="mt-3 profile-posts-action"
+                >
+                  <PostPanel
+                    targetType="PROFILE"
+                    targetId={this.state.profileId}
+                    canCreate={isEditable}
+                  />
+                </OnDemandPanel>
               )}
             </PageColumn>
             <PageColumn>
@@ -1811,23 +1830,28 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 </div>
               )}
               {isClubProfile && this.state.profileId && (
-                <div className="profile-relationship-group profile-membership-group">
-                  <h2 className="profile-relationship-group-title">
-                    {this.t("profile.membership.group", "Membership")}
-                  </h2>
-                  <ProfileClubPanel
-                    key={this.state.profileId}
-                    profileId={this.state.profileId}
-                    period={this.state.period}
-                    editable={isEditable}
-                    hideWhenEmpty
-                  />
-                  <ProfileEventsPanel
-                    profileId={String(this.state.profileId)}
-                    kind="participating"
-                    hideWhenEmpty
-                  />
-                </div>
+                <OnDemandPanel
+                  title={this.t("profile.membership.group", "Membership")}
+                  description={this.t("profile.membership.load", "Load clubs and events")}
+                >
+                  <div className="profile-relationship-group profile-membership-group">
+                    <h2 className="profile-relationship-group-title">
+                      {this.t("profile.membership.group", "Membership")}
+                    </h2>
+                    <ProfileClubPanel
+                      key={this.state.profileId}
+                      profileId={this.state.profileId}
+                      period={this.state.period}
+                      editable={isEditable}
+                      hideWhenEmpty
+                    />
+                    <ProfileEventsPanel
+                      profileId={String(this.state.profileId)}
+                      kind="participating"
+                      hideWhenEmpty
+                    />
+                  </div>
+                </OnDemandPanel>
               )}
               <ClubProfilesSection
                 isUserProfile={this.state.type === "USER"}

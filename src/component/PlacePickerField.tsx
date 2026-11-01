@@ -14,7 +14,7 @@ import {
   nearbyMapPlaces,
   searchMapPlaces,
 } from "../map/mapApi";
-import MapCanvas from "../map/MapCanvas";
+import MapCanvas from "../map/LazyMapCanvas";
 import PlaceProposalModal from "../map/PlaceProposalModal";
 import { matchingPlaceName } from "../map/placeNames";
 import type { OwnedMapContent } from "../map/ownedMapContent";

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import DismissibleCoachmark from "../../component/DismissibleCoachmark";
 import { getGroupItems, getProfileStash } from "../stashApi";
 
 type ProfileStashLinkProps = {
@@ -39,15 +38,16 @@ export default function ProfileStashLink({
   }, [editable, profileId]);
 
   return (
-    <DismissibleCoachmark
-      id={`open-owned-items:${profileId}:v3`}
-      visible={editable && !hasItems}
-      message="Add items you own."
-      className="profile-stash-coachmark"
-    >
-      <Link to={`/stash/${alias || profileId}`} className="btn btn-outline-secondary profile-stash-button">
+    <div className="profile-stash-link-wrap">
+      <Link
+        to={`/stash/${alias || profileId}`}
+        className="btn btn-outline-secondary profile-stash-button"
+      >
         {label}
       </Link>
-    </DismissibleCoachmark>
+      {editable && !hasItems && (
+        <p className="profile-stash-hint mb-0">Add items you own.</p>
+      )}
+    </div>
   );
 }

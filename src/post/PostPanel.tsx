@@ -314,6 +314,13 @@ export default function PostPanel({
     [ownedProfiles],
   );
 
+  // CommentThread is rendered once per post. Share this already-loaded viewer
+  // context so a 12-post page cannot issue 12 identical profile/club reads.
+  const commentViewer = useMemo(
+    () => ({ ownedProfiles, currentProfileId }),
+    [currentProfileId, ownedProfiles],
+  );
+
   useEffect(() => {
     let active = true;
     const missingAuthors = authorReferences.filter(
@@ -692,6 +699,7 @@ export default function PostPanel({
                   targetId={post.id}
                   initialPage={commentPages?.[post.id]}
                   deferInitialLoad={!commentPagesReady}
+                  viewer={commentViewer}
                 />
               </article>
             );

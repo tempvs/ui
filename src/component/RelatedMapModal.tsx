@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getImageThumbnails } from "../image/imageApi";
 import Spinner from "./Spinner";
-import MapCanvas from "../map/MapCanvas";
+import MapCanvas from "../map/LazyMapCanvas";
 import { entityThumbnailMarkers } from "../map/entityThumbnailMarkers";
 import type { OwnedMapContent } from "../map/ownedMapContent";
 import {

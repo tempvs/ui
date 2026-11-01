@@ -14,7 +14,7 @@ import "./map.css";
 /** Required attribution for the bundled Natural Earth reference basemap. */
 export const MAP_ATTRIBUTION = "Made with Natural Earth";
 
-type MapCanvasProps = {
+export type MapCanvasProps = {
   places: MapPlace[];
   entities: MapEntityLocation[];
   /** Viewer-scoped markers assembled in the browser. They are kept out of
@@ -250,6 +250,32 @@ export default function MapCanvas({
   }, []);
 
   useEffect(() => {
+    const container = element.current;
+    if (!container) return undefined;
+    let frame: number | undefined;
+    const resize = () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined;
+        // MapLibre does not automatically learn about a Bootstrap modal's
+        // transition or a responsive column changing width. Without this its
+        // WebGL viewport keeps stale dimensions and clips while panning.
+        map.current?.resize();
+      });
+    };
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
+    observer?.observe(container);
+    window.addEventListener("resize", resize);
+    resize();
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-entities") as
       GeoJSONSource | undefined;
@@ -362,9 +388,22 @@ export default function MapCanvas({
 
   useEffect(() => {
     if (!ready || !map.current) return;
-    const source = map.current.getSource("map-owned-connections") as
-      GeoJSONSource | undefined;
-    source?.setData(ownedConnectionCollection(ownedConnections, ownedMarkers));
+    const mapInstance = map.current;
+    const data = ownedConnectionCollection(ownedConnections, ownedMarkers);
+    const sync = () => {
+      const source = mapInstance.getSource("map-owned-connections") as
+        | GeoJSONSource
+        | undefined;
+      source?.setData(data);
+    };
+    // A map can report its initial load before every style source has become
+    // addressable. Update immediately and once more after the next idle turn
+    // so relationship lines cannot be lost to that timing race.
+    sync();
+    mapInstance.once("idle", sync);
+    return () => {
+      mapInstance.off("idle", sync);
+    };
   }, [ownedConnections, ownedMarkers, ready]);
 
   useEffect(() => {
@@ -643,6 +682,23 @@ function addMarkerLayers(
   map.addSource("map-owned-connections", {
     type: "geojson",
     data: EMPTY_COLLECTION,
+    lineMetrics: true,
+  });
+  map.addLayer({
+    id: "map-owned-connection-casing",
+    type: "line",
+    source: "map-owned-connections",
+    layout: {
+      "line-cap": "round" as const,
+      "line-join": "round" as const,
+    },
+    paint: {
+      // A light casing keeps relationships distinguishable from borders and
+      // the parchment basemap at low zoom levels.
+      "line-color": "#fffdf7",
+      "line-width": 5,
+      "line-opacity": 0.9,
+    },
   });
   map.addLayer({
     id: "map-owned-connections",
@@ -650,6 +706,7 @@ function addMarkerLayers(
     source: "map-owned-connections",
     layout: {
       "line-cap": "round" as const,
+      "line-join": "round" as const,
     },
     paint: {
       "line-color": [
@@ -661,13 +718,10 @@ function addMarkerLayers(
         "#8a5a44",
         "#4f6d7a",
       ],
-      "line-width": 2,
-      // Keep relationship edges legible against both the parchment basemap
-      // and the photo markers. The DOM markers intentionally sit above this
-      // layer, so a slightly stronger stroke is necessary for lines to remain
-      // visible between their thumbnails.
-      "line-opacity": 0.82,
-      "line-dasharray": [2, 1.5],
+      // A solid three-pixel stroke remains visible at the overview zoom and
+      // does not suffer the dash scaling ambiguity of GeoJSON line metrics.
+      "line-width": 3,
+      "line-opacity": 0.96,
     },
   });
   map.addLayer({
@@ -1071,7 +1125,7 @@ function ownedConnectionCollection(
               [to.longitude, to.latitude],
             ],
           },
-          properties: { kind: connection.kind },
+          properties: { key: connection.key, kind: connection.kind },
         },
       ];
     }),

@@ -75,6 +75,9 @@ html {
   overflow: visible;
   overflow-wrap: anywhere;
   box-shadow: 0 0.35rem 1rem rgba(55, 43, 22, 0.18);
+  /* A portal can overlap the action it points to. A hint must never consume
+     a navigation tap; only its explicit dismiss control is interactive. */
+  pointer-events: none;
 }
 
 .dismissible-coachmark > span:first-child {
@@ -143,6 +146,7 @@ html {
   color: inherit;
   font-size: 0.75rem;
   line-height: 1;
+  pointer-events: auto;
 }
 
 .page-columns {
@@ -281,6 +285,25 @@ html {
   .club-page-columns .post-panel,
   .event-page-layout .post-panel {
     order: 3;
+  }
+
+  /* Posts are now mounted inside an on-demand wrapper. Keep that wrapper
+     after the profile's owned-items and membership actions on a phone, just
+     as the direct post panel was intended to be before lazy mounting. */
+  .profile-page-columns .profile-posts-action {
+    order: 4;
+  }
+
+  /* This has to match the specificity of the general middle-column rule
+     above. The Posts disclosure is itself a direct grid item after the
+     middle column becomes display: contents on phones. */
+  .profile-page-columns > .page-column:nth-child(2) > .profile-posts-action {
+    order: 4;
+  }
+
+  .profile-page-columns > .page-column:nth-child(3) {
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -1192,11 +1215,25 @@ h3 {
   justify-content: center;
   width: 100%;
   min-height: 2.7rem;
+  touch-action: manipulation;
 }
 
 .profile-stash-action,
-.profile-stash-coachmark {
+.profile-stash-link-wrap {
   width: 100%;
+}
+
+.profile-stash-link-wrap {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.profile-stash-hint {
+  margin-top: 0.4rem;
+  color: #6c6354;
+  font-size: 0.8rem;
+  text-align: center;
 }
 
 .profile-following-panel {

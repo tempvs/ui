@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import "bootstrap/dist/css/bootstrap.css";
 
 import {
@@ -14,30 +14,34 @@ import "./App.css";
 import { PageShellContext } from "./component/PageHeader";
 import AppNotice from "./component/AppNotice";
 import Header from "./header/Header";
-import ProfilePage from "./profile/ProfilePage";
 import { useCurrentProfileValue } from "./profile/currentProfile";
-import ProfileAdminPage from "./profile/ProfileAdminPage";
-import StashPage from "./profile/StashPage";
-import StashAdminPage from "./profile/StashAdminPage";
-import StashItemPage from "./profile/StashItemPage";
-import StashItemAdminPage from "./profile/StashItemAdminPage";
-import LibraryPage from "./library/LibraryPage";
-import HomePage from "./HomePage";
-import ChatPage from "./chat/ChatPage";
-import ClubsPage from "./club/ClubsPage";
-import ClubPage from "./club/ClubPage";
-import ClubAdminPage from "./club/ClubAdminPage";
-import EventsPage from "./event/EventsPage";
-import EventPage from "./event/EventPage";
-import EventAdminPage from "./event/EventAdminPage";
-import NotificationsPage from "./notification/NotificationsPage";
-import MapAdminPage from "./map/MapAdminPage";
-import MapPlacePage from "./map/MapPlacePage";
-import MapPlaceProposalsPage from "./map/MapPlaceProposalsPage";
-import MapProposalPage from "./map/MapProposalPage";
-import MapPlaceEditPage from "./map/MapPlaceEditPage";
-import MapPage from "./map/MapPage";
-import SavedMapsPage from "./map/SavedMapsPage";
+
+// Route modules contain the expensive editors, feeds, and MapLibre runtime.
+// Keeping them out of the application shell prevents a profile visit from
+// parsing every feature in the product before it can paint.
+const ProfilePage = lazy(() => import("./profile/ProfilePage"));
+const ProfileAdminPage = lazy(() => import("./profile/ProfileAdminPage"));
+const StashPage = lazy(() => import("./profile/StashPage"));
+const StashAdminPage = lazy(() => import("./profile/StashAdminPage"));
+const StashItemPage = lazy(() => import("./profile/StashItemPage"));
+const StashItemAdminPage = lazy(() => import("./profile/StashItemAdminPage"));
+const LibraryPage = lazy(() => import("./library/LibraryPage"));
+const HomePage = lazy(() => import("./HomePage"));
+const ChatPage = lazy(() => import("./chat/ChatPage"));
+const ClubsPage = lazy(() => import("./club/ClubsPage"));
+const ClubPage = lazy(() => import("./club/ClubPage"));
+const ClubAdminPage = lazy(() => import("./club/ClubAdminPage"));
+const EventsPage = lazy(() => import("./event/EventsPage"));
+const EventPage = lazy(() => import("./event/EventPage"));
+const EventAdminPage = lazy(() => import("./event/EventAdminPage"));
+const NotificationsPage = lazy(() => import("./notification/NotificationsPage"));
+const MapAdminPage = lazy(() => import("./map/MapAdminPage"));
+const MapPlacePage = lazy(() => import("./map/MapPlacePage"));
+const MapPlaceProposalsPage = lazy(() => import("./map/MapPlaceProposalsPage"));
+const MapProposalPage = lazy(() => import("./map/MapProposalPage"));
+const MapPlaceEditPage = lazy(() => import("./map/MapPlaceEditPage"));
+const MapPage = lazy(() => import("./map/MapPage"));
+const SavedMapsPage = lazy(() => import("./map/SavedMapsPage"));
 
 function ProfilePageWithParam() {
   const { id } = useParams();
@@ -163,8 +167,9 @@ function App() {
       <BrowserRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <Routes>
-          <Route element={<AppShell />}>
+        <Suspense fallback={<div className="p-4 text-center text-muted">Loading…</div>}>
+          <Routes>
+            <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<CurrentProfilePage />} />
             <Route
@@ -247,8 +252,9 @@ function App() {
               path="/chat/:conversationId"
               element={<ChatConversationPage />}
             />
-          </Route>
-        </Routes>
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </div>
   );

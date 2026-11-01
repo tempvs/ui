@@ -60,6 +60,7 @@
   box-shadow: none;
   min-width: 2.1rem;
   padding: 0.2rem 0.35rem;
+  touch-action: manipulation;
 }
 
 .header-icon-button:hover,
