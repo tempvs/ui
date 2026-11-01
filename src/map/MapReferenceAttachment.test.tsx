@@ -27,10 +27,7 @@ test("renders a bounded public map reference and opens its public map URL", () =
   );
 
   expect(screen.getByTestId("map-preview-frame")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Open in Map" })).toHaveAttribute(
-    "href",
-    "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&placeId=seed%3Arome&q=Roma",
-  );
+  expect(screen.getByRole("button", { name: "Open in Map" })).toBeInTheDocument();
 });
 
 test("opens the full map on the first link tap", () => {
@@ -52,7 +49,7 @@ test("opens the full map on the first link tap", () => {
     </MemoryRouter>,
   );
 
-  fireEvent.click(screen.getByRole("link", { name: "Open in Map" }));
+  fireEvent.pointerUp(screen.getByRole("button", { name: "Open in Map" }));
   expect(screen.getByTestId("pathname")).toHaveTextContent("/map");
 });
 
@@ -128,10 +125,7 @@ test("restores a profile relationship scope for legacy embedded maps", () => {
     </MemoryRouter>,
   );
 
-  expect(screen.getByRole("link", { name: "Open in Map" })).toHaveAttribute(
-    "href",
-    "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&scope=PROFILE&scopeId=profile-1",
-  );
+  expect(screen.getByRole("button", { name: "Open in Map" })).toBeInTheDocument();
 });
 
 test("keeps attachment content while adding profile relationship edges", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Modal } from "react-bootstrap";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import MapCanvas from "./LazyMapCanvas";
 import {
@@ -136,6 +136,7 @@ export default function MapReferenceAttachment({
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
+  const mapNavigationStarted = useRef(false);
   const navigate = useNavigate();
   const relationshipScopeType = relationshipScope?.type;
   const relationshipScopeId = relationshipScope?.id;
@@ -158,6 +159,8 @@ export default function MapReferenceAttachment({
   const openInMap = (event?: React.SyntheticEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
+    if (mapNavigationStarted.current) return;
+    mapNavigationStarted.current = true;
     setShow(false);
     navigate(path);
   };
@@ -243,14 +246,15 @@ export default function MapReferenceAttachment({
             </p>
           )}
         </div>
-        <Link
-          to={path}
+        <button
+          type="button"
           className="map-reference-open-link"
           onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={openInMap}
           onClick={openInMap}
         >
           Open in Map
-        </Link>
+        </button>
       </section>
       <Modal
         show={show}
