@@ -396,6 +396,8 @@ function MapPreview({
   }, [
     contentKey,
     onError,
+    reference,
+    supplementalScope,
     visible,
   ]);
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
