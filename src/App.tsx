@@ -154,7 +154,12 @@ function AppShell() {
       />
       {headerMount && (
         <PageShellContext.Provider value={{ headerMount }}>
-          <Outlet />
+          {/* Keep the persistent header outside the loading boundary. React
+              Bootstrap's hidden modals retain layout effects, and replaying
+              them whenever a lazy route resolves can cause an update loop. */}
+          <Suspense fallback={<div className="p-4 text-center text-muted">Loading…</div>}>
+            <Outlet />
+          </Suspense>
         </PageShellContext.Provider>
       )}
     </>
@@ -167,9 +172,8 @@ function App() {
       <BrowserRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <Suspense fallback={<div className="p-4 text-center text-muted">Loading…</div>}>
-          <Routes>
-            <Route element={<AppShell />}>
+        <Routes>
+          <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<CurrentProfilePage />} />
             <Route
@@ -252,9 +256,8 @@ function App() {
               path="/chat/:conversationId"
               element={<ChatConversationPage />}
             />
-            </Route>
-          </Routes>
-        </Suspense>
+          </Route>
+        </Routes>
       </BrowserRouter>
     </div>
   );

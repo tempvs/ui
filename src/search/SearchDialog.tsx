@@ -633,7 +633,9 @@ export default function SearchDialog() {
 
   useLayoutEffect(() => {
     if (!showPopover) {
-      setPopoverPosition({});
+      // The panel is unmounted while closed, so stale coordinates cannot be
+      // observed. Avoid any state update here: StrictMode replays layout
+      // effects and even an identity state updater can form a sync loop.
       return;
     }
 

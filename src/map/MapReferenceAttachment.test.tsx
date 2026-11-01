@@ -7,7 +7,7 @@ import MapReferenceAttachment, {
   publicMapReferenceFromUrl,
 } from "./MapReferenceAttachment";
 
-jest.mock("./MapCanvas", () => () => <div data-testid="map-preview" />);
+jest.mock("./LazyMapCanvas", () => () => <div data-testid="map-preview" />);
 
 test("renders a bounded public map reference and opens its public map URL", () => {
   render(
