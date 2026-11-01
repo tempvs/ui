@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { MapEntityLocation, MapPlace } from "./mapApi";
+import {
+  getMapPlacesByReference,
+  mapPlaceReference,
+  type MapEntityLocation,
+  type MapPlace,
+} from "./mapApi";
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
 import "./map.css";
@@ -70,6 +75,8 @@ type MarkerProperties = {
   role?: string;
   entityId?: string;
   placeId?: string;
+  /** Alias when available, otherwise a UUID; used for stable public links. */
+  placeReference?: string;
   placeName?: string;
 };
 
@@ -117,6 +124,9 @@ export default function MapCanvas({
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
+  const [placeReferences, setPlaceReferences] = useState<Map<string, string>>(
+    () => new Map(),
+  );
 
   useEffect(() => {
     selectRef.current = onEntitySelect;
@@ -137,6 +147,39 @@ export default function MapCanvas({
   useEffect(() => {
     placesRef.current = places;
   }, [places]);
+
+  useEffect(() => {
+    const ids = Array.from(
+      new Set([
+        ...entities.map((entity) => entity.placeId),
+        ...ownedMarkers.map((marker) => marker.placeId),
+        ...thumbnailMarkers.map((marker) => marker.placeId),
+      ]),
+    ).filter(Boolean);
+    if (!ids.length) {
+      setPlaceReferences(new Map());
+      return;
+    }
+    let active = true;
+    void getMapPlacesByReference(ids)
+      .then((resolved) => {
+        if (!active) return;
+        setPlaceReferences(
+          new Map(
+            ids.flatMap((id) => {
+              const place = resolved.get(id);
+              return place ? [[id, mapPlaceReference(place)] as const] : [];
+            }),
+          ),
+        );
+      })
+      .catch(() => {
+        if (active) setPlaceReferences(new Map());
+      });
+    return () => {
+      active = false;
+    };
+  }, [entities, ownedMarkers, thumbnailMarkers]);
 
   useEffect(() => {
     if (!element.current || map.current) return undefined;
@@ -210,8 +253,8 @@ export default function MapCanvas({
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-entities") as
       GeoJSONSource | undefined;
-    source?.setData(entityCollection(entities));
-  }, [entities, ready]);
+    source?.setData(entityCollection(entities, placeReferences));
+  }, [entities, placeReferences, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -252,7 +295,15 @@ export default function MapCanvas({
         ownedMarkerSelectRef.current?.(ownedMarker);
       });
       popupDisposers.push(
-        addMarkerLinksPopup(mapInstance, element, ownedMarker, markerOffset),
+        addMarkerLinksPopup(
+          mapInstance,
+          element,
+          {
+            ...ownedMarker,
+            placeReference: placeReferences.get(ownedMarker.placeId),
+          },
+          markerOffset,
+        ),
       );
       return new maplibregl.Marker({
         element,
@@ -269,7 +320,7 @@ export default function MapCanvas({
       if (ownedMarkerInstances.current === instances)
         ownedMarkerInstances.current = [];
     };
-  }, [ownedMarkers, ready]);
+  }, [ownedMarkers, placeReferences, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return undefined;
@@ -288,7 +339,10 @@ export default function MapCanvas({
         addMarkerLinksPopup(
           mapInstance,
           markerElement,
-          thumbnailMarker,
+          {
+            ...thumbnailMarker,
+            placeReference: placeReferences.get(thumbnailMarker.placeId),
+          },
           markerOffset,
         ),
       );
@@ -304,7 +358,7 @@ export default function MapCanvas({
       popupDisposers.forEach((dispose) => dispose());
       instances.forEach((marker) => marker.remove());
     };
-  }, [ready, thumbnailMarkers]);
+  }, [placeReferences, ready, thumbnailMarkers]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -713,6 +767,7 @@ function addMarkerLayers(
     const entityId = properties?.entityId;
     const placeId = properties?.placeId;
     const placeName = properties?.placeName;
+    const placeReference = properties?.placeReference;
     const label = properties?.label;
     if (
       !isEntityType(entityType) ||
@@ -722,7 +777,14 @@ function addMarkerLayers(
       typeof label !== "string"
     )
       return null;
-    return { entityType, entityId, placeId, placeName, label };
+    return {
+      entityType,
+      entityId,
+      placeId,
+      placeName,
+      label,
+      ...(typeof placeReference === "string" ? { placeReference } : {}),
+    };
   };
   const coordinatesFromFeature = (feature: maplibregl.MapGeoJSONFeature) =>
     (feature.geometry as GeoJSON.Point).coordinates as [number, number];
@@ -820,7 +882,7 @@ function markerColour(): maplibregl.ExpressionSpecification {
 type LinkedMarker = Pick<
   MapThumbnailMarker,
   "entityType" | "entityId" | "placeId" | "placeName" | "label"
->;
+> & { placeReference?: string };
 type LinkableMarker = LinkedMarker &
   Pick<MapThumbnailMarker, "latitude" | "longitude">;
 
@@ -889,8 +951,8 @@ function markerLinksPopover(marker: LinkedMarker): HTMLDivElement {
   entityLink.textContent = marker.label;
   const placeLink = document.createElement("a");
   placeLink.className = "map-marker-place-link";
-  placeLink.href = placePath(marker.placeId);
-  placeLink.textContent = marker.placeName;
+  placeLink.href = placePath(marker.placeReference || marker.placeId);
+  placeLink.textContent = marker.placeReference || marker.placeName;
   container.append(entityLink, placeLink);
   return container;
 }
@@ -933,6 +995,7 @@ function isEntityType(
 
 function entityCollection(
   entities: MapEntityLocation[],
+  placeReferences: ReadonlyMap<string, string>,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, MarkerProperties> {
   return {
     type: "FeatureCollection",
@@ -949,6 +1012,7 @@ function entityCollection(
         role: entity.locationRole,
         entityId: entity.entityId,
         placeId: entity.placeId,
+        placeReference: placeReferences.get(entity.placeId),
         placeName: entity.placeName,
       },
     })),
