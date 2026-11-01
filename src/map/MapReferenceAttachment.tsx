@@ -3,6 +3,7 @@ import { Button, Modal } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
 import MapCanvas from "./LazyMapCanvas";
+import StaticMapPreview from "./StaticMapPreview";
 import {
   nearbyMapEntitiesPage,
   saveMapSnapshot,
@@ -418,7 +419,15 @@ function MapPreview({
       className="map-reference-canvas"
       data-testid="map-preview-frame"
     >
-      {visible && contentReady && (
+      {visible && contentReady && staticPreview && (
+        <StaticMapPreview
+          reference={reference}
+          markers={content.markers}
+          entities={entities}
+          connections={content.connections}
+        />
+      )}
+      {visible && contentReady && !staticPreview && (
         <MapCanvas
           places={[]}
           entities={entities}
@@ -436,7 +445,6 @@ function MapPreview({
           }
           initialFitPoints={contentReady ? fitPoints : []}
           initialFitDelayMs={0}
-          staticPreview={staticPreview}
           showModernBorders={false}
           onEntitySelect={() => undefined}
           onMapError={onError}
