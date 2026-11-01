@@ -38,6 +38,8 @@ export type MapCanvasProps = {
   /** Embedded attachments wait for their batched marker graph and a settled
    * layout before framing it, avoiding a first-marker-only viewport. */
   initialFitDelayMs?: number;
+  /** A card preview uses the real map data but does not accept gestures. */
+  staticPreview?: boolean;
   showModernBorders: boolean;
   selectedEntityKey?: string | null;
   /** The one place deliberately chosen from map search. Its matched name is
@@ -99,6 +101,7 @@ export default function MapCanvas({
   focus,
   initialFitPoints = [],
   initialFitDelayMs = 0,
+  staticPreview = false,
   showModernBorders,
   selectedEntityKey = null,
   selectedPlaceId = null,
@@ -207,7 +210,16 @@ export default function MapCanvas({
     next.dragRotate.disable();
     next.touchZoomRotate.disableRotation();
     next.touchPitch.disable();
-    next.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+    if (staticPreview) {
+      next.scrollZoom.disable();
+      next.boxZoom.disable();
+      next.dragPan.disable();
+      next.doubleClickZoom.disable();
+      next.keyboard.disable();
+      next.touchZoomRotate.disable();
+    } else {
+      next.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+    }
     next.addControl(
       new maplibregl.AttributionControl({
         compact: true,
@@ -247,7 +259,7 @@ export default function MapCanvas({
       next.remove();
       map.current = null;
     };
-  }, []);
+  }, [staticPreview]);
 
   useEffect(() => {
     const container = element.current;
@@ -566,7 +578,10 @@ export default function MapCanvas({
   }, [focus, initialFitDelayMs, initialFitPoints, ready]);
 
   return (
-    <div className="map-canvas-shell" aria-label="Interactive world map">
+    <div
+      className={`map-canvas-shell${staticPreview ? " map-canvas-shell--static" : ""}`}
+      aria-label={staticPreview ? "Map preview" : "Interactive world map"}
+    >
       <div ref={element} className="map-canvas" />
       <div className="map-legend" aria-label="Map legend">
         <span>

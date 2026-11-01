@@ -136,10 +136,6 @@ export default function MapReferenceAttachment({
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
-  // MapLibre creates a WebGL context per preview. A feed with several map
-  // attachments can monopolize a laptop GPU just as readily as a phone's, so
-  // cards remain lightweight until the visitor opens one.
-  const [deferPreview] = useState(true);
   const navigate = useNavigate();
   const relationshipScopeType = relationshipScope?.type;
   const relationshipScopeId = relationshipScope?.id;
@@ -225,19 +221,15 @@ export default function MapReferenceAttachment({
               {reference.entityTypes.length === 1 ? "" : "s"}
             </span>
           </div>
-          {!mapError && !deferPreview && (
+          {!mapError && (
             <MapPreview
               reference={resolvedReference}
               supplementalScope={
                 reference.scope ? stableRelationshipScope : undefined
               }
+              staticPreview
               onError={() => setMapError(true)}
             />
-          )}
-          {!mapError && deferPreview && (
-            <div className="map-reference-canvas">
-              <StaticMapPreview entityTypes={reference.entityTypes} />
-            </div>
           )}
           {mapError && (
             <p className="small text-muted mb-1 px-2">
@@ -249,7 +241,13 @@ export default function MapReferenceAttachment({
           Open in Map
         </Link>
       </section>
-      <Modal show={show} onHide={() => setShow(false)} centered size="xl">
+      <Modal
+        show={show}
+        onHide={() => setShow(false)}
+        centered
+        size="xl"
+        dialogClassName="map-reference-modal-dialog"
+      >
         <Modal.Header closeButton>
           <Modal.Title>{name}</Modal.Title>
         </Modal.Header>
@@ -302,43 +300,17 @@ export default function MapReferenceAttachment({
   );
 }
 
-function StaticMapPreview({
-  entityTypes,
-}: {
-  entityTypes: MapEntityLocation["entityType"][];
-}) {
-  return (
-    <div className="map-static-preview" data-testid="static-map-preview" aria-hidden>
-      <span className="map-static-preview-land map-static-preview-land--west" />
-      <span className="map-static-preview-land map-static-preview-land--east" />
-      <span className="map-static-preview-route map-static-preview-route--one" />
-      <span className="map-static-preview-route map-static-preview-route--two" />
-      {entityTypes.includes("PROFILE") && (
-        <span className="map-static-preview-marker map-static-preview-marker--profile" />
-      )}
-      {entityTypes.includes("CLUB") && (
-        <span className="map-static-preview-marker map-static-preview-marker--club" />
-      )}
-      {entityTypes.includes("EVENT") && (
-        <span className="map-static-preview-marker map-static-preview-marker--event" />
-      )}
-      {entityTypes.includes("SOURCE") && (
-        <span className="map-static-preview-marker map-static-preview-marker--source" />
-      )}
-      <span className="map-static-preview-hint">Tap to explore map</span>
-    </div>
-  );
-}
-
 function MapPreview({
   reference,
   supplementalScope,
   eager = false,
+  staticPreview = false,
   onError,
 }: {
   reference: PublicMapReference;
   supplementalScope?: SharedMapScope;
   eager?: boolean;
+  staticPreview?: boolean;
   onError: () => void;
 }) {
   const [content, setContent] = useState<OwnedMapContent>({
@@ -424,7 +396,11 @@ function MapPreview({
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
   const hasVisibleMapContent = content.markers.length > 0 || entities.length > 0;
   return (
-    <div ref={rootRef} className="map-reference-canvas">
+    <div
+      ref={rootRef}
+      className="map-reference-canvas"
+      data-testid="map-preview-frame"
+    >
       {visible && contentReady && (
         <MapCanvas
           places={[]}
@@ -443,6 +419,7 @@ function MapPreview({
           }
           initialFitPoints={contentReady ? fitPoints : []}
           initialFitDelayMs={450}
+          staticPreview={staticPreview}
           showModernBorders={false}
           onEntitySelect={() => undefined}
           onMapError={onError}

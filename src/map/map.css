@@ -821,108 +821,21 @@
   border-radius: 0;
 }
 
-.map-static-preview {
-  position: relative;
-  display: block;
-  height: 100%;
-  overflow: hidden;
-  background:
-    linear-gradient(18deg, transparent 24%, rgb(255 255 255 / 25%) 24.5% 25%, transparent 25.5%),
-    linear-gradient(90deg, transparent 24%, rgb(255 255 255 / 22%) 24.5% 25%, transparent 25.5%),
-    linear-gradient(135deg, #c4dfe8 0%, #9fc8d8 100%);
-  color: #40382e;
+.map-canvas-shell--static .map-canvas,
+.map-canvas-shell--static .map-legend,
+.map-canvas-shell--static .maplibregl-control-container {
+  pointer-events: none;
 }
 
-.map-static-preview-land {
-  position: absolute;
-  display: block;
-  width: 48%;
-  height: 72%;
-  background: #dbe5c9;
-  opacity: 0.92;
-  clip-path: polygon(8% 8%, 88% 0, 100% 35%, 71% 60%, 87% 100%, 20% 84%, 0 46%);
-}
+@media (max-width: 767.98px) {
+  .map-reference-modal-dialog {
+    min-height: 0;
+    margin: 1rem;
+  }
 
-.map-static-preview-land--west {
-  top: -10%;
-  left: -7%;
-  transform: rotate(-9deg);
-}
-
-.map-static-preview-land--east {
-  right: -7%;
-  bottom: -12%;
-  transform: rotate(15deg) scale(1.12);
-}
-
-.map-static-preview-route {
-  position: absolute;
-  display: block;
-  height: 0;
-  border-top: 3px dashed rgb(79 109 122 / 82%);
-  transform-origin: left center;
-}
-
-.map-static-preview-route--one {
-  top: 45%;
-  left: 27%;
-  width: 42%;
-  transform: rotate(-15deg);
-}
-
-.map-static-preview-route--two {
-  top: 61%;
-  left: 43%;
-  width: 31%;
-  border-top-color: rgb(109 124 74 / 84%);
-  transform: rotate(23deg);
-}
-
-.map-static-preview-marker {
-  position: absolute;
-  z-index: 1;
-  display: block;
-  width: 0.85rem;
-  height: 0.85rem;
-  border: 2px solid #fffdf7;
-  border-radius: 50%;
-  box-shadow: 0 0.08rem 0.3rem rgb(45 57 43 / 40%);
-}
-
-.map-static-preview-marker--profile {
-  top: 39%;
-  left: 25%;
-  background: #4f6d7a;
-}
-
-.map-static-preview-marker--club {
-  top: 26%;
-  right: 29%;
-  background: #8a5a44;
-}
-
-.map-static-preview-marker--event {
-  bottom: 23%;
-  left: 41%;
-  background: #75618c;
-}
-
-.map-static-preview-marker--source {
-  right: 25%;
-  bottom: 28%;
-  background: #6d7c4a;
-}
-
-.map-static-preview-hint {
-  position: absolute;
-  right: 0.55rem;
-  bottom: 0.5rem;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgb(84 71 50 / 24%);
-  border-radius: 999px;
-  background: rgb(255 253 247 / 90%);
-  color: #40382e;
-  font-size: 0.76rem;
+  .map-reference-modal-dialog .modal-content {
+    max-height: calc(100dvh - 2rem);
+  }
 }
 
 .map-reference-open {
