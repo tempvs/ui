@@ -27,7 +27,7 @@ test("renders a bounded public map reference and opens its public map URL", () =
   );
 
   expect(screen.queryByTestId("map-preview")).not.toBeInTheDocument();
-  expect(screen.getByText("Open the interactive map")).toBeInTheDocument();
+  expect(screen.getByTestId("static-map-preview")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Open in Map" })).toHaveAttribute(
     "href",
     "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&placeId=seed%3Arome&q=Roma",
@@ -55,7 +55,7 @@ test("defers WebGL previews in feed cards until the map is opened", () => {
   );
 
   expect(screen.queryByTestId("map-preview")).not.toBeInTheDocument();
-  expect(screen.getByText("Open the interactive map")).toBeInTheDocument();
+  expect(screen.getByTestId("static-map-preview")).toBeInTheDocument();
 
   Object.defineProperty(window, "matchMedia", {
     configurable: true,

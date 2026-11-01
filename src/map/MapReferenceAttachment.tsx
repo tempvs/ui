@@ -235,9 +235,7 @@ export default function MapReferenceAttachment({
             />
           )}
           {!mapError && deferPreview && (
-            <div className="map-reference-deferred-preview" aria-hidden>
-              <span>Open the interactive map</span>
-            </div>
+            <StaticMapPreview entityTypes={reference.entityTypes} />
           )}
           {mapError && (
             <p className="small text-muted mb-1 px-2">
@@ -299,6 +297,34 @@ export default function MapReferenceAttachment({
         </Modal.Footer>
       </Modal>
     </>
+  );
+}
+
+function StaticMapPreview({
+  entityTypes,
+}: {
+  entityTypes: MapEntityLocation["entityType"][];
+}) {
+  return (
+    <div className="map-static-preview" data-testid="static-map-preview" aria-hidden>
+      <span className="map-static-preview-land map-static-preview-land--west" />
+      <span className="map-static-preview-land map-static-preview-land--east" />
+      <span className="map-static-preview-route map-static-preview-route--one" />
+      <span className="map-static-preview-route map-static-preview-route--two" />
+      {entityTypes.includes("PROFILE") && (
+        <span className="map-static-preview-marker map-static-preview-marker--profile" />
+      )}
+      {entityTypes.includes("CLUB") && (
+        <span className="map-static-preview-marker map-static-preview-marker--club" />
+      )}
+      {entityTypes.includes("EVENT") && (
+        <span className="map-static-preview-marker map-static-preview-marker--event" />
+      )}
+      {entityTypes.includes("SOURCE") && (
+        <span className="map-static-preview-marker map-static-preview-marker--source" />
+      )}
+      <span className="map-static-preview-hint">Tap to explore map</span>
+    </div>
   );
 }
 
