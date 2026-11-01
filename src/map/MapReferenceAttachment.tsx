@@ -137,12 +137,21 @@ export default function MapReferenceAttachment({
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
+  const relationshipScopeType = relationshipScope?.type;
+  const relationshipScopeId = relationshipScope?.id;
+  const stableRelationshipScope = useMemo(
+    () =>
+      relationshipScopeType && relationshipScopeId
+        ? { type: relationshipScopeType, id: relationshipScopeId }
+        : undefined,
+    [relationshipScopeId, relationshipScopeType],
+  );
   const resolvedReference = useMemo(
     () =>
-      reference.scope || !relationshipScope
+      reference.scope || !stableRelationshipScope
         ? reference
-        : { ...reference, scope: relationshipScope },
-    [reference, relationshipScope?.id, relationshipScope?.type],
+        : { ...reference, scope: stableRelationshipScope },
+    [reference, stableRelationshipScope],
   );
   const path = publicMapReferencePath(resolvedReference);
   const name = reference.placeName || "Shared map";
@@ -207,7 +216,7 @@ export default function MapReferenceAttachment({
             <MapPreview
               reference={resolvedReference}
               supplementalScope={
-                reference.scope ? relationshipScope : undefined
+                reference.scope ? stableRelationshipScope : undefined
               }
               onError={() => setMapError(true)}
             />
@@ -231,7 +240,7 @@ export default function MapReferenceAttachment({
             <MapPreview
               reference={resolvedReference}
               supplementalScope={
-                reference.scope ? relationshipScope : undefined
+                reference.scope ? stableRelationshipScope : undefined
               }
               onError={() => setStatus("Map preview unavailable.")}
             />
@@ -360,8 +369,7 @@ function MapPreview({
   }, [
     reference,
     onError,
-    supplementalScope?.id,
-    supplementalScope?.type,
+    supplementalScope,
     visible,
   ]);
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
