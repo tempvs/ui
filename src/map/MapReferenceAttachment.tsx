@@ -121,16 +121,28 @@ export function publicMapReferenceFromUrl(
 export default function MapReferenceAttachment({
   reference,
   className = "",
+  fallbackScope,
 }: {
   reference: PublicMapReference;
   className?: string;
+  /**
+   * Legacy post attachments predate shareable graph scopes. A profile page
+   * already establishes which public profile owns the post, so it can supply
+   * that context to restore relationship lines without changing the stored
+   * attachment.
+   */
+  fallbackScope?: SharedMapScope;
 }) {
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const path = publicMapReferencePath(reference);
+  const resolvedReference =
+    reference.scope || !fallbackScope
+      ? reference
+      : { ...reference, scope: fallbackScope };
+  const path = publicMapReferencePath(resolvedReference);
   const name = reference.placeName || "Shared map";
   const save = async () => {
     const title = window.prompt("Name this saved map", name);
@@ -191,7 +203,7 @@ export default function MapReferenceAttachment({
           </div>
           {!mapError && (
             <MapPreview
-              reference={reference}
+              reference={resolvedReference}
               onError={() => setMapError(true)}
             />
           )}
@@ -212,7 +224,7 @@ export default function MapReferenceAttachment({
         <Modal.Body>
           <div className="map-reference-modal-canvas">
             <MapPreview
-              reference={reference}
+              reference={resolvedReference}
               onError={() => setStatus("Map preview unavailable.")}
             />
           </div>

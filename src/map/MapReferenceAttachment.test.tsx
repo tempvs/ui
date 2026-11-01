@@ -40,6 +40,27 @@ test("preserves an approved relationship-map scope", () => {
   ).toMatchObject({ scope: { type: "PROFILE", id: "private" } });
 });
 
+test("restores a profile relationship scope for legacy embedded maps", () => {
+  render(
+    <MemoryRouter>
+      <MapReferenceAttachment
+        reference={{
+          latitude: 41.9,
+          longitude: 12.5,
+          radiusKm: 25,
+          entityTypes: ["PROFILE", "SOURCE"],
+        }}
+        fallbackScope={{ type: "PROFILE", id: "profile-1" }}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("link", { name: "Open in Map" })).toHaveAttribute(
+    "href",
+    "/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE%2CSOURCE&scope=PROFILE&scopeId=profile-1",
+  );
+});
+
 test("frames every nearby entity in an embedded public map", () => {
   const reference = {
     latitude: 41.9,

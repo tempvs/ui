@@ -684,6 +684,11 @@ export default function PostPanel({
                   <MapReferenceAttachment
                     reference={post.mapReference}
                     className="post-map-reference-attachment"
+                    fallbackScope={
+                      targetType === "PROFILE"
+                        ? { type: "PROFILE", id: String(targetId) }
+                        : undefined
+                    }
                   />
                 )}
                 <div className="post-entry-meta">
