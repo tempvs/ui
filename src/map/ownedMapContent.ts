@@ -10,7 +10,6 @@ import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
   getUserProfileByUserId,
-  fetchProfileById,
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import type { TempvsEvent } from "../event/eventApi";
@@ -653,13 +652,6 @@ function marker(value: Omit<OwnedMapMarker, "key">): OwnedMapMarker {
   };
 }
 
-function mapEventEndsAt(event: TempvsEvent): string | undefined {
-  const schedule = event.schedule;
-  if (!schedule) return undefined;
-  if (schedule.kind === "RECURRING") return schedule.recurrence?.until;
-  return schedule.endsAt;
-}
-
 function buildConnections(
   markers: OwnedMapMarker[],
   personalProfileId: string | undefined,
@@ -713,20 +705,6 @@ function profileLabel(profile: Profile): string {
     .filter((value): value is string => Boolean(value?.trim()))
     .join(" ");
   return profile.nickName?.trim() || fullName || "Unnamed profile";
-}
-
-function emptyMapContent(): OwnedMapContent {
-  return { markers: [], connections: [] };
-}
-
-function profileById(id: string): Promise<Profile | null> {
-  return new Promise((resolve) => {
-    fetchProfileById(id, {
-      onSuccess: resolve,
-      onMissing: () => resolve(null),
-      onError: () => resolve(null),
-    });
-  });
 }
 
 function uniqueById<T extends { id: string | number }>(values: T[]): T[] {
