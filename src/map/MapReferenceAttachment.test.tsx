@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import MapReferenceAttachment, {
@@ -61,6 +61,27 @@ test("defers WebGL previews in feed cards until the map is opened", () => {
     configurable: true,
     value: originalMatchMedia,
   });
+});
+
+test("closes the map modal instead of reopening through the card click handler", async () => {
+  render(
+    <MemoryRouter>
+      <MapReferenceAttachment
+        reference={{
+          placeName: "Roma",
+          latitude: 41.9,
+          longitude: 12.5,
+          radiusKm: 25,
+          entityTypes: ["PROFILE"],
+        }}
+      />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Open shared map: Roma" }));
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 });
 
 test("preserves an approved relationship-map scope", () => {

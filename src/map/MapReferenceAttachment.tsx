@@ -201,7 +201,15 @@ export default function MapReferenceAttachment({
           className="map-reference-open"
           role="button"
           tabIndex={0}
-          onClick={() => setShow(true)}
+          onClick={(event) => {
+            // React events from a Bootstrap Modal portal still bubble through
+            // this card's component tree. Without this guard, the close
+            // button/backdrop sets show=false and then this handler instantly
+            // opens the same modal again.
+            const target = event.target as Element;
+            if (target.closest(".modal, .modal-backdrop")) return;
+            setShow(true);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
