@@ -1698,6 +1698,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   title={this.t("profile.photos.title", "Photos")}
                   description={this.t("profile.photos.load", "Load albums and photo covers")}
                   className="mt-3"
+                  collapseOnMobile
                 >
                   <PhotoAlbumsPanel
                     targetType="profile"
@@ -1711,6 +1712,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 description={this.t("profile.following.load", "Load followed profiles, clubs, and events")}
                 className="mt-3"
                 onOpen={() => this.fetchFollowingProfiles(this.state.profileId)}
+                collapseOnMobile
               >
                 <div
                   className={`profile-relationship-group profile-following-group ${
@@ -1809,6 +1811,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   title={this.t("profile.posts.title", "Posts")}
                   description={this.t("profile.posts.load", "Load posts and comments")}
                   className="mt-3 profile-posts-action"
+                  collapseOnMobile
                 >
                   <PostPanel
                     targetType="PROFILE"
@@ -1835,6 +1838,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 <OnDemandPanel
                   title={this.t("profile.membership.group", "Membership")}
                   description={this.t("profile.membership.load", "Load clubs and events")}
+                  collapseOnMobile
                 >
                   <div className="profile-relationship-group profile-membership-group">
                     <h2 className="profile-relationship-group-title">

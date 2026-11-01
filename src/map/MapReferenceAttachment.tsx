@@ -136,10 +136,10 @@ export default function MapReferenceAttachment({
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
-  // MapLibre creates a WebGL context per preview. On a phone, a post feed
-  // containing several map attachments can otherwise monopolize the GPU while
-  // the visitor is merely scrolling past it.
-  const [deferPreview] = useState(isNarrowViewport);
+  // MapLibre creates a WebGL context per preview. A feed with several map
+  // attachments can monopolize a laptop GPU just as readily as a phone's, so
+  // cards remain lightweight until the visitor opens one.
+  const [deferPreview] = useState(true);
   const navigate = useNavigate();
   const relationshipScopeType = relationshipScope?.type;
   const relationshipScopeId = relationshipScope?.id;
@@ -228,7 +228,7 @@ export default function MapReferenceAttachment({
           )}
           {!mapError && deferPreview && (
             <div className="map-reference-deferred-preview" aria-hidden>
-              <span>Tap to load the interactive map</span>
+              <span>Open the interactive map</span>
             </div>
           )}
           {mapError && (
@@ -389,7 +389,7 @@ function MapPreview({
   const hasVisibleMapContent = content.markers.length > 0 || entities.length > 0;
   return (
     <div ref={rootRef} className="map-reference-canvas">
-      {visible && (
+      {visible && contentReady && (
         <MapCanvas
           places={[]}
           entities={entities}
@@ -416,13 +416,6 @@ function MapPreview({
   );
 }
 
-function isNarrowViewport() {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 767.98px)").matches
-  );
-}
 
 /** Keep each attachment's saved map context while adding a profile relation
  * graph. Keys are stable resource/location identifiers, so de-duplication is

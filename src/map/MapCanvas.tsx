@@ -718,10 +718,11 @@ function addMarkerLayers(
         "#8a5a44",
         "#4f6d7a",
       ],
-      // A solid three-pixel stroke remains visible at the overview zoom and
-      // does not suffer the dash scaling ambiguity of GeoJSON line metrics.
+      // Relationship edges deliberately stay dashed, matching the full Map
+      // view and keeping them distinct from geographic boundaries.
       "line-width": 3,
       "line-opacity": 0.96,
+      "line-dasharray": [2, 1.5],
     },
   });
   map.addLayer({

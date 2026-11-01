@@ -793,6 +793,7 @@
 
 .map-reference-canvas {
   height: 11rem;
+  overflow: hidden;
   border-top: 1px solid rgba(107, 89, 61, 0.16);
   border-bottom: 1px solid rgba(107, 89, 61, 0.16);
 }
@@ -810,9 +811,19 @@
   height: 16.5rem;
 }
 
+/* MapCanvas normally reserves a full-page map height. An embedded map must
+ * instead exactly inherit its card/modal viewport; otherwise WebGL uses a
+ * taller buffer than the clipped element and pans or zooms into cut edges. */
+.map-reference-canvas .map-canvas-shell {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
 .map-reference-deferred-preview {
   display: grid;
-  height: 16.5rem;
+  height: 100%;
   place-items: center;
   padding: 1rem;
   background:
