@@ -1,10 +1,8 @@
 import {
-  getClub,
   getProfileClubs,
   type Club,
 } from "../club/clubApi";
 import {
-  getSource,
   getSourcesByIds,
   type LibrarySource,
 } from "../library/libraryApi";
@@ -15,10 +13,15 @@ import {
   fetchProfileById,
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
-import { getEvent, type TempvsEvent } from "../event/eventApi";
+import type { TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
 import type { StashItem } from "../profile/profileTypes";
-import { getMapPlacesByReference, type MapPlace } from "./mapApi";
+import {
+  getMapPlacesByReference,
+  getMapProjection,
+  type MapPlace,
+  type MapProjection,
+} from "./mapApi";
 import type { SharedMapScope } from "./sharedMapScope";
 
 export type OwnedMapMarker = {
@@ -75,6 +78,10 @@ const sharedScopeReads = new Map<
 export async function loadProfileRelatedMapContent(
   profile: Profile,
 ): Promise<OwnedMapContent> {
+  return projectionMapContent("PROFILE", profile.id);
+  /* Legacy graph composition retained below temporarily as a migration
+   * fallback reference. Projection reads are the production path. */
+  /*
   const resolvePlace = placeResolver();
   const [profileMarkers, memberships, sourceUsage] = await Promise.all([
     profileMapMarkers([profile], resolvePlace),
@@ -102,6 +109,7 @@ export async function loadProfileRelatedMapContent(
       sourceUsage,
     ),
   };
+  */
 }
 
 /** A club map is intentionally just the club's own canonical location.
@@ -112,11 +120,7 @@ export async function loadProfileRelatedMapContent(
 export async function loadClubRelatedMapContent(
   club: Club,
 ): Promise<OwnedMapContent> {
-  const resolvePlace = placeResolver();
-  return {
-    markers: await clubMapMarkers([club], resolvePlace),
-    connections: [],
-  };
+  return projectionMapContent("CLUB", String(club.id));
 }
 
 /** A source page has no private relationship expansion: its public slice is
@@ -126,9 +130,7 @@ export async function loadClubRelatedMapContent(
 export async function loadSourceRelatedMapContent(
   source: LibrarySource,
 ): Promise<OwnedMapContent> {
-  const resolvePlace = placeResolver();
-  const markers = await sourceMapMarkers([source.id], resolvePlace);
-  return { markers, connections: [] };
+  return projectionMapContent("SOURCE", source.id);
 }
 
 /** Events are shareable public map scopes too. Their venue and historical-site
@@ -137,6 +139,8 @@ export async function loadSourceRelatedMapContent(
 export async function loadEventRelatedMapContent(
   event: TempvsEvent,
 ): Promise<OwnedMapContent> {
+  return projectionMapContent("EVENT", event.id);
+  /*
   const resolvePlace = placeResolver();
   const locations: Array<{
     placeId: string;
@@ -183,6 +187,7 @@ export async function loadEventRelatedMapContent(
     markers: markers.filter((value): value is OwnedMapMarker => Boolean(value)),
     connections: [],
   };
+  */
 }
 
 /** Resolve a URL-addressable public page slice. Do not substitute the viewer
@@ -214,26 +219,58 @@ async function loadSharedMapScopeUncached(
       // profiles, clubs, or source relationships.
       return loadOwnedMapContent(scope.id);
     case "PROFILE": {
-      const profile = await profileById(scope.id);
-      return profile
-        ? loadProfileRelatedMapContent(profile)
-        : emptyMapContent();
+      return projectionMapContent("PROFILE", scope.id);
     }
     case "CLUB": {
-      const club = await getClub(scope.id).catch(() => null);
-      return club ? loadClubRelatedMapContent(club) : emptyMapContent();
+      return projectionMapContent("CLUB", scope.id);
     }
     case "EVENT": {
-      const event = await getEvent(scope.id).catch(() => null);
-      return event ? loadEventRelatedMapContent(event) : emptyMapContent();
+      return projectionMapContent("EVENT", scope.id);
     }
     case "SOURCE": {
-      const result = await getSource(scope.id).catch(() => null);
-      return result?.ok && result.data
-        ? loadSourceRelatedMapContent(result.data)
-        : emptyMapContent();
+      return projectionMapContent("SOURCE", scope.id);
     }
   }
+}
+
+async function projectionMapContent(
+  scope: MapProjection["scope"],
+  id: string,
+): Promise<OwnedMapContent> {
+  const projection = await getMapProjection(scope, id);
+  const thumbnails = await thumbnailUrls(
+    projection.markers.map((marker) => ({
+      resourceType: marker.entityType.toLowerCase() as "profile" | "club" | "source" | "event",
+      resourceId: marker.entityId,
+    })),
+  );
+  return {
+    markers: projection.markers.map((value) => marker({
+      entityType: value.entityType,
+      entityId: value.entityId,
+      locationRole: value.locationRole,
+      label: value.label,
+      placeId: value.placeId,
+      placeName: value.placeName,
+      latitude: value.latitude,
+      longitude: value.longitude,
+      thumbnailUrl: thumbnails.get(`${value.entityType.toLowerCase()}:${value.entityId}`) || null,
+      ...(value.sourcePeriod ? { periods: [value.sourcePeriod] } : {}),
+      ...(value.eventPeriods?.length ? { periods: value.eventPeriods } : {}),
+      temporalFrom: value.sourceFrom ?? value.eventFrom ?? value.profileFrom,
+      temporalTo: value.sourceTo ?? value.eventTo ?? value.profileTo,
+      ...(value.eventEndsAt ? { eventEndsAt: value.eventEndsAt } : {}),
+      path: projectionPath(value.entityType, value.entityId),
+    })),
+    connections: projection.connections,
+  };
+}
+
+function projectionPath(entityType: OwnedMapMarker["entityType"], id: string): string {
+  if (entityType === "PROFILE") return `/profile/${encodeURIComponent(id)}`;
+  if (entityType === "CLUB") return `/clubs/${encodeURIComponent(id)}`;
+  if (entityType === "EVENT") return `/events/${encodeURIComponent(id)}`;
+  return `/library/source/${encodeURIComponent(id)}`;
 }
 
 /**

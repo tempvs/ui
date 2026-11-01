@@ -118,6 +118,19 @@ export type MapEntityLocationPage = {
   counts?: Partial<Record<MapEntityLocation["entityType"], number>>;
 };
 
+export type MapProjection = {
+  scope: "PROFILE" | "CLUB" | "SOURCE" | "EVENT";
+  id: string;
+  markers: MapEntityLocation[];
+  connections: Array<{
+    key: string;
+    fromKey: string;
+    toKey: string;
+    kind: "PROFILE_SOURCE" | "PROFILE_CLUB";
+  }>;
+  updatedAt?: string;
+};
+
 /** A source's two distinct map meanings. These deliberately do not filter
  * profile, club, or event markers when used in a mixed nearby search. */
 export type SourceLocationRole = "DISCOVERED_AT" | "HELD_AT";
@@ -305,6 +318,20 @@ export type PendingMapPlace = MapPlaceProposalRecord & {
 async function responseJson(response: Response): Promise<unknown> {
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+/** Reads Map's materialized graph; it never fans out to Profile, Club, Stash,
+ * or Library in the browser. Empty is valid while a newly-created resource is
+ * waiting for its asynchronous projection event. */
+export async function getMapProjection(
+  scope: MapProjection["scope"],
+  id: string,
+): Promise<MapProjection> {
+  const response = await fetch(
+    `/api/map/projections/${scope.toLowerCase()}/${encodeURIComponent(id)}`,
+  );
+  if (!response.ok) throw new Error("Unable to load map projection");
+  return (await responseJson(response)) as MapProjection;
 }
 
 /** Public approved-place lookup through the same-origin Map API. */

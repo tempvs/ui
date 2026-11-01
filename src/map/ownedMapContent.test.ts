@@ -7,7 +7,7 @@ import {
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent } from "../event/eventApi";
-import { getMapPlacesByReference } from "./mapApi";
+import { getMapPlacesByReference, getMapProjection } from "./mapApi";
 import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
@@ -33,7 +33,10 @@ jest.mock("../profile/stashApi", () => ({
   getProfileStash: jest.fn(),
 }));
 jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
-jest.mock("./mapApi", () => ({ getMapPlacesByReference: jest.fn() }));
+jest.mock("./mapApi", () => ({
+  getMapPlacesByReference: jest.fn(),
+  getMapProjection: jest.fn(),
+}));
 
 const place = {
   id: "rome",
@@ -98,10 +101,42 @@ beforeEach(() => {
       resourceId: "source",
       image: { thumbnailUrl: "https://images.test/source-thumb.jpg" },
     },
+    {
+      resourceType: "event",
+      resourceId: "event",
+      image: { thumbnailUrl: "https://images.test/event.jpg" },
+    },
   ]);
   jest.mocked(getMapPlacesByReference).mockImplementation(async (placeIds) =>
     new Map(placeIds.map((placeId) => [placeId, { ...place, id: placeId }])),
   );
+  jest.mocked(getMapProjection).mockImplementation(async (scope, id) => {
+    if (scope === "CLUB")
+      return {
+        scope, id, markers: [{
+          entityType: "CLUB", entityId: id, locationRole: "CLUB_ASSOCIATION",
+          label: "Legio XXII", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5,
+        }], connections: [],
+      };
+    if (scope === "EVENT")
+      return {
+        scope, id, markers: [
+          { entityType: "EVENT", entityId: id, locationRole: "VENUE", label: "Roman festival", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+          { entityType: "EVENT", entityId: id, locationRole: "HISTORICAL_SITE", label: "Roman festival", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+        ], connections: [],
+      };
+    return {
+      scope, id, markers: [
+        { entityType: "PROFILE", entityId: id, locationRole: "CURRENT_RESIDENCE", label: "Antonius Primvs", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+        { entityType: "CLUB", entityId: "club", locationRole: "CLUB_ASSOCIATION", label: "Legio XXII", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+        { entityType: "SOURCE", entityId: "source", locationRole: "DISCOVERED_AT", label: "Roman find", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+      ],
+      connections: [
+        { key: "profile-club", kind: "PROFILE_CLUB", fromKey: `PROFILE:${id}:CURRENT_RESIDENCE`, toKey: "CLUB:club:CLUB_ASSOCIATION" },
+        { key: "profile-source", kind: "PROFILE_SOURCE", fromKey: `PROFILE:${id}:CURRENT_RESIDENCE`, toKey: "SOURCE:source:DISCOVERED_AT" },
+      ],
+    };
+  });
   jest.mocked(getEvent).mockResolvedValue({
     id: "event",
     name: "Roman festival",
