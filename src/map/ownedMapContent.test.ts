@@ -1,4 +1,4 @@
-import { getParticipants, getProfileClubs } from "../club/clubApi";
+import { getProfileClubs } from "../club/clubApi";
 import { getSource, getSourcesByIds } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
@@ -16,7 +16,6 @@ import {
 } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({
-  getParticipants: jest.fn(),
   getProfileClubs: jest.fn(),
 }));
 jest.mock("../library/libraryApi", () => ({
@@ -70,17 +69,6 @@ beforeEach(() => {
       photoThumbnailUrl: "https://images.test/club-thumb.jpg",
     } as never,
   ]);
-  jest.mocked(getParticipants).mockResolvedValue({
-    content: [
-      {
-        id: "member",
-        nickName: "Member",
-        locationPlaceId: "rome",
-        location: "Roma",
-      },
-    ],
-    hasMore: false,
-  });
   jest.mocked(getProfileStash).mockResolvedValue({
     groups: [{ id: "stash-group" }],
   });
@@ -286,7 +274,7 @@ test("composes a bounded relationship overlay for a public profile page", async 
   );
 });
 
-test("composes a bounded club-to-member overlay", async () => {
+test("renders a club scope as its single club location", async () => {
   const content = await loadClubRelatedMapContent({
     id: "club",
     name: "Legio XXII",
@@ -295,21 +283,10 @@ test("composes a bounded club-to-member overlay", async () => {
     photoThumbnailUrl: "https://images.test/club-thumb.jpg",
   } as never);
 
-  expect(content.markers).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
-      expect.objectContaining({ key: "PROFILE:member:CURRENT_RESIDENCE" }),
-    ]),
-  );
-  expect(content.connections).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        kind: "PROFILE_CLUB",
-        fromKey: "PROFILE:member:CURRENT_RESIDENCE",
-        toKey: "CLUB:club:CLUB_ASSOCIATION",
-      }),
-    ]),
-  );
+  expect(content.markers).toEqual([
+    expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
+  ]);
+  expect(content.connections).toEqual([]);
 });
 
 test("resolves an event share scope to its public venue and historical-site pins", async () => {

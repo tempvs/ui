@@ -1,6 +1,5 @@
 import {
   getClub,
-  getParticipants,
   getProfileClubs,
   type Club,
 } from "../club/clubApi";
@@ -105,32 +104,18 @@ export async function loadProfileRelatedMapContent(
   };
 }
 
-/** A club-location counterpart to the profile overlay. The club API returns a
- * cursor-paginated member list; the compact modal deliberately renders its
- * first bounded page rather than turning a map click into an unbounded crawl. */
+/** A club map is intentionally just the club's own canonical location.
+ * Membership is a relationship of a profile map, not a reason to fetch or
+ * expose every member's location when somebody opens a club map. Besides
+ * keeping the scope truthful, this avoids a second profile/thumbnail/place
+ * traversal for every club card and keeps the modal bounded to one point. */
 export async function loadClubRelatedMapContent(
   club: Club,
 ): Promise<OwnedMapContent> {
   const resolvePlace = placeResolver();
-  const [clubMarkers, participantPage] = await Promise.all([
-    clubMapMarkers([club], resolvePlace),
-    getParticipants(club.id).catch(() => ({ content: [] })),
-  ]);
-  const participants = participantPage.content;
-  const profileMarkers = await profileMapMarkers(participants, resolvePlace);
-  const markers = [...clubMarkers, ...profileMarkers];
-  const memberships = new Map(
-    participants.map((profile) => [profile.id, [club]]),
-  );
   return {
-    markers,
-    connections: buildConnections(
-      markers,
-      undefined,
-      participants,
-      memberships,
-      new Map(),
-    ),
+    markers: await clubMapMarkers([club], resolvePlace),
+    connections: [],
   };
 }
 
