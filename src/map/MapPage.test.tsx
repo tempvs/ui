@@ -33,6 +33,7 @@ jest.mock("./MapCanvas", () => {
       selectedPlaceId,
       focus,
       initialFitPoints,
+      entities = [],
     }: {
       places: Array<{
         id: string;
@@ -42,6 +43,7 @@ jest.mock("./MapCanvas", () => {
       selectedPlaceId?: string | null;
       focus?: { latitude: number; longitude: number } | null;
       initialFitPoints?: Array<{ key: string }>;
+      entities?: Array<{ key?: string; label: string }>;
     }) =>
       React.createElement(
         "div",
@@ -56,6 +58,13 @@ jest.mock("./MapCanvas", () => {
             "span",
             { key: place.id },
             place.matchedName || place.canonicalName,
+          ),
+        ),
+        entities.map((entity, index) =>
+          React.createElement(
+            "span",
+            { key: entity.key || `entity-${index}` },
+            entity.label,
           ),
         ),
       ),
@@ -198,7 +207,7 @@ test("searches places while typing and labels the selected marker with the match
     await Promise.resolve();
   });
   await waitFor(() => {
-    expect(mockNearbyMapPlaces).toHaveBeenCalledWith(49.0198, 12.0985, 25);
+    expect(mockNearbyMapPlaces).not.toHaveBeenCalled();
     expect(screen.getByTestId("map-canvas")).toHaveAttribute(
       "data-selected-place",
       "seed:pleiades:118929",
@@ -209,7 +218,7 @@ test("searches places while typing and labels the selected marker with the match
   jest.useRealTimers();
 });
 
-test("searches nearby content after both coordinate fields lose focus", async () => {
+test("focuses the map after both coordinate fields lose focus without loading nearby places", async () => {
   render(
     <MemoryRouter>
       <MapPage />
@@ -225,8 +234,12 @@ test("searches nearby content after both coordinate fields lose focus", async ()
   fireEvent.blur(screen.getByLabelText("Longitude"));
 
   await waitFor(() =>
-    expect(mockNearbyMapPlaces).toHaveBeenCalledWith(41.9, 12.5, 25),
+    expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+      "data-focus",
+      "41.9,12.5",
+    ),
   );
+  expect(mockNearbyMapPlaces).not.toHaveBeenCalled();
   expect(screen.getByTestId("map-canvas")).toHaveAttribute(
     "data-focus",
     "41.9,12.5",
@@ -325,10 +338,14 @@ test("loads the next bounded page of nearby compact markers", async () => {
     </MemoryRouter>,
   );
 
-  expect(await screen.findByText("First profile")).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "First profile" }),
+  ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Show more" }));
 
-  expect(await screen.findByText("Second profile")).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Second profile" }),
+  ).toBeInTheDocument();
   expect(mockNearbyMapEntitiesPage).toHaveBeenLastCalledWith(
     41.9,
     12.5,
@@ -531,7 +548,9 @@ test("hides out-of-range map markers before and after a year-filter refresh", as
     </MemoryRouter>,
   );
 
-  expect(await screen.findByText("Medieval source")).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Medieval source" }),
+  ).toBeInTheDocument();
   fireEvent.change(screen.getAllByRole("textbox", { name: "Year" })[0], {
     target: { value: "1500" },
   });
@@ -539,7 +558,9 @@ test("hides out-of-range map markers before and after a year-filter refresh", as
   await waitFor(() =>
     expect(mockNearbyMapEntitiesPage.mock.calls.length).toBeGreaterThan(1),
   );
-  expect(screen.queryByText("Medieval source")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: "Medieval source" }),
+  ).not.toBeInTheDocument();
 });
 
 test("filters profile markers immediately when a profile type is unchecked", async () => {

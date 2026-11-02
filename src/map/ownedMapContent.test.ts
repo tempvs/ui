@@ -107,6 +107,11 @@ beforeEach(() => {
       image: { thumbnailUrl: "https://images.test/profile-thumb.jpg" },
     },
     {
+      resourceType: "club",
+      resourceId: "club",
+      image: { thumbnailUrl: "https://images.test/club-thumb.jpg" },
+    },
+    {
       resourceType: "source",
       resourceId: "source",
       image: { thumbnailUrl: "https://images.test/source-thumb.jpg" },
@@ -190,7 +195,7 @@ test("composes profile, membership club, and club-stash source markers", async (
     expect.arrayContaining([
       expect.objectContaining({
         kind: "PROFILE_CLUB",
-        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        fromKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
         toKey: "CLUB:club:CLUB_ASSOCIATION",
       }),
       expect.objectContaining({
@@ -198,20 +203,16 @@ test("composes profile, membership club, and club-stash source markers", async (
         fromKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
         toKey: "SOURCE:source:DISCOVERED_AT",
       }),
-      expect.objectContaining({
-        kind: "USER_CLUB_PROFILE",
-        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
-        toKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
-      }),
     ]),
   );
-  // Personal profile, club membership, and source all share Rome; the map
-  // overlay must resolve that canonical place once instead of fanning out a
-  // duplicate map request for every marker.
-  expect(getMapPlacesByReference).toHaveBeenCalledTimes(1);
-  expect(getMapPlacesByReference).toHaveBeenCalledWith(["rome"]);
-  expect(getSourcesByIds).toHaveBeenCalledWith(["source"]);
-  expect(getImageThumbnails).toHaveBeenCalledTimes(3);
+  // Persisted projections already carry their locations, so loading an owned
+  // map does not need to resolve places individually.
+  expect(getMapPlacesByReference).not.toHaveBeenCalled();
+  expect(getSourcesByIds).not.toHaveBeenCalled();
+  expect(getMapProjections).toHaveBeenCalledWith("PROFILE", [
+    "personal",
+    "club-profile",
+  ]);
   expect(
     content.markers.filter((marker) => marker.entityId === "source"),
   ).toHaveLength(1);
