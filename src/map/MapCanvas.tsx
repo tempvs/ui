@@ -9,6 +9,7 @@ import {
 } from "./mapApi";
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
+import { closeMapPopup, showMapPopup } from "./mapPopups";
 import "./map.css";
 
 /** Required attribution for the bundled Natural Earth reference basemap. */
@@ -235,10 +236,10 @@ export default function MapCanvas({
       zoom: 1.1,
       minZoom: 0,
       maxZoom: 12,
-      // Keep a complete world available when a user pans a compact modal or
-      // the full Map page. Being explicit avoids blank copies at the
-      // antimeridian while the self-hosted GeoJSON basemap is in use.
-      renderWorldCopies: true,
+      // Show one world with its horizontal edges at the Pacific date line.
+      // MapLibre applies the camera constraint for this mode itself; explicit
+      // bounds of exactly -180/+180 wrap to the same coordinate in v4.
+      renderWorldCopies: false,
       // Keep parent tiles available during zoom-out transitions. With a
       // small, fully cached GeoJSON world there is no network saving from
       // cancelling them; cancelling can leave a clipped child tile visible
@@ -273,6 +274,7 @@ export default function MapCanvas({
       if (!/source .* is not loaded/i.test(message)) errorRef.current(message);
     });
     next.on("click", (event) => {
+      closeMapPopup(next);
       coordinatePickRef.current?.({
         latitude: event.lngLat.lat,
         longitude: event.lngLat.lng,
@@ -311,6 +313,7 @@ export default function MapCanvas({
       ownedMarkerInstances.current.forEach((marker) => marker.remove());
       ownedMarkerInstances.current = [];
       disposeMarkerLayers?.();
+      closeMapPopup(next);
       next.remove();
       map.current = null;
     };
@@ -990,8 +993,8 @@ function addMarkerLayers(
       maxWidth: "18rem",
     })
       .setLngLat(coordinatesFromFeature(feature))
-      .setDOMContent(markerLinksPopover(marker))
-      .addTo(map);
+      .setDOMContent(markerLinksPopover(marker));
+    showMapPopup(map, popup);
     if (!persistent) {
       entityHoverPopup = popup;
       popup.getElement()?.addEventListener("mouseenter", () => {
@@ -1027,14 +1030,14 @@ function addMarkerLayers(
     if (!place) return;
     const coordinates = (event.features?.[0]?.geometry as GeoJSON.Point)
       .coordinates as [number, number];
-    new maplibregl.Popup({
+    const popup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: true,
       maxWidth: "18rem",
     })
       .setLngLat(coordinates)
-      .setDOMContent(placePopover(place))
-      .addTo(map);
+      .setDOMContent(placePopover(place));
+    showMapPopup(map, popup);
   };
   map.on("click", "map-place-points", openPlace);
   for (const layer of [
@@ -1091,7 +1094,7 @@ function addMarkerLinksPopup(
   };
   const open = () => {
     if (popup) return;
-    popup = new maplibregl.Popup({
+    const nextPopup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
       anchor: "bottom",
@@ -1104,19 +1107,21 @@ function addMarkerLinksPopup(
       maxWidth: "18rem",
     })
       .setLngLat([marker.longitude, marker.latitude])
-      .setDOMContent(markerLinksPopover(marker))
-      .addTo(map);
+      .setDOMContent(markerLinksPopover(marker));
+    popup = nextPopup;
+    nextPopup.once("close", () => {
+      if (popup === nextPopup) popup = null;
+    });
+    showMapPopup(map, nextPopup);
   };
   trigger.addEventListener("mouseenter", open);
   trigger.addEventListener("focus", open);
   // A marker popup is a small interactive card, not a transient native
   // tooltip. Keep it present after hover so its resource and place links are
   // always reachable; clicking the map dismisses it.
-  map.on("click", close);
   return () => {
     trigger.removeEventListener("mouseenter", open);
     trigger.removeEventListener("focus", open);
-    map.off("click", close);
     close();
   };
 }
