@@ -27,6 +27,13 @@ import {
 import type { PublicMapReference } from "../map/MapReferenceAttachment";
 import { stageMapAttachment } from "../map/pendingMapAttachment";
 import { getViewer } from "../auth/viewerApi";
+import {
+  fetchClubProfiles,
+  getUserProfileByUserId,
+} from "../profile/profileApi";
+import ProfileSearchPicker from "../profile/components/ProfileSearchPicker";
+import type { Profile } from "../profile/profileTypes";
+import { getProfileClubs, type Club } from "../club/clubApi";
 
 type RelatedMapModalProps = {
   placeId: string;
@@ -85,7 +92,12 @@ export default function RelatedMapModal({
   const [copied, setCopied] = useState(false);
   const [snapshotStatus, setSnapshotStatus] = useState("");
   const [showShare, setShowShare] = useState(false);
-  const [shareTitle, setShareTitle] = useState(displayName);
+  const [shareDestination, setShareDestination] = useState<
+    "chat" | "profile" | "club"
+  >("chat");
+  const [shareProfiles, setShareProfiles] = useState<Profile[]>([]);
+  const [shareClubs, setShareClubs] = useState<Club[]>([]);
+  const [shareLoading, setShareLoading] = useState(false);
   const [showSave, setShowSave] = useState(false);
   const [saveTitle, setSaveTitle] = useState(displayName);
   const [authenticated, setAuthenticated] = useState(false);
@@ -105,6 +117,7 @@ export default function RelatedMapModal({
         longitude: place.longitude,
         radiusKm,
         entityTypes: allEntityTypes,
+        ...(scope ? { scope } : {}),
       }
     : null;
 
@@ -138,15 +151,19 @@ export default function RelatedMapModal({
     }
   };
 
-  const destinationPath = scope
-    ? scope.type === "PROFILE"
-      ? `/profile/${scope.id}`
-      : scope.type === "CLUB"
-        ? `/clubs/${scope.id}`
-        : scope.type === "EVENT"
-          ? `/events/${scope.id}`
-          : null
-    : null;
+  const sendTo = (
+    pathname: string,
+    target?: { type: "PROFILE" | "CLUB"; id: string },
+  ) => {
+    if (!mapReference) return;
+    stageMapAttachment(mapReference, undefined, target);
+    setShowShare(false);
+    setShow(false);
+    window.setTimeout(
+      () => navigate(pathname, { state: target ? { mapAttachment: mapReference, mapTarget: target } : { composeMap: true } }),
+      0,
+    );
+  };
 
   useEffect(() => {
     let active = true;
@@ -161,6 +178,51 @@ export default function RelatedMapModal({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showShare || !authenticated) return;
+    let active = true;
+    setShareLoading(true);
+    void Promise.all([
+      getViewer(),
+    ])
+      .then(async ([viewer]) => {
+        if (!viewer || !active) return;
+        const [personal, clubProfiles] = await Promise.all([
+          getUserProfileByUserId(viewer.userId).catch(() => null),
+          new Promise<Profile[]>((resolve) =>
+            fetchClubProfiles(viewer.userId, {
+              onSuccess: (profiles) => resolve(profiles || []),
+              onError: () => resolve([]),
+            }),
+          ),
+        ]);
+        if (!active) return;
+        const profiles = [
+          ...(personal ? [personal] : []),
+          ...clubProfiles,
+        ];
+        setShareProfiles(profiles);
+        if (shareDestination !== "club") return;
+        const groups = await Promise.all(
+          profiles.map((profile) => getProfileClubs(profile.id).catch(() => [])),
+        );
+        if (active)
+          setShareClubs(
+            Array.from(
+              new Map(
+                groups.flat().map((club) => [String(club.id), club]),
+              ).values(),
+            ),
+          );
+      })
+      .finally(() => {
+        if (active) setShareLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [authenticated, shareDestination, showShare]);
 
   useEffect(() => {
     if (!show) return undefined;
@@ -413,10 +475,8 @@ export default function RelatedMapModal({
                 aria-label="Send map"
                 onClick={() => {
                   setShow(false);
-                  // All map sharing routes through MapPage's destination picker.
-                  // This keeps profile, club, source, and map-page shares in one
-                  // consistent flow rather than maintaining parallel send UIs.
-                  navigate(`${mapPath}${mapPath.includes("?") ? "&" : "?"}share=true`);
+                  setShareDestination("chat");
+                  setShowShare(true);
                 }}
               >
                 <PaperPlaneIconButton aria-hidden />
@@ -473,87 +533,82 @@ export default function RelatedMapModal({
         </Modal.Header>
         <Modal.Body>
           <p>
-            Choose a destination. It saves the map automatically, then opens the
-            destination composer with the attachment ready.
+            Choose where to post this map. It is attached immediately; saving a
+            separate map snapshot is optional.
           </p>
-          <Form.Group className="mb-3">
-            <Form.Label htmlFor={`related-map-share-title-${placeId}`}>
-              Saved map name
-            </Form.Label>
-            <Form.Control
-              id={`related-map-share-title-${placeId}`}
-              value={shareTitle}
-              maxLength={200}
-              onChange={(event) => setShareTitle(event.target.value)}
-            />
-          </Form.Group>
           <div className="d-flex gap-2 flex-wrap">
             <Button
-              variant="outline-dark"
-              onClick={() => {
-                void saveCurrentMap(shareTitle).then((reference) => {
-                  if (!reference) return;
-                  setShowShare(false);
-                  setShow(false);
-                  navigate("/map/saved");
-                });
-              }}
+              variant={shareDestination === "chat" ? "dark" : "outline-dark"}
+              onClick={() => setShareDestination("chat")}
             >
-              Save map
+              Chat
             </Button>
-            <LinkButton
-              className="btn btn-outline-dark"
-              onClick={() => {
-                void saveCurrentMap(shareTitle).then((reference) => {
-                  if (!reference) return;
-                  stageMapAttachment(reference);
-                  navigate("/chat");
-                  setShowShare(false);
-                });
-              }}
+            <Button
+              variant={shareDestination === "profile" ? "dark" : "outline-dark"}
+              onClick={() => setShareDestination("profile")}
             >
-              Direct or group chat
-            </LinkButton>
-            {destinationPath && scope && (
-              <LinkButton
-                className="btn btn-outline-dark"
-                onClick={() => {
-                  void saveCurrentMap(shareTitle).then((reference) => {
-                    if (!reference) return;
-                    stageMapAttachment(reference);
-                    navigate(destinationPath);
-                    setShowShare(false);
-                  });
-                }}
-              >
-                {scope.type[0] + scope.type.slice(1).toLowerCase()} wall
-              </LinkButton>
+              Profile wall
+            </Button>
+            <Button
+              variant={shareDestination === "club" ? "dark" : "outline-dark"}
+              onClick={() => setShareDestination("club")}
+            >
+              Club wall
+            </Button>
+          </div>
+          <div className="mt-3">
+            {shareDestination === "chat" && (
+              <Button variant="dark" onClick={() => sendTo("/chat")}>
+                Choose chat recipient
+              </Button>
+            )}
+            {shareDestination === "profile" && (
+              shareLoading ? (
+                <span className="small text-muted">Loading profiles…</span>
+              ) : (
+                <ProfileSearchPicker
+                  ownedProfiles={shareProfiles}
+                  includeOwnedMatchesWhenSearching={false}
+                  placeholder="Search profiles by name or alias"
+                  selectLabel="Post map"
+                  onSelect={(profile) =>
+                    sendTo(`/profile/${profile.alias || profile.id}`, {
+                      type: "PROFILE",
+                      id: String(profile.id),
+                    })
+                  }
+                />
+              )
+            )}
+            {shareDestination === "club" && (
+              shareLoading ? (
+                <span className="small text-muted">Loading clubs…</span>
+              ) : shareClubs.length ? (
+                <div className="d-flex flex-column gap-2">
+                  {shareClubs.map((club) => (
+                    <Button
+                      key={club.id}
+                      variant="outline-dark"
+                      className="text-start"
+                      onClick={() =>
+                        sendTo(`/clubs/${club.alias || club.id}`, {
+                          type: "CLUB",
+                          id: String(club.id),
+                        })
+                      }
+                    >
+                      {club.name}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <span className="small text-muted">No managed club walls found.</span>
+              )
             )}
           </div>
         </Modal.Body>
       </Modal>
     </>
-  );
-}
-
-function LinkButton({
-  className,
-  children,
-  onClick,
-}: {
-  className: string;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      className={className}
-      variant="outline-dark"
-      onClick={onClick}
-    >
-      {children}
-    </Button>
   );
 }
 
