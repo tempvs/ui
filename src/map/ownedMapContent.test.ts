@@ -3,6 +3,7 @@ import { getSource, getSourcesByIds } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
+  getProfilesByIds,
   getUserProfileByUserId,
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
@@ -25,6 +26,7 @@ jest.mock("../library/libraryApi", () => ({
 jest.mock("../image/imageApi", () => ({ getImageThumbnails: jest.fn() }));
 jest.mock("../profile/profileApi", () => ({
   getClubProfiles: jest.fn(),
+  getProfilesByIds: jest.fn(),
   getUserProfileByUserId: jest.fn(),
   fetchProfileById: jest.fn(),
 }));
@@ -62,6 +64,9 @@ beforeEach(() => {
       nickName: "Legio",
       locationPlaceId: "rome",
     },
+  ]);
+  jest.mocked(getProfilesByIds).mockResolvedValue([
+    { id: "personal", alias: "albvs" },
   ]);
   jest.mocked(getProfileClubs).mockResolvedValue([
     {

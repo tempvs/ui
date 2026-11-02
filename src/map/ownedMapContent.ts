@@ -9,6 +9,7 @@ import {
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
+  getProfilesByIds,
   getUserProfileByUserId,
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
@@ -237,14 +238,29 @@ async function projectionMapContent(
   id: string,
 ): Promise<OwnedMapContent> {
   const projection = await getMapProjection(scope, id);
-  const thumbnails = await thumbnailUrls(
-    projection.markers.map((marker) => ({
-      resourceType: marker.entityType.toLowerCase() as "profile" | "club" | "source" | "event",
-      resourceId: marker.entityId,
-    })),
+  const markers = deduplicateProjectionMarkers(projection.markers);
+  const [thumbnails, profiles] = await Promise.all([
+    thumbnailUrls(
+      markers.map((marker) => ({
+        resourceType: marker.entityType.toLowerCase() as
+          | "profile"
+          | "club"
+          | "source"
+          | "event",
+        resourceId: marker.entityId,
+      })),
+    ),
+    getProfilesByIds(
+      markers
+        .filter((marker) => marker.entityType === "PROFILE")
+        .map((marker) => marker.entityId),
+    ).catch(() => []),
+  ]);
+  const profileAliases = new Map(
+    profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
   );
   return {
-    markers: projection.markers.map((value) => marker({
+    markers: markers.map((value) => marker({
       entityType: value.entityType,
       entityId: value.entityId,
       locationRole: value.locationRole,
@@ -259,14 +275,35 @@ async function projectionMapContent(
       temporalFrom: value.sourceFrom ?? value.eventFrom ?? value.profileFrom,
       temporalTo: value.sourceTo ?? value.eventTo ?? value.profileTo,
       ...(value.eventEndsAt ? { eventEndsAt: value.eventEndsAt } : {}),
-      path: projectionPath(value.entityType, value.entityId),
+      path: projectionPath(
+        value.entityType,
+        value.entityId,
+        profileAliases.get(value.entityId),
+      ),
     })),
     connections: projection.connections,
   };
 }
 
-function projectionPath(entityType: OwnedMapMarker["entityType"], id: string): string {
-  if (entityType === "PROFILE") return `/profile/${encodeURIComponent(id)}`;
+function deduplicateProjectionMarkers(
+  markers: MapProjection["markers"],
+): MapProjection["markers"] {
+  const profiles = markers.filter((marker) => marker.entityType === "PROFILE");
+  const preferredProfile =
+    profiles.find((marker) => marker.locationRole === "CURRENT_RESIDENCE") ??
+    profiles[0];
+  return markers.filter(
+    (marker) => marker.entityType !== "PROFILE" || marker === preferredProfile,
+  );
+}
+
+function projectionPath(
+  entityType: OwnedMapMarker["entityType"],
+  id: string,
+  profileAlias?: string,
+): string {
+  if (entityType === "PROFILE")
+    return `/profile/${encodeURIComponent(profileAlias || id)}`;
   if (entityType === "CLUB") return `/clubs/${encodeURIComponent(id)}`;
   if (entityType === "EVENT") return `/events/${encodeURIComponent(id)}`;
   return `/library/source/${encodeURIComponent(id)}`;
