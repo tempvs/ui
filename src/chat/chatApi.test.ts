@@ -97,3 +97,21 @@ test('extracts a stale active profile id from the Chat API error', () => {
   expect(activeProfileNotFoundId(new Error(`Active profile ${PROFILE_2} not found`))).toBe(PROFILE_2);
   expect(activeProfileNotFoundId(new Error('Chat route not found'))).toBeNull();
 });
+
+test.each(['SOURCE', 'CLUB', 'EVENT', 'PROFILE'] as const)(
+  'preserves the original %s map scope when sending and reading a chat message',
+  async (type) => {
+    const mapReference = {
+      latitude: 41.9, longitude: 12.5, radiusKm: 25,
+      entityTypes: [type], scope: { type, id: 'origin-resource' },
+    };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(response({
+      ...details, messages: [{ ...details.messages[0], mapReference }],
+    }));
+    const result = await sendMessage(conversation.id, {
+      senderProfileId: PROFILE_2, text: '', mapReference,
+    }, `map-${type}`);
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).mapReference).toEqual(mapReference);
+    expect(result.messages[0].mapReference).toEqual(mapReference);
+  },
+);

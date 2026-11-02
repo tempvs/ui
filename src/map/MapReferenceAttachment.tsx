@@ -143,11 +143,7 @@ export default function MapReferenceAttachment({
 }: {
   reference: PublicMapReference;
   className?: string;
-  /**
-   * A profile page establishes the public profile that owns its posts. Use
-   * that relationship graph alongside a saved attachment's own scope so both
-   * legacy and explicitly scoped attachments retain profile/source edges.
-   */
+  /** Used only for old attachments without their own originating scope. */
   relationshipScope?: SharedMapScope;
 }) {
   const [mapError, setMapError] = useState(false);
@@ -318,9 +314,6 @@ export default function MapReferenceAttachment({
           {!mapError && (
             <MapPreview
               reference={resolvedReference}
-              supplementalScope={
-                reference.scope ? stableRelationshipScope : undefined
-              }
               staticPreview
               onError={() => setMapError(true)}
             />
@@ -360,9 +353,6 @@ export default function MapReferenceAttachment({
           <div className="map-reference-modal-canvas">
             {show && modalMapReady && <MapPreview
               reference={resolvedReference}
-              supplementalScope={
-                reference.scope ? stableRelationshipScope : undefined
-              }
               eager
               onError={() => setStatus("Map preview unavailable.")}
             />}
@@ -498,13 +488,11 @@ export default function MapReferenceAttachment({
 
 function MapPreview({
   reference,
-  supplementalScope,
   eager = false,
   staticPreview = false,
   onError,
 }: {
   reference: PublicMapReference;
-  supplementalScope?: SharedMapScope;
   eager?: boolean;
   staticPreview?: boolean;
   onError: () => void;
@@ -520,7 +508,7 @@ function MapPreview({
   );
   const rootRef = useRef<HTMLDivElement>(null);
   const loadedContentKey = useRef<string | null>(null);
-  const contentKey = JSON.stringify({ reference, supplementalScope });
+  const contentKey = JSON.stringify(reference);
   useEffect(() => {
     if (eager || typeof IntersectionObserver === "undefined") return undefined;
     const root = rootRef.current;
@@ -545,16 +533,10 @@ function MapPreview({
     // club wall with several embedded maps, creates an avoidable Map API
     // request burst. Unscoped copied map links retain nearby discovery.
     if (reference.scope) {
-      const scopes = [reference.scope, supplementalScope].filter(
-        (scope): scope is SharedMapScope => Boolean(scope),
-      );
-      const uniqueScopes = Array.from(
-        new Map(scopes.map((scope) => [`${scope.type}:${scope.id}`, scope])),
-      ).map(([, scope]) => scope);
-      void Promise.all(uniqueScopes.map(loadSharedMapScope))
-        .then((parts) => {
+      void loadSharedMapScope(reference.scope)
+        .then((part) => {
           if (active) {
-            setContent(mergeMapContent(parts));
+            setContent(part);
             setContentReady(true);
             loadedContentKey.current = contentKey;
           }
@@ -577,18 +559,21 @@ function MapPreview({
     contentKey,
     onError,
     reference,
-    supplementalScope,
     visible,
   ]);
   const fitPoints = embeddedMapFitPoints(reference, content, entities);
   const hasVisibleMapContent = content.markers.length > 0 || entities.length > 0;
+  const missingScopedContent = Boolean(reference.scope) && !hasVisibleMapContent;
   return (
     <div
       ref={rootRef}
       className="map-reference-canvas"
       data-testid="map-preview-frame"
     >
-      {visible && contentReady && staticPreview && (
+      {visible && contentReady && missingScopedContent && (
+        <p className="small text-muted p-3">This map's locations are unavailable.</p>
+      )}
+      {visible && contentReady && !missingScopedContent && staticPreview && (
         <StaticMapPreview
           reference={reference}
           markers={content.markers}
@@ -596,7 +581,7 @@ function MapPreview({
           connections={content.connections}
         />
       )}
-      {visible && contentReady && !staticPreview && (
+      {visible && contentReady && !missingScopedContent && !staticPreview && (
         <MapCanvas
           places={[]}
           entities={entities}
@@ -623,20 +608,6 @@ function MapPreview({
   );
 }
 
-
-/** Keep each attachment's saved map context while adding a profile relation
- * graph. Keys are stable resource/location identifiers, so de-duplication is
- * deterministic even where both scopes include the same marker or edge. */
-export function mergeMapContent(parts: OwnedMapContent[]): OwnedMapContent {
-  return {
-    markers: Array.from(
-      new Map(parts.flatMap((part) => part.markers.map((marker) => [marker.key, marker]))).values(),
-    ),
-    connections: Array.from(
-      new Map(parts.flatMap((part) => part.connections.map((edge) => [edge.key, edge]))).values(),
-    ),
-  };
-}
 
 /**
  * A map reference can resolve to either an explicitly shared graph or public

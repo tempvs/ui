@@ -4,11 +4,34 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 
 import MapReferenceAttachment, {
   embeddedMapFitPoints,
-  mergeMapContent,
   publicMapReferenceFromUrl,
 } from "./MapReferenceAttachment";
+import { loadSharedMapScope } from "./ownedMapContent";
 
 jest.mock("./LazyMapCanvas", () => () => <div data-testid="map-preview" />);
+jest.mock("./StaticMapPreview", () => () => <div data-testid="static-preview" />);
+jest.mock("./ownedMapContent", () => ({ loadSharedMapScope: jest.fn() }));
+
+beforeEach(() => {
+  jest.mocked(loadSharedMapScope).mockResolvedValue({ markers: [], connections: [] });
+});
+
+test.each(["SOURCE", "CLUB", "EVENT"] as const)(
+  "keeps the original %s graph on a profile wall and in its opened modal",
+  async (type) => {
+    const scope = { type, id: `${type.toLowerCase()}-1` };
+    render(<MemoryRouter><MapReferenceAttachment
+      reference={{ latitude: 41.9, longitude: 12.5, radiusKm: 25,
+        entityTypes: [type], scope }}
+      relationshipScope={{ type: "PROFILE", id: "destination-profile" }}
+    /></MemoryRouter>);
+    await waitFor(() => expect(loadSharedMapScope).toHaveBeenCalledWith(scope));
+    fireEvent.click(screen.getByRole("button", { name: "Open shared map: Shared map" }));
+    await screen.findByRole("dialog");
+    await waitFor(() => expect(loadSharedMapScope).toHaveBeenCalledTimes(2));
+    expect(jest.mocked(loadSharedMapScope).mock.calls).toEqual([[scope], [scope]]);
+  },
+);
 
 test("renders a bounded public map reference and opens its public map URL", () => {
   render(
@@ -126,35 +149,6 @@ test("restores a profile relationship scope for legacy embedded maps", () => {
   );
 
   expect(screen.getByRole("button", { name: "Open in Map" })).toBeInTheDocument();
-});
-
-test("keeps attachment content while adding profile relationship edges", () => {
-  const merged = mergeMapContent([
-    {
-      markers: [{ key: "SOURCE:source:DISCOVERED_AT" } as never],
-      connections: [],
-    },
-    {
-      markers: [
-        { key: "PROFILE:profile:CURRENT_RESIDENCE" } as never,
-        { key: "SOURCE:source:DISCOVERED_AT" } as never,
-      ],
-      connections: [
-        {
-          key: "PROFILE_SOURCE:profile:source",
-          fromKey: "PROFILE:profile:CURRENT_RESIDENCE",
-          toKey: "SOURCE:source:DISCOVERED_AT",
-          kind: "PROFILE_SOURCE",
-        },
-      ],
-    },
-  ]);
-
-  expect(merged.markers.map((marker) => marker.key)).toEqual([
-    "SOURCE:source:DISCOVERED_AT",
-    "PROFILE:profile:CURRENT_RESIDENCE",
-  ]);
-  expect(merged.connections).toHaveLength(1);
 });
 
 test("frames every nearby entity in an embedded public map", () => {

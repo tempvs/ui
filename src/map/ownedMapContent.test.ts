@@ -1,5 +1,5 @@
-import { getProfileClubs } from "../club/clubApi";
-import { getSource, getSourcesByIds } from "../library/libraryApi";
+import { getClub, getProfileClubs } from "../club/clubApi";
+import { getSource, getSourceImages, getSourcesByIds } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
@@ -23,10 +23,12 @@ import {
 } from "./ownedMapContent";
 
 jest.mock("../club/clubApi", () => ({
+  getClub: jest.fn(),
   getProfileClubs: jest.fn(),
 }));
 jest.mock("../library/libraryApi", () => ({
   getSource: jest.fn(),
+  getSourceImages: jest.fn(),
   getSourcesByIds: jest.fn(),
 }));
 jest.mock("../image/imageApi", () => ({ getImageThumbnails: jest.fn() }));
@@ -394,6 +396,56 @@ test("connects both saved source locations without traversing a source page", as
       toKey: "SOURCE:source:HELD_AT",
     }),
   ]);
+});
+
+test("restores a legacy shared source map with both carousel thumbnails and its connection", async () => {
+  jest.mocked(getMapProjection).mockResolvedValueOnce({
+    scope: "SOURCE", id: "legacy-shared-source", markers: [], connections: [],
+  });
+  jest.mocked(getSource).mockResolvedValueOnce({ ok: true, status: 200, data: {
+    id: "legacy-shared-source", version: 1, name: "Caligae",
+    discoveredAtPlaceId: "mainz", discoveredAtPlaceName: "Mainz",
+    heldAtPlaceId: "museum", heldAtPlaceName: "Museum",
+  } });
+  jest.mocked(getSourceImages).mockResolvedValueOnce({ ok: true, status: 200,
+    data: [{ id: "first", thumbnailUrl: "https://images.test/carousel-first.jpg" }] });
+  const content = await loadSharedMapScope({ type: "SOURCE", id: "legacy-shared-source" });
+  expect(content.markers).toHaveLength(2);
+  expect(content.markers.map((pin) => pin.locationRole)).toEqual(["DISCOVERED_AT", "HELD_AT"]);
+  expect(content.markers.every((pin) => pin.thumbnailUrl === "https://images.test/carousel-first.jpg")).toBe(true);
+  expect(content.connections).toEqual([expect.objectContaining({ kind: "SOURCE_LOCATIONS" })]);
+  expect(getProfileClubs).not.toHaveBeenCalled();
+  expect(getProfileStash).not.toHaveBeenCalled();
+  expect(getMapProjection).toHaveBeenCalledTimes(1);
+});
+
+test("restores a shared club avatar when its projection has no location yet", async () => {
+  jest.mocked(getMapProjection).mockResolvedValueOnce({
+    scope: "CLUB", id: "legacy-shared-club", markers: [], connections: [],
+  });
+  jest.mocked(getClub).mockResolvedValueOnce({
+    id: "legacy-shared-club", name: "Club", locationPlaceId: "rome",
+    photoThumbnailUrl: "https://images.test/club.jpg",
+  } as never);
+  const content = await loadSharedMapScope({ type: "CLUB", id: "legacy-shared-club" });
+  expect(content.markers).toEqual([expect.objectContaining({
+    entityType: "CLUB", thumbnailUrl: "https://images.test/club.jpg",
+  })]);
+  expect(content.connections).toEqual([]);
+});
+
+test("restores both places and the image for a shared event with an empty projection", async () => {
+  jest.mocked(getMapProjection).mockResolvedValueOnce({
+    scope: "EVENT", id: "legacy-shared-event", markers: [], connections: [],
+  });
+  jest.mocked(getEvent).mockResolvedValueOnce({
+    id: "legacy-shared-event", name: "Event", venuePlaceId: "rome",
+    historicalSitePlaceId: "site", image: { thumbnailUrl: "https://images.test/event.jpg" },
+  } as never);
+  const content = await loadSharedMapScope({ type: "EVENT", id: "legacy-shared-event" });
+  expect(content.markers).toHaveLength(2);
+  expect(content.markers.every((pin) => pin.thumbnailUrl === "https://images.test/event.jpg")).toBe(true);
+  expect(content.connections).toEqual([expect.objectContaining({ kind: "EVENT_LOCATIONS" })]);
 });
 
 test("resolves an event share scope to its public venue and historical-site pins", async () => {

@@ -1,13 +1,12 @@
-import type { Club } from "../club/clubApi";
-import type { LibrarySource } from "../library/libraryApi";
-import type { LibrarySourceImage } from "../library/libraryApi";
+import { getClub, type Club } from "../club/clubApi";
+import { getSource, getSourceImages, type LibrarySource, type LibrarySourceImage } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
   getProfilesByIds,
   getUserProfileByUserId,
 } from "../profile/profileApi";
-import type { TempvsEvent } from "../event/eventApi";
+import { getEvent, type TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
 import {
   getMapPlacesByReference,
@@ -118,7 +117,11 @@ export async function loadProfileRelatedMapContent(
 export async function loadClubRelatedMapContent(
   club: Club,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("CLUB", String(club.id), [
+  return projectionMapContent("CLUB", String(club.id), clubLocations(club));
+}
+
+function clubLocations(club: Club): RelatedLocation[] {
+  return [
     {
       entityType: "CLUB",
       entityId: String(club.id),
@@ -128,7 +131,7 @@ export async function loadClubRelatedMapContent(
       placeName: club.location,
       thumbnailUrl: club.photoThumbnailUrl || club.photoUrl,
     },
-  ]);
+  ];
 }
 
 /** A source page has no private relationship expansion: its public slice is
@@ -139,7 +142,11 @@ export async function loadSourceRelatedMapContent(
   source: LibrarySource,
   firstImage?: LibrarySourceImage | null,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("SOURCE", source.id, [
+  return projectionMapContent("SOURCE", source.id, sourceLocations(source, firstImage));
+}
+
+function sourceLocations(source: LibrarySource, firstImage?: LibrarySourceImage | null): RelatedLocation[] {
+  return [
     {
       entityType: "SOURCE",
       entityId: source.id,
@@ -158,7 +165,7 @@ export async function loadSourceRelatedMapContent(
       placeName: source.heldAtPlaceName,
       thumbnailUrl: firstImage?.thumbnailUrl || firstImage?.url,
     },
-  ]);
+  ];
 }
 
 /** Events are shareable public map scopes too. Their venue and historical-site
@@ -167,7 +174,11 @@ export async function loadSourceRelatedMapContent(
 export async function loadEventRelatedMapContent(
   event: TempvsEvent,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("EVENT", event.id, [
+  return projectionMapContent("EVENT", event.id, eventLocations(event));
+}
+
+function eventLocations(event: TempvsEvent): RelatedLocation[] {
+  return [
     {
       entityType: "EVENT",
       entityId: event.id,
@@ -186,7 +197,7 @@ export async function loadEventRelatedMapContent(
       placeName: event.historicalSitePlaceName,
       thumbnailUrl: event.image?.thumbnailUrl || event.image?.url,
     },
-  ]);
+  ];
   /*
   const resolvePlace = placeResolver();
   const locations: Array<{
@@ -269,15 +280,50 @@ async function loadSharedMapScopeUncached(
       return projectionMapContent("PROFILE", scope.id);
     }
     case "CLUB": {
-      return projectionMapContent("CLUB", scope.id);
+      return loadSharedResourceContent(scope);
     }
     case "EVENT": {
-      return projectionMapContent("EVENT", scope.id);
+      return loadSharedResourceContent(scope);
     }
     case "SOURCE": {
-      return projectionMapContent("SOURCE", scope.id);
+      return loadSharedResourceContent(scope);
     }
   }
+}
+
+/** Reuse the page modal's fallback for older or incomplete projections. This
+ * reads at most the originating resource and its one/two places, never the
+ * sender's or destination's profile relationships. Complete projections
+ * remain the fast path and the shared-scope cache batches concurrent cards. */
+async function loadSharedResourceContent(
+  scope: SharedMapScope,
+): Promise<OwnedMapContent> {
+  const content = await projectionMapContent(
+    scope.type as MapProjection["scope"], scope.id,
+  ).catch(() => ({ markers: [], connections: [] } as OwnedMapContent));
+  const expectedCount = scope.type === "CLUB" ? 1 : 2;
+  if (content.markers.length >= expectedCount && content.markers.every((pin) => pin.thumbnailUrl))
+    return content;
+
+  let expected: RelatedLocation[];
+  if (scope.type === "CLUB") {
+    expected = clubLocations(await getClub(scope.id));
+  } else if (scope.type === "EVENT") {
+    expected = eventLocations(await getEvent(scope.id));
+  } else {
+    const result = await getSource(scope.id);
+    if (!result.ok || !result.data) throw new Error("Unable to load shared source map");
+    const images = content.markers.some((pin) => pin.thumbnailUrl)
+      ? null : await getSourceImages(scope.id).catch(() => null);
+    const existingImage = content.markers.find((pin) => pin.thumbnailUrl);
+    expected = sourceLocations(result.data, images?.data?.[0] ||
+      (existingImage ? { id: existingImage.entityId, thumbnailUrl: existingImage.thumbnailUrl } : null));
+  }
+  const complete = await addExpectedLocations(content, expected);
+  return {
+    ...complete,
+    connections: completeLocationConnections(complete.markers, complete.connections),
+  };
 }
 
 async function projectionMapContent(
@@ -369,6 +415,16 @@ async function addExpectedLocations(
   content: OwnedMapContent,
   expected: RelatedLocation[],
 ): Promise<OwnedMapContent> {
+  // Use the resource's current avatar/carousel image even when its location
+  // was already present in an older projection without thumbnail metadata.
+  content = {
+    ...content,
+    markers: content.markers.map((pin) => {
+      const location = expected.find((entry) => entry.entityType === pin.entityType &&
+        entry.entityId === pin.entityId && entry.locationRole === pin.locationRole);
+      return location?.thumbnailUrl ? { ...pin, thumbnailUrl: location.thumbnailUrl } : pin;
+    }),
+  };
   const missing = expected.filter(
     (location) =>
       location.placeId &&
