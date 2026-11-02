@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { FaGlobeAmericas } from "react-icons/fa";
 import {
@@ -76,6 +76,8 @@ export default function RelatedMapModal({
   scope,
 }: RelatedMapModalProps) {
   const [show, setShow] = useState(false);
+  const showRef = useRef(show);
+  showRef.current = show;
   const [mapModalReady, setMapModalReady] = useState(false);
   const [relatedContentReady, setRelatedContentReady] = useState(
     () => !loadRelatedMapContent,
@@ -302,7 +304,12 @@ export default function RelatedMapModal({
         onHide={() => setShow(false)}
         onEnter={() => setMapModalReady(false)}
         onEntered={() => setMapModalReady(true)}
-        onExited={() => setMapModalReady(false)}
+        // Bootstrap can finish a previous close transition after the user has
+        // already reopened the modal. Do not let that old callback turn the
+        // new map back into a permanent loading spinner.
+        onExited={() => {
+          if (!showRef.current) setMapModalReady(false);
+        }}
         centered
         size="xl"
         dialogClassName="related-map-modal-dialog"

@@ -152,6 +152,8 @@ export default function MapReferenceAttachment({
 }) {
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
+  const showRef = useRef(show);
+  showRef.current = show;
   const [modalMapReady, setModalMapReady] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -344,7 +346,9 @@ export default function MapReferenceAttachment({
         onHide={() => setShow(false)}
         onEnter={() => setModalMapReady(false)}
         onEntered={() => setModalMapReady(true)}
-        onExited={() => setModalMapReady(false)}
+        onExited={() => {
+          if (!showRef.current) setModalMapReady(false);
+        }}
         centered
         size="xl"
         dialogClassName="map-reference-modal-dialog"

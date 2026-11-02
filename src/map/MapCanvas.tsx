@@ -86,20 +86,19 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
 };
 
 const BASEMAP_URL = "/maps/basemap.geojson";
-let basemapPreload: Promise<void> | undefined;
+let basemapPreload: Promise<GeoJSON.FeatureCollection | null> | undefined;
 
 /** Start warming the complete self-hosted world before MapLibre asks for its
  * style source. Every modal and the full Map page then use the same cached
  * land/lake/border payload instead of revealing it piecemeal while panning. */
-function preloadBasemap(): Promise<void> {
+function preloadBasemap(): Promise<GeoJSON.FeatureCollection | null> {
   if (!basemapPreload) {
     basemapPreload = fetch(BASEMAP_URL, { cache: "force-cache" })
       .then((response) => {
         if (!response.ok) throw new Error("Unable to preload map basemap");
-        return response.arrayBuffer();
+        return response.json() as Promise<GeoJSON.FeatureCollection>;
       })
-      .then(() => undefined)
-      .catch(() => undefined);
+      .catch(() => null);
   }
   return basemapPreload;
 }
@@ -147,6 +146,9 @@ export default function MapCanvas({
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
+  const [basemapData, setBasemapData] =
+    useState<GeoJSON.FeatureCollection | null>(null);
+  const [basemapReady, setBasemapReady] = useState(false);
   const [placeReferences, setPlaceReferences] = useState<Map<string, string>>(
     () => new Map(),
   );
@@ -205,11 +207,23 @@ export default function MapCanvas({
   }, [entities, ownedMarkers, thumbnailMarkers]);
 
   useEffect(() => {
-    if (!element.current || map.current) return undefined;
+    let active = true;
+    void preloadBasemap().then((data) => {
+      if (!active) return;
+      setBasemapData(data);
+      setBasemapReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!basemapReady || !element.current || map.current) return undefined;
     let active = true;
     const next = new maplibregl.Map({
       container: element.current,
-      style: mapStyle(),
+      style: mapStyle(basemapData),
       center: [10, 24],
       zoom: 1.1,
       minZoom: 0,
@@ -287,7 +301,7 @@ export default function MapCanvas({
       next.remove();
       map.current = null;
     };
-  }, []);
+  }, [basemapData, basemapReady]);
 
   useEffect(() => {
     const container = element.current;
@@ -707,11 +721,16 @@ function markerOffsets(
   return offsets;
 }
 
-function mapStyle(): maplibregl.StyleSpecification {
+function mapStyle(
+  basemapData: GeoJSON.FeatureCollection | null,
+): maplibregl.StyleSpecification {
   return {
     version: 8,
     sources: {
-      basemap: { type: "geojson", data: BASEMAP_URL },
+      // The complete land/lake/border collection is parsed before a map is
+      // constructed. Passing it directly prevents a modal or page map from
+      // painting only a partial HTTP response when the user zooms immediately.
+      basemap: { type: "geojson", data: basemapData || BASEMAP_URL },
     },
     layers: [
       {
@@ -1060,7 +1079,7 @@ function addMarkerLinksPopup(
     if (closeTimer !== undefined) window.clearTimeout(closeTimer);
     // Leave a forgiving bridge from a thumbnail to its nearby popup. A short
     // delay made its place link unreachable with a mouse at some zoom levels.
-    closeTimer = window.setTimeout(close, 420);
+    closeTimer = window.setTimeout(close, 900);
   };
   const open = () => {
     if (closeTimer !== undefined) {
@@ -1071,11 +1090,13 @@ function addMarkerLinksPopup(
     popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
-      anchor: "left",
+      anchor: "bottom",
       // DOM markers may be deliberately spread around the same map point.
       // Match that visual displacement and clear the thumbnail's right edge,
       // so the hover card belongs to the image rather than its source point.
-      offset: [markerOffset[0] + 8, markerOffset[1]],
+      // Sit directly above the thumbnail instead of leaving a gap that makes
+      // the popup disappear before the pointer reaches its links.
+      offset: [markerOffset[0], markerOffset[1] - 18],
       maxWidth: "18rem",
     })
       .setLngLat([marker.longitude, marker.latitude])
