@@ -86,6 +86,10 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
 };
 
 const BASEMAP_URL = "/maps/basemap.geojson";
+const WEB_MERCATOR_WORLD_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-180, -85.051129],
+  [180, 85.051129],
+];
 let basemapPreload: Promise<GeoJSON.FeatureCollection | null> | undefined;
 
 /** Start warming the complete self-hosted world before MapLibre asks for its
@@ -232,6 +236,11 @@ export default function MapCanvas({
       // the full Map page. Being explicit avoids blank copies at the
       // antimeridian while the self-hosted GeoJSON basemap is in use.
       renderWorldCopies: true,
+      // Natural Earth is a complete longitude/latitude world. Constrain the
+      // camera to Web Mercator's real world so zooming or a trackpad fling
+      // cannot reveal the blank projection area beyond its polar/dateline
+      // limits and make land or ocean look cut off.
+      maxBounds: WEB_MERCATOR_WORLD_BOUNDS,
       // The historical map is a north-up reference surface. Keep ordinary
       // mouse/touch dragging for panning, but never let a gesture tilt or
       // rotate the world beneath its markers.
@@ -1066,26 +1075,11 @@ function addMarkerLinksPopup(
   markerOffset: [number, number],
 ): () => void {
   let popup: maplibregl.Popup | null = null;
-  let closeTimer: number | undefined;
   const close = () => {
-    if (closeTimer !== undefined) {
-      window.clearTimeout(closeTimer);
-      closeTimer = undefined;
-    }
     popup?.remove();
     popup = null;
   };
-  const scheduleClose = () => {
-    if (closeTimer !== undefined) window.clearTimeout(closeTimer);
-    // Leave a forgiving bridge from a thumbnail to its nearby popup. A short
-    // delay made its place link unreachable with a mouse at some zoom levels.
-    closeTimer = window.setTimeout(close, 900);
-  };
   const open = () => {
-    if (closeTimer !== undefined) {
-      window.clearTimeout(closeTimer);
-      closeTimer = undefined;
-    }
     if (popup) return;
     popup = new maplibregl.Popup({
       closeButton: false,
@@ -1102,18 +1096,17 @@ function addMarkerLinksPopup(
       .setLngLat([marker.longitude, marker.latitude])
       .setDOMContent(markerLinksPopover(marker))
       .addTo(map);
-    popup.getElement()?.addEventListener("mouseenter", open);
-    popup.getElement()?.addEventListener("mouseleave", scheduleClose);
   };
   trigger.addEventListener("mouseenter", open);
-  trigger.addEventListener("mouseleave", scheduleClose);
   trigger.addEventListener("focus", open);
-  trigger.addEventListener("blur", scheduleClose);
+  // A marker popup is a small interactive card, not a transient native
+  // tooltip. Keep it present after hover so its resource and place links are
+  // always reachable; clicking the map dismisses it.
+  map.on("click", close);
   return () => {
     trigger.removeEventListener("mouseenter", open);
-    trigger.removeEventListener("mouseleave", scheduleClose);
     trigger.removeEventListener("focus", open);
-    trigger.removeEventListener("blur", scheduleClose);
+    map.off("click", close);
     close();
   };
 }
