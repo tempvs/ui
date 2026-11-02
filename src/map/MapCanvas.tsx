@@ -85,6 +85,11 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
   features: [],
 };
 
+const EMPTY_OWNED_MARKERS: OwnedMapMarker[] = [];
+const EMPTY_THUMBNAIL_MARKERS: MapThumbnailMarker[] = [];
+const EMPTY_CONNECTIONS: OwnedMapConnection[] = [];
+const EMPTY_FIT_POINTS: NonNullable<MapCanvasProps["initialFitPoints"]> = [];
+
 const BASEMAP_URL = "/maps/basemap.geojson";
 let basemapPreload: Promise<GeoJSON.FeatureCollection | null> | undefined;
 
@@ -103,8 +108,6 @@ function preloadBasemap(): Promise<GeoJSON.FeatureCollection | null> {
   return basemapPreload;
 }
 
-void preloadBasemap();
-
 /**
  * A deliberately small, self-hosted Natural Earth style. The background is the
  * ocean; land, lakes and country boundaries are one static public-domain GeoJSON.
@@ -113,11 +116,11 @@ void preloadBasemap();
 export default function MapCanvas({
   places,
   entities,
-  ownedMarkers = [],
-  thumbnailMarkers = [],
-  ownedConnections = [],
+  ownedMarkers = EMPTY_OWNED_MARKERS,
+  thumbnailMarkers = EMPTY_THUMBNAIL_MARKERS,
+  ownedConnections = EMPTY_CONNECTIONS,
   focus,
-  initialFitPoints = [],
+  initialFitPoints = EMPTY_FIT_POINTS,
   initialFitDelayMs = 0,
   showModernBorders,
   selectedEntityKey = null,
@@ -173,14 +176,17 @@ export default function MapCanvas({
     placesRef.current = places;
   }, [places]);
 
-  useEffect(() => {
-    const ids = Array.from(
+  // Depend on the actual place IDs, not array identities supplied by parents.
+  // Re-resolving on each render repeatedly rebuilt every marker and popup.
+  const placeIdsKey = JSON.stringify(Array.from(
       new Set([
         ...entities.map((entity) => entity.placeId),
         ...ownedMarkers.map((marker) => marker.placeId),
         ...thumbnailMarkers.map((marker) => marker.placeId),
       ]),
-    ).filter(Boolean);
+    ).filter(Boolean).sort());
+  useEffect(() => {
+    const ids: string[] = JSON.parse(placeIdsKey);
     if (!ids.length) {
       setPlaceReferences(new Map());
       return;
@@ -204,7 +210,7 @@ export default function MapCanvas({
     return () => {
       active = false;
     };
-  }, [entities, ownedMarkers, thumbnailMarkers]);
+  }, [placeIdsKey]);
 
   useEffect(() => {
     let active = true;
@@ -232,6 +238,11 @@ export default function MapCanvas({
       // the full Map page. Being explicit avoids blank copies at the
       // antimeridian while the self-hosted GeoJSON basemap is in use.
       renderWorldCopies: true,
+      // Keep parent tiles available during zoom-out transitions. With a
+      // small, fully cached GeoJSON world there is no network saving from
+      // cancelling them; cancelling can leave a clipped child tile visible
+      // while the coarser land/lake geometry is still being prepared.
+      cancelPendingTileRequestsWhileZooming: false,
       // The historical map is a north-up reference surface. Keep ordinary
       // mouse/touch dragging for panning, but never let a gesture tilt or
       // rotate the world beneath its markers.
