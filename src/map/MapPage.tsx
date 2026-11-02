@@ -194,7 +194,7 @@ export default function MapPage() {
   }, [params, setParams]);
 
   useEffect(() => {
-    if (!showShare || !viewer) return;
+    if (!showShare || !viewer || shareDestination === "chat") return;
     let active = true;
     setShareDestinationsLoading(true);
     void Promise.all([
@@ -205,30 +205,22 @@ export default function MapPage() {
           onError: () => resolve([]),
         }),
       ),
-      listEvents().catch(() => ({ content: [] as TempvsEvent[] })),
     ])
-      .then(([personalProfile, clubProfiles, events]) => {
+      .then(async ([personalProfile, clubProfiles]) => {
         if (!active) return;
         const profiles = [
           ...(personalProfile ? [personalProfile] : []),
           ...clubProfiles,
         ];
         setShareProfiles(profiles);
+        if (shareDestination === "profile") return;
         const profileIds = new Set(
           profiles.map((profile) => String(profile.id)),
         );
-        setShareEvents(
-          events.content.filter(
-            (event) =>
-              profileIds.has(String(event.ownerProfileId)) ||
-              event.adminProfileIds.some((id) => profileIds.has(String(id))),
-          ),
-        );
-        void Promise.all(
-          profiles.map((profile) =>
-            getProfileClubs(profile.id).catch(() => []),
-          ),
-        ).then((clubGroups) => {
+        if (shareDestination === "club") {
+          const clubGroups = await Promise.all(
+            profiles.map((profile) => getProfileClubs(profile.id).catch(() => [])),
+          );
           if (active)
             setShareClubs(
               Array.from(
@@ -237,13 +229,25 @@ export default function MapPage() {
                 ).values(),
               ),
             );
-        });
+          return;
+        }
+        const events = await listEvents().catch(
+          () => ({ content: [] as TempvsEvent[] }),
+        );
+        if (active)
+          setShareEvents(
+            events.content.filter(
+              (event) =>
+                profileIds.has(String(event.ownerProfileId)) ||
+                event.adminProfileIds.some((id) => profileIds.has(String(id))),
+            ),
+          );
       })
       .finally(() => active && setShareDestinationsLoading(false));
     return () => {
       active = false;
     };
-  }, [showShare, viewer]);
+  }, [shareDestination, showShare, viewer]);
 
   // The horizontal-navigation map starts as a personal map. Make the owner
   // explicit as soon as identity is known, so copying the address from this
@@ -914,9 +918,7 @@ export default function MapPage() {
       setCopyStatus("Copy the address from your browser to share this map.");
     }
   };
-  const saveCurrentMap = async (
-    requestedTitle?: string,
-  ): Promise<PublicMapReference | null> => {
+  const currentMapReference = (): PublicMapReference | null => {
     const viewportAnchor =
       focus || visibleOwnedMarkers[0] || visibleEntities[0] || null;
     const lat =
@@ -936,6 +938,25 @@ export default function MapPage() {
       setSnapshotStatus("Choose a place or coordinates before saving a map.");
       return null;
     }
+    return {
+      ...(selectedPlace
+        ? {
+            placeId: mapPlaceReference(selectedPlace),
+            placeName: selectedPlace.canonicalName,
+          }
+        : {}),
+      latitude: lat,
+      longitude: lng,
+      radiusKm: Number(radius),
+      entityTypes: types.length ? types : entityTypes,
+      ...(sharedScope ? { scope: sharedScope } : {}),
+    };
+  };
+  const saveCurrentMap = async (
+    requestedTitle?: string,
+  ): Promise<PublicMapReference | null> => {
+    const reference = currentMapReference();
+    if (!reference) return null;
     const title =
       requestedTitle ??
       window.prompt(
@@ -944,19 +965,6 @@ export default function MapPage() {
       );
     if (!title?.trim()) return null;
     try {
-      const reference: PublicMapReference = {
-        ...(selectedPlace
-          ? {
-              placeId: mapPlaceReference(selectedPlace),
-              placeName: selectedPlace.canonicalName,
-            }
-          : {}),
-        latitude: lat,
-        longitude: lng,
-        radiusKm: Number(radius),
-        entityTypes: types.length ? types : entityTypes,
-        ...(sharedScope ? { scope: sharedScope } : {}),
-      };
       await saveMapSnapshot({
         title: title.trim(),
         reference,
@@ -1233,8 +1241,8 @@ export default function MapPage() {
           </Modal.Header>
           <Modal.Body>
             <p>
-              Choose a destination. It saves the map automatically, then opens
-              the composer with the attachment ready.
+              Choose a destination. The composer opens with the attachment
+              ready; saving is optional and does not block sending.
             </p>
             <Form.Group className="mb-3">
               <Form.Label htmlFor="map-share-title">Saved map name</Form.Label>
@@ -1289,12 +1297,14 @@ export default function MapPage() {
                   <Button
                     variant="dark"
                     onClick={() => {
-                      void saveCurrentMap(shareTitle).then((reference) => {
-                        if (!reference) return;
-                        stageMapAttachment(reference);
-                        setShowShare(false);
-                        navigate("/chat", { state: { composeMap: true } });
-                      });
+                      const reference = currentMapReference();
+                      if (!reference) return;
+                      stageMapAttachment(reference);
+                      setShowShare(false);
+                      window.setTimeout(
+                        () => navigate("/chat", { state: { composeMap: true } }),
+                        0,
+                      );
                     }}
                   >
                     Choose chat recipient
@@ -1320,24 +1330,23 @@ export default function MapPage() {
                         placeholder="Search profiles by name or alias"
                         selectLabel="Post map"
                         onSelect={(profile) => {
-                          void saveCurrentMap(shareTitle).then((reference) => {
-                            if (!reference) return;
-                            const destinationId = String(profile.id);
-                            stageMapAttachment(reference, undefined, {
-                              type: "PROFILE",
-                              id: destinationId,
-                            });
-                            setShowShare(false);
-                            navigate(`/profile/${profile.alias || profile.id}`, {
+                          const reference = currentMapReference();
+                          if (!reference) return;
+                          const destinationId = String(profile.id);
+                          stageMapAttachment(reference, undefined, {
+                            type: "PROFILE",
+                            id: destinationId,
+                          });
+                          setShowShare(false);
+                          window.setTimeout(
+                            () => navigate(`/profile/${profile.alias || profile.id}`, {
                               state: {
                                 mapAttachment: reference,
-                                mapTarget: {
-                                  type: "PROFILE",
-                                  id: destinationId,
-                                },
+                                mapTarget: { type: "PROFILE", id: destinationId },
                               },
-                            });
-                          });
+                            }),
+                            0,
+                          );
                         }}
                       />
                     </section>
@@ -1372,8 +1381,7 @@ export default function MapPage() {
                           variant="outline-dark"
                           className="text-start"
                           onClick={() => {
-                            void saveCurrentMap(shareTitle).then(
-                              (reference) => {
+                                const reference = currentMapReference();
                                 if (!reference) return;
                                 const club =
                                   shareDestination === "club"
@@ -1399,7 +1407,7 @@ export default function MapPage() {
                                   },
                                 );
                                 setShowShare(false);
-                                navigate(destination.path, {
+                                window.setTimeout(() => navigate(destination.path, {
                                   state: {
                                     mapAttachment: reference,
                                     ...(authorProfileId
@@ -1413,9 +1421,7 @@ export default function MapPage() {
                                       id: destination.id,
                                     },
                                   },
-                                });
-                              },
-                            );
+                                }), 0);
                           }}
                         >
                           {destination.label}

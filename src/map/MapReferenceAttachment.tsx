@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import MapCanvas from "./LazyMapCanvas";
 import StaticMapPreview from "./StaticMapPreview";
 import {
-  nearbyMapEntitiesPage,
   saveMapSnapshot,
   type MapEntityLocation,
 } from "./mapApi";
@@ -165,6 +164,13 @@ export default function MapReferenceAttachment({
     setShow(false);
     navigate(path);
   };
+  const closeThenNavigate = (pathname: string, state: unknown) => {
+    setShow(false);
+    // Let Bootstrap remove its focus trap before changing pages. On touch
+    // browsers, navigating in the same event that closes a portal modal can
+    // leave the invisible backdrop above the destination composer.
+    window.setTimeout(() => navigate(pathname, { state }), 0);
+  };
   const save = async () => {
     const title = window.prompt("Name this saved map", name);
     if (!title?.trim()) return;
@@ -302,8 +308,7 @@ export default function MapReferenceAttachment({
               variant="dark"
               onClick={() => {
                 stageMapAttachment(reference);
-                setShow(false);
-                navigate("/chat", { state: { composeMap: true } });
+                closeThenNavigate("/chat", { composeMap: true });
               }}
             >
               Send to chat
@@ -319,12 +324,9 @@ export default function MapReferenceAttachment({
                   type: "PROFILE",
                   id: profileId,
                 });
-                setShow(false);
-                navigate(`/profile/${encodeURIComponent(profileId)}`, {
-                  state: {
-                    mapAttachment: reference,
-                    mapTarget: { type: "PROFILE", id: profileId },
-                  },
+                closeThenNavigate(`/profile/${encodeURIComponent(profileId)}`, {
+                  mapAttachment: reference,
+                  mapTarget: { type: "PROFILE", id: profileId },
                 });
               }}
             >
@@ -405,23 +407,11 @@ function MapPreview({
           onError();
         });
     } else {
-      void nearbyMapEntitiesPage(
-        reference.latitude,
-        reference.longitude,
-        reference.radiusKm,
-        reference.entityTypes,
-      )
-        .then((page) => {
-          if (active) {
-            setEntities(page.items);
-            setContentReady(true);
-            loadedContentKey.current = contentKey;
-          }
-        })
-        .catch(() => {
-          if (active) setContentReady(true);
-          onError();
-        });
+      // Attachments without a saved scope are a focal place only. Loading an
+      // open-ended nearby-entity query for every card makes feeds and mobile
+      // modals expensive, and is not part of the map the author shared.
+      setContentReady(true);
+      loadedContentKey.current = contentKey;
     }
     return () => {
       active = false;
