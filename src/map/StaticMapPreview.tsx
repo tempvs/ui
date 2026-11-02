@@ -326,7 +326,11 @@ function connectionColour(kind: OwnedMapConnection["kind"]) {
     ? "#6d7c4a"
     : kind === "PROFILE_CLUB"
       ? "#8a5a44"
-      : "#4f6d7a";
+      : kind === "SOURCE_LOCATIONS"
+        ? "#6d7c4a"
+        : kind === "EVENT_LOCATIONS"
+          ? "#75618c"
+          : "#4f6d7a";
 }
 
 function validPoint(point: Point) {

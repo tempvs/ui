@@ -192,6 +192,10 @@ export default function MapCanvas({
       zoom: 1.35,
       minZoom: 1,
       maxZoom: 12,
+      // Keep a complete world available when a user pans a compact modal or
+      // the full Map page. Being explicit avoids blank copies at the
+      // antimeridian while the self-hosted GeoJSON basemap is in use.
+      renderWorldCopies: true,
       // The historical map is a north-up reference surface. Keep ordinary
       // mouse/touch dragging for panning, but never let a gesture tilt or
       // rotate the world beneath its markers.
@@ -239,6 +243,11 @@ export default function MapCanvas({
         initialOwnedMarkers.current,
       );
       setReady(true);
+      // The modal has finished its CSS transition by now, but the GeoJSON
+      // source can finish painting one frame later. Re-measure at idle so the
+      // complete world is redrawn into the final viewport rather than keeping
+      // a clipped WebGL buffer from the transition frame.
+      next.once("idle", () => next.resize());
     });
     return () => {
       setReady(false);
@@ -768,6 +777,10 @@ function addMarkerLayers(
         "#6d7c4a",
         "PROFILE_CLUB",
         "#8a5a44",
+        "SOURCE_LOCATIONS",
+        "#6d7c4a",
+        "EVENT_LOCATIONS",
+        "#75618c",
         "#4f6d7a",
       ],
       // Relationship edges deliberately stay dashed, matching the full Map

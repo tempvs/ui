@@ -17,6 +17,7 @@ import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
   loadProfileRelatedMapContent,
+  loadSourceRelatedMapContent,
   loadSharedMapScope,
 } from "./ownedMapContent";
 
@@ -138,6 +139,13 @@ beforeEach(() => {
         scope, id, markers: [
           { entityType: "EVENT", entityId: id, locationRole: "VENUE", label: "Roman festival", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
           { entityType: "EVENT", entityId: id, locationRole: "HISTORICAL_SITE", label: "Roman festival", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+        ], connections: [],
+      };
+    if (scope === "SOURCE")
+      return {
+        scope, id, markers: [
+          { entityType: "SOURCE", entityId: id, locationRole: "DISCOVERED_AT", label: "Roman find", placeId: "rome", placeName: "Roma", latitude: 41.9, longitude: 12.5 },
+          { entityType: "SOURCE", entityId: id, locationRole: "HELD_AT", label: "Roman find", placeId: "museum", placeName: "Museum", latitude: 48.8, longitude: 2.3 },
         ], connections: [],
       };
     return {
@@ -333,9 +341,30 @@ test("renders a club scope as its single club location", async () => {
   } as never);
 
   expect(content.markers).toEqual([
-    expect.objectContaining({ key: "CLUB:club:CLUB_ASSOCIATION" }),
+    expect.objectContaining({
+      key: "CLUB:club:CLUB_ASSOCIATION",
+      thumbnailUrl: "https://images.test/club-thumb.jpg",
+    }),
   ]);
   expect(content.connections).toEqual([]);
+});
+
+test("connects both saved source locations without traversing a source page", async () => {
+  const content = await loadSourceRelatedMapContent({ id: "source" } as never);
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" }),
+      expect.objectContaining({ key: "SOURCE:source:HELD_AT" }),
+    ]),
+  );
+  expect(content.connections).toEqual([
+    expect.objectContaining({
+      kind: "SOURCE_LOCATIONS",
+      fromKey: "SOURCE:source:DISCOVERED_AT",
+      toKey: "SOURCE:source:HELD_AT",
+    }),
+  ]);
 });
 
 test("resolves an event share scope to its public venue and historical-site pins", async () => {
@@ -351,7 +380,13 @@ test("resolves an event share scope to its public venue and historical-site pins
       expect.objectContaining({ key: "EVENT:event:HISTORICAL_SITE" }),
     ]),
   );
-  expect(content.connections).toEqual([]);
+  expect(content.connections).toEqual([
+    expect.objectContaining({
+      kind: "EVENT_LOCATIONS",
+      fromKey: "EVENT:event:VENUE",
+      toKey: "EVENT:event:HISTORICAL_SITE",
+    }),
+  ]);
 });
 
 test("resolves a shared user scope from the original owner's id", async () => {

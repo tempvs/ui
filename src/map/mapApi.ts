@@ -126,7 +126,11 @@ export type MapProjection = {
     key: string;
     fromKey: string;
     toKey: string;
-    kind: "PROFILE_SOURCE" | "PROFILE_CLUB";
+    kind:
+      | "PROFILE_SOURCE"
+      | "PROFILE_CLUB"
+      | "SOURCE_LOCATIONS"
+      | "EVENT_LOCATIONS";
   }>;
   updatedAt?: string;
 };

@@ -45,7 +45,12 @@ export type OwnedMapConnection = {
   key: string;
   fromKey: string;
   toKey: string;
-  kind: "PROFILE_SOURCE" | "PROFILE_CLUB" | "USER_CLUB_PROFILE";
+  kind:
+    | "PROFILE_SOURCE"
+    | "PROFILE_CLUB"
+    | "USER_CLUB_PROFILE"
+    | "SOURCE_LOCATIONS"
+    | "EVENT_LOCATIONS";
 };
 
 export type OwnedMapContent = {
@@ -272,8 +277,59 @@ async function projectionMapContent(
         profileAliases.get(value.entityId),
       ),
     })),
-    connections: projection.connections,
+    // New projections persist these edges. Derive the same bounded edges from
+    // the already-fetched snapshot for older records until their next async
+    // projection refresh; no page traversal or additional request is needed.
+    connections: completeLocationConnections(
+      markers,
+      projection.connections,
+    ),
   };
+}
+
+function completeLocationConnections(
+  markers: MapProjection["markers"],
+  connections: OwnedMapConnection[],
+): OwnedMapConnection[] {
+  const next = [...connections];
+  const add = (
+    entityType: "SOURCE" | "EVENT",
+    fromRole: OwnedMapMarker["locationRole"],
+    toRole: OwnedMapMarker["locationRole"],
+    kind: Extract<
+      OwnedMapConnection["kind"],
+      "SOURCE_LOCATIONS" | "EVENT_LOCATIONS"
+    >,
+  ) => {
+    const entities = new Set(
+      markers
+        .filter((marker) => marker.entityType === entityType)
+        .map((marker) => marker.entityId),
+    );
+    entities.forEach((entityId) => {
+      const from = markers.find(
+        (marker) =>
+          marker.entityType === entityType &&
+          marker.entityId === entityId &&
+          marker.locationRole === fromRole,
+      );
+      const to = markers.find(
+        (marker) =>
+          marker.entityType === entityType &&
+          marker.entityId === entityId &&
+          marker.locationRole === toRole,
+      );
+      if (!from || !to) return;
+      const fromKey = `${from.entityType}:${from.entityId}:${from.locationRole}`;
+      const toKey = `${to.entityType}:${to.entityId}:${to.locationRole}`;
+      const key = `${kind}:${fromKey}:${toKey}`;
+      if (next.some((connection) => connection.fromKey === fromKey && connection.toKey === toKey)) return;
+      next.push({ key, fromKey, toKey, kind });
+    });
+  };
+  add("SOURCE", "DISCOVERED_AT", "HELD_AT", "SOURCE_LOCATIONS");
+  add("EVENT", "VENUE", "HISTORICAL_SITE", "EVENT_LOCATIONS");
+  return next;
 }
 
 function deduplicateProjectionMarkers(
