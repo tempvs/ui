@@ -185,12 +185,13 @@ export default function MapCanvas({
 
   useEffect(() => {
     if (!element.current || map.current) return undefined;
+    let active = true;
     const next = new maplibregl.Map({
       container: element.current,
       style: mapStyle(),
       center: [10, 24],
-      zoom: 1.35,
-      minZoom: 1,
+      zoom: 1.1,
+      minZoom: 0,
       maxZoom: 12,
       // Keep a complete world available when a user pans a compact modal or
       // the full Map page. Being explicit avoids blank copies at the
@@ -231,6 +232,7 @@ export default function MapCanvas({
       });
     });
     next.on("load", () => {
+      if (!active) return;
       addMarkerLayers(
         next,
         (key) => selectRef.current(key),
@@ -247,10 +249,12 @@ export default function MapCanvas({
       // source can finish painting one frame later. Re-measure at idle so the
       // complete world is redrawn into the final viewport rather than keeping
       // a clipped WebGL buffer from the transition frame.
-      next.once("idle", () => next.resize());
+      next.once("idle", () => {
+        if (active) next.resize();
+      });
     });
     return () => {
-      setReady(false);
+      active = false;
       selectedPlaceMarker.current?.remove();
       selectedPlaceMarker.current = null;
       coordinateMarker.current?.remove();

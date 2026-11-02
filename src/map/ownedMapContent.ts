@@ -9,6 +9,7 @@ import {
 import type { TempvsEvent } from "../event/eventApi";
 import type { Profile } from "../profile/profileTypes";
 import {
+  getMapPlacesByReference,
   getMapProjection,
   getMapProjections,
   type MapProjection,
@@ -116,7 +117,17 @@ export async function loadProfileRelatedMapContent(
 export async function loadClubRelatedMapContent(
   club: Club,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("CLUB", String(club.id));
+  return projectionMapContent("CLUB", String(club.id), [
+    {
+      entityType: "CLUB",
+      entityId: String(club.id),
+      locationRole: "CLUB_ASSOCIATION",
+      label: club.name,
+      placeId: club.locationPlaceId,
+      placeName: club.location,
+      thumbnailUrl: club.photoThumbnailUrl || club.photoUrl,
+    },
+  ]);
 }
 
 /** A source page has no private relationship expansion: its public slice is
@@ -126,7 +137,24 @@ export async function loadClubRelatedMapContent(
 export async function loadSourceRelatedMapContent(
   source: LibrarySource,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("SOURCE", source.id);
+  return projectionMapContent("SOURCE", source.id, [
+    {
+      entityType: "SOURCE",
+      entityId: source.id,
+      locationRole: "DISCOVERED_AT",
+      label: source.name || "Source",
+      placeId: source.discoveredAtPlaceId,
+      placeName: source.discoveredAtPlaceName,
+    },
+    {
+      entityType: "SOURCE",
+      entityId: source.id,
+      locationRole: "HELD_AT",
+      label: source.name || "Source",
+      placeId: source.heldAtPlaceId,
+      placeName: source.heldAtPlaceName,
+    },
+  ]);
 }
 
 /** Events are shareable public map scopes too. Their venue and historical-site
@@ -135,7 +163,26 @@ export async function loadSourceRelatedMapContent(
 export async function loadEventRelatedMapContent(
   event: TempvsEvent,
 ): Promise<OwnedMapContent> {
-  return projectionMapContent("EVENT", event.id);
+  return projectionMapContent("EVENT", event.id, [
+    {
+      entityType: "EVENT",
+      entityId: event.id,
+      locationRole: "VENUE",
+      label: event.name,
+      placeId: event.venuePlaceId,
+      placeName: event.venuePlaceName,
+      thumbnailUrl: event.image?.thumbnailUrl || event.image?.url,
+    },
+    {
+      entityType: "EVENT",
+      entityId: event.id,
+      locationRole: "HISTORICAL_SITE",
+      label: event.name,
+      placeId: event.historicalSitePlaceId,
+      placeName: event.historicalSitePlaceName,
+      thumbnailUrl: event.image?.thumbnailUrl || event.image?.url,
+    },
+  ]);
   /*
   const resolvePlace = placeResolver();
   const locations: Array<{
@@ -232,8 +279,19 @@ async function loadSharedMapScopeUncached(
 async function projectionMapContent(
   scope: MapProjection["scope"],
   id: string,
+  expectedLocations: RelatedLocation[] = [],
 ): Promise<OwnedMapContent> {
-  const projection = await getMapProjection(scope, id);
+  let projection: MapProjection;
+  try {
+    projection = await getMapProjection(scope, id);
+  } catch (error) {
+    // Resource pages still know their own one/two approved locations. Use
+    // those while an asynchronous projection has not appeared yet (including
+    // old records that were never backfilled). Profile maps have no such
+    // local fallback and retain the original error behavior.
+    if (!expectedLocations.length) throw error;
+    projection = { scope, id, markers: [], connections: [] };
+  }
   const markers = deduplicateProjectionMarkers(projection.markers);
   const [thumbnails, profiles] = await Promise.all([
     thumbnailUrls(
@@ -255,7 +313,7 @@ async function projectionMapContent(
   const profileAliases = new Map(
     profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
   );
-  return {
+  const content: OwnedMapContent = {
     markers: markers.map((value) => marker({
       entityType: value.entityType,
       entityId: value.entityId,
@@ -280,11 +338,76 @@ async function projectionMapContent(
     // New projections persist these edges. Derive the same bounded edges from
     // the already-fetched snapshot for older records until their next async
     // projection refresh; no page traversal or additional request is needed.
-    connections: completeLocationConnections(
-      markers,
-      projection.connections,
-    ),
+    connections: projection.connections,
   };
+  const complete = await addExpectedLocations(content, expectedLocations);
+  return {
+    ...complete,
+    connections: completeLocationConnections(complete.markers, complete.connections),
+  };
+}
+
+type RelatedLocation = {
+  entityType: OwnedMapMarker["entityType"];
+  entityId: string;
+  locationRole: OwnedMapMarker["locationRole"];
+  label: string;
+  placeId?: string | null;
+  placeName?: string | null;
+  thumbnailUrl?: string | null;
+};
+
+/** A projection is updated asynchronously. A newly changed or legacy page can
+ * briefly have no projection (or only one of its two locations), so use the
+ * locations already carried by that page as a bounded bridge. This is not a
+ * graph traversal: it is one batched place read for only missing pins. */
+async function addExpectedLocations(
+  content: OwnedMapContent,
+  expected: RelatedLocation[],
+): Promise<OwnedMapContent> {
+  const missing = expected.filter(
+    (location) =>
+      location.placeId &&
+      !content.markers.some(
+        (marker) =>
+          marker.entityType === location.entityType &&
+          marker.entityId === location.entityId &&
+          marker.locationRole === location.locationRole,
+      ),
+  );
+  if (!missing.length) return content;
+  const places = await getMapPlacesByReference(
+    missing.flatMap((location) => (location.placeId ? [location.placeId] : [])),
+  ).catch(() => new Map());
+  const absentThumbnailResources = missing
+    .filter((location) => !location.thumbnailUrl)
+    .map((location) => ({
+      resourceType: location.entityType.toLowerCase(),
+      resourceId: location.entityId,
+    }));
+  const thumbnails = await thumbnailUrls(absentThumbnailResources);
+  const markers = missing.flatMap((location) => {
+    const place = location.placeId ? places.get(location.placeId) : undefined;
+    if (!place) return [];
+    return [
+      marker({
+        entityType: location.entityType,
+        entityId: location.entityId,
+        locationRole: location.locationRole,
+        label: location.label,
+        placeId: place.id,
+        placeName: location.placeName || place.canonicalName,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        thumbnailUrl:
+          location.thumbnailUrl ||
+          thumbnails.get(`${location.entityType.toLowerCase()}:${location.entityId}`) ||
+          null,
+        path: projectionPath(location.entityType, location.entityId),
+      }),
+    ];
+  });
+  return { ...content, markers: [...content.markers, ...markers] };
 }
 
 function completeLocationConnections(

@@ -15,6 +15,7 @@ import {
 } from "./mapApi";
 import {
   loadClubRelatedMapContent,
+  loadEventRelatedMapContent,
   loadOwnedMapContent,
   loadProfileRelatedMapContent,
   loadSourceRelatedMapContent,
@@ -347,6 +348,34 @@ test("renders a club scope as its single club location", async () => {
     }),
   ]);
   expect(content.connections).toEqual([]);
+});
+
+test("uses the page's bounded locations while a resource projection is unavailable", async () => {
+  jest.mocked(getMapProjection).mockRejectedValueOnce(
+    new Error("projection is still materializing"),
+  );
+  const content = await loadEventRelatedMapContent({
+    id: "event",
+    name: "Roman festival",
+    venuePlaceId: "rome",
+    venuePlaceName: "Roma",
+    historicalSitePlaceId: "museum",
+    historicalSitePlaceName: "Museum",
+    image: { id: "event-image", url: "https://images.test/event.jpg", description: null },
+  } as never);
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        key: "EVENT:event:VENUE",
+        thumbnailUrl: "https://images.test/event.jpg",
+      }),
+      expect.objectContaining({ key: "EVENT:event:HISTORICAL_SITE" }),
+    ]),
+  );
+  expect(content.connections).toEqual([
+    expect.objectContaining({ kind: "EVENT_LOCATIONS" }),
+  ]);
 });
 
 test("connects both saved source locations without traversing a source page", async () => {
