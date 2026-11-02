@@ -719,6 +719,37 @@
   min-height: min(34rem, 62vh);
 }
 
+@media (max-width: 767.98px) {
+  .related-map-modal-dialog {
+    margin: 0.75rem;
+    min-height: 0;
+  }
+
+  .related-map-modal-dialog .modal-content {
+    max-height: calc(100dvh - 1.5rem);
+  }
+
+  .related-map-modal-dialog .modal-body {
+    overflow-y: auto;
+  }
+
+  .related-map-modal-dialog .related-map-canvas .map-canvas-shell {
+    min-height: min(45dvh, 23rem);
+  }
+
+  .related-map-modal-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+  }
+
+  .related-map-modal-footer .btn {
+    min-width: 0;
+    padding-inline: 0.45rem;
+  }
+}
+
 /* The shared picker is also a compact place viewer. It keeps the same map
  * implementation as the full map page at a modal-appropriate height. */
 .place-picker-selected {

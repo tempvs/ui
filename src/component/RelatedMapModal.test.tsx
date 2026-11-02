@@ -1,11 +1,12 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
+import RelatedMapModal from "./RelatedMapModal";
 
 jest.mock("../map/MapCanvas", () => ({
   __esModule: true,
   default: ({
-    thumbnailMarkers,
+    thumbnailMarkers = [],
   }: {
     thumbnailMarkers: Array<{ label: string; thumbnailUrl?: string }>;
   }) => (
@@ -19,9 +20,7 @@ jest.mock("../map/MapCanvas", () => ({
   ),
 }));
 
-import RelatedMapModal from "./RelatedMapModal";
-
-test("renders bounded nearby entities with their batched thumbnails", async () => {
+test("does not load nearby entities for a page-related map", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
     const url = String(input);
     if (url.includes("/api/map/places/seed%3Arome")) {
@@ -84,23 +83,12 @@ test("renders bounded nearby entities with their batched thumbnails", async () =
     screen.getByRole("button", { name: "Open related map for Roma" }),
   );
 
-  await waitFor(() =>
-    expect(screen.getByTestId("related-map-canvas")).toHaveTextContent(
-      "A profile:https://images.test/profile.jpg",
-    ),
+  await screen.findByTestId("related-map-canvas");
+  expect(fetchMock).not.toHaveBeenCalledWith(
+    expect.stringContaining("/api/map/entities?"),
+    expect.anything(),
   );
-  expect(fetchMock).toHaveBeenCalledWith(
-    expect.stringContaining("radiusKm=25"),
-    expect.objectContaining({ signal: expect.any(AbortSignal) }),
-  );
-
-  expect(screen.getByLabelText("Nearby public content")).toBeChecked();
-  fireEvent.click(screen.getByLabelText("Nearby public content"));
-  await waitFor(() =>
-    expect(screen.getByTestId("related-map-canvas")).not.toHaveTextContent(
-      "A profile",
-    ),
-  );
+  expect(screen.queryByLabelText("Nearby public content")).not.toBeInTheDocument();
   fetchMock.mockRestore();
 });
 

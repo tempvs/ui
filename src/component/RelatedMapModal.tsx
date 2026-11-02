@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { FaGlobeAmericas } from "react-icons/fa";
 import {
@@ -8,10 +8,8 @@ import {
 } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 
-import { getImageThumbnails } from "../image/imageApi";
 import Spinner from "./Spinner";
 import MapCanvas from "../map/LazyMapCanvas";
-import { entityThumbnailMarkers } from "../map/entityThumbnailMarkers";
 import type { OwnedMapContent } from "../map/ownedMapContent";
 import {
   appendSharedMapScope,
@@ -19,7 +17,6 @@ import {
 } from "../map/sharedMapScope";
 import {
   getMapPlace,
-  nearbyMapEntities,
   saveMapSnapshot,
   type MapEntityLocation,
   type MapPlace,
@@ -80,16 +77,11 @@ export default function RelatedMapModal({
 }: RelatedMapModalProps) {
   const [show, setShow] = useState(false);
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
-  const [entities, setEntities] = useState<MapEntityLocation[]>([]);
-  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [relatedContent, setRelatedContent] = useState<OwnedMapContent>({
     markers: [],
     connections: [],
   });
   const [error, setError] = useState("");
-  const [showNearby, setShowNearby] = useState(true);
-  const [showRelated, setShowRelated] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [snapshotStatus, setSnapshotStatus] = useState("");
   const [showShare, setShowShare] = useState(false);
   const [shareDestination, setShareDestination] = useState<
@@ -228,8 +220,6 @@ export default function RelatedMapModal({
     if (!show) return undefined;
     const controller = new AbortController();
     setPlace(undefined);
-    setEntities([]);
-    setThumbnails({});
     setRelatedContent({ markers: [], connections: [] });
     setError("");
     void getMapPlace(placeId, controller.signal)
@@ -254,89 +244,15 @@ export default function RelatedMapModal({
       .then((content) => {
         if (active) setRelatedContent(content);
       })
-      // The nearby map remains useful even if an optional page relationship
-      // read is unavailable, so avoid turning this into a blocking modal error.
+      // Relationship data is optional; keep the focused place usable if it
+      // cannot be read.
       .catch(() => undefined);
     return () => {
       active = false;
     };
   }, [loadRelatedMapContent, show]);
 
-  useEffect(() => {
-    if (!show || !place) return undefined;
-    if (!showNearby) {
-      setEntities([]);
-      return undefined;
-    }
-    const controller = new AbortController();
-    void nearbyMapEntities(
-      place.latitude,
-      place.longitude,
-      radiusKm,
-      [],
-      "",
-      controller.signal,
-    )
-      .then((nearby) => {
-        if (!controller.signal.aborted) setEntities(nearby);
-      })
-      .catch((caught: unknown) => {
-        if (!controller.signal.aborted)
-          setError((caught as Error).message || "Unable to load related map.");
-      });
-    return () => controller.abort();
-  }, [place, radiusKm, show, showNearby]);
-
-  useEffect(() => {
-    if (!show || !entities.length) {
-      setThumbnails({});
-      return undefined;
-    }
-    let active = true;
-    void getImageThumbnails(
-      entities.map((entity) => ({
-        resourceType: entity.entityType.toLowerCase(),
-        resourceId: entity.entityId,
-      })),
-    )
-      .then((items) => {
-        if (!active) return;
-        setThumbnails(
-          Object.fromEntries(
-            items.flatMap((item) => {
-              const url = item.image?.thumbnailUrl || item.image?.url;
-              return url
-                ? [
-                    [
-                      `${item.resourceType.toUpperCase()}:${item.resourceId}`,
-                      url,
-                    ],
-                  ]
-                : [];
-            }),
-          ),
-        );
-      })
-      // Markers deliberately retain the shared hourglass fallback if the
-      // image service is briefly unavailable; geography itself remains usable.
-      .catch(() => active && setThumbnails({}));
-    return () => {
-      active = false;
-    };
-  }, [entities, show]);
-
-  const visibleRelatedContent = useMemo<OwnedMapContent>(
-    () => (showRelated ? relatedContent : { markers: [], connections: [] }),
-    [relatedContent, showRelated],
-  );
-  const relatedMarkerKeys = new Set(
-    visibleRelatedContent.markers.map((marker) => marker.key),
-  );
-  const thumbnailMarkers = entityThumbnailMarkers(
-    entities,
-    thumbnails,
-    relatedMarkerKeys,
-  );
+  const visibleRelatedContent = relatedContent;
   const fitPoints = [
     ...(place
       ? [
@@ -363,7 +279,13 @@ export default function RelatedMapModal({
       >
         <GlobeIcon />
       </Button>
-      <Modal show={show} onHide={() => setShow(false)} centered size="xl">
+      <Modal
+        show={show}
+        onHide={() => setShow(false)}
+        centered
+        size="xl"
+        dialogClassName="related-map-modal-dialog"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Related map: {displayName}</Modal.Title>
         </Modal.Header>
@@ -379,35 +301,15 @@ export default function RelatedMapModal({
           )}
           {place && (
             <>
-              <div className="d-flex align-items-center gap-3 flex-wrap mb-2">
-                <Form.Check
-                  id={`related-map-nearby-${place.id}`}
-                  label="Nearby public content"
-                  checked={showNearby}
-                  onChange={(event) => setShowNearby(event.target.checked)}
-                />
-                {loadRelatedMapContent && (
-                  <Form.Check
-                    id={`related-map-scope-${place.id}`}
-                    label="This page's related content"
-                    checked={showRelated}
-                    onChange={(event) => setShowRelated(event.target.checked)}
-                  />
-                )}
-              </div>
               <p className="small text-muted">
-                {showNearby
-                  ? `Public content within ${radiusKm} km of this location.`
-                  : "Nearby public content is hidden."}
                 {visibleRelatedContent.markers.length
-                  ? ` This ${visibleRelatedContent.markers.length === 1 ? "related item is" : `${visibleRelatedContent.markers.length} related items are`} shown with connection lines.`
-                  : ""}
+                  ? `${visibleRelatedContent.markers.length === 1 ? "This related item is" : `${visibleRelatedContent.markers.length} related items are`} shown with connection lines.`
+                  : "Only this page's related content is shown."}
               </p>
               <div className="related-map-canvas">
                 <MapCanvas
                   places={[{ ...place, matchedName: displayName }]}
-                  entities={entities}
-                  thumbnailMarkers={thumbnailMarkers}
+                  entities={[]}
                   ownedMarkers={visibleRelatedContent.markers}
                   ownedConnections={visibleRelatedContent.connections}
                   focus={visibleRelatedContent.markers.length ? null : place}
@@ -415,26 +317,28 @@ export default function RelatedMapModal({
                   selectedPlaceId={place.id}
                   showModernBorders={false}
                   onEntitySelect={() => undefined}
-                  onThumbnailMarkerSelect={(marker) =>
-                    navigate(entityPath(marker.entityType, marker.entityId))
-                  }
                   onOwnedMarkerSelect={(marker) => navigate(marker.path)}
                   onMapError={setError}
                 />
               </div>
+              {snapshotStatus && (
+                <p className="small text-muted mt-2 mb-0">{snapshotStatus}</p>
+              )}
             </>
           )}
         </Modal.Body>
         {place && (
-          <Modal.Footer>
+          <Modal.Footer className="related-map-modal-footer">
             <Button
               variant="outline-dark"
+              title="Open in Map"
+              aria-label="Open in Map"
               onClick={() => {
                 setShow(false);
                 navigate(mapPath);
               }}
             >
-              Open in Map
+              <GlobeIcon />
             </Button>
             <Button
               variant="outline-dark"
@@ -446,14 +350,10 @@ export default function RelatedMapModal({
                 // sender had open.
                 void navigator.clipboard
                   ?.writeText(`${window.location.origin}${mapPath}`)
-                  .then(() => {
-                    setCopied(true);
-                    window.setTimeout(() => setCopied(false), 2500);
-                  })
-                  .catch(() => setCopied(false));
+                  .catch(() => undefined);
               }}
             >
-              {copied ? "Copied" : <LinkIconButton aria-hidden />}
+              <LinkIconButton aria-hidden />
             </Button>
             {authenticated && (
               <Button
@@ -481,9 +381,6 @@ export default function RelatedMapModal({
               >
                 <PaperPlaneIconButton aria-hidden />
               </Button>
-            )}
-            {snapshotStatus && (
-              <span className="small text-muted">{snapshotStatus}</span>
             )}
           </Modal.Footer>
         )}
@@ -610,22 +507,6 @@ export default function RelatedMapModal({
       </Modal>
     </>
   );
-}
-
-function entityPath(
-  entityType: MapEntityLocation["entityType"],
-  entityId: string,
-): string {
-  switch (entityType) {
-    case "PROFILE":
-      return `/profile/${entityId}`;
-    case "CLUB":
-      return `/clubs/${entityId}`;
-    case "EVENT":
-      return `/events/${entityId}`;
-    case "SOURCE":
-      return `/library/source/${entityId}`;
-  }
 }
 
 function fullMapParameters(

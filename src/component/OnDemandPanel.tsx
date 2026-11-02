@@ -8,6 +8,8 @@ type OnDemandPanelProps = {
   /** Keep full profile content visible on desktop while preserving the mobile
    * disclosure that prevents a long page from mounting every feed at once. */
   collapseOnMobile?: boolean;
+  /** Open a collapsed panel for a direct handoff, such as a prepared post. */
+  forceOpen?: boolean;
   children: React.ReactNode;
 };
 
@@ -22,12 +24,16 @@ export default function OnDemandPanel({
   className = "",
   onOpen,
   collapseOnMobile = false,
+  forceOpen = false,
   children,
 }: OnDemandPanelProps) {
   const [open, setOpen] = useState(
-    () => collapseOnMobile && !isNarrowViewport(),
+    () => forceOpen || (collapseOnMobile && !isNarrowViewport()),
   );
   const notifiedOpen = useRef(false);
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
   useEffect(() => {
     if (!open || notifiedOpen.current) return;
     notifiedOpen.current = true;

@@ -35,6 +35,14 @@ export function takeStagedMapAttachmentForTarget(
   return take();
 }
 
+export function hasStagedMapAttachmentForTarget(target: {
+  type: string;
+  id: string;
+}): boolean {
+  return window.sessionStorage.getItem(targetKey) === `${target.type}:${target.id}` &&
+    Boolean(window.sessionStorage.getItem(key));
+}
+
 function take(): PublicMapReference | null {
   const raw = window.sessionStorage.getItem(key);
   window.sessionStorage.removeItem(key);

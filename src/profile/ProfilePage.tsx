@@ -30,6 +30,7 @@ import type { Club } from "../club/clubApi";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
 import PostPanel from "../post/PostPanel";
+import { hasStagedMapAttachmentForTarget } from "../map/pendingMapAttachment";
 import {
   createClubProfile,
   createUserProfile,
@@ -1812,6 +1813,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                   description={this.t("profile.posts.load", "Load posts and comments")}
                   className="mt-3 profile-posts-action"
                   collapseOnMobile
+                  forceOpen={hasStagedMapAttachmentForTarget({
+                    type: "PROFILE",
+                    id: String(this.state.profileId),
+                  })}
                 >
                   <PostPanel
                     targetType="PROFILE"

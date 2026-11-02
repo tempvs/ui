@@ -105,6 +105,8 @@ export default function PostPanel({
   const [draft, setDraft] = useState("");
   const [selectedMapReference, setSelectedMapReference] =
     useState<PublicMapReference | null>(null);
+  const [focusPreparedComposer, setFocusPreparedComposer] = useState(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [editMapReference, setEditMapReference] =
     useState<PublicMapReference | null>(null);
   const [editMapChanged, setEditMapChanged] = useState(false);
@@ -179,6 +181,7 @@ export default function PostPanel({
       });
     if (staged) {
       setSelectedMapReference(staged);
+      setFocusPreparedComposer(true);
       const authorProfileId =
         navigationState?.mapAuthorProfileId || takeStagedMapAuthorProfile();
       if (authorProfileId) setSelectedAuthorProfileId(authorProfileId);
@@ -198,6 +201,15 @@ export default function PostPanel({
     targetId,
     targetType,
   ]);
+  useEffect(() => {
+    if (!focusPreparedComposer) return;
+    const frame = window.requestAnimationFrame(() => {
+      composerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      composerRef.current?.focus({ preventScroll: true });
+      setFocusPreparedComposer(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusPreparedComposer]);
 
   // Keep the composer on the page that is already open, but immediately use
   // the newly selected profile as its default author.
@@ -503,6 +515,7 @@ export default function PostPanel({
       {(canCreate || (targetType === "PROFILE" && Boolean(currentProfileId))) && (
         <div className="post-composer-wrap">
           <Form.Control
+            ref={composerRef}
             as="textarea"
             rows={3}
             className="post-composer"
