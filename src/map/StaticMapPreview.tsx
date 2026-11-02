@@ -58,8 +58,8 @@ export default function StaticMapPreview({
     [entities, markers, reference.latitude, reference.longitude],
   );
   const bounds = useMemo(
-    () => previewBounds(reference, points),
-    [points, reference],
+    () => previewBounds(reference, points, size.width / size.height),
+    [points, reference, size.height, size.width],
   );
   const markerOffsets = useMemo(() => thumbnailOffsets(markers), [markers]);
 
@@ -220,7 +220,11 @@ function thumbnailOffsets(markers: OwnedMapMarker[]) {
   return offsets;
 }
 
-function previewBounds(reference: PublicMapReference, points: Point[]) {
+function previewBounds(
+  reference: PublicMapReference,
+  points: Point[],
+  aspectRatio: number,
+) {
   const baseLatitudeSpan = Math.max(reference.radiusKm / 111.32, 0.35) * 1.35;
   const baseLongitudeSpan =
     baseLatitudeSpan / Math.max(0.2, Math.cos((reference.latitude * Math.PI) / 180));
@@ -234,8 +238,31 @@ function previewBounds(reference: PublicMapReference, points: Point[]) {
     east = Math.max(east, point.longitude);
     west = Math.min(west, point.longitude);
   });
-  const latitudePadding = Math.max((north - south) * 0.12, 0.08);
-  const longitudePadding = Math.max((east - west) * 0.12, 0.08);
+  // Canvas cards range from compact vertical feed slots to wide desktop
+  // panels. Expand the geographic bounds to the rendered aspect ratio instead
+  // of stretching the coordinates to fill it.
+  const centreLatitude = (north + south) / 2;
+  const latitudeSpan = north - south;
+  const longitudeSpan = east - west;
+  const targetLongitudeSpan =
+    (latitudeSpan * Math.max(aspectRatio, 0.5)) /
+    Math.max(0.2, Math.cos((centreLatitude * Math.PI) / 180));
+  if (longitudeSpan < targetLongitudeSpan) {
+    const expansion = (targetLongitudeSpan - longitudeSpan) / 2;
+    west -= expansion;
+    east += expansion;
+  } else {
+    const targetLatitudeSpan =
+      (longitudeSpan * Math.max(0.2, Math.cos((centreLatitude * Math.PI) / 180))) /
+      Math.max(aspectRatio, 0.5);
+    const expansion = (targetLatitudeSpan - latitudeSpan) / 2;
+    south -= expansion;
+    north += expansion;
+  }
+  // Thumbnail markers are deliberately offset around shared places. A larger
+  // margin leaves those stacks and dashed loops fully inside the preview.
+  const latitudePadding = Math.max((north - south) * 0.2, 0.12);
+  const longitudePadding = Math.max((east - west) * 0.2, 0.12);
   return {
     north: Math.min(90, north + latitudePadding),
     south: Math.max(-90, south - latitudePadding),
