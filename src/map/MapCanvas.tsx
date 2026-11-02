@@ -85,6 +85,27 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
   features: [],
 };
 
+const BASEMAP_URL = "/maps/basemap.geojson";
+let basemapPreload: Promise<void> | undefined;
+
+/** Start warming the complete self-hosted world before MapLibre asks for its
+ * style source. Every modal and the full Map page then use the same cached
+ * land/lake/border payload instead of revealing it piecemeal while panning. */
+function preloadBasemap(): Promise<void> {
+  if (!basemapPreload) {
+    basemapPreload = fetch(BASEMAP_URL, { cache: "force-cache" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to preload map basemap");
+        return response.arrayBuffer();
+      })
+      .then(() => undefined)
+      .catch(() => undefined);
+  }
+  return basemapPreload;
+}
+
+void preloadBasemap();
+
 /**
  * A deliberately small, self-hosted Natural Earth style. The background is the
  * ocean; land, lakes and country boundaries are one static public-domain GeoJSON.
@@ -249,9 +270,11 @@ export default function MapCanvas({
       // source can finish painting one frame later. Re-measure at idle so the
       // complete world is redrawn into the final viewport rather than keeping
       // a clipped WebGL buffer from the transition frame.
-      next.once("idle", () => {
+      const resizeWhenIdle = () => {
         if (active) next.resize();
-      });
+      };
+      next.once("idle", resizeWhenIdle);
+      next.once("remove", () => next.off("idle", resizeWhenIdle));
     });
     return () => {
       active = false;
@@ -688,7 +711,7 @@ function mapStyle(): maplibregl.StyleSpecification {
   return {
     version: 8,
     sources: {
-      basemap: { type: "geojson", data: "/maps/basemap.geojson" },
+      basemap: { type: "geojson", data: BASEMAP_URL },
     },
     layers: [
       {
@@ -1035,7 +1058,9 @@ function addMarkerLinksPopup(
   };
   const scheduleClose = () => {
     if (closeTimer !== undefined) window.clearTimeout(closeTimer);
-    closeTimer = window.setTimeout(close, 160);
+    // Leave a forgiving bridge from a thumbnail to its nearby popup. A short
+    // delay made its place link unreachable with a mouse at some zoom levels.
+    closeTimer = window.setTimeout(close, 420);
   };
   const open = () => {
     if (closeTimer !== undefined) {
@@ -1050,7 +1075,7 @@ function addMarkerLinksPopup(
       // DOM markers may be deliberately spread around the same map point.
       // Match that visual displacement and clear the thumbnail's right edge,
       // so the hover card belongs to the image rather than its source point.
-      offset: [markerOffset[0] + 20, markerOffset[1]],
+      offset: [markerOffset[0] + 8, markerOffset[1]],
       maxWidth: "18rem",
     })
       .setLngLat([marker.longitude, marker.latitude])

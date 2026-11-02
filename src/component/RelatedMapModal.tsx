@@ -277,6 +277,12 @@ export default function RelatedMapModal({
       : []),
     ...visibleRelatedContent.markers,
   ];
+  // An avatar marker already identifies the focused resource. Drawing the
+  // selected-place label beneath it duplicates the label and obscures the
+  // thumbnail, especially for a one-point club map.
+  const hasRelatedThumbnail = visibleRelatedContent.markers.some(
+    (marker) => Boolean(marker.thumbnailUrl),
+  );
 
   return (
     <>
@@ -335,7 +341,7 @@ export default function RelatedMapModal({
                   ownedConnections={visibleRelatedContent.connections}
                   focus={visibleRelatedContent.markers.length ? null : place}
                   initialFitPoints={fitPoints}
-                  selectedPlaceId={place.id}
+                  selectedPlaceId={hasRelatedThumbnail ? null : place.id}
                   showModernBorders={false}
                   onEntitySelect={() => undefined}
                   onOwnedMarkerSelect={(marker) => navigate(marker.path)}

@@ -1,5 +1,6 @@
 import type { Club } from "../club/clubApi";
 import type { LibrarySource } from "../library/libraryApi";
+import type { LibrarySourceImage } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
@@ -136,6 +137,7 @@ export async function loadClubRelatedMapContent(
  * the profile and club share links. */
 export async function loadSourceRelatedMapContent(
   source: LibrarySource,
+  firstImage?: LibrarySourceImage | null,
 ): Promise<OwnedMapContent> {
   return projectionMapContent("SOURCE", source.id, [
     {
@@ -145,6 +147,7 @@ export async function loadSourceRelatedMapContent(
       label: source.name || "Source",
       placeId: source.discoveredAtPlaceId,
       placeName: source.discoveredAtPlaceName,
+      thumbnailUrl: firstImage?.thumbnailUrl || firstImage?.url,
     },
     {
       entityType: "SOURCE",
@@ -153,6 +156,7 @@ export async function loadSourceRelatedMapContent(
       label: source.name || "Source",
       placeId: source.heldAtPlaceId,
       placeName: source.heldAtPlaceName,
+      thumbnailUrl: firstImage?.thumbnailUrl || firstImage?.url,
     },
   ]);
 }

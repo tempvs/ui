@@ -39,6 +39,7 @@ import { getImageThumbnails } from "../../image/imageApi";
 import { Profile } from "../../profile/profileTypes";
 import PostPanel from "../../post/PostPanel";
 import SourceChangeLogDiffModal from "../components/SourceChangeLogDiffModal";
+import { loadSourceRelatedMapContent } from "../../map/ownedMapContent";
 
 const EMPTY_APPROVED_IMAGES: LibrarySourceImage[] = [];
 const EMPTY_APPROVED_IMAGE_OPERATIONS: SourceImageOperation[] = [];
@@ -366,6 +367,9 @@ export default function LibrarySourcePage() {
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
+                loadRelatedMapContent={() =>
+                  loadSourceRelatedMapContent(source, images[0])
+                }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
               <PlacePickerField
@@ -382,6 +386,9 @@ export default function LibrarySourcePage() {
                 editable={false}
                 onChange={() => undefined}
                 className="mt-2 mb-0"
+                loadRelatedMapContent={() =>
+                  loadSourceRelatedMapContent(source, images[0])
+                }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
             </div>
