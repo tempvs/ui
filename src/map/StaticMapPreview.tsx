@@ -61,6 +61,7 @@ export default function StaticMapPreview({
     () => previewBounds(reference, points),
     [points, reference],
   );
+  const markerOffsets = useMemo(() => thumbnailOffsets(markers), [markers]);
 
   useEffect(() => {
     let active = true;
@@ -112,7 +113,7 @@ export default function StaticMapPreview({
             className={`static-map-preview-thumbnail static-map-preview-thumbnail-${marker.entityType.toLowerCase()}`}
             src={marker.thumbnailUrl}
             alt=""
-            style={thumbnailPosition(marker, bounds)}
+            style={thumbnailPosition(marker, bounds, markerOffsets.get(marker.key))}
           />
         ) : null,
       )}
@@ -142,7 +143,7 @@ function drawPreview(
 
   for (const feature of basemap.features || []) {
     const kind = feature.properties?.tempvsBasemapKind;
-    if (!kind || !feature.geometry?.coordinates) continue;
+    if (!kind || kind === "borders" || !feature.geometry?.coordinates) continue;
     context.beginPath();
     drawGeometry(context, feature.geometry, project);
     if (kind === "land") {
@@ -154,10 +155,6 @@ function drawPreview(
     } else if (kind === "lakes") {
       context.fillStyle = "#b9d7e5";
       context.fill();
-    } else {
-      context.strokeStyle = "rgba(185, 175, 158, 0.7)";
-      context.lineWidth = 1;
-      context.stroke();
     }
   }
 
@@ -186,10 +183,41 @@ function drawPreview(
   entities.forEach((entity) => drawMarker(context, project(entity), entity.entityType));
 }
 
-function thumbnailPosition(point: Point, bounds: ReturnType<typeof previewBounds>) {
+function thumbnailPosition(
+  point: Point,
+  bounds: ReturnType<typeof previewBounds>,
+  offset: [number, number] = [0, 0],
+) {
   const left = ((point.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
   const top = ((bounds.north - point.latitude) / (bounds.north - bounds.south)) * 100;
-  return { left: `${left}%`, top: `${top}%` };
+  return {
+    left: `${left}%`,
+    top: `${top}%`,
+    transform: `translate(calc(-50% + ${offset[0]}px), calc(-50% + ${offset[1]}px))`,
+  };
+}
+
+function thumbnailOffsets(markers: OwnedMapMarker[]) {
+  const grouped = new Map<string, OwnedMapMarker[]>();
+  markers.forEach((marker) => {
+    const group = grouped.get(marker.placeId) || [];
+    group.push(marker);
+    grouped.set(marker.placeId, group);
+  });
+  const offsets = new Map<string, [number, number]>();
+  grouped.forEach((group) => {
+    group.forEach((marker, index) => {
+      if (group.length === 1) offsets.set(marker.key, [0, 0]);
+      else {
+        const angle = (Math.PI * 2 * index) / group.length - Math.PI / 2;
+        offsets.set(marker.key, [
+          Math.round(Math.cos(angle) * 20),
+          Math.round(Math.sin(angle) * 20),
+        ]);
+      }
+    });
+  });
+  return offsets;
 }
 
 function previewBounds(reference: PublicMapReference, points: Point[]) {

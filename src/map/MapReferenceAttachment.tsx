@@ -134,6 +134,7 @@ export default function MapReferenceAttachment({
 }) {
   const [mapError, setMapError] = useState(false);
   const [show, setShow] = useState(false);
+  const [modalMapReady, setModalMapReady] = useState(false);
   const [status, setStatus] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const mapNavigationStarted = useRef(false);
@@ -266,6 +267,9 @@ export default function MapReferenceAttachment({
       <Modal
         show={show}
         onHide={() => setShow(false)}
+        onEnter={() => setModalMapReady(false)}
+        onEntered={() => setModalMapReady(true)}
+        onExited={() => setModalMapReady(false)}
         centered
         size="xl"
         dialogClassName="map-reference-modal-dialog"
@@ -275,14 +279,14 @@ export default function MapReferenceAttachment({
         </Modal.Header>
         <Modal.Body>
           <div className="map-reference-modal-canvas">
-            <MapPreview
+            {show && modalMapReady && <MapPreview
               reference={resolvedReference}
               supplementalScope={
                 reference.scope ? stableRelationshipScope : undefined
               }
               eager
               onError={() => setStatus("Map preview unavailable.")}
-            />
+            />}
           </div>
           {status && <p className="small text-muted mt-2 mb-0">{status}</p>}
         </Modal.Body>
