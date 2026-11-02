@@ -737,14 +737,16 @@
     min-height: min(45dvh, 23rem);
   }
 
-  .related-map-modal-footer {
+  .related-map-modal-footer,
+  .map-reference-modal-footer {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.4rem;
     flex-wrap: nowrap;
   }
 
-  .related-map-modal-footer .btn {
+  .related-map-modal-footer .btn,
+  .map-reference-modal-footer .btn {
     min-width: 0;
     padding-inline: 0.45rem;
   }
