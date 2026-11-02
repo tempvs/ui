@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapEntityLocation } from "./mapApi";
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
@@ -31,9 +31,6 @@ function loadBasemap() {
 
 type Point = { latitude: number; longitude: number };
 
-const width = 960;
-const height = 480;
-
 /** A deliberately lightweight geographic preview for feed cards. It uses the
  * same local Natural Earth source and the attachment's actual graph, while
  * avoiding a MapLibre/WebGL instance for every visible post. */
@@ -49,7 +46,21 @@ export default function StaticMapPreview({
   connections: OwnedMapConnection[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [basemap, setBasemap] = useState<Basemap | null>(null);
+  const [size, setSize] = useState({ width: 960, height: 480 });
+  const points = useMemo<Point[]>(
+    () => [
+      { latitude: reference.latitude, longitude: reference.longitude },
+      ...markers,
+      ...entities,
+    ].filter(validPoint),
+    [entities, markers, reference.latitude, reference.longitude],
+  );
+  const bounds = useMemo(
+    () => previewBounds(reference, points),
+    [points, reference],
+  );
 
   useEffect(() => {
     let active = true;
@@ -64,19 +75,48 @@ export default function StaticMapPreview({
   }, []);
 
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const measure = () => {
+      const next = root.getBoundingClientRect();
+      if (next.width > 0 && next.height > 0)
+        setSize({ width: Math.round(next.width), height: Math.round(next.height) });
+    };
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    observer?.observe(root);
+    measure();
+    return () => observer?.disconnect();
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !basemap) return;
-    drawPreview(canvas, basemap, reference, markers, entities, connections);
-  }, [basemap, connections, entities, markers, reference]);
+    drawPreview(canvas, basemap, reference, markers, entities, connections, bounds);
+  }, [basemap, bounds, connections, entities, markers, reference, size]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="static-map-preview"
-      width={width}
-      height={height}
-      aria-label="Map preview"
-    />
+    <div ref={rootRef} className="static-map-preview" aria-label="Map preview">
+      <canvas
+        ref={canvasRef}
+        className="static-map-preview-canvas"
+        width={size.width}
+        height={size.height}
+      />
+      {markers.map((marker) =>
+        marker.thumbnailUrl ? (
+          <img
+            key={marker.key}
+            className={`static-map-preview-thumbnail static-map-preview-thumbnail-${marker.entityType.toLowerCase()}`}
+            src={marker.thumbnailUrl}
+            alt=""
+            style={thumbnailPosition(marker, bounds)}
+          />
+        ) : null,
+      )}
+    </div>
   );
 }
 
@@ -87,18 +127,14 @@ function drawPreview(
   markers: OwnedMapMarker[],
   entities: MapEntityLocation[],
   connections: OwnedMapConnection[],
+  bounds: ReturnType<typeof previewBounds>,
 ) {
   const context = canvas.getContext("2d");
   if (!context) return;
+  const { width, height } = canvas;
   context.fillStyle = "#b9d7e5";
   context.fillRect(0, 0, width, height);
 
-  const points: Point[] = [
-    { latitude: reference.latitude, longitude: reference.longitude },
-    ...markers,
-    ...entities,
-  ].filter(validPoint);
-  const bounds = previewBounds(reference, points);
   const project = ({ longitude, latitude }: Point): [number, number] => [
     ((longitude - bounds.west) / (bounds.east - bounds.west)) * width,
     ((bounds.north - latitude) / (bounds.north - bounds.south)) * height,
@@ -148,6 +184,12 @@ function drawPreview(
 
   markers.forEach((marker) => drawMarker(context, project(marker), marker.entityType));
   entities.forEach((entity) => drawMarker(context, project(entity), entity.entityType));
+}
+
+function thumbnailPosition(point: Point, bounds: ReturnType<typeof previewBounds>) {
+  const left = ((point.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
+  const top = ((bounds.north - point.latitude) / (bounds.north - bounds.south)) * 100;
+  return { left: `${left}%`, top: `${top}%` };
 }
 
 function previewBounds(reference: PublicMapReference, points: Point[]) {

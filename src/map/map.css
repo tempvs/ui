@@ -853,11 +853,39 @@
 }
 
 .static-map-preview {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
   background: #b9d7e5;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.static-map-preview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.static-map-preview-thumbnail {
+  position: absolute;
+  z-index: 1;
+  width: 2.35rem;
+  height: 2.35rem;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  border: 2px solid #fffdf7;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(45, 36, 25, 0.45);
+}
+
+.static-map-preview-thumbnail-club {
+  border-color: #8a5a44;
+}
+
+.static-map-preview-thumbnail-source {
+  border-color: #6d7c4a;
 }
 
 @media (max-width: 767.98px) {
