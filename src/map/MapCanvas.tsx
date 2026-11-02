@@ -227,6 +227,7 @@ export default function MapCanvas({
   useEffect(() => {
     if (!basemapReady || !element.current || map.current) return undefined;
     let active = true;
+    let disposeMarkerLayers: (() => void) | undefined;
     const next = new maplibregl.Map({
       container: element.current,
       style: mapStyle(basemapData),
@@ -279,7 +280,7 @@ export default function MapCanvas({
     });
     next.on("load", () => {
       if (!active) return;
-      addMarkerLayers(
+      disposeMarkerLayers = addMarkerLayers(
         next,
         (key) => selectRef.current(key),
         (id) => {
@@ -309,6 +310,7 @@ export default function MapCanvas({
       coordinateMarker.current = null;
       ownedMarkerInstances.current.forEach((marker) => marker.remove());
       ownedMarkerInstances.current = [];
+      disposeMarkerLayers?.();
       next.remove();
       map.current = null;
     };
@@ -785,7 +787,8 @@ function addMarkerLayers(
   onPlaceSelect: (id: string) => MapPlace | undefined,
   initialOwnedConnections: OwnedMapConnection[] = [],
   initialOwnedMarkers: OwnedMapMarker[] = [],
-): void {
+): () => void {
+  let disposed = false;
   map.addSource("map-entities", {
     type: "geojson",
     data: EMPTY_COLLECTION,
@@ -924,6 +927,7 @@ function addMarkerLayers(
       number,
     ];
     source.getClusterExpansionZoom(clusterId).then((zoom) => {
+      if (disposed) return;
       map.easeTo({
         center,
         zoom,
@@ -1045,6 +1049,10 @@ function addMarkerLayers(
       map.getCanvas().style.cursor = "";
     });
   }
+  return () => {
+    disposed = true;
+    closeEntityHoverPopup();
+  };
 }
 
 function markerColour(): maplibregl.ExpressionSpecification {
