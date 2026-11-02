@@ -261,8 +261,8 @@ function previewBounds(
   }
   // Thumbnail markers are deliberately offset around shared places. A larger
   // margin leaves those stacks and dashed loops fully inside the preview.
-  const latitudePadding = Math.max((north - south) * 0.2, 0.12);
-  const longitudePadding = Math.max((east - west) * 0.2, 0.12);
+  const latitudePadding = Math.max((north - south) * 0.28, 0.16);
+  const longitudePadding = Math.max((east - west) * 0.28, 0.16);
   return {
     north: Math.min(90, north + latitudePadding),
     south: Math.max(-90, south - latitudePadding),
