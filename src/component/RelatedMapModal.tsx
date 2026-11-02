@@ -76,6 +76,10 @@ export default function RelatedMapModal({
   scope,
 }: RelatedMapModalProps) {
   const [show, setShow] = useState(false);
+  const [mapModalReady, setMapModalReady] = useState(false);
+  const [relatedContentReady, setRelatedContentReady] = useState(
+    () => !loadRelatedMapContent,
+  );
   const [place, setPlace] = useState<MapPlace | null | undefined>(undefined);
   const [relatedContent, setRelatedContent] = useState<OwnedMapContent>({
     markers: [],
@@ -238,15 +242,23 @@ export default function RelatedMapModal({
   }, [placeId, show]);
 
   useEffect(() => {
-    if (!show || !loadRelatedMapContent) return undefined;
+    if (!show) return undefined;
+    if (!loadRelatedMapContent) {
+      setRelatedContentReady(true);
+      return undefined;
+    }
     let active = true;
+    setRelatedContentReady(false);
     void loadRelatedMapContent()
       .then((content) => {
         if (active) setRelatedContent(content);
       })
       // Relationship data is optional; keep the focused place usable if it
       // cannot be read.
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setRelatedContentReady(true);
+      });
     return () => {
       active = false;
     };
@@ -282,6 +294,9 @@ export default function RelatedMapModal({
       <Modal
         show={show}
         onHide={() => setShow(false)}
+        onEnter={() => setMapModalReady(false)}
+        onEntered={() => setMapModalReady(true)}
+        onExited={() => setMapModalReady(false)}
         centered
         size="xl"
         dialogClassName="related-map-modal-dialog"
@@ -307,6 +322,12 @@ export default function RelatedMapModal({
                   : "Only this page's related content is shown."}
               </p>
               <div className="related-map-canvas">
+                {(!mapModalReady || !relatedContentReady) && (
+                  <div className="py-4 text-center">
+                    <Spinner size="sm" />
+                  </div>
+                )}
+                {show && mapModalReady && relatedContentReady && (
                 <MapCanvas
                   places={[{ ...place, matchedName: displayName }]}
                   entities={[]}
@@ -320,6 +341,7 @@ export default function RelatedMapModal({
                   onOwnedMarkerSelect={(marker) => navigate(marker.path)}
                   onMapError={setError}
                 />
+                )}
               </div>
               {snapshotStatus && (
                 <p className="small text-muted mt-2 mb-0">{snapshotStatus}</p>
