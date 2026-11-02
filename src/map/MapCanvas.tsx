@@ -86,10 +86,6 @@ const EMPTY_COLLECTION: GeoJSON.FeatureCollection = {
 };
 
 const BASEMAP_URL = "/maps/basemap.geojson";
-const WEB_MERCATOR_WORLD_BOUNDS: maplibregl.LngLatBoundsLike = [
-  [-180, -85.051129],
-  [180, 85.051129],
-];
 let basemapPreload: Promise<GeoJSON.FeatureCollection | null> | undefined;
 
 /** Start warming the complete self-hosted world before MapLibre asks for its
@@ -236,11 +232,6 @@ export default function MapCanvas({
       // the full Map page. Being explicit avoids blank copies at the
       // antimeridian while the self-hosted GeoJSON basemap is in use.
       renderWorldCopies: true,
-      // Natural Earth is a complete longitude/latitude world. Constrain the
-      // camera to Web Mercator's real world so zooming or a trackpad fling
-      // cannot reveal the blank projection area beyond its polar/dateline
-      // limits and make land or ocean look cut off.
-      maxBounds: WEB_MERCATOR_WORLD_BOUNDS,
       // The historical map is a north-up reference surface. Keep ordinary
       // mouse/touch dragging for panning, but never let a gesture tilt or
       // rotate the world beneath its markers.
