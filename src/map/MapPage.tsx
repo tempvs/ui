@@ -18,7 +18,6 @@ import {
   getMapPlace,
   listMyMapPlaceProposals,
   nearbyMapEntitiesPage,
-  nearbyMapPlaces,
   searchMapPlaces,
   type MapEntityLocation,
   type MapEntityLocationPage,
@@ -546,9 +545,7 @@ export default function MapPage() {
     setParams(next, { replace: true });
     setLoading(true);
     try {
-      const [places, nearbyEntityPage] = await Promise.all([
-        nearbyMapPlaces(selected.latitude, selected.longitude, Number(radius)),
-        types.length
+      const nearbyEntityPage = await (types.length
           ? nearbyMapEntitiesPage(
               selected.latitude,
               selected.longitude,
@@ -564,12 +561,8 @@ export default function MapPage() {
               profileFilters,
               clubFilters,
             )
-          : Promise.resolve<MapEntityLocationPage>({ items: [] }),
-      ]);
-      setItems([
-        selected,
-        ...places.filter((candidate) => candidate.id !== selected.id),
-      ]);
+          : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+      setItems([selected]);
       setEntities(nearbyEntityPage.items);
       setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
     } catch (caught) {
@@ -671,9 +664,7 @@ export default function MapPage() {
     setLoading(true);
     try {
       if (hasCoordinates) {
-        const [places, nearbyEntityPage] = await Promise.all([
-          nearbyMapPlaces(lat, lng, Number(radius)),
-          types.length
+        const nearbyEntityPage = await (types.length
             ? nearbyMapEntitiesPage(
                 lat,
                 lng,
@@ -689,16 +680,8 @@ export default function MapPage() {
                 profileFilters,
                 clubFilters,
               )
-            : Promise.resolve<MapEntityLocationPage>({ items: [] }),
-        ]);
-        setItems(
-          linkedPlace
-            ? [
-                linkedPlace,
-                ...places.filter((place) => place.id !== linkedPlace?.id),
-              ]
-            : places,
-        );
+            : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+        setItems(linkedPlace ? [linkedPlace] : []);
         setEntities(nearbyEntityPage.items);
         setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
       } else {

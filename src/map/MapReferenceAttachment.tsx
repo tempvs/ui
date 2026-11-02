@@ -306,7 +306,29 @@ export default function MapReferenceAttachment({
                 navigate("/chat", { state: { composeMap: true } });
               }}
             >
-              Send
+              Send to chat
+            </Button>
+          )}
+          {authenticated && reference.scope?.type === "PROFILE" && (
+            <Button
+              variant="dark"
+              onClick={() => {
+                const profileId = reference.scope?.id;
+                if (!profileId) return;
+                stageMapAttachment(reference, undefined, {
+                  type: "PROFILE",
+                  id: profileId,
+                });
+                setShow(false);
+                navigate(`/profile/${encodeURIComponent(profileId)}`, {
+                  state: {
+                    mapAttachment: reference,
+                    mapTarget: { type: "PROFILE", id: profileId },
+                  },
+                });
+              }}
+            >
+              Post to this profile wall
             </Button>
           )}
         </Modal.Footer>

@@ -334,6 +334,22 @@ export async function getMapProjection(
   return (await responseJson(response)) as MapProjection;
 }
 
+export async function getMapProjections(
+  scope: MapProjection["scope"],
+  ids: string[],
+): Promise<MapProjection[]> {
+  const uniqueIds = Array.from(new Set(ids)).slice(0, 40);
+  if (!uniqueIds.length) return [];
+  const params = new URLSearchParams({
+    scope,
+    ids: uniqueIds.join(","),
+  });
+  const response = await fetch(`/api/map/projections?${params}`);
+  if (!response.ok) throw new Error("Unable to load map projections");
+  const body = (await responseJson(response)) as { items?: unknown } | null;
+  return Array.isArray(body?.items) ? (body?.items as MapProjection[]) : [];
+}
+
 /** Public approved-place lookup through the same-origin Map API. */
 export async function searchMapPlaces(
   query: string,

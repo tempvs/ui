@@ -8,7 +8,11 @@ import {
 } from "../profile/profileApi";
 import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import { getEvent } from "../event/eventApi";
-import { getMapPlacesByReference, getMapProjection } from "./mapApi";
+import {
+  getMapPlacesByReference,
+  getMapProjection,
+  getMapProjections,
+} from "./mapApi";
 import {
   loadClubRelatedMapContent,
   loadOwnedMapContent,
@@ -38,6 +42,7 @@ jest.mock("../event/eventApi", () => ({ getEvent: jest.fn() }));
 jest.mock("./mapApi", () => ({
   getMapPlacesByReference: jest.fn(),
   getMapProjection: jest.fn(),
+  getMapProjections: jest.fn(),
 }));
 
 const place = {
@@ -142,6 +147,9 @@ beforeEach(() => {
       ],
     };
   });
+  jest.mocked(getMapProjections).mockImplementation(async (_scope, ids) =>
+    Promise.all(ids.map((id) => getMapProjection("PROFILE", id))),
+  );
   jest.mocked(getEvent).mockResolvedValue({
     id: "event",
     name: "Roman festival",
@@ -364,7 +372,7 @@ test("resolves a shared user scope from the original owner's id", async () => {
   );
 });
 
-test("publishes profile markers before optional club and source loading completes", async () => {
+test("loads the owned map from persisted profile projections", async () => {
   let releaseClubReads: (() => void) | undefined;
   const waitForClubReads = new Promise<void>((resolve) => {
     releaseClubReads = resolve;
@@ -386,12 +394,16 @@ test("publishes profile markers before optional club and source loading complete
 
   await firstProgress;
 
-  expect(progress).toHaveBeenCalledWith({
+  expect(progress).toHaveBeenCalledWith(
+    expect.objectContaining({
     markers: expect.arrayContaining([
       expect.objectContaining({ key: "PROFILE:personal:CURRENT_RESIDENCE" }),
     ]),
-    connections: [],
-  });
+    connections: expect.arrayContaining([
+      expect.objectContaining({ kind: "PROFILE_SOURCE" }),
+    ]),
+    }),
+  );
 
   releaseClubReads?.();
   await contentPromise;

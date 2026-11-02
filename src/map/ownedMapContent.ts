@@ -19,6 +19,7 @@ import type { StashItem } from "../profile/profileTypes";
 import {
   getMapPlacesByReference,
   getMapProjection,
+  getMapProjections,
   type MapPlace,
   type MapProjection,
 } from "./mapApi";
@@ -346,47 +347,72 @@ export async function loadOwnedMapContent(
         : []),
     ].filter((profile): profile is Profile => Boolean(profile)),
   );
-  const resolvePlace = placeResolver();
+  const projections = await getMapProjections(
+    "PROFILE",
+    profiles.map((profile) => profile.id),
+  );
+  const content = await mergeProjectionContent(projections);
+  onProgress?.(content);
+  return content;
+}
 
-  // Profiles need only their canonical place and avatar, whereas clubs and
-  // source locations require additional membership/stash reads. Publish the
-  // profile subset first so opening the Map does not wait on the slowest
-  // optional branch before framing the viewer's locations.
-  const profileMarkersPromise = profileMapMarkers(profiles, resolvePlace);
-  const membershipsPromise = clubsByProfile(profiles);
-  const sourceUsagePromise = sourceIdsUsedByProfiles(profiles);
-  const profileMarkers = await profileMarkersPromise;
-  onProgress?.({ markers: profileMarkers, connections: [] });
-
-  const [memberships, sourceUsage] = await Promise.all([
-    membershipsPromise,
-    sourceUsagePromise,
+async function mergeProjectionContent(
+  projections: MapProjection[],
+): Promise<OwnedMapContent> {
+  const markers = projections.flatMap((projection) => projection.markers);
+  const uniqueMarkers = Array.from(
+    new Map(
+      deduplicateProjectionMarkers(markers).map((marker) => [
+        `${marker.entityType}:${marker.entityId}:${marker.locationRole}`,
+        marker,
+      ]),
+    ).values(),
+  );
+  const [thumbnails, profiles] = await Promise.all([
+    thumbnailUrls(
+      uniqueMarkers.map((marker) => ({
+        resourceType: marker.entityType.toLowerCase() as
+          | "profile"
+          | "club"
+          | "source"
+          | "event",
+        resourceId: marker.entityId,
+      })),
+    ),
+    getProfilesByIds(
+      uniqueMarkers
+        .filter((marker) => marker.entityType === "PROFILE")
+        .map((marker) => marker.entityId),
+    ).catch(() => []),
   ]);
-  const clubs = uniqueById(
-    Array.from(memberships.values()).flatMap((profileClubs) => profileClubs),
+  const aliases = new Map(
+    profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
   );
-  const sourceIds = Array.from(
-    new Set(Array.from(sourceUsage.values()).flat()),
-  );
-  const clubMarkersPromise = clubMapMarkers(clubs, resolvePlace);
-  const sourceMarkersPromise = sourceMapMarkers(sourceIds, resolvePlace, true);
-  const clubMarkers = await clubMarkersPromise;
-  // Club locations usually resolve before all stash-linked sources. Fit those
-  // too; a final snapshot below extends the frame to every available point.
-  onProgress?.({
-    markers: [...profileMarkers, ...clubMarkers],
-    connections: [],
-  });
-  const sourceMarkers = await sourceMarkersPromise;
-  const markers = [...profileMarkers, ...clubMarkers, ...sourceMarkers];
   return {
-    markers,
-    connections: buildConnections(
-      markers,
-      personalProfile?.id,
-      profiles,
-      memberships,
-      sourceUsage,
+    markers: uniqueMarkers.map((value) => marker({
+      entityType: value.entityType,
+      entityId: value.entityId,
+      locationRole: value.locationRole,
+      label: value.label,
+      placeId: value.placeId,
+      placeName: value.placeName,
+      latitude: value.latitude,
+      longitude: value.longitude,
+      thumbnailUrl:
+        thumbnails.get(`${value.entityType.toLowerCase()}:${value.entityId}`) ||
+        null,
+      path: projectionPath(
+        value.entityType,
+        value.entityId,
+        aliases.get(value.entityId),
+      ),
+    })),
+    connections: Array.from(
+      new Map(
+        projections
+          .flatMap((projection) => projection.connections)
+          .map((connection) => [connection.key, connection]),
+      ).values(),
     ),
   };
 }
