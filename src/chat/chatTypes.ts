@@ -1,3 +1,5 @@
+import type { PublicMapReference } from "../map/MapReferenceAttachment";
+
 export type ChatParticipant = {
   profileId: string;
   name: string;
@@ -11,6 +13,8 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
   mapReference?: PublicMapReference;
+  isRead?: boolean;
+  readByProfileIds?: string[];
 };
 
 export type ChatConversationSummary = {
@@ -21,6 +25,7 @@ export type ChatConversationSummary = {
   previewText: string;
   updatedAt: string;
   participants: ChatParticipant[];
+  unreadCount?: number;
 };
 
 export type ChatConversationPage = {
@@ -33,6 +38,14 @@ export type ChatConversationDetails = ChatConversationSummary & {
   messages: ChatMessage[];
   hasMoreMessages: boolean;
   nextToken?: string;
+  newerToken?: string;
+  refreshToken?: string;
+  firstUnreadMessageId?: string;
+  readReceipts?: Array<{
+    profileId: string;
+    unreadCount: number;
+    readThroughKey?: string;
+  }>;
 };
 
 export type CreateChatConversationPayload = {
@@ -48,4 +61,3 @@ export type SendChatMessagePayload = {
   text: string;
   mapReference?: PublicMapReference;
 };
-import type { PublicMapReference } from "../map/MapReferenceAttachment";

@@ -3207,7 +3207,8 @@ button.stash-item-media-empty:disabled {
 .chat-thread-panel {
   display: grid;
   grid-template-rows: auto minmax(18rem, 1fr) auto;
-  min-height: 42rem;
+  height: min(80dvh, 54rem);
+  min-height: 32rem;
 }
 
 .chat-thread-header {
@@ -3234,6 +3235,50 @@ button.stash-item-media-empty:disabled {
   gap: 0.5rem;
   padding: 0.82rem;
   overflow: auto;
+  overflow-anchor: none;
+}
+
+.chat-message-content {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.chat-unread-divider {
+  text-align: center;
+  color: #a33838;
+  border-bottom: 1px solid #d9bcbc;
+  font-size: 0.85rem;
+}
+
+.chat-message-receipt {
+  margin-left: 0.6rem;
+  color: #586b64;
+}
+
+.chat-nav-button {
+  position: relative;
+}
+
+.chat-unread-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.4rem;
+  min-width: 1.1rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 1rem;
+  background: #b52e3b;
+  color: white;
+  font-size: 0.65rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.chat-new-messages {
+  position: sticky;
+  bottom: 0;
+  justify-self: center;
+  z-index: 1;
 }
 
 .chat-message-card {

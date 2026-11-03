@@ -124,6 +124,52 @@ export function createConversation(
   });
 }
 
+export function getUnreadCount(profileId: string, signal?: AbortSignal) {
+  return requestJson(
+    `/api/chat/unread?${new URLSearchParams({ profileId })}`,
+    (value) => {
+      const object = requiredObject(value);
+      if (
+        !Number.isSafeInteger(object.unreadCount) ||
+        (object.unreadCount as number) < 0
+      )
+        throw new Error();
+      return object.unreadCount as number;
+    },
+    { signal },
+  );
+}
+
+export function markConversationRead(
+  conversationId: string,
+  profileId: string,
+  message: ChatMessage,
+) {
+  return requestJson(
+    `/api/chat/conversations/${encodeURIComponent(conversationId)}/read`,
+    (value) => {
+      const object = requiredObject(value);
+      if (
+        typeof object.unreadCount !== "number" ||
+        typeof object.readThroughKey !== "string"
+      )
+        throw new Error();
+      return {
+        unreadCount: object.unreadCount,
+        readThroughKey: object.readThroughKey,
+      };
+    },
+    {
+      method: "POST",
+      body: JSON.stringify({
+        profileId,
+        messageId: message.id,
+        createdAt: message.createdAt,
+      }),
+    },
+  );
+}
+
 export function sendMessage(
   conversationId: string,
   payload: SendChatMessagePayload,
@@ -166,6 +212,32 @@ function conversationDetailsValue(value: unknown): ChatConversationDetails {
     messages: object.messages.map(messageValue),
     hasMoreMessages: object.hasMoreMessages,
     ...(nextToken ? { nextToken } : {}),
+    ...(optionalString(object.newerToken)
+      ? { newerToken: object.newerToken as string }
+      : {}),
+    ...(optionalString(object.refreshToken)
+      ? { refreshToken: object.refreshToken as string }
+      : {}),
+    ...(optionalString(object.firstUnreadMessageId)
+      ? { firstUnreadMessageId: object.firstUnreadMessageId as string }
+      : {}),
+    ...(Array.isArray(object.readReceipts)
+      ? {
+          readReceipts: object.readReceipts.map((value) => {
+            const state = requiredObject(value);
+            if (
+              !profileIdValue(state.profileId) ||
+              typeof state.unreadCount !== "number"
+            )
+              throw new Error();
+            return {
+              profileId: state.profileId,
+              unreadCount: state.unreadCount,
+              readThroughKey: optionalString(state.readThroughKey),
+            };
+          }),
+        }
+      : {}),
   };
 }
 
@@ -189,6 +261,8 @@ function conversationSummaryValue(value: unknown): ChatConversationSummary {
     previewText: object.previewText,
     updatedAt: object.updatedAt,
     participants: object.participants.map(participantValue),
+    unreadCount:
+      typeof object.unreadCount === "number" ? object.unreadCount : 0,
   };
 }
 
@@ -225,6 +299,10 @@ function messageValue(value: unknown): ChatMessage {
     text: object.text,
     createdAt: object.createdAt,
     ...(mapReference ? { mapReference } : {}),
+    ...(typeof object.isRead === "boolean" ? { isRead: object.isRead } : {}),
+    ...(Array.isArray(object.readByProfileIds)
+      ? { readByProfileIds: object.readByProfileIds.filter(profileIdValue) }
+      : {}),
   };
 }
 
@@ -251,8 +329,18 @@ function mapReferenceValue(value: unknown): PublicMapReference {
   const scopeObject = objectValue(object.scope);
   const scopeId = scopeObject && optionalString(scopeObject.id)?.trim();
   const scopeType = scopeObject?.type;
-  const scope = scopeId && (scopeType === "USER" || scopeType === "PROFILE" || scopeType === "CLUB" || scopeType === "EVENT" || scopeType === "SOURCE")
-    ? { type: scopeType as NonNullable<PublicMapReference["scope"]>["type"], id: scopeId } : undefined;
+  const scope =
+    scopeId &&
+    (scopeType === "USER" ||
+      scopeType === "PROFILE" ||
+      scopeType === "CLUB" ||
+      scopeType === "EVENT" ||
+      scopeType === "SOURCE")
+      ? {
+          type: scopeType as NonNullable<PublicMapReference["scope"]>["type"],
+          id: scopeId,
+        }
+      : undefined;
   return {
     ...(optional("placeId") ? { placeId: optional("placeId") } : {}),
     ...(optional("placeName") ? { placeName: optional("placeName") } : {}),

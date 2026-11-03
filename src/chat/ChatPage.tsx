@@ -18,9 +18,7 @@ import {
   searchProfiles,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import MapReferenceAttachment, {
-  type PublicMapReference,
-} from "../map/MapReferenceAttachment";
+import { type PublicMapReference } from "../map/MapReferenceAttachment";
 import MapSnapshotPicker, {
   SelectedMapPreview,
 } from "../map/MapSnapshotPicker";
@@ -35,6 +33,8 @@ import {
 } from "./chatApi";
 import { ChatConversationDetails, ChatConversationSummary } from "./chatTypes";
 import { formatAppDateTime } from "../i18n/appLocale";
+import ChatThreadMessages from "./ChatThreadMessages";
+import { mergeThreadPage } from "./threadMessages";
 
 type IconProps = {
   className?: string;
@@ -170,8 +170,7 @@ export default function ChatPage() {
   const [messageDraft, setMessageDraft] = useState("");
   const [selectedMapReference, setSelectedMapReference] =
     useState<PublicMapReference | null>(null);
-  const [messageToReveal, setMessageToReveal] = useState<string | null>(null);
-  const messageElements = useRef<Record<string, HTMLElement | null>>({});
+  const [scrollRequest, setScrollRequest] = useState(0);
   useEffect(() => {
     const staged = takeStagedMapAttachment();
     if (staged) setSelectedMapReference(staged);
@@ -284,6 +283,40 @@ export default function ChatPage() {
   }, [currentProfileValue, senderProfiles]);
 
   useEffect(() => {
+    if (!currentProfileId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      if (!active) return;
+      try {
+        if (document.visibilityState !== "hidden") {
+          const page = await listConversations(currentProfileId);
+          if (!active) return;
+          setConversations((current) => {
+            const merged = new Map(current.map((value) => [value.id, value]));
+            page.content
+              .filter((value) =>
+                conversationIncludesProfile(value, currentProfileId),
+              )
+              .forEach((value) => merged.set(value.id, value));
+            return Array.from(merged.values()).sort((a, b) =>
+              b.updatedAt.localeCompare(a.updatedAt),
+            );
+          });
+        }
+      } catch {
+        /* Keep the last loaded conversation list during a transient failure. */
+      }
+      if (active) timer = setTimeout(refresh, 15000);
+    };
+    timer = setTimeout(refresh, 15000);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [currentProfileId]);
+
+  useEffect(() => {
     if (!senderProfiles.length || currentProfileId == null) {
       setConversations([]);
       setConversationsNextToken(undefined);
@@ -347,6 +380,7 @@ export default function ChatPage() {
 
     async function loadConversationDetails() {
       setLoadingConversation(true);
+      setSelectedConversation(null);
       setFeedback(null);
       try {
         const data = await getConversation(
@@ -545,50 +579,6 @@ export default function ChatPage() {
     }
   }
 
-  async function loadOlderMessages() {
-    if (
-      !selectedConversation?.nextToken ||
-      currentProfileId == null ||
-      loadingConversation
-    ) {
-      return;
-    }
-    setLoadingConversation(true);
-    try {
-      const older = await getConversation(
-        selectedConversation.id,
-        currentProfileId,
-        selectedConversation.nextToken,
-      );
-      setSelectedConversation((current) => {
-        if (!current || current.id !== older.id) {
-          return current;
-        }
-        const currentIds = new Set(
-          current.messages.map((message) => message.id),
-        );
-        return {
-          ...current,
-          messages: [
-            ...older.messages.filter((message) => !currentIds.has(message.id)),
-            ...current.messages,
-          ],
-          hasMoreMessages: older.hasMoreMessages,
-          nextToken: older.nextToken,
-        };
-      });
-    } catch (error) {
-      setFeedback(
-        intl.formatMessage({
-          id: "chat.messages.failed",
-          defaultMessage: "Unable to load older messages.",
-        }),
-      );
-    } finally {
-      setLoadingConversation(false);
-    }
-  }
-
   async function handleCreateConversation(event: FormEvent) {
     event.preventDefault();
     if (currentProfileId == null) {
@@ -625,9 +615,7 @@ export default function ChatPage() {
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
         initialMessage: initialMessage.trim() || null,
-        ...(selectedMapReference
-          ? { mapReference: selectedMapReference }
-          : {}),
+        ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify(payload);
       const pending =
@@ -715,10 +703,13 @@ export default function ChatPage() {
       sendRequestRef.current = null;
       setMessageDraft("");
       setSelectedMapReference(null);
-      setSelectedConversation(details);
-      setMessageToReveal(
-        details.messages[details.messages.length - 1]?.id || null,
+      setSelectedConversation((current) =>
+        current?.id === details.id && !current.newerToken
+          ? mergeThreadPage(current, details)
+          : details,
       );
+      setScrollRequest((value) => value + 1);
+      window.dispatchEvent(new Event("tempvs:chat-unread-changed"));
       setFeedback(null);
       await refreshConversations(details.id);
     } catch (error) {
@@ -737,17 +728,6 @@ export default function ChatPage() {
       setFeedback(message);
     }
   }
-
-  useEffect(() => {
-    if (!messageToReveal) return;
-    window.requestAnimationFrame(() => {
-      messageElements.current[messageToReveal]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      setMessageToReveal(null);
-    });
-  }, [messageToReveal, selectedConversation]);
 
   function addParticipant(profile: Profile) {
     setSelectedParticipants((current) => {
@@ -886,6 +866,15 @@ export default function ChatPage() {
                 >
                   <div className="chat-conversation-name">
                     {conversation.displayName}
+                    {Boolean(conversation.unreadCount) && (
+                      <Badge
+                        bg="danger"
+                        className="ms-2"
+                        aria-label={`${conversation.unreadCount} unread messages`}
+                      >
+                        {conversation.unreadCount}
+                      </Badge>
+                    )}
                   </div>
                   <div className="chat-conversation-preview">
                     {conversation.previewText || "No messages yet."}
@@ -968,57 +957,22 @@ export default function ChatPage() {
                   </div>
                 </div>
               </div>
-              <div className="chat-message-list">
-                {selectedConversation.hasMoreMessages && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="chat-load-more"
-                    disabled={loadingConversation}
-                    onClick={loadOlderMessages}
-                  >
-                    {loadingConversation ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <FormattedMessage
-                        id="chat.messages.older"
-                        defaultMessage="Load older messages"
-                      />
-                    )}
-                  </Button>
-                )}
-                {selectedConversation.messages.length === 0 && (
-                  <div className="chat-empty-state">
-                    <FormattedMessage
-                      id="chat.messages.empty"
-                      defaultMessage="No messages yet. Send the first one."
-                    />
-                  </div>
-                )}
-                {selectedConversation.messages.map((message) => (
-                  <article
-                    key={message.id}
-                    ref={(element) => {
-                      messageElements.current[message.id] = element;
-                    }}
-                    className={`chat-message-card${message.senderProfileId === selectedSenderId ? " chat-message-card-own" : ""}${message.mapReference ? " chat-message-card-map" : ""}`}
-                  >
-                    <div className="chat-message-author">
-                      {message.senderName}
-                    </div>
-                    <div className="chat-message-text">{message.text}</div>
-                    {message.mapReference && (
-                      <MapReferenceAttachment
-                        reference={message.mapReference}
-                        className="chat-map-reference-attachment"
-                      />
-                    )}
-                    <div className="chat-message-date">
-                      {formatDate(message.createdAt)}
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <ChatThreadMessages
+                key={`${currentProfileId}:${selectedConversation.id}`}
+                conversation={selectedConversation}
+                profileId={currentProfileId || ""}
+                setConversation={setSelectedConversation}
+                scrollRequest={scrollRequest}
+                onRead={(count) =>
+                  setConversations((values) =>
+                    values.map((value) =>
+                      value.id === selectedConversation.id
+                        ? { ...value, unreadCount: count }
+                        : value,
+                    ),
+                  )
+                }
+              />
               <Form onSubmit={handleSendMessage} className="chat-composer">
                 <Form.Control
                   as="textarea"

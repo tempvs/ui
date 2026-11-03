@@ -290,7 +290,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
               <MapButton />
               {this.state.loggedIn && (
                 <>
-                  <ChatButton to="/chat" />
+                  <ChatButton
+                    to="/chat"
+                    profileId={this.state.profileOptions.find(
+                      option => option.value === this.state.currentProfileValue,
+                    )?.profile?.id?.toString()}
+                  />
                   <NotificationButton to="/notifications" />
                 </>
               )}
