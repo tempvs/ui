@@ -853,8 +853,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     this.setState({ message: null, messageVariant: null });
 
     createUserProfile(event, {
-      200: (profile) => this.renderProfile(profile as Profile),
-      201: (profile) => this.renderProfile(profile as Profile),
+      200: (profile) => this.afterProfileCreated(profile as Profile),
+      201: (profile) => this.afterProfileCreated(profile as Profile),
       400: (error) =>
         this.setState({
           message: this.extractCreateErrorMessage(
@@ -921,7 +921,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         // The profile is still created where session storage is unavailable.
       }
       this.invalidateClubProfiles(profile.userId);
-      this.renderProfile(profile);
+      this.afterProfileCreated(profile);
     };
 
     createClubProfile(event, {
@@ -932,6 +932,17 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       409: () => this.setState({ clubProfileCreateError: true }),
       default: () => this.setState({ clubProfileCreateError: true }),
     });
+  };
+
+  /** Onboarding action cards deliberately return to the home guide after a
+   * successful profile write. Other profile creation remains in-place. */
+  afterProfileCreated = (profile: Profile) => {
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    if (returnTo === "/") {
+      window.location.assign(returnTo);
+      return;
+    }
+    this.renderProfile(profile);
   };
 
   handleOpenClubProfile = (clubProfile: Profile) => {
@@ -1635,7 +1646,11 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             />
           ),
           rightContent:
-            isClubProfile && isEditable && this.state.profileId ? (
+            !isClubProfile && isEditable ? (
+              <Link className="btn btn-outline-dark" to="/?setup=1">
+                {this.t("profile.setupProgress.action", "Setup progress")}
+              </Link>
+            ) : isClubProfile && isEditable && this.state.profileId ? (
               <Link
                 className="btn btn-outline-dark"
                 to={`/profile/${this.state.alias || this.state.profileId}/admin`}

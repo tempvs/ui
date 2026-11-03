@@ -96,6 +96,63 @@ function requestJson(url: string, options: RequestOptions = {}) {
   });
 }
 
+export type OnboardingPreferences = {
+  dismissedAt: string | null;
+  celebratedAt: string | null;
+};
+export type OnboardingStatus = {
+  personaCount: number;
+  itemCount: number;
+  sourcedItemCount: number;
+  connectionCount: number;
+  partial: boolean;
+  computedAt: string;
+};
+
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const response = await requestJson("/api/profile/profile/onboarding-status");
+  if (!response.ok) throw new Error("Unable to load onboarding status");
+  return response.json() as Promise<OnboardingStatus>;
+}
+
+export async function getOnboardingPreferences(): Promise<OnboardingPreferences> {
+  const response = await requestJson("/api/profile/profile/onboarding-preferences");
+  if (!response.ok) throw new Error("Unable to load onboarding preferences");
+  const value = (await response.json()) as Partial<OnboardingPreferences>;
+  return {
+    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+  };
+}
+
+export async function setOnboardingDismissed(
+  dismissed: boolean,
+): Promise<OnboardingPreferences> {
+  const response = await requestJson("/api/profile/profile/onboarding-preferences", {
+    method: "PUT",
+    body: JSON.stringify({ dismissed }),
+  });
+  if (!response.ok) throw new Error("Unable to save onboarding preferences");
+  const value = (await response.json()) as Partial<OnboardingPreferences>;
+  return {
+    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+  };
+}
+
+export async function markOnboardingCelebrated(): Promise<OnboardingPreferences> {
+  const response = await requestJson("/api/profile/profile/onboarding-preferences", {
+    method: "PUT",
+    body: JSON.stringify({ celebrated: true }),
+  });
+  if (!response.ok) throw new Error("Unable to save onboarding preferences");
+  const value = (await response.json()) as Partial<OnboardingPreferences>;
+  return {
+    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+  };
+}
+
 export function fetchCurrentUserInfo(
   onResult: (result: CurrentUserInfo) => void,
 ): void {

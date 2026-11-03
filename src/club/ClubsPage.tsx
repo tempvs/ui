@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import CatalogueFilterDisclosure from "../component/CatalogueFilterDisclosure";
 import HistoricalRangeFilter, {
@@ -20,7 +20,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PeriodBadge, type Period } from "../util/periods";
+import { PERIODS, PeriodBadge, type Period } from "../util/periods";
 import {
   Club,
   ClubDraft,
@@ -38,11 +38,15 @@ import "./clubs.css";
 export default function ClubsPage() {
   const intl = useIntl();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const t = (id: string, defaultMessage: string) =>
     intl.formatMessage({ id: `clubs.${id}`, defaultMessage });
   const [clubs, setClubs] = useState<Club[]>([]);
   const [query, setQuery] = useState("");
-  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
+  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>(() => {
+    const period = searchParams.get("period");
+    return period && PERIODS.includes(period as Period) ? [period as Period] : [];
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<"NAME_ASC" | "NAME_DESC">(
     "NAME_ASC",

@@ -95,7 +95,13 @@ async function targetsFor(profileId: string): Promise<WallTarget[]> {
   );
 }
 
-export default function WallPage({ userId }: { userId: string }) {
+export default function WallPage({
+  userId,
+  emptyContent,
+}: {
+  userId: string;
+  emptyContent?: React.ReactNode;
+}) {
   const currentProfileValue = useCurrentProfileValue();
   const [profileId, setProfileId] = useState<string | null>(null);
   const [targets, setTargets] = useState<WallTarget[]>([]);
@@ -255,6 +261,7 @@ export default function WallPage({ userId }: { userId: string }) {
                 Follow profiles, clubs, or events and their newest activity will
                 appear here.
               </p>
+              {emptyContent}
             </div>
           )
         )}

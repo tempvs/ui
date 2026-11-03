@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Modal } from "react-bootstrap";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import TextFilterInput from "../component/TextFilterInput";
 import PeriodMultiSelect from "../component/PeriodMultiSelect";
 import HistoricalRangeFilter, {
@@ -21,7 +21,7 @@ import {
   fetchUserProfileByUserId,
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
-import { PeriodBadge, type Period } from "../util/periods";
+import { PERIODS, PeriodBadge, type Period } from "../util/periods";
 import EventForm from "./EventForm";
 import { createEvent, EventDraft, listEvents, TempvsEvent } from "./eventApi";
 import {
@@ -32,10 +32,14 @@ import "./events.css";
 
 export default function EventsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [query, setQuery] = useState("");
-  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>([]);
+  const [selectedPeriods, setSelectedPeriods] = useState<Period[]>(() => {
+    const period = searchParams.get("period");
+    return period && PERIODS.includes(period as Period) ? [period as Period] : [];
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<
     "DATE_ASC" | "DATE_DESC" | "NAME_ASC" | "NAME_DESC"

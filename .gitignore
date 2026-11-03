@@ -1,4 +1,6 @@
 node_modules
 build
+playwright-report
+test-results
 .idea
 public/maps/basemap.geojson

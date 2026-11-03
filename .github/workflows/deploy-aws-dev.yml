@@ -54,6 +54,10 @@ jobs:
           CI=true npm test -- --watchAll=false
           npm run typecheck
           npm run build
+      - name: Run public browser smoke tests
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e -- --grep "public"
       - name: Upload UI build
         uses: actions/upload-artifact@v4
         with:

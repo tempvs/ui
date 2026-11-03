@@ -4,8 +4,8 @@ import { Navigate } from "react-router-dom";
 
 import AuthPanel from "./auth/AuthPanel";
 import { fetchCurrentUserInfo, fetchUserProfileByUserId } from "./profile/profileApi";
-import WallPage from "./wall/WallPage";
 import Spinner from "./component/Spinner";
+import OnboardingHome from "./onboarding/OnboardingHome";
 
 export default function HomePage() {
   const [userId, setUserId] = useState<string | null>();
@@ -55,7 +55,7 @@ export default function HomePage() {
       </div>
     );
   if (userId && profileMissing) return <Navigate replace to="/profile" />;
-  if (userId) return <WallPage userId={userId} />;
+  if (userId) return <OnboardingHome userId={userId} />;
   return (
     <Container fluid className="home-shell px-4 px-xl-5">
       <Row className="home-landing-row">

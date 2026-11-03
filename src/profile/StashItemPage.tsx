@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import { injectIntl, IntlShape } from "react-intl";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
 import ConfirmationModal from "../component/ConfirmationModal";
@@ -117,6 +117,7 @@ function truncateLabel(value?: string | null, limit = 30) {
 function StashItemPage({ intl }: StashItemPageProps) {
   const { id, itemId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const navigationImages = useMemo(
     () =>
       (location.state as ItemNavigationState | null)?.initialItemImages ||
@@ -617,6 +618,10 @@ function StashItemPage({ intl }: StashItemPageProps) {
         : linkedItem,
     );
     setProfileHasLinkedSources(true);
+    if (new URLSearchParams(location.search).get("returnTo") === "/") {
+      navigate("/");
+      return;
+    }
     if (linkedSource) {
       setSources((previousState) =>
         previousState.some((source) => source.id === sourceId)

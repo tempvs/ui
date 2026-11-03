@@ -9,7 +9,7 @@ import React, {
 import { Button, Form, Modal } from "react-bootstrap";
 import { FaArrowLeft, FaPlus, FaTimes } from "react-icons/fa";
 import { useIntl } from "react-intl";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import DefaultHourglassImage from "../component/DefaultHourglassImage";
 import ConfirmationModal from "../component/ConfirmationModal";
@@ -367,6 +367,7 @@ export default function StashOverview({
 }: StashPanelProps) {
   const intl = useIntl();
   const navigate = useNavigate();
+  const location = useLocation();
   const [stash, setStash] = useState<Stash | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<Id | null>(null);
@@ -1175,6 +1176,11 @@ export default function StashOverview({
       setItemForm(emptyItemForm);
       setItemCreateImages([]);
       setItemCreateTarget(null);
+      const returnTo = new URLSearchParams(location.search).get("returnTo");
+      if (returnTo === "/") {
+        navigate(returnTo);
+        return;
+      }
       navigate(
         `/stash/${profile.alias || profile.id}/items/${createdItem.id}`,
         {
@@ -1893,6 +1899,7 @@ export default function StashOverview({
                     )}
 
                   {filteredActiveItems.map((item) => {
+                    const itemPath = `/stash/${profile?.alias || profile?.id}/items/${item.id}${location.search}`;
                     const marker = activeMarkersByItemId[toRecordKey(item.id)];
                     const itemImage = itemImages[toRecordKey(item.id)];
                     const itemImageSrc = getImageSrc(itemImage);
@@ -1935,16 +1942,12 @@ export default function StashOverview({
                           ) {
                             return;
                           }
-                          navigate(
-                            `/stash/${profile?.alias || profile?.id}/items/${item.id}`,
-                          );
+                          navigate(itemPath);
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            navigate(
-                              `/stash/${profile?.alias || profile?.id}/items/${item.id}`,
-                            );
+                            navigate(itemPath);
                           }
                         }}
                       >

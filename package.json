@@ -26,6 +26,8 @@
     "start": "node scripts/build-map-basemap.js && react-scripts start",
     "build": "node scripts/build-map-basemap.js && react-scripts build",
     "typecheck": "tsc --noEmit",
+    "e2e:install": "playwright install chromium",
+    "e2e": "playwright test",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -43,5 +45,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
   }
 }
