@@ -196,6 +196,13 @@ export function updateStashItemDescription(itemId: Id, description: string) {
   });
 }
 
+export function updateStashItemPeriod(itemId: Id, period: string) {
+  return requestJson<StashItem>(`/api/stash/item/${itemId}/period`, {
+    method: 'PATCH',
+    body: JSON.stringify({ period }),
+  });
+}
+
 export function getStashItemImages(itemId: Id) {
   return requestJson<{ content: StashItemImage[] }>(`/api/images/item/${itemId}?limit=100`)
     .then(page => page.content || []);

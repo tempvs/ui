@@ -43,6 +43,7 @@ import {
   updateStashGroupDescription,
   updateStashGroupName,
   updateStashGroupImageDescription,
+  updateStashItemPeriod,
   updateStashItemMarker,
   uploadStashItemImage,
   uploadStashGroupImage,
@@ -1911,6 +1912,7 @@ export default function StashOverview({
                       `${(item.sources || []).length} ${t("profile.stash.sourcesCount", "source(s)")}`,
                       `${itemImageCount} ${t("profile.stash.imagesCount", "image(s)")}`,
                     ].filter(Boolean);
+                    const periodMismatch = Boolean(profile?.period && item.period !== profile.period);
 
                     return (
                       <div
@@ -2031,6 +2033,35 @@ export default function StashOverview({
                             )}
                           </div>
                         </div>
+                        {periodMismatch && (
+                          <div className="small text-warning-emphasis mt-2">
+                            This item is {getPeriodLabel(item.period)}; this profile is {getPeriodLabel(profile?.period)}.
+                            {(item.sources || []).length > 0 ? (
+                              <span> Review and unlink its {(item.sources || []).length} supporting source(s) before migrating it.</span>
+                            ) : isEditable ? (
+                              <Button
+                                size="sm"
+                                variant="outline-warning"
+                                className="ms-2"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  if (!profile?.period || !window.confirm(`Move “${item.name}” to ${getPeriodLabel(profile.period)}? This cannot be undone automatically.`)) return;
+                                  try {
+                                    const updated = await updateStashItemPeriod(item.id, profile.period);
+                                    setItemsByGroup((current) => ({
+                                      ...current,
+                                      [toRecordKey(activeGroup.id)]: (current[toRecordKey(activeGroup.id)] || []).map((candidate) => candidate.id === updated.id ? updated : candidate),
+                                    }));
+                                  } catch {
+                                    setFeedback(t("profile.stash.periodMigrationFailed", "Unable to migrate this item period."));
+                                  }
+                                }}
+                              >
+                                Migrate to {getPeriodLabel(profile.period)}
+                              </Button>
+                            ) : null}
+                          </div>
+                        )}
                         <div className="stash-item-list-copy">
                           <div className="stash-item-list-head">
                             <div className="stash-item-list-title">
