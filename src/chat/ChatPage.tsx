@@ -670,8 +670,7 @@ export default function ChatPage() {
     }
   }
 
-  async function handleSendMessage(event: FormEvent) {
-    event.preventDefault();
+  async function sendDraft() {
     if (
       !selectedConversation ||
       selectedSenderId == null ||
@@ -727,6 +726,20 @@ export default function ChatPage() {
             });
       setFeedback(message);
     }
+  }
+
+  function handleSendMessage(event: FormEvent) {
+    event.preventDefault();
+    void sendDraft();
+  }
+
+  function handleComposerKeyDown(
+    event: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing)
+      return;
+    event.preventDefault();
+    void sendDraft();
   }
 
   function addParticipant(profile: Profile) {
@@ -980,6 +993,7 @@ export default function ChatPage() {
                   className="chat-form-input chat-composer-input"
                   value={messageDraft}
                   onChange={(event) => setMessageDraft(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
                   placeholder={intl.formatMessage({
                     id: "chat.message.placeholder",
                     defaultMessage: "Write a message",
