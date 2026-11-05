@@ -518,12 +518,21 @@ function completeLocationConnections(
 function deduplicateProjectionMarkers(
   markers: MapProjection["markers"],
 ): MapProjection["markers"] {
-  const profiles = markers.filter((marker) => marker.entityType === "PROFILE");
-  const preferredProfile =
-    profiles.find((marker) => marker.locationRole === "CURRENT_RESIDENCE") ??
-    profiles[0];
+  const preferredProfiles = new Map<string, MapProjection["markers"][number]>();
+  markers
+    .filter((marker) => marker.entityType === "PROFILE")
+    .forEach((marker) => {
+      const current = preferredProfiles.get(marker.entityId);
+      // A profile can have both a residence and a club-association location.
+      // Keep its residence when available, but never use one profile's choice
+      // to discard another owned (including club) profile.
+      if (!current || marker.locationRole === "CURRENT_RESIDENCE")
+        preferredProfiles.set(marker.entityId, marker);
+    });
   return markers.filter(
-    (marker) => marker.entityType !== "PROFILE" || marker === preferredProfile,
+    (marker) =>
+      marker.entityType !== "PROFILE" ||
+      marker === preferredProfiles.get(marker.entityId),
   );
 }
 

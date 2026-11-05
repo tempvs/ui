@@ -192,6 +192,9 @@ test("composes profile, membership club, and club-stash source markers", async (
         placeName: "Roma",
       }),
       expect.objectContaining({
+        key: "PROFILE:club-profile:CURRENT_RESIDENCE",
+      }),
+      expect.objectContaining({
         key: "CLUB:club:CLUB_ASSOCIATION",
         thumbnailUrl: "https://images.test/club-thumb.jpg",
       }),
