@@ -34,6 +34,7 @@ import {
   updateComment,
 } from "./commentApi";
 import "./comments.css";
+import { EntityReferenceComposer, EntityReferenceText, type EntityReference } from "../component/entityReferences";
 
 const SendIcon = FaPaperPlane as React.ComponentType<{
   "aria-hidden"?: boolean;
@@ -78,11 +79,13 @@ export default function CommentThread({
   const [owned, setOwned] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [references, setReferences] = useState<EntityReference[]>([]);
   const [mapReference, setMapReference] = useState<PublicMapReference | null>(
     null,
   );
   const [editing, setEditing] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [editReferences, setEditReferences] = useState<EntityReference[]>([]);
   const [removing, setRemoving] = useState<Comment | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -191,9 +194,11 @@ export default function CommentThread({
         selectedProfile,
         draft.trim() || "Shared a map",
         mapReference || undefined,
+        references,
       );
       setComments((current) => [...current, comment]);
       setDraft("");
+      setReferences([]);
       setMapReference(null);
     } catch (cause) {
       setError((cause as Error).message);
@@ -206,7 +211,7 @@ export default function CommentThread({
     setBusy(true);
     setError("");
     try {
-      const updated = await updateComment(editing, editDraft);
+      const updated = await updateComment(editing, editDraft, editReferences);
       setComments((current) =>
         current.map((comment) =>
           comment.id === updated.id ? updated : comment,
@@ -281,6 +286,7 @@ export default function CommentThread({
                     onClick={() => {
                       setEditing(comment.id);
                       setEditDraft(comment.content);
+                      setEditReferences(comment.references || []);
                     }}
                   >
                     <EditIcon aria-hidden />
@@ -298,12 +304,12 @@ export default function CommentThread({
             </div>
             {isEditing ? (
               <div className="comment-edit">
-                <Form.Control
-                  as="textarea"
+                <EntityReferenceComposer
                   rows={2}
                   maxLength={2000}
                   value={editDraft}
-                  onChange={(event) => setEditDraft(event.target.value)}
+                  references={editReferences}
+                  onChange={(value, nextReferences) => { setEditDraft(value); setEditReferences(nextReferences); }}
                 />
                 <IconActionButton
                   title="Save comment"
@@ -327,7 +333,7 @@ export default function CommentThread({
                 </IconActionButton>
               </div>
             ) : (
-              <p className="comment-content">{comment.content}</p>
+              <p className="comment-content"><EntityReferenceText content={comment.content} references={comment.references} /></p>
             )}
             {comment.mapReference && (
               <MapReferenceAttachment reference={comment.mapReference} />
@@ -351,13 +357,13 @@ export default function CommentThread({
       )}
       {owned.length > 0 && (
         <div className="comment-composer">
-          <Form.Control
-            as="textarea"
+          <EntityReferenceComposer
             rows={2}
             maxLength={2000}
             placeholder="Leave a comment"
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            references={references}
+            onChange={(value, nextReferences) => { setDraft(value); setReferences(nextReferences); }}
           />
           <div className="comment-composer-actions">
             <ProfilePicker

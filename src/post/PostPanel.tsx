@@ -39,6 +39,7 @@ import {
   useCurrentProfileValue,
 } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
+import { EntityReferenceComposer, EntityReferenceText, type EntityReference } from "../component/entityReferences";
 import "./posts.css";
 
 type TargetType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE" | "ITEM";
@@ -50,6 +51,7 @@ type Post = {
   createdAt: string;
   updatedAt?: string;
   mapReference?: PublicMapReference;
+  references?: EntityReference[];
 };
 type PostPanelProps = {
   targetType: TargetType;
@@ -103,6 +105,7 @@ export default function PostPanel({
     string | null
   >(null);
   const [draft, setDraft] = useState("");
+  const [references, setReferences] = useState<EntityReference[]>([]);
   const [selectedMapReference, setSelectedMapReference] =
     useState<PublicMapReference | null>(null);
   const [focusPreparedComposer, setFocusPreparedComposer] = useState(false);
@@ -112,6 +115,7 @@ export default function PostPanel({
   const [editMapChanged, setEditMapChanged] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [editReferences, setEditReferences] = useState<EntityReference[]>([]);
   const [editAuthorProfileId, setEditAuthorProfileId] = useState<string | null>(
     null,
   );
@@ -418,6 +422,7 @@ export default function PostPanel({
           targetId: String(targetId),
           authorProfileId: selectedAuthorProfileId,
           content: draft.trim() || "Shared a map",
+          ...(references.length ? { references } : {}),
           ...(selectedMapReference
             ? { mapReference: selectedMapReference }
             : {}),
@@ -433,6 +438,7 @@ export default function PostPanel({
         }),
       );
       setDraft("");
+      setReferences([]);
       setSelectedMapReference(null);
     } catch {
       setError("Unable to publish this post right now.");
@@ -454,6 +460,7 @@ export default function PostPanel({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             content: editDraft,
+            references: editReferences,
             authorProfileId: editAuthorProfileId,
             ...(editMapChanged ? { mapReference: editMapReference } : {}),
           }),
@@ -479,6 +486,7 @@ export default function PostPanel({
   const beginEditing = (post: Post) => {
     setEditingPostId(post.id);
     setEditDraft(post.content);
+    setEditReferences(post.references || []);
     setEditMapReference(post.mapReference || null);
     setEditMapChanged(false);
     // Editing starts with the author already assigned to the post. The
@@ -514,15 +522,14 @@ export default function PostPanel({
       {error && <p className="text-danger">{error}</p>}
       {(canCreate || (targetType === "PROFILE" && Boolean(currentProfileId))) && (
         <div className="post-composer-wrap">
-          <Form.Control
-            ref={composerRef}
-            as="textarea"
+          <EntityReferenceComposer
             rows={3}
             className="post-composer"
             value={draft}
             maxLength={5000}
             placeholder="Write a post"
-            onChange={(event) => setDraft(event.target.value)}
+            references={references}
+            onChange={(value, nextReferences) => { setDraft(value); setReferences(nextReferences); }}
           />
           <div className="post-composer-actions">
             <div className="post-author-select">
@@ -623,13 +630,13 @@ export default function PostPanel({
                 )}
                 {editing ? (
                   <div className="post-edit-wrap">
-                    <Form.Control
-                      as="textarea"
+                    <EntityReferenceComposer
                       rows={3}
                       className="post-composer"
                       value={editDraft}
                       maxLength={5000}
-                      onChange={(event) => setEditDraft(event.target.value)}
+                      references={editReferences}
+                      onChange={(value, nextReferences) => { setEditDraft(value); setEditReferences(nextReferences); }}
                     />
                     <div className="post-composer-actions">
                       <div className="post-author-select">
@@ -691,7 +698,7 @@ export default function PostPanel({
                     </div>
                   </div>
                 ) : (
-                  <div className="post-entry-content">{post.content}</div>
+                  <div className="post-entry-content"><EntityReferenceText content={post.content} references={post.references} /></div>
                 )}
                 {post.mapReference && (
                   <MapReferenceAttachment

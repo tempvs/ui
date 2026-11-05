@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "react-bootstrap";
 import MapReferenceAttachment from "../map/MapReferenceAttachment";
+import { EntityReferenceText } from "../component/entityReferences";
 import { formatAppDateTime } from "../i18n/appLocale";
 import { getConversation, markConversationRead } from "./chatApi";
 import type { ChatConversationDetails } from "./chatTypes";
@@ -354,7 +355,7 @@ export default function ChatThreadMessages({
                 className={`chat-message-card${own ? " chat-message-card-own" : ""}${message.mapReference ? " chat-message-card-map" : ""}`}
               >
                 <div className="chat-message-author">{message.senderName}</div>
-                <div className="chat-message-text">{message.text}</div>
+                <div className="chat-message-text"><EntityReferenceText content={message.text} references={message.references} /></div>
                 {message.mapReference && (
                   <MapReferenceAttachment
                     reference={message.mapReference}

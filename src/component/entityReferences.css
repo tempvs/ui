@@ -1,0 +1,14 @@
+.entity-reference-composer { position: relative; }
+.entity-reference-composer textarea { width: 100%; }
+.entity-reference { color: #725019; font-weight: 650; position: relative; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.entity-reference-preview { background: #fff; border: 1px solid rgba(77, 55, 23, .25); border-radius: .45rem; box-shadow: 0 .35rem 1rem rgba(0,0,0,.16); color: #2d251a; display: none; gap: .5rem; left: 0; min-width: 13rem; padding: .45rem; position: absolute; top: calc(100% + .35rem); z-index: 20; }
+.entity-reference:hover .entity-reference-preview, .entity-reference:focus .entity-reference-preview { display: flex; }
+.entity-reference-preview img, .entity-reference-placeholder, .entity-reference-menu-thumb { background: #ded4c3; border-radius: 50%; height: 2rem; object-fit: cover; width: 2rem; }
+.entity-reference-preview small, .entity-reference-menu small { display: block; color: #6c6256; font-weight: 400; }
+.entity-reference-menu { background: #fff; border: 1px solid rgba(77, 55, 23, .25); border-radius: .45rem; box-shadow: 0 .35rem 1rem rgba(0,0,0,.16); left: 0; max-height: 19rem; overflow: auto; padding: .35rem; position: absolute; right: 0; top: calc(100% + .2rem); z-index: 30; }
+.entity-reference-menu h3 { color: #6c6256; font-size: .73rem; margin: .35rem .4rem .15rem; text-transform: uppercase; }
+.entity-reference-menu button { align-items: center; background: transparent; border: 0; display: flex; gap: .5rem; padding: .35rem .4rem; text-align: left; width: 100%; }
+.entity-reference-menu button:hover, .entity-reference-menu button:focus { background: #f5f0e8; }
+.entity-reference-menu-thumb { display: inline-block; flex: 0 0 2rem; overflow: hidden; }
+.entity-reference-menu-thumb img { height: 100%; object-fit: cover; width: 100%; }
+.entity-reference-menu p { color: #6c6256; font-size: .85rem; margin: .45rem; }

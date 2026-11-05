@@ -19,6 +19,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import { type PublicMapReference } from "../map/MapReferenceAttachment";
+import { EntityReferenceComposer, type EntityReference } from "../component/entityReferences";
 import MapSnapshotPicker, {
   SelectedMapPreview,
 } from "../map/MapSnapshotPicker";
@@ -168,6 +169,7 @@ export default function ChatPage() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [messageDraft, setMessageDraft] = useState("");
+  const [messageReferences, setMessageReferences] = useState<EntityReference[]>([]);
   const [selectedMapReference, setSelectedMapReference] =
     useState<PublicMapReference | null>(null);
   const [scrollRequest, setScrollRequest] = useState(0);
@@ -189,6 +191,7 @@ export default function ChatPage() {
   );
   const [groupTitle, setGroupTitle] = useState("");
   const [initialMessage, setInitialMessage] = useState("");
+  const [initialMessageReferences, setInitialMessageReferences] = useState<EntityReference[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -615,6 +618,7 @@ export default function ChatPage() {
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
         initialMessage: initialMessage.trim() || null,
+        ...(initialMessageReferences.length ? { references: initialMessageReferences } : {}),
         ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify(payload);
@@ -683,6 +687,7 @@ export default function ChatPage() {
       const payload = {
         senderProfileId: selectedSenderId,
         text: messageDraft.trim() || "Shared a map",
+        ...(messageReferences.length ? { references: messageReferences } : {}),
         ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify({
@@ -701,6 +706,7 @@ export default function ChatPage() {
       );
       sendRequestRef.current = null;
       setMessageDraft("");
+      setMessageReferences([]);
       setSelectedMapReference(null);
       setSelectedConversation((current) =>
         current?.id === details.id && !current.newerToken
@@ -765,6 +771,7 @@ export default function ChatPage() {
     setSelectedParticipants([]);
     setGroupTitle("");
     setInitialMessage("");
+    setInitialMessageReferences([]);
     setParticipantLoading(false);
   }
 
@@ -987,12 +994,12 @@ export default function ChatPage() {
                 }
               />
               <Form onSubmit={handleSendMessage} className="chat-composer">
-                <Form.Control
-                  as="textarea"
+                <EntityReferenceComposer
                   rows={3}
                   className="chat-form-input chat-composer-input"
                   value={messageDraft}
-                  onChange={(event) => setMessageDraft(event.target.value)}
+                  references={messageReferences}
+                  onChange={(value, nextReferences) => { setMessageDraft(value); setMessageReferences(nextReferences); }}
                   onKeyDown={handleComposerKeyDown}
                   placeholder={intl.formatMessage({
                     id: "chat.message.placeholder",
@@ -1177,12 +1184,12 @@ export default function ChatPage() {
                   defaultMessage="Message"
                 />
               </Form.Label>
-              <Form.Control
-                as="textarea"
+              <EntityReferenceComposer
                 rows={4}
                 className="chat-form-input"
                 value={initialMessage}
-                onChange={(event) => setInitialMessage(event.target.value)}
+                references={initialMessageReferences}
+                onChange={(value, nextReferences) => { setInitialMessage(value); setInitialMessageReferences(nextReferences); }}
                 placeholder={intl.formatMessage({
                   id: "chat.initialMessage.placeholder",
                   defaultMessage: "Write the first message",

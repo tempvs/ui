@@ -13,6 +13,7 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
   mapReference?: PublicMapReference;
+  references?: import("../component/entityReferences").EntityReference[];
   isRead?: boolean;
   readByProfileIds?: string[];
 };
@@ -53,6 +54,7 @@ export type CreateChatConversationPayload = {
   participantProfileIds: string[];
   title?: string | null;
   initialMessage?: string | null;
+  references?: import("../component/entityReferences").EntityReference[];
   mapReference?: PublicMapReference;
 };
 
@@ -60,4 +62,5 @@ export type SendChatMessagePayload = {
   senderProfileId: string;
   text: string;
   mapReference?: PublicMapReference;
+  references?: import("../component/entityReferences").EntityReference[];
 };

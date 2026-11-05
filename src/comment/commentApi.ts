@@ -10,6 +10,7 @@ export type Comment = {
   updatedAt: string;
   edited: boolean;
   mapReference?: import("../map/MapReferenceAttachment").PublicMapReference;
+  references?: import("../component/entityReferences").EntityReference[];
 };
 export type CommentPage = { content: Comment[]; nextToken?: string | null };
 
@@ -67,6 +68,7 @@ export function createComment(
   authorProfileId: string,
   content: string,
   mapReference?: Comment["mapReference"],
+  references?: Comment["references"],
 ) {
   return request<Comment>("/comments", {
     method: "POST",
@@ -76,14 +78,15 @@ export function createComment(
       authorProfileId,
       content,
       ...(mapReference ? { mapReference } : {}),
+      ...(references?.length ? { references } : {}),
     }),
   });
 }
 
-export function updateComment(commentId: string, content: string) {
+export function updateComment(commentId: string, content: string, references?: Comment["references"]) {
   return request<Comment>(`/comments/${encodeURIComponent(commentId)}`, {
     method: "PUT",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, ...(references ? { references } : {}) }),
   });
 }
 
