@@ -184,6 +184,14 @@ export function createStashItem(groupId: Id, payload: JsonRecord) {
     method: 'POST',
     headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(payload),
+  }).then((item) => {
+    // Item lists are cached per group and page size. Clear every cached page
+    // so an immediate return to Owned items includes the new item.
+    const prefix = `${groupId}:`;
+    for (const key of Array.from(groupItemReads.keys())) {
+      if (key.startsWith(prefix)) groupItemReads.delete(key);
+    }
+    return item;
   });
 }
 
