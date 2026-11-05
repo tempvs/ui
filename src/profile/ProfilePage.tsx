@@ -1160,7 +1160,9 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
       avatarDescriptionDraft: avatar?.description || "",
       avatarDescriptionPersisted: avatar?.description || "",
       avatarDescriptionStatus: null,
-      avatarImages: avatars,
+      // An avatar is a single canonical picture. Older records can contain
+      // more than one image, so retain the first one the API returns.
+      avatarImages: avatar ? [avatar] : [],
       avatarImageDrafts,
       avatarImageStatuses: {},
     });
@@ -1169,8 +1171,8 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   handleAvatarUpload: React.ChangeEventHandler<HTMLInputElement> = async (
     event,
   ) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length || !this.state.profileId) {
+    const file = event.target.files?.[0];
+    if (!file || !this.state.profileId) {
       return;
     }
 
@@ -1180,16 +1182,20 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
     });
 
     try {
-      const avatars = await Promise.all(
-        files.map(async (file) =>
-          uploadProfileImage(
+      const currentAvatar = this.state.avatarImages[0];
+      const avatar = currentAvatar?.id
+        ? await replaceProfileImage(
+            this.state.profileId as Id,
+            currentAvatar.id,
+            await this.prepareAvatarFile(file),
+            currentAvatar.description || null,
+          )
+        : await uploadProfileImage(
             this.state.profileId as Id,
             await this.prepareAvatarFile(file),
-          ),
-        ),
-      );
-      const allAvatars = [...avatars, ...this.state.avatarImages];
-      const firstAvatar = allAvatars[0];
+          );
+      const allAvatars = [avatar];
+      const firstAvatar = avatar;
 
       this.setState({
         avatarUploadStatus: "success",
@@ -1207,11 +1213,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
         avatarImages: allAvatars,
         avatarImageDrafts: {
           ...this.state.avatarImageDrafts,
-          ...Object.fromEntries(
-            avatars.flatMap((image) =>
-              image.id ? [[String(image.id), image.description || ""]] : [],
-            ),
-          ),
+          ...(avatar.id ? { [String(avatar.id)]: avatar.description || "" } : {}),
         },
       });
     } catch (error) {

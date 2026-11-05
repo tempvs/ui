@@ -177,7 +177,12 @@ export default function LibraryPeriodPage() {
             if (!imageResult.ok || !Array.isArray(imageResult.data)) {
               return [source.id, null] as const;
             }
-            return [source.id, imageResult.data[0] || null] as const;
+            return [
+              source.id,
+              imageResult.data.find((image) => image.id === source.coverImageId) ||
+                imageResult.data[0] ||
+                null,
+            ] as const;
           } catch (previewError) {
             return [source.id, null] as const;
           }
@@ -229,7 +234,11 @@ export default function LibraryPeriodPage() {
             const imageResult = await getSourceImages(source.id);
             return [
               source.id,
-              imageResult.ok ? imageResult.data?.[0] || null : null,
+              imageResult.ok
+                ? imageResult.data?.find((image) => image.id === source.coverImageId) ||
+                  imageResult.data?.[0] ||
+                  null
+                : null,
             ] as const;
           } catch {
             return [source.id, null] as const;

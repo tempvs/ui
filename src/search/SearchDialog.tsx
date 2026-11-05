@@ -471,7 +471,12 @@ export default function SearchDialog() {
                 return [source.id, null] as const;
               }
 
-              return [source.id, imageResult.data[0] || null] as const;
+              return [
+                source.id,
+                imageResult.data.find((image) => image.id === source.coverImageId) ||
+                  imageResult.data[0] ||
+                  null,
+              ] as const;
             } catch (previewError) {
               return [source.id, null] as const;
             }

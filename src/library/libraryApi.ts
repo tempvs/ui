@@ -31,6 +31,7 @@ export type LibrarySource = {
   discoveredAtPlaceName?: string | null;
   heldAtPlaceId?: string | null;
   heldAtPlaceName?: string | null;
+  coverImageId?: string | null;
 };
 
 export type HistoricalEra = "BC" | "AD";
@@ -543,6 +544,17 @@ export function getSourceImages(sourceId: string | undefined) {
         data: result.data?.content || [],
       }) as ApiResponse<LibrarySourceImage[]>,
   );
+}
+
+export async function setSourceCover(
+  sourceId: string,
+  imageId: string,
+): Promise<ApiResponse<LibrarySource>> {
+  const response = await fetch(
+    `/api/library/source/${encodeURIComponent(sourceId)}/cover/${encodeURIComponent(imageId)}`,
+    { method: "PATCH" },
+  );
+  return parseResponse<LibrarySource>(response);
 }
 
 export function getSourceProfiles(sourceId: string | undefined) {

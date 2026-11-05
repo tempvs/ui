@@ -316,7 +316,7 @@ async function loadSharedResourceContent(
     const images = content.markers.some((pin) => pin.thumbnailUrl)
       ? null : await getSourceImages(scope.id).catch(() => null);
     const existingImage = content.markers.find((pin) => pin.thumbnailUrl);
-    expected = sourceLocations(result.data, images?.data?.[0] ||
+    expected = sourceLocations(result.data, images?.data?.find((image) => image.id === result.data?.coverImageId) || images?.data?.[0] ||
       (existingImage ? { id: existingImage.entityId, thumbnailUrl: existingImage.thumbnailUrl } : null));
   }
   const complete = await addExpectedLocations(content, expected);

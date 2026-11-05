@@ -62,7 +62,7 @@ export default function ProfileAvatarPanel({
           }}
         >
           <StackedImageGallery
-            mode="multiple"
+            mode="single"
             images={avatars.flatMap((avatar) =>
               avatar.id
                 ? [{ ...avatar, id: avatar.id, resourceType: "profile", resourceId: profileId }]
@@ -75,7 +75,7 @@ export default function ProfileAvatarPanel({
                 ? () => onOpenFilePicker?.()
                 : undefined
             }
-            canAddImage={isEditable && avatarLoaded}
+            canAddImage={false}
             onReplaceImage={isEditable ? (image) => onReplaceImage?.(image) : undefined}
             onDeleteImage={isEditable ? (imageId) => onDelete?.(imageId) : undefined}
             imageDrafts={avatarImageDrafts}
@@ -129,7 +129,6 @@ export default function ProfileAvatarPanel({
             id="avatarUploadInput"
             type="file"
             accept="image/jpeg,image/png,image/gif"
-            multiple
             onChange={onUploadChange}
             disabled={avatarUploadStatus === "uploading"}
             className="d-none"

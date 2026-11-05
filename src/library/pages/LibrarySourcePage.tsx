@@ -22,6 +22,7 @@ import {
   getSourceImages,
   getSourceProfiles,
   getSourceChangeLog,
+  setSourceCover,
   LibrarySource,
   LibrarySourceImage,
   LibrarySourceProfile,
@@ -81,6 +82,7 @@ export default function LibrarySourcePage() {
     useState<SourceChangeLogEntry | null>(null);
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
+  const [coverSaving, setCoverSaving] = useState(false);
 
   const loadSource = useCallback(async () => {
     // A just-approved changeset gives us the authoritative source payload.
@@ -256,6 +258,26 @@ export default function LibrarySourcePage() {
       ),
     );
   }, [profileFilter, sourceProfiles]);
+  const orderedImages = useMemo(() => {
+    if (!source?.coverImageId) return images;
+    return [...images].sort((left, right) =>
+      left.id === source.coverImageId ? -1 : right.id === source.coverImageId ? 1 : 0,
+    );
+  }, [images, source?.coverImageId]);
+  const setCover = async (imageId: string) => {
+    if (!sourceId || coverSaving || imageId === source?.coverImageId) return;
+    setCoverSaving(true);
+    try {
+      const result = await setSourceCover(sourceId, imageId);
+      if (!result.ok || !result.data) throw new Error("Unable to set the source cover.");
+      visibleSourceRef.current = result.data;
+      setSource(result.data);
+    } catch (coverError) {
+      setError(getErrorMessage(coverError));
+    } finally {
+      setCoverSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -368,7 +390,7 @@ export default function LibrarySourcePage() {
                 onChange={() => undefined}
                 className="mt-2 mb-0"
                 loadRelatedMapContent={() =>
-                  loadSourceRelatedMapContent(source, images[0])
+                  loadSourceRelatedMapContent(source, orderedImages[0])
                 }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
@@ -387,7 +409,7 @@ export default function LibrarySourcePage() {
                 onChange={() => undefined}
                 className="mt-2 mb-0"
                 loadRelatedMapContent={() =>
-                  loadSourceRelatedMapContent(source, images[0])
+                  loadSourceRelatedMapContent(source, orderedImages[0])
                 }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
@@ -396,11 +418,11 @@ export default function LibrarySourcePage() {
         </PageColumn>
         <PageColumn className="library-source-images">
           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <div className="stash-subheading mb-0">Images</div>
+            <div className="stash-subheading mb-0">Cover and images</div>
           </div>
 
           <StackedImageGallery
-            images={images.map((image) => ({
+            images={orderedImages.map((image) => ({
               ...image,
               resourceType: image.resourceType || "source",
               resourceId: image.resourceId || sourceId,
@@ -424,6 +446,24 @@ export default function LibrarySourcePage() {
             canAddImage={false}
             wrapperClassName="source-image-gallery"
           />
+          {canEditSource(userInfo) && images.length > 0 && (
+            <label className="d-flex align-items-center gap-2 mt-3 small">
+              <span className="text-nowrap">Cover image</span>
+              <select
+                className="form-select form-select-sm"
+                value={source.coverImageId || images[0].id}
+                disabled={coverSaving}
+                onChange={(event) => void setCover(event.target.value)}
+                aria-label="Source cover image"
+              >
+                {orderedImages.map((image, index) => (
+                  <option key={image.id} value={image.id}>
+                    {image.fileName || `Image ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </PageColumn>
         <PageColumn className="library-source-posts">
           <PostPanel
