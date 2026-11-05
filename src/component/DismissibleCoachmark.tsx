@@ -8,13 +8,15 @@ type DismissibleCoachmarkProps = {
   visible: boolean;
   children: React.ReactNode;
   className?: string;
+  placement?: "side" | "below";
 };
 
 type CoachmarkPosition = {
   left: number;
   top: number;
   pointerTop: number;
-  side: "left" | "right";
+  side: "left" | "right" | "below";
+  pointerLeft?: number;
 };
 
 const CloseIcon = FaTimes as React.ComponentType<{ "aria-hidden"?: boolean }>;
@@ -26,6 +28,7 @@ export default function DismissibleCoachmark({
   visible,
   children,
   className,
+  placement = "side",
 }: DismissibleCoachmarkProps) {
   const storageKey = `tempvs:coachmark:${id}`;
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -66,6 +69,27 @@ export default function DismissibleCoachmark({
     const gap = 10;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+    if (placement === "below") {
+      const desiredLeft = anchorRect.left + anchorRect.width / 2 - coachmarkRect.width / 2;
+      const left = Math.max(margin, Math.min(desiredLeft, viewportWidth - coachmarkRect.width - margin));
+      const top = Math.max(margin, Math.min(anchorRect.bottom + gap, viewportHeight - coachmarkRect.height - margin));
+      const pointerLeft = Math.max(
+        14,
+        Math.min(anchorRect.left + anchorRect.width / 2 - left, coachmarkRect.width - 14),
+      );
+      setPosition((current) => {
+        const next: CoachmarkPosition = { left, top, pointerTop: 0, pointerLeft, side: "below" };
+        if (
+          current && current.side === next.side &&
+          Math.abs(current.left - next.left) < 1 &&
+          Math.abs(current.top - next.top) < 1 &&
+          Math.abs((current.pointerLeft ?? 0) - pointerLeft) < 1
+        ) return current;
+        return next;
+      });
+      return;
+    }
+
     const prefersRight = anchorRect.left + anchorRect.width / 2 <= viewportWidth / 2;
     const rightLeft = anchorRect.right + gap;
     const leftLeft = anchorRect.left - coachmarkRect.width - gap;
@@ -103,7 +127,7 @@ export default function DismissibleCoachmark({
       }
       return next;
     });
-  }, []);
+  }, [placement]);
 
   useLayoutEffect(() => {
     if (!shown) {
@@ -143,6 +167,7 @@ export default function DismissibleCoachmark({
               left: position?.left ?? 0,
               top: position?.top ?? 0,
               "--coachmark-pointer-top": `${position?.pointerTop ?? 16}px`,
+              "--coachmark-pointer-left": `${position?.pointerLeft ?? 16}px`,
               visibility: position ? "visible" : "hidden",
             } as React.CSSProperties}
             role="status"

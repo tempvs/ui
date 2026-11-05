@@ -148,6 +148,22 @@ html {
   border-left: 0.66rem solid #fffefd;
 }
 
+.dismissible-coachmark--below::before {
+  top: -0.82rem;
+  left: calc(var(--coachmark-pointer-left) - 0.75rem);
+  border-right: 0.75rem solid transparent;
+  border-bottom: 0.82rem solid rgba(125, 94, 47, 0.72);
+  border-left: 0.75rem solid transparent;
+}
+
+.dismissible-coachmark--below::after {
+  top: -0.66rem;
+  left: calc(var(--coachmark-pointer-left) - 0.58rem);
+  border-right: 0.58rem solid transparent;
+  border-bottom: 0.66rem solid #fffefd;
+  border-left: 0.58rem solid transparent;
+}
+
 .dismissible-coachmark button {
   position: absolute;
   top: 0.65rem;

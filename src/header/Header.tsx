@@ -286,6 +286,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             <div className="header-profile-switcher">
               <DismissibleCoachmark
                 id={`resume-onboarding-from-home:${this.state.currentUserId || "anonymous"}`}
+                placement="below"
                 visible={
                   this.state.loggedIn === true &&
                   this.state.onboardingIncomplete &&
