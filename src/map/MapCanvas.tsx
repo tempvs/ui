@@ -179,13 +179,17 @@ export default function MapCanvas({
 
   // Depend on the actual place IDs, not array identities supplied by parents.
   // Re-resolving on each render repeatedly rebuilt every marker and popup.
-  const placeIdsKey = JSON.stringify(Array.from(
+  const placeIdsKey = JSON.stringify(
+    Array.from(
       new Set([
         ...entities.map((entity) => entity.placeId),
         ...ownedMarkers.map((marker) => marker.placeId),
         ...thumbnailMarkers.map((marker) => marker.placeId),
       ]),
-    ).filter(Boolean).sort());
+    )
+      .filter(Boolean)
+      .sort(),
+  );
   useEffect(() => {
     const ids: string[] = JSON.parse(placeIdsKey);
     if (!ids.length) {
@@ -505,8 +509,7 @@ export default function MapCanvas({
     const data = ownedConnectionCollection(ownedConnections, ownedMarkers);
     const sync = () => {
       const source = mapInstance.getSource("map-owned-connections") as
-        | GeoJSONSource
-        | undefined;
+        GeoJSONSource | undefined;
       source?.setData(data);
     };
     // A map can report its initial load before every style source has become
@@ -805,7 +808,10 @@ function addMarkerLayers(
     // Attachment previews already have their relationship graph before their
     // MapLibre instance mounts. Seed it here so edges are in the first styled
     // frame instead of waiting for React's post-ready effect.
-    data: ownedConnectionCollection(initialOwnedConnections, initialOwnedMarkers),
+    data: ownedConnectionCollection(
+      initialOwnedConnections,
+      initialOwnedMarkers,
+    ),
     lineMetrics: true,
   });
   map.addLayer({
@@ -840,6 +846,8 @@ function addMarkerLayers(
         "#6d7c4a",
         "PROFILE_CLUB",
         "#8a5a44",
+        "USER_CLUB_PROFILE",
+        "#3f688c",
         "SOURCE_LOCATIONS",
         "#6d7c4a",
         "EVENT_LOCATIONS",
@@ -1149,7 +1157,9 @@ function placePath(
   place: Pick<MapPlace, "id" | "publicId" | "alias"> | string,
 ): string {
   const reference =
-    typeof place === "string" ? place : place.alias || place.publicId || place.id;
+    typeof place === "string"
+      ? place
+      : place.alias || place.publicId || place.id;
   return `/map/place/${encodeURIComponent(reference)}`;
 }
 
@@ -1279,8 +1289,7 @@ function visibleConnectionCoordinates(
   // scaled for latitude so the loop stays roughly circular.
   const radius = 0.18;
   const longitudeRadius =
-    radius /
-    Math.max(0.25, Math.cos((from.latitude * Math.PI) / 180));
+    radius / Math.max(0.25, Math.cos((from.latitude * Math.PI) / 180));
   const centerLatitude = Math.max(
     -89.75,
     Math.min(89.75, from.latitude + radius),

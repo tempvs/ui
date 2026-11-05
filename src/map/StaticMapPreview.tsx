@@ -50,11 +50,12 @@ export default function StaticMapPreview({
   const [basemap, setBasemap] = useState<Basemap | null>(null);
   const [size, setSize] = useState({ width: 960, height: 480 });
   const points = useMemo<Point[]>(
-    () => [
-      { latitude: reference.latitude, longitude: reference.longitude },
-      ...markers,
-      ...entities,
-    ].filter(validPoint),
+    () =>
+      [
+        { latitude: reference.latitude, longitude: reference.longitude },
+        ...markers,
+        ...entities,
+      ].filter(validPoint),
     [entities, markers, reference.latitude, reference.longitude],
   );
   const bounds = useMemo(
@@ -81,7 +82,10 @@ export default function StaticMapPreview({
     const measure = () => {
       const next = root.getBoundingClientRect();
       if (next.width > 0 && next.height > 0)
-        setSize({ width: Math.round(next.width), height: Math.round(next.height) });
+        setSize({
+          width: Math.round(next.width),
+          height: Math.round(next.height),
+        });
     };
     const observer =
       typeof ResizeObserver === "undefined"
@@ -95,7 +99,15 @@ export default function StaticMapPreview({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !basemap) return;
-    drawPreview(canvas, basemap, reference, markers, entities, connections, bounds);
+    drawPreview(
+      canvas,
+      basemap,
+      reference,
+      markers,
+      entities,
+      connections,
+      bounds,
+    );
   }, [basemap, bounds, connections, entities, markers, reference, size]);
 
   return (
@@ -113,7 +125,11 @@ export default function StaticMapPreview({
             className={`static-map-preview-thumbnail static-map-preview-thumbnail-${marker.entityType.toLowerCase()}`}
             src={marker.thumbnailUrl}
             alt=""
-            style={thumbnailPosition(marker, bounds, markerOffsets.get(marker.key))}
+            style={thumbnailPosition(
+              marker,
+              bounds,
+              markerOffsets.get(marker.key),
+            )}
           />
         ) : null,
       )}
@@ -179,8 +195,12 @@ function drawPreview(
   });
   context.setLineDash([]);
 
-  markers.forEach((marker) => drawMarker(context, project(marker), marker.entityType));
-  entities.forEach((entity) => drawMarker(context, project(entity), entity.entityType));
+  markers.forEach((marker) =>
+    drawMarker(context, project(marker), marker.entityType),
+  );
+  entities.forEach((entity) =>
+    drawMarker(context, project(entity), entity.entityType),
+  );
 }
 
 function thumbnailPosition(
@@ -188,8 +208,10 @@ function thumbnailPosition(
   bounds: ReturnType<typeof previewBounds>,
   offset: [number, number] = [0, 0],
 ) {
-  const left = ((point.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
-  const top = ((bounds.north - point.latitude) / (bounds.north - bounds.south)) * 100;
+  const left =
+    ((point.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
+  const top =
+    ((bounds.north - point.latitude) / (bounds.north - bounds.south)) * 100;
   return {
     left: `${left}%`,
     top: `${top}%`,
@@ -227,7 +249,8 @@ function previewBounds(
 ) {
   const baseLatitudeSpan = Math.max(reference.radiusKm / 111.32, 0.35) * 1.35;
   const baseLongitudeSpan =
-    baseLatitudeSpan / Math.max(0.2, Math.cos((reference.latitude * Math.PI) / 180));
+    baseLatitudeSpan /
+    Math.max(0.2, Math.cos((reference.latitude * Math.PI) / 180));
   let north = reference.latitude + baseLatitudeSpan;
   let south = reference.latitude - baseLatitudeSpan;
   let east = reference.longitude + baseLongitudeSpan;
@@ -253,7 +276,8 @@ function previewBounds(
     east += expansion;
   } else {
     const targetLatitudeSpan =
-      (longitudeSpan * Math.max(0.2, Math.cos((centreLatitude * Math.PI) / 180))) /
+      (longitudeSpan *
+        Math.max(0.2, Math.cos((centreLatitude * Math.PI) / 180))) /
       Math.max(aspectRatio, 0.5);
     const expansion = (targetLatitudeSpan - latitudeSpan) / 2;
     south -= expansion;
@@ -280,7 +304,10 @@ function drawGeometry(
     if (!Array.isArray(line)) return;
     line.forEach((coordinate, index) => {
       if (!Array.isArray(coordinate) || coordinate.length < 2) return;
-      const [x, y] = project({ longitude: Number(coordinate[0]), latitude: Number(coordinate[1]) });
+      const [x, y] = project({
+        longitude: Number(coordinate[0]),
+        latitude: Number(coordinate[1]),
+      });
       if (index === 0) context.moveTo(x, y);
       else context.lineTo(x, y);
     });
@@ -289,8 +316,8 @@ function drawGeometry(
   if (geometry.type === "Polygon" || geometry.type === "MultiLineString") {
     (coordinates as unknown[]).forEach(drawLine);
   } else if (geometry.type === "MultiPolygon") {
-    (coordinates as unknown[]).forEach((polygon) =>
-      Array.isArray(polygon) && polygon.forEach(drawLine),
+    (coordinates as unknown[]).forEach(
+      (polygon) => Array.isArray(polygon) && polygon.forEach(drawLine),
     );
   } else if (geometry.type === "LineString") {
     drawLine(coordinates);
@@ -326,11 +353,13 @@ function connectionColour(kind: OwnedMapConnection["kind"]) {
     ? "#6d7c4a"
     : kind === "PROFILE_CLUB"
       ? "#8a5a44"
-      : kind === "SOURCE_LOCATIONS"
-        ? "#6d7c4a"
-        : kind === "EVENT_LOCATIONS"
-          ? "#75618c"
-          : "#4f6d7a";
+      : kind === "USER_CLUB_PROFILE"
+        ? "#3f688c"
+        : kind === "SOURCE_LOCATIONS"
+          ? "#6d7c4a"
+          : kind === "EVENT_LOCATIONS"
+            ? "#75618c"
+            : "#4f6d7a";
 }
 
 function validPoint(point: Point) {
