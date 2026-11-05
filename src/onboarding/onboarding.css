@@ -44,12 +44,12 @@
   color: #506059;
 }
 .onboarding-how-it-works {
-  max-width: 74rem;
-  margin-top: 0.9rem !important;
-  padding-top: 0.85rem;
+  max-width: 62rem;
+  margin: 0.9rem auto 1.15rem !important;
+  padding: 0.85rem 1rem 0;
   border-top: 1px solid rgba(87, 102, 98, 0.18);
   color: #46554e !important;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 

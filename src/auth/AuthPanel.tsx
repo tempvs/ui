@@ -91,7 +91,7 @@ export default function AuthPanel() {
     </Form.Group>
     <Form.Group className="auth-form-group" controlId="auth-password">
       <Form.Label className="auth-form-label">Password</Form.Label>
-      <Form.Control className="auth-form-input" type="password" autoComplete="current-password" minLength={12} required disabled={busy} value={password} onChange={event => setPassword(event.target.value)} />
+      <Form.Control className="auth-form-input" type="password" autoComplete="current-password" minLength={6} required disabled={busy} value={password} onChange={event => setPassword(event.target.value)} />
     </Form.Group>
     <div className="d-grid">
       <Button className="auth-submit-button" type="button" disabled={busy} onClick={() => void submit("register")}>

@@ -274,12 +274,11 @@ export default function OnboardingHome({ userId }: { userId: string }) {
         <h1>Bring your history to life</h1>
         <p>Build a historically grounded reenactment profile, document the kit behind it, and connect with people and events.</p>
         <p className="onboarding-how-it-works">
-          One account can hold several reenactment profiles; each profile can
-          document items with photos or your own equipment, supported by
-          shared Library sources. Sources and map places are public: members
-          with the appropriate role can propose improvements, which are
-          reviewed before publication. You can also connect profiles, clubs,
-          events, and sources to shared places on the map.
+          One account can hold several reenactment profiles; each reenactment
+          profile can document items with photos or your own equipment,
+          supported by shared Library sources. Sources are public: but only
+          members with the appropriate role can propose improvements, which
+          are reviewed before publication.
         </p>
         <div className="onboarding-progress-copy" aria-live="polite">
           <strong>{completeSteps} of {steps.length}</strong> foundations complete

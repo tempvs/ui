@@ -189,14 +189,6 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           clubProfiles,
         );
         const currentProfile = resolveCurrentProfileOption(profileOptions);
-        const showProfileNavigationAfterFirstClub =
-          window.sessionStorage.getItem(
-            "tempvs:coachmark:open-current-profile-after-first-club",
-          ) === "pending";
-        if (showProfileNavigationAfterFirstClub)
-          window.sessionStorage.removeItem(
-            "tempvs:coachmark:open-current-profile-after-first-club",
-          );
         const showProfilePickerCoachmark =
           clubProfiles.length > 0 &&
           window.sessionStorage.getItem(
@@ -219,14 +211,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
               ? true
               : this.state.onboardingIncomplete,
           // When the user has no club profile, guide them back to their
-          // current personal profile. Creating their first club profile
-          // deliberately repeats this hint alongside the picker guidance.
+          // current personal profile. Once they create a persona, the picker
+          // takes over as the only header hint so the two prompts never
+          // overlap.
           showProfileNavigationCoachmark:
-            Boolean(userProfile) &&
-            (clubProfiles.length === 0 || showProfileNavigationAfterFirstClub),
-          profileNavigationCoachmarkId: showProfileNavigationAfterFirstClub
-            ? "open-current-profile-after-first-club"
-            : "open-current-profile",
+            Boolean(userProfile) && clubProfiles.length === 0,
+          profileNavigationCoachmarkId: "open-current-profile",
           showProfilePickerCoachmark,
         });
         // A new Cognito user has no personal profile yet. Apply this guard in
