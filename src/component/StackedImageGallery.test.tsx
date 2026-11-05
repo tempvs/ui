@@ -43,6 +43,24 @@ test('renders carousel controls in multiple-image mode', () => {
   expect(document.querySelector('.modal .border-top')).toBeInTheDocument();
 });
 
+test('renders photo controls for the active album image', () => {
+  const setCover = jest.fn();
+  render(
+    <StackedImageGallery
+      images={images}
+      renderImageControls={(photo) => (
+        <button onClick={() => setCover(photo.id)}>Set as cover</button>
+      )}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /2 image/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Set as cover' }));
+  expect(setCover).toHaveBeenCalledWith('image-2');
+  expect(screen.getByRole('button', { name: /2 image/ })).toBeInTheDocument();
+});
+
 test('removes a deleted carousel image immediately without waiting for a parent refresh', () => {
   const remove = jest.fn();
   render(

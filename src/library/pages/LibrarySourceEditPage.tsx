@@ -752,7 +752,7 @@ export default function LibrarySourceEditPage() {
             </fieldset>
             <fieldset className="border rounded p-3 mb-4">
               <legend className="float-none w-auto px-2 fs-6 mb-0">
-                Images
+                Photo album
               </legend>
               <p className="small text-muted">
                 Images are shown here for review. Changes stay private until the

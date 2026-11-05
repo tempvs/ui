@@ -2,6 +2,7 @@ import {
   findSources,
   getAdminRoleRequests,
   getSourcesByIds,
+  getSourceImages,
   getSourceProfiles,
   patchSourceField,
   removeSource,
@@ -20,6 +21,24 @@ function response(body: unknown, status = 200) {
 }
 
 afterEach(() => jest.restoreAllMocks());
+
+test("loads all pages of a source photo album in order", async () => {
+  const fetchMock = jest
+    .spyOn(window, "fetch")
+    .mockResolvedValueOnce(
+      response({ content: [{ id: "first" }], nextToken: "next+" }),
+    )
+    .mockResolvedValueOnce(response({ content: [{ id: "second" }] }));
+
+  await expect(getSourceImages("source-uuid")).resolves.toMatchObject({
+    ok: true,
+    data: [{ id: "first" }, { id: "second" }],
+  });
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "/api/images/source/source-uuid?limit=100&nextToken=next%2B",
+    {},
+  );
+});
 
 test("coalesces concurrent linked-source reads into one Library API batch", async () => {
   const fetchMock = jest.spyOn(window, "fetch").mockResolvedValue(

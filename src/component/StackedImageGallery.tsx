@@ -65,6 +65,7 @@ type StackedImageGalleryProps = {
    * second lightbox implementation. */
   showComments?: boolean;
   showInlineDescription?: boolean;
+  renderImageControls?: (image: GalleryImage) => React.ReactNode;
   /** Return false to consume a preview click without opening the lightbox. */
   onPreviewClick?: (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -111,6 +112,7 @@ export default function StackedImageGallery({
   modalSize = "xl",
   showComments = true,
   showInlineDescription = false,
+  renderImageControls,
   onPreviewClick,
 }: StackedImageGalleryProps) {
   const [show, setShow] = useState(false);
@@ -283,6 +285,7 @@ export default function StackedImageGallery({
 
   const modalImageDetails = (image: GalleryImage) => (
     <>
+      {renderImageControls?.(image)}
       {descriptionContent(image, "border-top mt-3 px-5 py-3")}
       {showComments && <CommentThread targetType="IMAGE" targetId={image.id} />}
     </>

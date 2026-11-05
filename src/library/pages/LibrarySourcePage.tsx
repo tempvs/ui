@@ -83,6 +83,7 @@ export default function LibrarySourcePage() {
   const [actors, setActors] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
   const [coverSaving, setCoverSaving] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
 
   const loadSource = useCallback(async () => {
     // A just-approved changeset gives us the authoritative source payload.
@@ -258,22 +259,25 @@ export default function LibrarySourcePage() {
       ),
     );
   }, [profileFilter, sourceProfiles]);
-  const orderedImages = useMemo(() => {
-    if (!source?.coverImageId) return images;
-    return [...images].sort((left, right) =>
-      left.id === source.coverImageId ? -1 : right.id === source.coverImageId ? 1 : 0,
-    );
-  }, [images, source?.coverImageId]);
   const setCover = async (imageId: string) => {
-    if (!sourceId || coverSaving || imageId === source?.coverImageId) return;
+    if (!source || coverSaving || imageId === source.coverImageId) return;
     setCoverSaving(true);
+    setCoverError(null);
     try {
-      const result = await setSourceCover(sourceId, imageId);
-      if (!result.ok || !result.data) throw new Error("Unable to set the source cover.");
-      visibleSourceRef.current = result.data;
-      setSource(result.data);
-    } catch (coverError) {
-      setError(getErrorMessage(coverError));
+      const result = await setSourceCover(source.id, imageId);
+      if (!result.ok || !result.data) {
+        throw new Error(
+          result.status === 404
+            ? "This photo is no longer available as a cover."
+            : "Unable to set the source cover. Please try again.",
+        );
+      }
+      if (visibleSourceRef.current?.id === source.id) {
+        visibleSourceRef.current = result.data;
+        setSource(result.data);
+      }
+    } catch (error) {
+      setCoverError(getErrorMessage(error));
     } finally {
       setCoverSaving(false);
     }
@@ -303,6 +307,15 @@ export default function LibrarySourcePage() {
   const imagesById = Object.fromEntries(
     images.map((image) => [image.id, image]),
   );
+  const albumImages = images.map((image) => ({
+    ...image,
+    resourceType: image.resourceType || "source",
+    resourceId: image.resourceId || source.id,
+  }));
+  const cover =
+    albumImages.find((image) => image.id === source.coverImageId) ||
+    albumImages[0];
+  const canEdit = canEditSource(userInfo);
   return (
     <PageLayout
       header={{
@@ -318,7 +331,7 @@ export default function LibrarySourcePage() {
         ),
         backgroundColor: "#f3efe4",
         borderColor: "#d9ccb0",
-        rightContent: canEditSource(userInfo) ? (
+        rightContent: canEdit ? (
           <div className="d-flex gap-2">
             <Link
               to={`/library/source/${source.id}/proposals`}
@@ -390,7 +403,7 @@ export default function LibrarySourcePage() {
                 onChange={() => undefined}
                 className="mt-2 mb-0"
                 loadRelatedMapContent={() =>
-                  loadSourceRelatedMapContent(source, orderedImages[0])
+                  loadSourceRelatedMapContent(source, cover)
                 }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
@@ -409,7 +422,7 @@ export default function LibrarySourcePage() {
                 onChange={() => undefined}
                 className="mt-2 mb-0"
                 loadRelatedMapContent={() =>
-                  loadSourceRelatedMapContent(source, orderedImages[0])
+                  loadSourceRelatedMapContent(source, cover)
                 }
                 relatedMapScope={{ type: "SOURCE", id: source.id }}
               />
@@ -417,53 +430,51 @@ export default function LibrarySourcePage() {
           </div>
         </PageColumn>
         <PageColumn className="library-source-images">
-          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <div className="stash-subheading mb-0">Cover and images</div>
-          </div>
-
+          <h2 className="stash-subheading mb-2">Cover</h2>
           <StackedImageGallery
-            images={orderedImages.map((image) => ({
-              ...image,
-              resourceType: image.resourceType || "source",
-              resourceId: image.resourceId || sourceId,
-            }))}
-            title={source.name || undefined}
-            emptyText="No images uploaded for this source yet."
-            previewSize="compact"
-            previewStyle={{ width: "100%" }}
-            previewImageStyle={{
-              // Source pictures should fill the available gallery width while
-              // preserving their own aspect ratio. `auto` left narrow images
-              // looking like a squeezed strip in the responsive side panel.
-              width: "100%",
-              maxWidth: "100%",
-              height: "auto",
-              maxHeight: "24rem",
-              margin: "0 auto",
-            }}
-            fitPreviewHeightToImage
-            editable={false}
-            canAddImage={false}
+            key={`cover-${source.id}`}
+            mode="single"
+            images={cover ? [cover] : []}
+            title="Source cover"
+            emptyText="No source cover yet."
+            previewStyle={{ maxHeight: "24rem", objectFit: "contain" }}
             wrapperClassName="source-image-gallery"
           />
-          {canEditSource(userInfo) && images.length > 0 && (
-            <label className="d-flex align-items-center gap-2 mt-3 small">
-              <span className="text-nowrap">Cover image</span>
-              <select
-                className="form-select form-select-sm"
-                value={source.coverImageId || images[0].id}
-                disabled={coverSaving}
-                onChange={(event) => void setCover(event.target.value)}
-                aria-label="Source cover image"
-              >
-                {orderedImages.map((image, index) => (
-                  <option key={image.id} value={image.id}>
-                    {image.fileName || `Image ${index + 1}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <div className="d-flex align-items-center justify-content-between gap-2 mt-4 mb-2">
+            <h2 className="stash-subheading mb-0">Photo album</h2>
+            {canEdit && (
+              <Link to={`/library/source/${source.id}/edit`}>
+                Edit album photos
+              </Link>
+            )}
+          </div>
+          <StackedImageGallery
+            key={`album-${source.id}`}
+            images={albumImages}
+            title="Source photo album"
+            emptyText="No photos in this album yet."
+            previewSize="compact"
+            wrapperClassName="source-image-gallery"
+            renderImageControls={(image) => (
+              <div className="px-3 pt-2">
+                {image.id === source.coverImageId ? (
+                  <span role="status">Current cover</span>
+                ) : canEdit ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark btn-sm"
+                    disabled={coverSaving}
+                    onClick={() => void setCover(String(image.id))}
+                  >
+                    {coverSaving ? "Saving cover…" : "Set as cover"}
+                  </button>
+                ) : null}
+                {coverError && (
+                  <p role="alert" className="text-danger mt-2">{coverError}</p>
+                )}
+              </div>
+            )}
+          />
         </PageColumn>
         <PageColumn className="library-source-posts">
           <PostPanel

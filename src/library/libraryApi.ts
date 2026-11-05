@@ -534,16 +534,22 @@ async function flushSourceReads() {
   }
 }
 
-export function getSourceImages(sourceId: string | undefined) {
-  return fetchJson<{ content: LibrarySourceImage[] }>(
-    `/api/images/source/${sourceId}?limit=100`,
-  ).then(
-    (result) =>
-      ({
-        ...result,
-        data: result.data?.content || [],
-      }) as ApiResponse<LibrarySourceImage[]>,
-  );
+export async function getSourceImages(
+  sourceId: string | undefined,
+): Promise<ApiResponse<LibrarySourceImage[]>> {
+  const images: LibrarySourceImage[] = [];
+  const path = `/api/images/source/${encodeURIComponent(String(sourceId))}?limit=100`;
+  let nextToken: string | undefined;
+  while (true) {
+    const result = await fetchJson<{
+      content: LibrarySourceImage[];
+      nextToken?: string;
+    }>(nextToken ? `${path}&nextToken=${encodeURIComponent(nextToken)}` : path);
+    if (!result.ok) return { ...result, data: [] };
+    images.push(...(result.data?.content || []));
+    nextToken = result.data?.nextToken;
+    if (!nextToken) return { ...result, data: images };
+  }
 }
 
 export async function setSourceCover(
@@ -554,7 +560,14 @@ export async function setSourceCover(
     `/api/library/source/${encodeURIComponent(sourceId)}/cover/${encodeURIComponent(imageId)}`,
     { method: "PATCH" },
   );
-  return parseResponse<LibrarySource>(response);
+  const result = await parseResponse<LibrarySource>(response);
+  if (result.ok && result.data) {
+    sourceCache.set(result.data.id, {
+      source: result.data,
+      expiresAt: Date.now() + sourceCacheTtlMs,
+    });
+  }
+  return result;
 }
 
 export function getSourceProfiles(sourceId: string | undefined) {
