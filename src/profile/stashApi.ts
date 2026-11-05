@@ -153,6 +153,11 @@ export function createStashGroup(profileId: Id, payload: JsonRecord) {
     method: 'POST',
     headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(payload),
+  }).then((group) => {
+    // Navigating away immediately after creation must never reuse the empty
+    // profile-stash response that was cached before this collection existed.
+    profileStashReads.delete(String(profileId));
+    return group;
   });
 }
 
