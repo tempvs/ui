@@ -272,7 +272,10 @@ export default function OnboardingHome({ userId }: { userId: string }) {
       <section className="onboarding-hero">
         <p className="onboarding-kicker">Welcome to Tempvs</p>
         <h1>Bring your history to life</h1>
-        <p>Build a historically grounded reenactment profile, document the kit behind it, and connect with people and events.</p>
+        <p className="onboarding-hero-intro">
+          Build a historically grounded reenactment profile, document the kit
+          behind it, and connect with people and events.
+        </p>
         <p className="onboarding-how-it-works">
           One account can hold several reenactment profiles; each reenactment
           profile can document items with photos or your own equipment,

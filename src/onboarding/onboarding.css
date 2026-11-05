@@ -43,6 +43,12 @@
   margin: 0.7rem 0 1.15rem;
   color: #506059;
 }
+.onboarding-hero > .onboarding-hero-intro {
+  max-width: 42rem;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
 .onboarding-how-it-works {
   max-width: 62rem;
   margin: 0.9rem auto 1.15rem !important;
