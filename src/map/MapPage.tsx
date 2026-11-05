@@ -40,6 +40,7 @@ import {
   filterOwnedMapContentByProfiles,
   type OwnedMapConnection,
   type OwnedMapMarker,
+  type OwnedMapProfile,
 } from "./ownedMapContent";
 import { appendSharedMapScope, parseSharedMapScope } from "./sharedMapScope";
 import PlaceProposalModal from "./PlaceProposalModal";
@@ -149,6 +150,7 @@ export default function MapPage() {
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
   >([]);
+  const [ownedProfiles, setOwnedProfiles] = useState<OwnedMapProfile[]>([]);
   const [showOwnedMap, setShowOwnedMap] = useState(
     () =>
       !params.get("placeId") &&
@@ -291,16 +293,19 @@ export default function MapPage() {
     if (sharedScope) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
+      setOwnedProfiles([]);
       void loadSharedMapScope(sharedScope)
         .then((content) => {
           if (!active) return;
           setOwnedMarkers(content.markers);
           setOwnedConnections(content.connections);
+          setOwnedProfiles(content.profiles || []);
         })
         .catch(() => {
           if (active) {
             setOwnedMarkers([]);
             setOwnedConnections([]);
+            setOwnedProfiles([]);
           }
         });
       return () => {
@@ -313,6 +318,7 @@ export default function MapPage() {
     if (!viewer || !showOwnedMap) {
       setOwnedMarkers([]);
       setOwnedConnections([]);
+      setOwnedProfiles([]);
       return () => {
         active = false;
       };
@@ -321,11 +327,13 @@ export default function MapPage() {
       if (!active) return;
       setOwnedMarkers(content.markers);
       setOwnedConnections(content.connections);
+      setOwnedProfiles(content.profiles || []);
     })
       .then((content) => {
         if (!active) return;
         setOwnedMarkers(content.markers);
         setOwnedConnections(content.connections);
+        setOwnedProfiles(content.profiles || []);
       })
       .catch(() => {
         // Ownership context is a convenience. Keep public map search usable
@@ -333,6 +341,7 @@ export default function MapPage() {
         if (active) {
           setOwnedMarkers([]);
           setOwnedConnections([]);
+          setOwnedProfiles([]);
         }
       });
     return () => {
@@ -532,6 +541,7 @@ export default function MapPage() {
     setShowOwnedMap(false);
     setOwnedMarkers([]);
     setOwnedConnections([]);
+    setOwnedProfiles([]);
     setSelectedPlaceId(selected.id);
     setSelectedEntityKey(null);
     setSuggestions(null);
@@ -850,10 +860,18 @@ export default function MapPage() {
   const selectableProfiles = useMemo(
     () => {
       const seen = new Set<string>();
-      return ownedMarkers
-        .reduce<OwnedMapMarker[]>((profiles, marker) => {
-          if (marker.entityType !== "PROFILE" || seen.has(marker.entityId))
-            return profiles;
+      const choices: Array<
+        Pick<OwnedMapMarker, "entityId" | "label" | "profileType">
+      > = ownedProfiles.length
+        ? ownedProfiles.map((profile) => ({
+            entityId: profile.id,
+            label: profile.label,
+            profileType: profile.profileType,
+          }))
+        : ownedMarkers.filter((marker) => marker.entityType === "PROFILE");
+      return choices
+        .reduce<typeof choices>((profiles, marker) => {
+          if (seen.has(marker.entityId)) return profiles;
           seen.add(marker.entityId);
           profiles.push(marker);
           return profiles;
@@ -863,7 +881,7 @@ export default function MapPage() {
           left.entityId.localeCompare(right.entityId),
         );
     },
-    [ownedMarkers],
+    [ownedMarkers, ownedProfiles],
   );
 
   const activeMapFilters = useMemo(() => {

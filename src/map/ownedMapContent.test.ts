@@ -45,6 +45,29 @@ test("hides a club profile and only its exclusive graph nodes", () => {
   expect(visible.connections).toHaveLength(1);
 });
 
+test("hides owned club-profile content when its user profile has no map pin", () => {
+  const content = {
+    profiles: [
+      { id: "user", label: "Marcus", profileType: "USER" as const },
+      {
+        id: "club-profile",
+        label: "Legio III",
+        profileType: "CLUB" as const,
+        ownerProfileId: "user",
+      },
+    ],
+    markers: [
+      { key: "PROFILE:club-profile:CURRENT_RESIDENCE", entityType: "PROFILE", entityId: "club-profile" },
+      { key: "SOURCE:source:DISCOVERED_AT", entityType: "SOURCE", entityId: "source" },
+    ],
+    connections: [
+      { key: "club-source", kind: "PROFILE_SOURCE" as const, fromKey: "PROFILE:club-profile:CURRENT_RESIDENCE", toKey: "SOURCE:source:DISCOVERED_AT" },
+    ],
+  } as never;
+
+  expect(filterOwnedMapContentByProfiles(content, ["user"]).markers).toEqual([]);
+});
+
 jest.mock("../club/clubApi", () => ({
   getClub: jest.fn(),
   getProfileClubs: jest.fn(),
@@ -249,6 +272,14 @@ test("composes profile, membership club, and club-stash source markers", async (
       }),
     ]),
   );
+  expect(content.profiles).toEqual([
+    expect.objectContaining({ id: "personal", profileType: "USER" }),
+    expect.objectContaining({
+      id: "club-profile",
+      profileType: "CLUB",
+      ownerProfileId: "personal",
+    }),
+  ]);
   // Persisted projections already carry their locations, so loading an owned
   // map does not need to resolve places individually.
   expect(getMapPlacesByReference).not.toHaveBeenCalled();

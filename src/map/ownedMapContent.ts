@@ -57,9 +57,20 @@ export type OwnedMapConnection = {
     | "EVENT_LOCATIONS";
 };
 
+/** A profile which can control the viewer-owned map graph. A profile need not
+ * have a map location itself (and therefore need not have a marker) to be a
+ * meaningful choice: hiding the user also hides their owned club profiles. */
+export type OwnedMapProfile = {
+  id: string;
+  label: string;
+  profileType: "USER" | "CLUB";
+  ownerProfileId?: string;
+};
+
 export type OwnedMapContent = {
   markers: OwnedMapMarker[];
   connections: OwnedMapConnection[];
+  profiles?: OwnedMapProfile[];
 };
 
 /** Apply the profile choices made by the author of a personal map. A related
@@ -69,6 +80,10 @@ export function filterOwnedMapContentByProfiles(
   hiddenProfileIds: readonly string[],
 ): OwnedMapContent {
   const hidden = new Set(hiddenProfileIds);
+  content.profiles?.forEach((profile) => {
+    if (profile.ownerProfileId && hidden.has(profile.ownerProfileId))
+      hidden.add(profile.id);
+  });
   if (!hidden.size) return content;
   const profileKeys = new Set(
     content.markers
@@ -99,6 +114,7 @@ export function filterOwnedMapContentByProfiles(
   ]);
   const markers = content.markers.filter((marker) => !hiddenKeys.has(marker.key));
   return {
+    ...content,
     markers,
     connections: content.connections.filter(
       (connection) => !hiddenKeys.has(connection.fromKey) && !hiddenKeys.has(connection.toKey),
@@ -637,8 +653,31 @@ export async function loadOwnedMapContent(
     personalProfile?.id,
     profiles.filter((profile) => profile.id !== personalProfile?.id).map((profile) => profile.id),
   );
-  onProgress?.(content);
-  return content;
+  const profileChoices: OwnedMapProfile[] = profiles.map((profile) => ({
+    id: profile.id,
+    label: profileLabel(profile),
+    profileType: profile.id === personalProfile?.id ? "USER" : "CLUB",
+    ...(profile.id === personalProfile?.id
+      ? {}
+      : personalProfile?.id
+        ? { ownerProfileId: personalProfile.id }
+        : {}),
+  }));
+  const withProfiles: OwnedMapContent = {
+    ...content,
+    profiles: profileChoices,
+  };
+  onProgress?.(withProfiles);
+  return withProfiles;
+}
+
+function profileLabel(profile: Profile): string {
+  return (
+    profile.nickName?.trim() ||
+    `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() ||
+    profile.alias?.trim() ||
+    "Profile"
+  );
 }
 
 function addClubProfileConnections(
