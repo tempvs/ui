@@ -60,6 +60,7 @@ test("shows the guided journey and does not treat an empty profile as ready", as
   );
 
   expect(await screen.findByText("Bring your history to life")).toBeInTheDocument();
+  expect(screen.getByText(/One account can hold several reenactment profiles/)).toBeInTheDocument();
   expect(screen.getByText("0 of 4", { exact: false })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Create a profile" })).toHaveAttribute("href", "/profile?returnTo=%2F");
   expect(screen.queryByText("Your wall")).not.toBeInTheDocument();

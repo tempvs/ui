@@ -19,12 +19,13 @@ export default function ProfileButton({
   showNavigationCoachmark = false,
   navigationCoachmarkId = "open-current-profile",
 }: ProfileButtonProps) {
+  const className = `header-icon-button${showNavigationCoachmark ? " onboarding-attention-target" : ""}`;
   const button = to ? (
-    <Link to={to} className="header-icon-button" aria-label="Profile">
+    <Link to={to} className={className} aria-label="Profile">
       <UserIcon />
     </Link>
   ) : (
-    <Button className="header-icon-button" variant="default">
+    <Button className={className} variant="default">
       <UserIcon />
     </Button>
   );

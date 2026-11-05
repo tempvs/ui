@@ -11,13 +11,14 @@ type IconProps = {
 
 const HomeIcon = FaHome as React.ComponentType<IconProps>;
 
-type HomeButtonProps = { to?: string };
+type HomeButtonProps = { to?: string; attention?: boolean };
 
-export default function HomeButton({ to }: HomeButtonProps) {
+export default function HomeButton({ to, attention = false }: HomeButtonProps) {
+  const className = `header-icon-button${attention ? " onboarding-attention-target" : ""}`;
   return (
     <HeaderIconPopover text="home.popover" defaultMessage="Home">
-      {to ? <Link to={to} className="header-icon-button" aria-label="Home"><HomeIcon /></Link> : (
-        <Button className="header-icon-button" variant="default" aria-label="Home"><HomeIcon /></Button>
+      {to ? <Link to={to} className={className} aria-label="Home"><HomeIcon /></Link> : (
+        <Button className={className} variant="default" aria-label="Home"><HomeIcon /></Button>
       )}
     </HeaderIconPopover>
   );

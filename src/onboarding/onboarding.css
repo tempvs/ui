@@ -43,6 +43,15 @@
   margin: 0.7rem 0 1.15rem;
   color: #506059;
 }
+.onboarding-how-it-works {
+  max-width: 74rem;
+  margin-top: 0.9rem !important;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(87, 102, 98, 0.18);
+  color: #46554e !important;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
 
 .onboarding-progress-copy { color: #33453d; }
 .onboarding-progress-track { height: 0.55rem; margin-top: 0.45rem; overflow: hidden; border-radius: 999px; background: rgba(62, 96, 79, 0.16); }

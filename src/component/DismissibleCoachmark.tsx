@@ -129,7 +129,10 @@ export default function DismissibleCoachmark({
   }, [shown, updatePosition]);
 
   return (
-    <span ref={anchorRef} className={`coachmark-anchor${className ? ` ${className}` : ""}`}>
+    <span
+      ref={anchorRef}
+      className={`coachmark-anchor${shown ? " coachmark-anchor--visible" : ""}${className ? ` ${className}` : ""}`}
+    >
       {children}
       {shown && typeof document !== "undefined" &&
         createPortal(

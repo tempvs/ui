@@ -17,6 +17,7 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchUserProfileByUserId,
+  getOnboardingStatus,
 } from "../profile/profileApi";
 import {
   buildOwnedProfileOptions,
@@ -48,6 +49,7 @@ type HeaderState = {
   showProfileNavigationCoachmark: boolean;
   profileNavigationCoachmarkId: string;
   showProfilePickerCoachmark: boolean;
+  onboardingIncomplete: boolean;
 };
 
 type HeaderProps = {
@@ -69,11 +71,13 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       showProfileNavigationCoachmark: false,
       profileNavigationCoachmarkId: "open-current-profile",
       showProfilePickerCoachmark: false,
+      onboardingIncomplete: false,
     };
     this.loadOAuthProfile = this.loadOAuthProfile.bind(this);
     this.handleCurrentProfileChange =
       this.handleCurrentProfileChange.bind(this);
     this.reloadOwnedProfiles = this.reloadOwnedProfiles.bind(this);
+    this.reloadOnboardingStatus = this.reloadOnboardingStatus.bind(this);
   }
 
   componentDidMount() {
@@ -82,6 +86,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       "tempvs:owned-profiles-changed",
       this.reloadOwnedProfiles,
     );
+    window.addEventListener(
+      "tempvs:onboarding-status-changed",
+      this.reloadOnboardingStatus,
+    );
   }
 
   componentWillUnmount() {
@@ -89,11 +97,32 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       "tempvs:owned-profiles-changed",
       this.reloadOwnedProfiles,
     );
+    window.removeEventListener(
+      "tempvs:onboarding-status-changed",
+      this.reloadOnboardingStatus,
+    );
   }
 
   reloadOwnedProfiles() {
     if (this.state.currentUserId)
       this.loadOwnedProfiles(this.state.currentUserId);
+  }
+
+  reloadOnboardingStatus() {
+    if (!this.state.currentUserId) return;
+    void getOnboardingStatus()
+      .then((status) => {
+        this.setState({
+          onboardingIncomplete:
+            status.personaCount === 0 ||
+            status.itemCount === 0 ||
+            status.sourcedItemCount === 0 ||
+            status.connectionCount === 0,
+        });
+      })
+      // A notification must not imply incomplete setup when the status cannot
+      // be read (for example during a rolling API deployment).
+      .catch(() => this.setState({ onboardingIncomplete: false }));
   }
 
   loadOAuthProfile() {
@@ -106,6 +135,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         currentProfileValue: null,
         currentProfilePath: "/profile",
         profileOptions: [],
+        onboardingIncomplete: false,
       });
     fetchCurrentUserInfo((result) => {
       if (!result.currentUserId) {
@@ -123,6 +153,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         },
         () => {
           this.loadOwnedProfiles(String(result.currentUserId));
+          this.reloadOnboardingStatus();
         },
       );
     });
@@ -255,7 +286,17 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         <Container>
           <div className="header-layout">
             <div className="header-profile-switcher">
-              <HomeButton to="/" />
+              <DismissibleCoachmark
+                id="resume-onboarding-from-home"
+                visible={
+                  this.state.loggedIn === true &&
+                  this.state.onboardingIncomplete &&
+                  this.props.locationPath !== "/"
+                }
+                message="Your setup is still in progress. Select Home to continue."
+              >
+                <HomeButton to="/" attention={this.state.onboardingIncomplete} />
+              </DismissibleCoachmark>
               {this.state.loggedIn && (
                 <>
                   <ProfileButton
