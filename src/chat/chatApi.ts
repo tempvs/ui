@@ -292,6 +292,7 @@ function messageValue(value: unknown): ChatMessage {
     object.mapReference === undefined
       ? undefined
       : mapReferenceValue(object.mapReference);
+  const references = entityReferencesValue(object.references, object.text);
   return {
     id: object.id,
     senderProfileId: object.senderProfileId,
@@ -299,11 +300,42 @@ function messageValue(value: unknown): ChatMessage {
     text: object.text,
     createdAt: object.createdAt,
     ...(mapReference ? { mapReference } : {}),
+    ...(references.length ? { references } : {}),
     ...(typeof object.isRead === "boolean" ? { isRead: object.isRead } : {}),
     ...(Array.isArray(object.readByProfileIds)
       ? { readByProfileIds: object.readByProfileIds.filter(profileIdValue) }
       : {}),
   };
+}
+
+function entityReferencesValue(value: unknown, text: string) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const reference = entry as Record<string, unknown>;
+    if (
+      !["PROFILE", "CLUB", "EVENT", "SOURCE"].includes(String(reference.entityType)) ||
+      typeof reference.entityId !== "string" ||
+      typeof reference.name !== "string" ||
+      typeof reference.start !== "number" ||
+      typeof reference.end !== "number" ||
+      !Number.isInteger(reference.start) ||
+      !Number.isInteger(reference.end) ||
+      reference.start < 0 ||
+      reference.end <= reference.start ||
+      reference.end > text.length ||
+      text.slice(reference.start, reference.end) !== `@${reference.name}`
+    )
+      return [];
+    return [{
+      entityType: reference.entityType as "PROFILE" | "CLUB" | "EVENT" | "SOURCE",
+      entityId: reference.entityId,
+      name: reference.name,
+      start: reference.start,
+      end: reference.end,
+      ...(typeof reference.thumbnailUrl === "string" ? { thumbnailUrl: reference.thumbnailUrl } : {}),
+    }];
+  });
 }
 
 function mapReferenceValue(value: unknown): PublicMapReference {
