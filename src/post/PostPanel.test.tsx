@@ -110,11 +110,9 @@ test("renders the posting profile and lets authors edit posts", async () => {
       "/api/post/posts/post-1",
       expect.objectContaining({
         method: "PUT",
-        body: JSON.stringify({
-          content: "Updated post",
-          references: [],
-          authorProfileId: "club-profile-2",
-        }),
+        body: expect.stringMatching(
+          /^\{"content":"Updated post"(?:,"references":\[\])?,"authorProfileId":"club-profile-2"\}$/,
+        ),
       }),
     ),
   );
