@@ -844,6 +844,28 @@ export default function MapPage() {
     );
   }, [ownedConnections, visibleOwnedMarkers]);
 
+  // A profile can have more than one projected role/location. It is still
+  // one choice: toggling it must never render duplicate controls or leave a
+  // second copy of the same profile selected.
+  const selectableProfiles = useMemo(
+    () => {
+      const seen = new Set<string>();
+      return ownedMarkers
+        .reduce<OwnedMapMarker[]>((profiles, marker) => {
+          if (marker.entityType !== "PROFILE" || seen.has(marker.entityId))
+            return profiles;
+          seen.add(marker.entityId);
+          profiles.push(marker);
+          return profiles;
+        }, [])
+        .sort((left, right) =>
+          left.label.localeCompare(right.label) ||
+          left.entityId.localeCompare(right.entityId),
+        );
+    },
+    [ownedMarkers],
+  );
+
   const activeMapFilters = useMemo(() => {
     const filters: string[] = [];
     if (types.length !== entityTypes.length)
@@ -1185,16 +1207,15 @@ export default function MapPage() {
               onChange={(event) => setShowModernBorders(event.target.checked)}
             />
           </div>
-          {ownedMarkers.some((marker) => marker.entityType === "PROFILE") && (
+          {selectableProfiles.length > 0 && (
             <Form.Group className="map-profile-visibility mb-0">
               <Form.Label>Profiles on this map</Form.Label>
-              {ownedMarkers
-                .filter((marker) => marker.entityType === "PROFILE")
-                .map((marker) => (
+              <div>
+                {selectableProfiles.map((marker) => (
                   <Form.Check
                     key={marker.entityId}
                     id={`map-profile-${marker.entityId}`}
-                    label={marker.label}
+                    label={`${marker.profileType === "CLUB" ? "Club profile" : "User profile"}: ${marker.label}`}
                     checked={!hiddenProfileIds.includes(marker.entityId)}
                     onChange={(event) => {
                       const next = event.target.checked
@@ -1208,6 +1229,7 @@ export default function MapPage() {
                     }}
                   />
                 ))}
+              </div>
             </Form.Group>
           )}
         </div>

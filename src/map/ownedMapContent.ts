@@ -37,6 +37,9 @@ export type OwnedMapMarker = {
   temporalFrom?: number;
   temporalTo?: number;
   eventEndsAt?: string;
+  /** Retained from Map's location projection so profile choices are clear in
+   * a personal graph. Non-profile pins intentionally omit this field. */
+  profileType?: "USER" | "CLUB";
   path: string;
 };
 
@@ -423,6 +426,7 @@ async function projectionMapContent(
       temporalFrom: value.sourceFrom ?? value.eventFrom ?? value.profileFrom,
       temporalTo: value.sourceTo ?? value.eventTo ?? value.profileTo,
       ...(value.eventEndsAt ? { eventEndsAt: value.eventEndsAt } : {}),
+      ...(value.profileType ? { profileType: value.profileType } : {}),
       path: projectionPath(
         value.entityType,
         value.entityId,
@@ -642,14 +646,32 @@ function addClubProfileConnections(
   personalProfileId: string | undefined,
   clubProfileIds: string[],
 ): OwnedMapContent {
-  if (!personalProfileId) return content;
-  const personal = content.markers.find(
+  const clubProfileIdsSet = new Set(clubProfileIds);
+  const markers = content.markers.map((marker) =>
+    marker.entityType !== "PROFILE"
+      ? marker
+      : {
+          ...marker,
+          // Older projections did not persist profileType. We already know
+          // these identities from the authenticated profile reads, so retain
+          // a truthful type for the chooser while those projections refresh.
+          profileType:
+            marker.profileType ||
+            (marker.entityId === personalProfileId
+              ? "USER"
+              : clubProfileIdsSet.has(marker.entityId)
+                ? "CLUB"
+                : undefined),
+        },
+  );
+  if (!personalProfileId) return { ...content, markers };
+  const personal = markers.find(
     (marker) => marker.entityType === "PROFILE" && marker.entityId === personalProfileId,
   );
-  if (!personal) return content;
+  if (!personal) return { ...content, markers };
   const connections = [...content.connections];
   clubProfileIds.forEach((clubProfileId) => {
-    const clubProfile = content.markers.find(
+    const clubProfile = markers.find(
       (marker) => marker.entityType === "PROFILE" && marker.entityId === clubProfileId,
     );
     if (!clubProfile) return;
@@ -657,7 +679,7 @@ function addClubProfileConnections(
     if (!connections.some((connection) => connection.key === key))
       connections.push({ key, fromKey: personal.key, toKey: clubProfile.key, kind: "USER_CLUB_PROFILE" });
   });
-  return { ...content, connections };
+  return { ...content, markers, connections };
 }
 
 async function mergeProjectionContent(
@@ -705,6 +727,7 @@ async function mergeProjectionContent(
       thumbnailUrl:
         thumbnails.get(`${value.entityType.toLowerCase()}:${value.entityId}`) ||
         null,
+      ...(value.profileType ? { profileType: value.profileType } : {}),
       path: projectionPath(
         value.entityType,
         value.entityId,

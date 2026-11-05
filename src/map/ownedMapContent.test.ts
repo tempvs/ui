@@ -213,9 +213,11 @@ test("composes profile, membership club, and club-stash source markers", async (
         key: "PROFILE:personal:CURRENT_RESIDENCE",
         thumbnailUrl: "https://images.test/profile-thumb.jpg",
         placeName: "Roma",
+        profileType: "USER",
       }),
       expect.objectContaining({
         key: "PROFILE:club-profile:CURRENT_RESIDENCE",
+        profileType: "CLUB",
       }),
       expect.objectContaining({
         key: "CLUB:club:CLUB_ASSOCIATION",
@@ -230,6 +232,11 @@ test("composes profile, membership club, and club-stash source markers", async (
   );
   expect(content.connections).toEqual(
     expect.arrayContaining([
+      expect.objectContaining({
+        kind: "USER_CLUB_PROFILE",
+        fromKey: "PROFILE:personal:CURRENT_RESIDENCE",
+        toKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
+      }),
       expect.objectContaining({
         kind: "PROFILE_CLUB",
         fromKey: "PROFILE:club-profile:CURRENT_RESIDENCE",
