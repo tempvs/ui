@@ -190,12 +190,12 @@ export default function OnboardingHome({ userId }: { userId: string }) {
       },
       {
         id: "evidence",
-        title: "Support it with a source",
-        description: "Link a library source to an item to record the evidence behind it.",
-        action: "Add supporting evidence",
+        title: "Link a Library source to an item",
+        description: "In Owned items, open an item and choose Add source to link the evidence behind it.",
+        action: persona ? "Open owned items" : "Create a profile",
         to: persona
-          ? `/stash/${persona.alias || persona.id}?returnTo=%2F&next=evidence`
-          : "/library",
+          ? `/stash/${persona.alias || persona.id}?returnTo=%2F`
+          : "/profile?returnTo=%2F",
         complete: status.sourcedItemCount > 0,
       },
       {
