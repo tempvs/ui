@@ -1264,6 +1264,12 @@ h3 {
   pointer-events: auto;
 }
 
+/* The coachmark wrapper must preserve the full-width primary action. */
+.profile-stash-link-wrap > .coachmark-anchor {
+  display: flex;
+  width: 100%;
+}
+
 .profile-stash-hint {
   margin-top: 0.4rem;
   color: #6c6354;
