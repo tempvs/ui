@@ -1882,6 +1882,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 </OnDemandPanel>
               )}
               <ClubProfilesSection
+                ownerProfileId={this.state.profileId}
                 isUserProfile={this.state.type === "USER"}
                 canCreate={isEditable}
                 visibleClubProfiles={

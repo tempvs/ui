@@ -50,6 +50,25 @@ html {
   flex: 0 0 auto;
 }
 
+/* A coachmark is a direct instruction. Give every interactive action it
+   points at a calm, visible pulse until the member dismisses that hint. */
+.coachmark-anchor--visible :is(a, button, input, select, textarea) {
+  animation: coachmark-attention-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes coachmark-attention-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coachmark-anchor--visible :is(a, button, input, select, textarea) {
+    animation: none;
+    outline: 2px solid rgba(154, 106, 25, 0.65);
+    outline-offset: 2px;
+  }
+}
+
 .dismissible-coachmark {
   position: fixed;
   /* Coachmarks are rendered through a portal and must remain above the fixed

@@ -12,6 +12,7 @@ type ClubProfile = {
 };
 
 type ClubProfilesSectionProps = {
+  ownerProfileId?: string | number | null;
   isUserProfile: boolean;
   canCreate: boolean;
   visibleClubProfiles: ClubProfile[];
@@ -35,6 +36,7 @@ type ClubProfilesSectionProps = {
 };
 
 export default function ClubProfilesSection({
+  ownerProfileId,
   isUserProfile,
   canCreate,
   visibleClubProfiles,
@@ -187,7 +189,7 @@ export default function ClubProfilesSection({
             </div>
             {canCreate && (
               <DismissibleCoachmark
-                id="create-club-profile"
+                id={`create-club-profile:${ownerProfileId || "unknown"}`}
                 visible={clubProfilesLoaded && showEmptyMessage}
                 message="Click here to create a reenactment profile."
               >

@@ -210,6 +210,14 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
+          // A member with a personal profile but no persona cannot have
+          // completed setup. This deliberately remains a reliable first-use
+          // fallback if the aggregate onboarding endpoint is briefly
+          // unavailable after registration or deployment.
+          onboardingIncomplete:
+            Boolean(userProfile) && clubProfiles.length === 0
+              ? true
+              : this.state.onboardingIncomplete,
           // When the user has no club profile, guide them back to their
           // current personal profile. Creating their first club profile
           // deliberately repeats this hint alongside the picker guidance.
@@ -287,7 +295,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           <div className="header-layout">
             <div className="header-profile-switcher">
               <DismissibleCoachmark
-                id="resume-onboarding-from-home"
+                id={`resume-onboarding-from-home:${this.state.currentUserId || "anonymous"}`}
                 visible={
                   this.state.loggedIn === true &&
                   this.state.onboardingIncomplete &&
@@ -304,12 +312,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                     showNavigationCoachmark={
                       this.state.showProfileNavigationCoachmark
                     }
-                    navigationCoachmarkId={
-                      this.state.profileNavigationCoachmarkId
-                    }
+                    navigationCoachmarkId={`${this.state.profileNavigationCoachmarkId}:${this.state.currentUserId || "anonymous"}`}
                   />
                   <DismissibleCoachmark
-                    id="pick-current-profile"
+                    id={`pick-current-profile:${this.state.currentUserId || "anonymous"}`}
                     visible={this.state.showProfilePickerCoachmark}
                     message="Pick your current profile here."
                   >
