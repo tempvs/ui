@@ -100,7 +100,9 @@ test("renders the posting profile and lets authors edit posts", async () => {
   fireEvent.change(screen.getByDisplayValue("Original post"), {
     target: { value: "Updated post" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Save post" }));
+  const save = screen.getByRole("button", { name: "Save post" });
+  await waitFor(() => expect(save).toBeEnabled());
+  fireEvent.click(save);
 
   await waitFor(() =>
     expect(global.fetch).toHaveBeenCalledWith(
