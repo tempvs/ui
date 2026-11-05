@@ -17,10 +17,33 @@ import {
   loadClubRelatedMapContent,
   loadEventRelatedMapContent,
   loadOwnedMapContent,
+  filterOwnedMapContentByProfiles,
   loadProfileRelatedMapContent,
   loadSourceRelatedMapContent,
   loadSharedMapScope,
 } from "./ownedMapContent";
+
+test("hides a club profile and only its exclusive graph nodes", () => {
+  const content = {
+    markers: [
+      { key: "PROFILE:person:CURRENT_RESIDENCE", entityType: "PROFILE", entityId: "person" },
+      { key: "PROFILE:club:CURRENT_RESIDENCE", entityType: "PROFILE", entityId: "club" },
+      { key: "SOURCE:shared:DISCOVERED_AT", entityType: "SOURCE", entityId: "shared" },
+      { key: "CLUB:exclusive:CLUB_ASSOCIATION", entityType: "CLUB", entityId: "exclusive" },
+    ],
+    connections: [
+      { key: "person-source", kind: "PROFILE_SOURCE" as const, fromKey: "PROFILE:person:CURRENT_RESIDENCE", toKey: "SOURCE:shared:DISCOVERED_AT" },
+      { key: "club-source", kind: "PROFILE_SOURCE" as const, fromKey: "PROFILE:club:CURRENT_RESIDENCE", toKey: "SOURCE:shared:DISCOVERED_AT" },
+      { key: "club-club", kind: "PROFILE_CLUB" as const, fromKey: "PROFILE:club:CURRENT_RESIDENCE", toKey: "CLUB:exclusive:CLUB_ASSOCIATION" },
+    ],
+  } as never;
+  const visible = filterOwnedMapContentByProfiles(content, ["club"]);
+  expect(visible.markers.map((marker) => marker.key)).toEqual([
+    "PROFILE:person:CURRENT_RESIDENCE",
+    "SOURCE:shared:DISCOVERED_AT",
+  ]);
+  expect(visible.connections).toHaveLength(1);
+});
 
 jest.mock("../club/clubApi", () => ({
   getClub: jest.fn(),

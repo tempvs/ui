@@ -37,6 +37,7 @@ import MapEntityFilterControls from "./MapEntityFilterControls";
 import {
   loadSharedMapScope,
   loadOwnedMapContent,
+  filterOwnedMapContentByProfiles,
   type OwnedMapConnection,
   type OwnedMapMarker,
 } from "./ownedMapContent";
@@ -154,6 +155,9 @@ export default function MapPage() {
       !params.get("lat") &&
       !params.get("lng") &&
       !params.get("scope"),
+  );
+  const [hiddenProfileIds, setHiddenProfileIds] = useState<string[]>(() =>
+    parseHiddenProfileIds(params.get("hiddenProfiles")),
   );
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [ownProposals, setOwnProposals] = useState<MapPlaceProposalRecord[]>(
@@ -647,6 +651,8 @@ export default function MapPage() {
     // the recipient's private map (or nothing when they are signed out).
     if (!options?.useCurrentCoordinates)
       appendSharedMapScope(next, sharedScope || undefined);
+    if (hiddenProfileIds.length)
+      next.set("hiddenProfiles", hiddenProfileIds.join(","));
     if (hasCoordinates) {
       next.set("lat", String(lat));
       next.set("lng", String(lng));
@@ -794,7 +800,10 @@ export default function MapPage() {
 
   const visibleOwnedMarkers = useMemo(
     () =>
-      ownedMarkers.filter(
+      filterOwnedMapContentByProfiles(
+        { markers: ownedMarkers, connections: ownedConnections },
+        hiddenProfileIds,
+      ).markers.filter(
         (marker) =>
           types.includes(marker.entityType) &&
           (!periodsEnabled ||
@@ -812,7 +821,9 @@ export default function MapPage() {
       ),
     [
       fromYear,
+      hiddenProfileIds,
       includePastEvents,
+      ownedConnections,
       ownedMarkers,
       periods,
       periodsEnabled,
@@ -950,6 +961,7 @@ export default function MapPage() {
       radiusKm: Number(radius),
       entityTypes: types.length ? types : entityTypes,
       ...(sharedScope ? { scope: sharedScope } : {}),
+      ...(hiddenProfileIds.length ? { hiddenProfileIds } : {}),
     };
   };
   const saveCurrentMap = async (
@@ -1173,6 +1185,31 @@ export default function MapPage() {
               onChange={(event) => setShowModernBorders(event.target.checked)}
             />
           </div>
+          {ownedMarkers.some((marker) => marker.entityType === "PROFILE") && (
+            <Form.Group className="map-profile-visibility mb-0">
+              <Form.Label>Profiles on this map</Form.Label>
+              {ownedMarkers
+                .filter((marker) => marker.entityType === "PROFILE")
+                .map((marker) => (
+                  <Form.Check
+                    key={marker.entityId}
+                    id={`map-profile-${marker.entityId}`}
+                    label={marker.label}
+                    checked={!hiddenProfileIds.includes(marker.entityId)}
+                    onChange={(event) => {
+                      const next = event.target.checked
+                        ? hiddenProfileIds.filter((id) => id !== marker.entityId)
+                        : [...hiddenProfileIds, marker.entityId];
+                      setHiddenProfileIds(next);
+                      const parameters = new URLSearchParams(params);
+                      if (next.length) parameters.set("hiddenProfiles", next.join(","));
+                      else parameters.delete("hiddenProfiles");
+                      setParams(parameters, { replace: true });
+                    }}
+                  />
+                ))}
+            </Form.Group>
+          )}
         </div>
         <div className="map-active-filter-bar" aria-live="polite">
           <span>
@@ -1691,6 +1728,15 @@ function parseEntityTypes(
       entityTypes.includes(type as MapEntityLocation["entityType"]),
     )
     .filter((type, index, all) => all.indexOf(type) === index);
+}
+
+function parseHiddenProfileIds(value: string | null): string[] {
+  if (!value) return [];
+  const ids = value
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id && id.length <= 256);
+  return ids.length <= 40 && new Set(ids).size === ids.length ? ids : [];
 }
 
 function appendEntityTypes(

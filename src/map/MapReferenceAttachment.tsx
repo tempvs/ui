@@ -15,7 +15,7 @@ import {
   type MapEntityLocation,
 } from "./mapApi";
 import { stageMapAttachment } from "./pendingMapAttachment";
-import { loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
+import { filterOwnedMapContentByProfiles, loadSharedMapScope, type OwnedMapContent } from "./ownedMapContent";
 import type { SharedMapScope } from "./sharedMapScope";
 import { getViewer } from "../auth/viewerApi";
 import {
@@ -49,6 +49,7 @@ export type PublicMapReference = {
   radiusKm: number;
   entityTypes: MapEntityLocation["entityType"][];
   query?: string;
+  hiddenProfileIds?: string[];
   scope?: SharedMapScope;
 };
 
@@ -69,6 +70,8 @@ export function publicMapReferencePath(reference: PublicMapReference): string {
     params.set("scope", reference.scope.type);
     params.set("scopeId", reference.scope.id);
   }
+  if (reference.hiddenProfileIds?.length)
+    params.set("hiddenProfiles", reference.hiddenProfileIds.join(","));
   return `/map?${params.toString()}`;
 }
 
@@ -118,6 +121,7 @@ export function publicMapReferenceFromUrl(
   const placeId = text("placeId", 256);
   const placeName = text("q", 200);
   const query = text("content", 200);
+  const hiddenProfileIds = parseHiddenProfileIds(url.searchParams.get("hiddenProfiles"));
   const scopeType = url.searchParams.get("scope");
   const scopeId = url.searchParams.get("scopeId")?.trim();
   if ((scopeType || scopeId) && (!scopeId || !isScopeType(scopeType)))
@@ -130,6 +134,7 @@ export function publicMapReferenceFromUrl(
     radiusKm,
     entityTypes: Array.from(new Set(selectedTypes)),
     ...(query ? { query } : {}),
+    ...(hiddenProfileIds.length ? { hiddenProfileIds } : {}),
     ...(scopeId && scopeType
       ? { scope: { type: scopeType as SharedMapScope["type"], id: scopeId } }
       : {}),
@@ -536,7 +541,7 @@ function MapPreview({
       void loadSharedMapScope(reference.scope)
         .then((part) => {
           if (active) {
-            setContent(part);
+            setContent(filterOwnedMapContentByProfiles(part, reference.hiddenProfileIds || []));
             setContentReady(true);
             loadedContentKey.current = contentKey;
           }
@@ -606,6 +611,12 @@ function MapPreview({
       )}
     </div>
   );
+}
+
+function parseHiddenProfileIds(value: string | null): string[] {
+  if (!value) return [];
+  const ids = value.split(",").map((id) => id.trim()).filter((id) => id && id.length <= 256);
+  return ids.length <= 40 && new Set(ids).size === ids.length ? ids : [];
 }
 
 

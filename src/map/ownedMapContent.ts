@@ -59,6 +59,50 @@ export type OwnedMapContent = {
   connections: OwnedMapConnection[];
 };
 
+/** Apply the profile choices made by the author of a personal map. A related
+ * club or source remains when another visible profile also connects to it. */
+export function filterOwnedMapContentByProfiles(
+  content: OwnedMapContent,
+  hiddenProfileIds: readonly string[],
+): OwnedMapContent {
+  const hidden = new Set(hiddenProfileIds);
+  if (!hidden.size) return content;
+  const profileKeys = new Set(
+    content.markers
+      .filter((marker) => marker.entityType === "PROFILE" && hidden.has(marker.entityId))
+      .map((marker) => marker.key),
+  );
+  const hiddenTargets = new Set<string>();
+  const visibleTargets = new Set<string>();
+  content.connections.forEach((connection) => {
+    if (connection.kind !== "PROFILE_SOURCE" && connection.kind !== "PROFILE_CLUB") return;
+    const target = profileKeys.has(connection.fromKey)
+      ? connection.toKey
+      : profileKeys.has(connection.toKey)
+        ? connection.fromKey
+        : null;
+    if (target) hiddenTargets.add(target);
+    else {
+      const profileEndpoint = content.markers.find(
+        (marker) => marker.key === connection.fromKey || marker.key === connection.toKey,
+      );
+      if (profileEndpoint?.entityType === "PROFILE" && !hidden.has(profileEndpoint.entityId))
+        visibleTargets.add(profileEndpoint.key === connection.fromKey ? connection.toKey : connection.fromKey);
+    }
+  });
+  const hiddenKeys = new Set([
+    ...Array.from(profileKeys),
+    ...Array.from(hiddenTargets).filter((key) => !visibleTargets.has(key)),
+  ]);
+  const markers = content.markers.filter((marker) => !hiddenKeys.has(marker.key));
+  return {
+    markers,
+    connections: content.connections.filter(
+      (connection) => !hiddenKeys.has(connection.fromKey) && !hiddenKeys.has(connection.toKey),
+    ),
+  };
+}
+
 const sharedScopeReadTtlMs = 30_000;
 const sharedScopeReads = new Map<
   string,
@@ -584,9 +628,36 @@ export async function loadOwnedMapContent(
     "PROFILE",
     profiles.map((profile) => profile.id),
   );
-  const content = await mergeProjectionContent(projections);
+  const content = addClubProfileConnections(
+    await mergeProjectionContent(projections),
+    personalProfile?.id,
+    profiles.filter((profile) => profile.id !== personalProfile?.id).map((profile) => profile.id),
+  );
   onProgress?.(content);
   return content;
+}
+
+function addClubProfileConnections(
+  content: OwnedMapContent,
+  personalProfileId: string | undefined,
+  clubProfileIds: string[],
+): OwnedMapContent {
+  if (!personalProfileId) return content;
+  const personal = content.markers.find(
+    (marker) => marker.entityType === "PROFILE" && marker.entityId === personalProfileId,
+  );
+  if (!personal) return content;
+  const connections = [...content.connections];
+  clubProfileIds.forEach((clubProfileId) => {
+    const clubProfile = content.markers.find(
+      (marker) => marker.entityType === "PROFILE" && marker.entityId === clubProfileId,
+    );
+    if (!clubProfile) return;
+    const key = `USER_CLUB_PROFILE:${personal.key}:${clubProfile.key}`;
+    if (!connections.some((connection) => connection.key === key))
+      connections.push({ key, fromKey: personal.key, toKey: clubProfile.key, kind: "USER_CLUB_PROFILE" });
+  });
+  return { ...content, connections };
 }
 
 async function mergeProjectionContent(

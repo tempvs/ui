@@ -10,7 +10,10 @@ import { loadSharedMapScope } from "./ownedMapContent";
 
 jest.mock("./LazyMapCanvas", () => () => <div data-testid="map-preview" />);
 jest.mock("./StaticMapPreview", () => () => <div data-testid="static-preview" />);
-jest.mock("./ownedMapContent", () => ({ loadSharedMapScope: jest.fn() }));
+jest.mock("./ownedMapContent", () => ({
+  loadSharedMapScope: jest.fn(),
+  filterOwnedMapContentByProfiles: (content: unknown) => content,
+}));
 
 beforeEach(() => {
   jest.mocked(loadSharedMapScope).mockResolvedValue({ markers: [], connections: [] });
@@ -131,6 +134,14 @@ test("preserves an approved relationship-map scope", () => {
       "/map?lat=41.9&lng=12.5&radiusKm=25&scope=PROFILE&scopeId=private",
     ),
   ).toMatchObject({ scope: { type: "PROFILE", id: "private" } });
+});
+
+test("preserves hidden profile choices in a shared map URL", () => {
+  expect(
+    publicMapReferenceFromUrl(
+      "/map?lat=41.9&lng=12.5&radiusKm=25&hiddenProfiles=club-1,club-2",
+    ),
+  ).toMatchObject({ hiddenProfileIds: ["club-1", "club-2"] });
 });
 
 test("restores a profile relationship scope for legacy embedded maps", () => {

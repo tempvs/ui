@@ -257,6 +257,7 @@ export type MapSnapshot = {
     longitude: number;
     radiusKm: number;
     entityTypes: MapEntityLocation["entityType"][];
+    hiddenProfileIds?: string[];
     scope?: { type: "USER" | "PROFILE" | "CLUB" | "EVENT" | "SOURCE"; id: string };
   };
   createdAt: string;

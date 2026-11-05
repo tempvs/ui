@@ -341,6 +341,11 @@ function mapReferenceValue(value: unknown): PublicMapReference {
           id: scopeId,
         }
       : undefined;
+  const hiddenProfileIds = Array.isArray(object.hiddenProfileIds)
+    ? object.hiddenProfileIds.filter(
+        (id): id is string => typeof id === "string" && Boolean(id.trim()) && id.trim().length <= 256,
+      )
+    : [];
   return {
     ...(optional("placeId") ? { placeId: optional("placeId") } : {}),
     ...(optional("placeName") ? { placeName: optional("placeName") } : {}),
@@ -350,6 +355,9 @@ function mapReferenceValue(value: unknown): PublicMapReference {
     entityTypes: entityTypes as PublicMapReference["entityTypes"],
     ...(optional("query") ? { query: optional("query") } : {}),
     ...(scope ? { scope } : {}),
+    ...(hiddenProfileIds.length && new Set(hiddenProfileIds).size === hiddenProfileIds.length
+      ? { hiddenProfileIds }
+      : {}),
   };
 }
 
