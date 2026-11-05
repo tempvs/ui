@@ -81,8 +81,11 @@ jest.mock("./mapApi", () => ({
   nearbyMapPlaces: jest.fn(),
   nearbyMapEntitiesPage: jest.fn(),
   getMapPlace: jest.fn(),
-  mapPlaceReference: (place: { id: string; publicId?: string; alias?: string }) =>
-    place.alias || place.publicId || place.id,
+  mapPlaceReference: (place: {
+    id: string;
+    publicId?: string;
+    alias?: string;
+  }) => place.alias || place.publicId || place.id,
   mapPlacePath: (place: { id: string; publicId?: string; alias?: string }) =>
     `/map/place/${place.alias || place.publicId || place.id}`,
   listMyMapPlaceProposals: jest.fn().mockResolvedValue([]),
@@ -90,6 +93,7 @@ jest.mock("./mapApi", () => ({
 }));
 
 jest.mock("./ownedMapContent", () => ({
+  filterOwnedMapContentByProfiles: (content: unknown) => content,
   loadSharedMapScope: jest.fn().mockResolvedValue({
     markers: [],
     connections: [],
@@ -696,13 +700,24 @@ test("saves a selected map and opens the send-destination dialog", async () => {
   mockGetViewer.mockResolvedValue({ userId: "viewer-1", roles: [] });
   const prompt = jest.spyOn(window, "prompt").mockReturnValue("Rome map");
   render(
-    <MemoryRouter initialEntries={["/map?placeId=seed%3Arome&q=Rome&lat=41.9&lng=12.5&radiusKm=25"]}>
+    <MemoryRouter
+      initialEntries={[
+        "/map?placeId=seed%3Arome&q=Rome&lat=41.9&lng=12.5&radiusKm=25",
+      ]}
+    >
       <MapPage />
     </MemoryRouter>,
   );
   const save = await screen.findByRole("button", { name: "Save map" });
   fireEvent.click(save);
-  await waitFor(() => expect(mockSaveMapSnapshot).toHaveBeenCalledWith(expect.objectContaining({ title: "Rome map", reference: expect.objectContaining({ placeId: "seed:rome" }) })));
+  await waitFor(() =>
+    expect(mockSaveMapSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Rome map",
+        reference: expect.objectContaining({ placeId: "seed:rome" }),
+      }),
+    ),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Send map" }));
   expect(await screen.findByText("Send this map")).toBeInTheDocument();
   prompt.mockRestore();
