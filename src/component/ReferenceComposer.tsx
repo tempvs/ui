@@ -184,7 +184,7 @@ function ComposerController({
   }, [editor, disabled]);
   useEffect(() => {
     const copy = (event: ClipboardEvent | KeyboardEvent | null) => {
-      if (!event || !(event instanceof ClipboardEvent) || !event.clipboardData) return false;
+      if (!event || typeof ClipboardEvent === "undefined" || !(event instanceof ClipboardEvent) || !event.clipboardData) return false;
       event.preventDefault();
       setLexicalClipboardDataTransfer(event.clipboardData, $getClipboardDataFromSelection());
       return true;
@@ -197,7 +197,7 @@ function ComposerController({
       return true;
     }, COMMAND_PRIORITY_HIGH);
     const removePaste = editor.registerCommand(PASTE_COMMAND, event => {
-      if (!(event instanceof ClipboardEvent) || !event.clipboardData?.getData("application/x-lexical-editor")) return false;
+      if (typeof ClipboardEvent === "undefined" || !(event instanceof ClipboardEvent) || !event.clipboardData?.getData("application/x-lexical-editor")) return false;
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return false;
       event.preventDefault();
