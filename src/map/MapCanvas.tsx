@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -622,8 +622,16 @@ export default function MapCanvas({
     });
   }, [focus, ready]);
 
-  useLayoutEffect(() => {
-    if (!ready || !map.current || focus || !initialFitPoints.length) return;
+  useEffect(() => {
+    if (
+      !ready ||
+      !map.current ||
+      focus ||
+      !initialFitPoints.length ||
+      fittedPrivateMarkerSignature.current !== null
+    ) {
+      return;
+    }
     const signature = initialFitPoints
       .map(
         (point) =>
@@ -631,22 +639,18 @@ export default function MapCanvas({
       )
       .sort()
       .join("|");
-    if (fittedPrivateMarkerSignature.current === signature) return;
-    const isInitialFit = fittedPrivateMarkerSignature.current === null;
     const applyFit = () => {
       if (!map.current) return;
       fittedPrivateMarkerSignature.current = signature;
-      if (isInitialFit) {
-        map.current.stop();
-        map.current.resize();
-      }
+      map.current.stop();
+      map.current.resize();
       if (initialFitPoints.length === 1) {
         const point = initialFitPoints[0];
         if (!point) return;
         map.current.flyTo({
           center: [point.longitude, point.latitude],
           zoom: 6,
-          duration: isInitialFit ? 0 : 650,
+          duration: 0,
           essential: true,
         });
         return;
@@ -658,19 +662,14 @@ export default function MapCanvas({
       map.current.fitBounds(bounds, {
         padding: 64,
         maxZoom: 7,
-        duration: isInitialFit ? 0 : 650,
+        duration: 0,
         essential: true,
       });
     };
-    // Start a filter's camera transition before React paints the changed DOM
-    // marker set. Previously the zero-delay timer let unpositioned avatars
-    // and the old edge source paint for one frame, then replaced them while
-    // fitBounds was already moving the camera. The initial attachment case
-    // may still need its explicit layout delay; interactive toggles must not.
-    if (!isInitialFit || initialFitDelayMs === 0) {
-      applyFit();
-      return undefined;
-    }
+    // Profile checkboxes are layer controls, not a request to move the
+    // camera. Re-fitting on every selection made MapLibre's WebGL canvas and
+    // DOM avatars briefly disagree about their transform. Frame the initial
+    // owned graph once, then keep the viewport completely stable for toggles.
     const timer = window.setTimeout(applyFit, initialFitDelayMs);
     return () => window.clearTimeout(timer);
   }, [focus, initialFitDelayMs, initialFitPoints, ready]);
