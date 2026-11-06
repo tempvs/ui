@@ -2,11 +2,6 @@
   position: relative;
   min-height: 28rem;
   overflow: hidden;
-  /* MapLibre combines a WebGL canvas with DOM avatars. Paint containment
-   * keeps either layer from escaping the fixed map frame during a camera
-   * transition, even for a composited frame between marker updates. */
-  contain: layout paint;
-  isolation: isolate;
   border: 1px solid #d4c9b5;
   border-radius: 0.7rem;
   background: #b9d7e5;
@@ -16,17 +11,6 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  /* `overflow` alone is not consistently applied to a composited WebGL
-   * canvas and its sibling marker pane while MapLibre resizes. Clip the
-   * actual map root too, so no intermediate canvas/DOM frame can overpaint
-   * the card during a profile-filter camera transition. */
-  clip-path: inset(0 round 0.7rem);
-}
-
-.map-canvas > .maplibregl-map,
-.map-canvas .maplibregl-canvas-container {
-  overflow: hidden;
-  clip-path: inset(0 round 0.7rem);
 }
 
 .map-legend {
