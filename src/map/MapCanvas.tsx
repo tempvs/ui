@@ -393,7 +393,11 @@ export default function MapCanvas({
       }
       const element = document.createElement("button");
       element.type = "button";
-      element.className = `map-owned-marker map-owned-marker-${ownedMarker.entityType.toLowerCase()}`;
+      // MapLibre appends DOM markers before its next render has calculated
+      // their screen transform. Keep that unpositioned frame invisible: when
+      // profile filters add a marker during a camera fit it would otherwise
+      // briefly paint at the page origin before moving into the map.
+      element.className = `map-owned-marker map-owned-marker-pending map-owned-marker-${ownedMarker.entityType.toLowerCase()}`;
       element.setAttribute("aria-label", `Open ${ownedMarker.label}`);
       element.title = `${ownedMarker.label} · ${ownedMarker.placeName}`;
       if (ownedMarker.thumbnailUrl) {
@@ -449,9 +453,16 @@ export default function MapCanvas({
       })
         .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
         .addTo(mapInstance);
+      const reveal = () =>
+        element.classList.remove("map-owned-marker-pending");
+      // `idle` runs after both DOM-marker placement and any fitBounds work
+      // scheduled by this render. That makes a newly checked profile enter at
+      // its final in-map location, never as a transient off-map thumbnail.
+      mapInstance.once("idle", reveal);
       ownedMarkerInstances.current.set(ownedMarker.key, {
         marker,
         dispose: () => {
+          mapInstance.off("idle", reveal);
           disposeMapGestures();
           disposePopup();
           marker.remove();
