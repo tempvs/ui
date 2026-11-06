@@ -240,6 +240,7 @@ export default function MapCanvas({
     if (!basemapReady || !element.current || map.current) return undefined;
     let active = true;
     let disposeMarkerLayers: (() => void) | undefined;
+    const ownedInstances = ownedMarkerInstances.current;
     const next = new maplibregl.Map({
       container: element.current,
       style: mapStyle(basemapData),
@@ -321,8 +322,8 @@ export default function MapCanvas({
       selectedPlaceMarker.current = null;
       coordinateMarker.current?.remove();
       coordinateMarker.current = null;
-      ownedMarkerInstances.current.forEach(({ dispose }) => dispose());
-      ownedMarkerInstances.current.clear();
+      ownedInstances.forEach(({ dispose }) => dispose());
+      ownedInstances.clear();
       disposeMarkerLayers?.();
       closeMapPopup(next);
       next.remove();
