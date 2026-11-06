@@ -150,6 +150,10 @@ export default function MapPage() {
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
   >([]);
+  const [renderedOwnedMap, setRenderedOwnedMap] = useState<{
+    markers: OwnedMapMarker[];
+    connections: OwnedMapConnection[];
+  }>({ markers: [], connections: [] });
   const [ownedProfiles, setOwnedProfiles] = useState<OwnedMapProfile[]>([]);
   const [showOwnedMap, setShowOwnedMap] = useState(
     () =>
@@ -854,6 +858,20 @@ export default function MapPage() {
     );
   }, [ownedConnections, visibleOwnedMarkers]);
 
+  // MapLibre renders relationship edges in WebGL while profile thumbnails are
+  // DOM markers. Applying a checkbox change in the same frame can briefly
+  // expose their different render schedules. Keep the last complete graph on
+  // screen for a moment, then replace markers and edges in one settled update.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setRenderedOwnedMap({
+        markers: visibleOwnedMarkers,
+        connections: visibleOwnedConnections,
+      });
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [visibleOwnedConnections, visibleOwnedMarkers]);
+
   // A profile can have more than one projected role/location. It is still
   // one choice: toggling it must never render duplicate controls or leave a
   // second copy of the same profile selected.
@@ -956,7 +974,10 @@ export default function MapPage() {
   // the link; MapCanvas then keeps every related profile, club and source in
   // view. Before that graph arrives, retain the focal place as feedback that
   // the copied link itself was understood.
-  const mapFocus = sharedScope && visibleOwnedMarkers.length ? null : focus;
+  // Visibility filters must never reactivate the focal-place fly animation.
+  // Once a scoped graph has loaded, retain its camera regardless of how many
+  // of its profiles are temporarily hidden.
+  const mapFocus = sharedScope && ownedMarkers.length ? null : focus;
   const selectedPlace = useMemo(
     () => items.find((place) => place.id === selectedPlaceId) || null,
     [items, selectedPlaceId],
@@ -1557,10 +1578,10 @@ export default function MapPage() {
         <MapCanvas
           places={items}
           entities={visibleEntities}
-          ownedMarkers={visibleOwnedMarkers}
-          ownedConnections={visibleOwnedConnections}
+          ownedMarkers={renderedOwnedMap.markers}
+          ownedConnections={renderedOwnedMap.connections}
           focus={mapFocus}
-          initialFitPoints={visibleOwnedMarkers}
+          initialFitPoints={renderedOwnedMap.markers}
           showModernBorders={showModernBorders}
           selectedEntityKey={selectedEntityKey}
           selectedPlaceId={selectedPlaceId}
