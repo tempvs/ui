@@ -238,3 +238,16 @@ test("public older profile, club, event and source references resolve missing th
     );
   }
 });
+
+test("public composer keeps reference offsets valid when message whitespace is trimmed", async ({ page }) => {
+  const editor = page.getByRole("textbox");
+  await editor.fill("  @Alex");
+  await page.getByRole("option", { name: /Alex Archer/ }).click();
+  await page.keyboard.type("hello");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("link", { name: "@Alex Archer" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit saved" }).click();
+  const document = JSON.parse((await page.getByTestId("document").textContent())!);
+  expect(document.value).toBe("@Alex Archer hello");
+  expect(document.references).toMatchObject([{ start: 0, end: 12 }]);
+});

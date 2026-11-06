@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import {
   EntityReferenceComposer,
   EntityReferenceText,
+  referencesForTrimmedText,
   type EntityReference,
 } from "../../src/component/entityReferences";
 
@@ -40,7 +41,7 @@ function Fixture() {
       </output>
       <button
         onClick={() => {
-          setSaved({ value, references });
+          setSaved({ value: value.trim(), references: referencesForTrimmedText(value, references) });
           setValue("");
           setReferences([]);
         }}
