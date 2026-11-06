@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { listClubs } from "../club/clubApi";
@@ -83,15 +83,62 @@ export function EntityReferenceText({ content, references, className }: {
   </span>;
 }
 
-export function EntityReferenceComposer({ value, references, onChange, ...props }: {
+function caretOffset(root: HTMLElement): number {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return root.innerText.length;
+  const range = selection.getRangeAt(0);
+  if (!root.contains(range.endContainer)) return root.innerText.length;
+  const before = range.cloneRange();
+  before.selectNodeContents(root);
+  before.setEnd(range.endContainer, range.endOffset);
+  return before.toString().length;
+}
+
+function setCaret(root: HTMLElement, offset: number) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let remaining = offset;
+  let node = walker.nextNode();
+  while (node) {
+    const length = node.textContent?.length || 0;
+    if (remaining <= length) {
+      const range = document.createRange();
+      range.setStart(node, remaining);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return;
+    }
+    remaining -= length;
+    node = walker.nextNode();
+  }
+}
+
+export function EntityReferenceComposer({
+  value,
+  references,
+  onChange,
+  className,
+  placeholder,
+  disabled,
+  maxLength,
+  onKeyDown,
+}: {
   value: string;
   references: EntityReference[];
   onChange: (value: string, references: EntityReference[]) => void;
 } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
-  const input = useRef<HTMLTextAreaElement | null>(null);
+  const input = useRef<HTMLDivElement | null>(null);
+  const pendingCaret = useRef<number | null>(null);
   const [query, setQuery] = useState<string | null>(null);
   const [triggerStart, setTriggerStart] = useState(0);
   const [results, setResults] = useState<Candidate[]>([]);
+  useLayoutEffect(() => {
+    if (input.current && pendingCaret.current !== null) {
+      setCaret(input.current, pendingCaret.current);
+      pendingCaret.current = null;
+    }
+  }, [value, references]);
   useEffect(() => {
     if (query === null) return;
     let active = true;
@@ -111,23 +158,37 @@ export function EntityReferenceComposer({ value, references, onChange, ...props 
     const inserted = `@${candidate.name}`;
     const next = `${before}${inserted}${value.slice(triggerStart + (query?.length || 0) + 1)}`;
     const nextReferences = reconcileEntityReferences(value, next, references).concat({ ...candidate, start: before.length, end: before.length + inserted.length });
+    pendingCaret.current = before.length + inserted.length;
     onChange(next, nextReferences);
     setQuery(null);
-    requestAnimationFrame(() => { input.current?.focus(); input.current?.setSelectionRange(before.length + inserted.length, before.length + inserted.length); });
+    requestAnimationFrame(() => input.current?.focus());
   };
   const grouped = useMemo(() => (["PROFILE", "CLUB", "EVENT", "SOURCE"] as EntityReferenceType[]).map((type) => [type, results.filter((item) => item.entityType === type)] as const).filter(([, items]) => items.length), [results]);
   return <div className="entity-reference-composer">
-    <textarea {...props} ref={input} value={value} onChange={(event) => {
-      const next = event.target.value;
+    <div
+      ref={input}
+      className={`entity-reference-composer-input ${className || ""}`.trim()}
+      contentEditable={!disabled}
+      suppressContentEditableWarning
+      role="textbox"
+      aria-multiline="true"
+      aria-placeholder={placeholder}
+      data-placeholder={placeholder}
+      onInput={(event) => {
+      const next = event.currentTarget.innerText.replace(/\n$/, "");
+      if (maxLength && next.length > maxLength) return;
+      const cursor = caretOffset(event.currentTarget);
+      pendingCaret.current = cursor;
       onChange(next, reconcileEntityReferences(value, next, references));
-      const cursor = event.target.selectionStart;
       const prefix = next.slice(0, cursor);
       const match = /(^|\s)@([^\s@]*)$/.exec(prefix);
       if (match) { setTriggerStart(cursor - match[2].length - 1); setQuery(match[2]); } else setQuery(null);
     }} onKeyDown={(event) => {
       if (event.key === "Escape") setQuery(null);
-      props.onKeyDown?.(event);
-    }} />
+      onKeyDown?.(event as unknown as React.KeyboardEvent<HTMLTextAreaElement>);
+    }}>
+      <EntityReferenceText content={value} references={references} />
+    </div>
     {query !== null && <div className="entity-reference-menu" role="listbox" aria-label="Reference search results">
       {grouped.length ? grouped.map(([type, items]) => <section key={type}><h3>{labelFor(type)}s</h3>{items.map((item) => <button key={`${item.entityType}:${item.entityId}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => select(item)}><span className="entity-reference-menu-thumb">{item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" /> : null}</span><span>{item.name}<small>{labelFor(item.entityType)}</small></span></button>)}</section>) : <p>Keep typing to search profiles, clubs, events, and sources.</p>}
     </div>}
