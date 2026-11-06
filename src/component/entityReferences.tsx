@@ -200,10 +200,7 @@ export function EntityReferenceComposer({
       aria-placeholder={placeholder}
       data-placeholder={placeholder}
       onInput={(event) => {
-      // `innerText` matches what the user can edit (and is also what jsdom
-      // updates when tests simulate a rich-editor input event). The preview
-      // is display:none except while a reference is being inspected.
-      const next = event.currentTarget.innerText.replace(/\n$/, "");
+      const next = editorText(event.currentTarget);
       if (maxLength && next.length > maxLength) return;
       const cursor = caretOffset(event.currentTarget);
       pendingCaret.current = cursor;
