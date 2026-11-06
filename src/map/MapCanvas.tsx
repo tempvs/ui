@@ -627,8 +627,10 @@ export default function MapCanvas({
     const timer = window.setTimeout(() => {
       if (!map.current) return;
       fittedPrivateMarkerSignature.current = signature;
-      map.current.stop();
-      if (isInitialFit) map.current.resize();
+      if (isInitialFit) {
+        map.current.stop();
+        map.current.resize();
+      }
       if (initialFitPoints.length === 1) {
         const point = initialFitPoints[0];
         if (!point) return;
