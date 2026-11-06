@@ -1,6 +1,5 @@
 .entity-reference-composer { position: relative; }
-.entity-reference-composer-input { cursor: text; min-height: 3.5rem; white-space: pre-wrap; width: 100%; }
-.entity-reference-composer-input:empty::before { color: #6c757d; content: attr(data-placeholder); pointer-events: none; }
+.entity-reference-composer textarea { width: 100%; }
 .entity-reference { color: #725019; font-weight: 650; position: relative; text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .entity-reference-preview { background: #fff; border: 1px solid rgba(77, 55, 23, .25); border-radius: .45rem; box-shadow: 0 .35rem 1rem rgba(0,0,0,.16); color: #2d251a; display: none; gap: .5rem; left: 0; min-width: 13rem; padding: .45rem; position: absolute; top: calc(100% + .35rem); z-index: 20; }
 .entity-reference:hover .entity-reference-preview, .entity-reference:focus .entity-reference-preview { display: flex; }
