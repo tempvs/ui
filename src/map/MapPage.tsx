@@ -188,7 +188,16 @@ export default function MapPage() {
   const appliedEntityFilterSignature = useRef<string | null>(null);
   const coordinateFieldsRef = useRef<HTMLDivElement>(null);
   const mapSectionRef = useRef<HTMLElement>(null);
-  const sharedScope = useMemo(() => parseSharedMapScope(params), [params]);
+  const scopeType = params.get("scope");
+  const scopeId = params.get("scopeId");
+  // Profile visibility is persisted in the URL, but does not change which
+  // graph is loaded. Keep the scope identity stable across filter changes.
+  const sharedScope = useMemo(() => {
+    const scopeParams = new URLSearchParams();
+    if (scopeType) scopeParams.set("scope", scopeType);
+    if (scopeId) scopeParams.set("scopeId", scopeId);
+    return parseSharedMapScope(scopeParams);
+  }, [scopeType, scopeId]);
 
   useEffect(() => {
     void getViewer().then(setViewer);
@@ -815,7 +824,7 @@ export default function MapPage() {
   const visibleOwnedMarkers = useMemo(
     () =>
       filterOwnedMapContentByProfiles(
-        { markers: ownedMarkers, connections: ownedConnections },
+        { markers: ownedMarkers, connections: ownedConnections, profiles: ownedProfiles },
         hiddenProfileIds,
       ).markers.filter(
         (marker) =>
@@ -839,6 +848,7 @@ export default function MapPage() {
       includePastEvents,
       ownedConnections,
       ownedMarkers,
+      ownedProfiles,
       periods,
       periodsEnabled,
       toYear,
@@ -1579,6 +1589,7 @@ export default function MapPage() {
           places={items}
           entities={visibleEntities}
           ownedMarkers={renderedOwnedMap.markers}
+          ownedMarkerLayout={ownedMarkers}
           ownedConnections={renderedOwnedMap.connections}
           focus={mapFocus}
           initialFitPoints={renderedOwnedMap.markers}

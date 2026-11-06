@@ -20,6 +20,8 @@ import {
 } from "./mapApi";
 import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
+const mockMapRender = jest.fn();
+
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
 }));
@@ -33,6 +35,9 @@ jest.mock("./MapCanvas", () => {
       selectedPlaceId,
       focus,
       initialFitPoints,
+      ownedMarkers = [],
+      ownedConnections = [],
+      ownedMarkerLayout = [],
       entities = [],
     }: {
       places: Array<{
@@ -43,15 +48,20 @@ jest.mock("./MapCanvas", () => {
       selectedPlaceId?: string | null;
       focus?: { latitude: number; longitude: number } | null;
       initialFitPoints?: Array<{ key: string }>;
+      ownedMarkers?: Array<{ key: string }>;
+      ownedConnections?: Array<{ key: string }>;
+      ownedMarkerLayout?: Array<{ key: string }>;
       entities?: Array<{ key?: string; label: string }>;
-    }) =>
-      React.createElement(
+    }) => {
+      mockMapRender({ focus, ownedMarkers, ownedConnections, ownedMarkerLayout });
+      return React.createElement(
         "div",
         {
           "data-testid": "map-canvas",
           "data-selected-place": selectedPlaceId || "",
           "data-focus": focus ? `${focus.latitude},${focus.longitude}` : "",
           "data-fit-count": initialFitPoints?.length || 0,
+          "data-edge-count": ownedConnections.length,
         },
         places.map((place) =>
           React.createElement(
@@ -67,7 +77,8 @@ jest.mock("./MapCanvas", () => {
             entity.label,
           ),
         ),
-      ),
+      );
+    },
     entityKey: (entity: {
       entityType: string;
       entityId: string;
@@ -93,7 +104,7 @@ jest.mock("./mapApi", () => ({
 }));
 
 jest.mock("./ownedMapContent", () => ({
-  filterOwnedMapContentByProfiles: (content: unknown) => content,
+  filterOwnedMapContentByProfiles: jest.requireActual("./ownedMapContent").filterOwnedMapContentByProfiles,
   loadSharedMapScope: jest.fn().mockResolvedValue({
     markers: [],
     connections: [],
@@ -694,6 +705,71 @@ test("frames every related marker after a shared graph has loaded", async () => 
     ),
   );
   expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-focus", "");
+});
+
+test("profile toggles filter the loaded graph after 200ms without reloading, clearing controls, or refocusing", async () => {
+  const profile = {
+    key: "PROFILE:profile-1:CURRENT_RESIDENCE",
+    entityType: "PROFILE",
+    entityId: "profile-1",
+    label: "Marcus",
+    profileType: "USER",
+    placeId: "seed:rome",
+    latitude: 41.9,
+    longitude: 12.5,
+  };
+  const source = {
+    ...profile,
+    key: "SOURCE:source-1:DISCOVERED_AT",
+    entityType: "SOURCE",
+    entityId: "source-1",
+    label: "Roman source",
+  };
+  const markers = [profile, source];
+  mockLoadSharedMapScope.mockResolvedValue({
+    markers,
+    connections: [{
+      key: "profile-source",
+      kind: "PROFILE_SOURCE",
+      fromKey: profile.key,
+      toKey: source.key,
+    }],
+    profiles: [{ id: "profile-1", label: "Marcus", profileType: "USER" }],
+  } as never);
+  render(
+    <MemoryRouter initialEntries={["/map?scope=USER&scopeId=owner-1&lat=41.9&lng=12.5"]}>
+      <MapPage />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", "2"),
+  );
+  expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(1);
+  mockMapRender.mockClear();
+  jest.useFakeTimers();
+  try {
+    const checkbox = screen.getByRole("checkbox", { name: "User profile: Marcus" });
+    for (const checked of [false, true, false, true]) {
+      fireEvent.click(checkbox);
+      expect(checkbox).toHaveProperty("checked", checked);
+      expect(screen.getByRole("checkbox", { name: "User profile: Marcus" })).toBe(checkbox);
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "0" : "2");
+      act(() => { jest.advanceTimersByTime(199); });
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "0" : "2");
+      act(() => { jest.advanceTimersByTime(1); });
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "2" : "0");
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-edge-count", checked ? "1" : "0");
+      expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(1);
+    }
+    expect(mockMapRender.mock.calls.length).toBeGreaterThan(0);
+    for (const [props] of mockMapRender.mock.calls) {
+      expect(props.focus).toBeNull();
+      expect(props.ownedMarkerLayout).toBe(markers);
+    }
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("saves a selected map and opens the send-destination dialog", async () => {

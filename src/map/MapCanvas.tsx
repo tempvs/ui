@@ -21,6 +21,9 @@ export type MapCanvasProps = {
   /** Viewer-scoped markers assembled in the browser. They are kept out of
    * the public entity source because membership/ownership is private context. */
   ownedMarkers?: OwnedMapMarker[];
+  /** Complete graph used to keep co-located avatar offsets stable while
+   * individual profiles are hidden. Defaults to the visible markers. */
+  ownedMarkerLayout?: OwnedMapMarker[];
   /** Image markers for a deliberately bounded public result set, such as the
    * related-location modal. Keeping these separate from the clustered public
    * source means broad Map-page searches remain inexpensive. */
@@ -123,6 +126,7 @@ export default function MapCanvas({
   places,
   entities,
   ownedMarkers = EMPTY_OWNED_MARKERS,
+  ownedMarkerLayout = ownedMarkers,
   thumbnailMarkers = EMPTY_THUMBNAIL_MARKERS,
   ownedConnections = EMPTY_CONNECTIONS,
   focus,
@@ -374,7 +378,7 @@ export default function MapCanvas({
   useEffect(() => {
     if (!ready || !map.current) return;
     const mapInstance = map.current;
-    const offsets = markerOffsets(ownedMarkers);
+    const offsets = markerOffsets(ownedMarkerLayout);
     const nextKeys = new Set(ownedMarkers.map((marker) => marker.key));
     ownedMarkerInstances.current.forEach((instance, key) => {
       if (!nextKeys.has(key)) {
@@ -472,7 +476,7 @@ export default function MapCanvas({
         },
       });
     });
-  }, [ownedMarkers, placeReferences, ready]);
+  }, [ownedMarkerLayout, ownedMarkers, placeReferences, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return undefined;
