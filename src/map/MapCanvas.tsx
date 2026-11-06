@@ -91,6 +91,11 @@ const EMPTY_THUMBNAIL_MARKERS: MapThumbnailMarker[] = [];
 const EMPTY_CONNECTIONS: OwnedMapConnection[] = [];
 const EMPTY_FIT_POINTS: NonNullable<MapCanvasProps["initialFitPoints"]> = [];
 
+type OwnedMarkerInstance = {
+  marker: maplibregl.Marker;
+  dispose: () => void;
+};
+
 const BASEMAP_URL = "/maps/basemap.geojson";
 let basemapPreload: Promise<GeoJSON.FeatureCollection | null> | undefined;
 
@@ -138,7 +143,9 @@ export default function MapCanvas({
   const map = useRef<maplibregl.Map | null>(null);
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
   const coordinateMarker = useRef<maplibregl.Marker | null>(null);
-  const ownedMarkerInstances = useRef<maplibregl.Marker[]>([]);
+  const ownedMarkerInstances = useRef<Map<string, OwnedMarkerInstance>>(
+    new Map(),
+  );
   const initialOwnedMarkers = useRef(ownedMarkers);
   const initialOwnedConnections = useRef(ownedConnections);
   const fittedPrivateMarkerSignature = useRef<string | null>(null);
@@ -314,8 +321,8 @@ export default function MapCanvas({
       selectedPlaceMarker.current = null;
       coordinateMarker.current?.remove();
       coordinateMarker.current = null;
-      ownedMarkerInstances.current.forEach((marker) => marker.remove());
-      ownedMarkerInstances.current = [];
+      ownedMarkerInstances.current.forEach(({ dispose }) => dispose());
+      ownedMarkerInstances.current.clear();
       disposeMarkerLayers?.();
       closeMapPopup(next);
       next.remove();
@@ -364,15 +371,25 @@ export default function MapCanvas({
   }, [places, ready]);
 
   useEffect(() => {
-    ownedMarkerInstances.current.forEach((marker) => marker.remove());
-    ownedMarkerInstances.current = [];
-    if (!ready || !map.current) return undefined;
+    if (!ready || !map.current) return;
     const mapInstance = map.current;
     const offsets = markerOffsets(ownedMarkers);
-    const popupDisposers: Array<() => void> = [];
-    const mapGestureDisposers: Array<() => void> = [];
-    const instances = ownedMarkers.map((ownedMarker) => {
+    const nextKeys = new Set(ownedMarkers.map((marker) => marker.key));
+    ownedMarkerInstances.current.forEach((instance, key) => {
+      if (!nextKeys.has(key)) {
+        instance.dispose();
+        ownedMarkerInstances.current.delete(key);
+      }
+    });
+    ownedMarkers.forEach((ownedMarker) => {
       const markerOffset = offsets.get(ownedMarker.key) || [0, 0];
+      const existing = ownedMarkerInstances.current.get(ownedMarker.key);
+      if (existing) {
+        existing.marker
+          .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
+          .setOffset(markerOffset);
+        return;
+      }
       const element = document.createElement("button");
       element.type = "button";
       element.className = `map-owned-marker map-owned-marker-${ownedMarker.entityType.toLowerCase()}`;
@@ -406,43 +423,40 @@ export default function MapCanvas({
       mapGestureEvents.forEach((eventName) =>
         element.addEventListener(eventName, stopMapGesture),
       );
-      mapGestureDisposers.push(() =>
+      const disposeMapGestures = () =>
         mapGestureEvents.forEach((eventName) =>
           element.removeEventListener(eventName, stopMapGesture),
-        ),
-      );
+        );
       element.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         ownedMarkerSelectRef.current?.(ownedMarker);
       });
-      popupDisposers.push(
-        addMarkerLinksPopup(
-          mapInstance,
-          element,
-          {
-            ...ownedMarker,
-            placeReference: placeReferences.get(ownedMarker.placeId),
-          },
-          markerOffset,
-        ),
+      const disposePopup = addMarkerLinksPopup(
+        mapInstance,
+        element,
+        {
+          ...ownedMarker,
+          placeReference: placeReferences.get(ownedMarker.placeId),
+        },
+        markerOffset,
       );
-      return new maplibregl.Marker({
+      const marker = new maplibregl.Marker({
         element,
         anchor: "center",
         offset: markerOffset,
       })
         .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
         .addTo(mapInstance);
+      ownedMarkerInstances.current.set(ownedMarker.key, {
+        marker,
+        dispose: () => {
+          disposeMapGestures();
+          disposePopup();
+          marker.remove();
+        },
+      });
     });
-    ownedMarkerInstances.current = instances;
-    return () => {
-      mapGestureDisposers.forEach((dispose) => dispose());
-      popupDisposers.forEach((dispose) => dispose());
-      instances.forEach((marker) => marker.remove());
-      if (ownedMarkerInstances.current === instances)
-        ownedMarkerInstances.current = [];
-    };
   }, [ownedMarkers, placeReferences, ready]);
 
   useEffect(() => {
