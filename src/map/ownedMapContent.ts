@@ -501,7 +501,13 @@ async function addExpectedLocations(
   );
   if (!missing.length) return content;
   const places = await getMapPlacesByReference(
-    missing.flatMap((location) => (location.placeId ? [location.placeId] : [])),
+    Array.from(
+      new Set(
+        missing.flatMap((location) =>
+          location.placeId ? [location.placeId] : [],
+        ),
+      ),
+    ),
   ).catch(() => new Map());
   const absentThumbnailResources = missing
     .filter((location) => !location.thumbnailUrl)
@@ -648,8 +654,25 @@ export async function loadOwnedMapContent(
     "PROFILE",
     profiles.map((profile) => profile.id),
   );
+  const projectionContent = await mergeProjectionContent(projections);
+  // A profile save publishes its location asynchronously. Older records can
+  // also retain an entity-location row without its derived profile graph.
+  // Keep /map truthful and useful during either gap by resolving the same
+  // approved place that the profile already references; the projection will
+  // replace this bounded fallback once it arrives.
   const content = addClubProfileConnections(
-    await mergeProjectionContent(projections),
+    await addExpectedLocations(
+      projectionContent,
+      profiles
+        .filter(
+          (profile) =>
+            !projectionContent.markers.some(
+              (marker) =>
+                marker.entityType === "PROFILE" && marker.entityId === profile.id,
+            ),
+        )
+        .flatMap(profileLocations),
+    ),
     personalProfile?.id,
     profiles.filter((profile) => profile.id !== personalProfile?.id).map((profile) => profile.id),
   );
@@ -678,6 +701,22 @@ function profileLabel(profile: Profile): string {
     profile.alias?.trim() ||
     "Profile"
   );
+}
+
+function profileLocations(profile: Profile): RelatedLocation[] {
+  if (!profile.locationPlaceId) return [];
+  return [
+    {
+      entityType: "PROFILE",
+      entityId: profile.id,
+      locationRole:
+        profile.type === "CLUB" ? "CLUB_ASSOCIATION" : "CURRENT_RESIDENCE",
+      label: profileLabel(profile),
+      placeId: profile.locationPlaceId,
+      placeName: profile.location,
+      thumbnailUrl: profile.avatarUrl,
+    },
+  ];
 }
 
 function addClubProfileConnections(

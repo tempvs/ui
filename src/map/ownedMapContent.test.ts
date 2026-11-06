@@ -336,6 +336,27 @@ test("uses discovery only for a source on the general owned map", async () => {
   ).toEqual([expect.objectContaining({ key: "SOURCE:source:DISCOVERED_AT" })]);
 });
 
+test("falls back to an approved user profile location while its projection is absent", async () => {
+  jest.mocked(getMapProjections).mockResolvedValue([]);
+
+  const content = await loadOwnedMapContent("viewer");
+
+  expect(content.markers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        key: "PROFILE:personal:CURRENT_RESIDENCE",
+        placeId: "rome",
+        label: "Antonius Primvs",
+      }),
+      expect.objectContaining({
+        key: "PROFILE:club-profile:CLUB_ASSOCIATION",
+        placeId: "rome",
+      }),
+    ]),
+  );
+  expect(getMapPlacesByReference).toHaveBeenCalledWith(["rome"]);
+});
+
 test("loads the club avatar when the club catalogue row has an image id but no signed URL", async () => {
   jest.mocked(getProfileClubs).mockResolvedValue([
     {
