@@ -38,7 +38,7 @@ import {
   useCurrentProfileValue,
 } from "../profile/currentProfile";
 import { Profile } from "../profile/profileTypes";
-import { EntityReferenceComposer, EntityReferenceText, type EntityReference } from "../component/entityReferences";
+import { EntityReferenceComposer, EntityReferenceText, referencesForTrimmedText, type EntityReference } from "../component/entityReferences";
 import "./posts.css";
 
 type TargetType = "PROFILE" | "CLUB" | "EVENT" | "SOURCE" | "ITEM";
@@ -421,7 +421,7 @@ export default function PostPanel({
           targetId: String(targetId),
           authorProfileId: selectedAuthorProfileId,
           content: draft.trim() || "Shared a map",
-          ...(references.length ? { references } : {}),
+          ...(references.length ? { references: referencesForTrimmedText(draft, references) } : {}),
           ...(selectedMapReference
             ? { mapReference: selectedMapReference }
             : {}),
@@ -458,8 +458,8 @@ export default function PostPanel({
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            content: editDraft,
-            references: editReferences,
+            content: editDraft.trim(),
+            references: referencesForTrimmedText(editDraft, editReferences),
             authorProfileId: editAuthorProfileId,
             ...(editMapChanged ? { mapReference: editMapReference } : {}),
           }),

@@ -12,3 +12,9 @@
 .entity-reference-menu-thumb { display: inline-block; flex: 0 0 2rem; overflow: hidden; }
 .entity-reference-menu-thumb img { height: 100%; object-fit: cover; width: 100%; }
 .entity-reference-menu p { color: #6c6256; font-size: .85rem; margin: .45rem; }
+.reference-editor { min-height: calc(var(--composer-lines, 3) * 1.5em + .75rem + 2px); white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.reference-editor p { margin: 0; }
+.reference-node { display: inline; }
+.reference-editor .entity-reference { cursor: pointer; }
+.reference-editor-placeholder { position: absolute; top: .375rem; left: .75rem; color: #6c757d; pointer-events: none; }
+.entity-reference-menu button[aria-selected="true"] { background: #f5f0e8; }

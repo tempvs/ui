@@ -19,7 +19,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import { type PublicMapReference } from "../map/MapReferenceAttachment";
-import { EntityReferenceComposer, type EntityReference } from "../component/entityReferences";
+import { EntityReferenceComposer, referencesForTrimmedText, type EntityReference } from "../component/entityReferences";
 import MapSnapshotPicker, {
   SelectedMapPreview,
 } from "../map/MapSnapshotPicker";
@@ -618,7 +618,7 @@ export default function ChatPage() {
         participantProfileIds: participantIds,
         title: participantIds.length > 1 ? groupTitle.trim() || null : null,
         initialMessage: initialMessage.trim() || null,
-        ...(initialMessageReferences.length ? { references: initialMessageReferences } : {}),
+        ...(initialMessageReferences.length ? { references: referencesForTrimmedText(initialMessage, initialMessageReferences) } : {}),
         ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify(payload);
@@ -687,7 +687,7 @@ export default function ChatPage() {
       const payload = {
         senderProfileId: selectedSenderId,
         text: messageDraft.trim() || "Shared a map",
-        ...(messageReferences.length ? { references: messageReferences } : {}),
+        ...(messageReferences.length ? { references: referencesForTrimmedText(messageDraft, messageReferences) } : {}),
         ...(selectedMapReference ? { mapReference: selectedMapReference } : {}),
       };
       const fingerprint = JSON.stringify({
@@ -739,14 +739,6 @@ export default function ChatPage() {
     void sendDraft();
   }
 
-  function handleComposerKeyDown(
-    event: React.KeyboardEvent<HTMLTextAreaElement>,
-  ) {
-    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing)
-      return;
-    event.preventDefault();
-    void sendDraft();
-  }
 
   function addParticipant(profile: Profile) {
     setSelectedParticipants((current) => {
@@ -1000,7 +992,7 @@ export default function ChatPage() {
                   value={messageDraft}
                   references={messageReferences}
                   onChange={(value, nextReferences) => { setMessageDraft(value); setMessageReferences(nextReferences); }}
-                  onKeyDown={handleComposerKeyDown}
+                  onSubmitEnter={() => void sendDraft()}
                   placeholder={intl.formatMessage({
                     id: "chat.message.placeholder",
                     defaultMessage: "Write a message",

@@ -33,7 +33,7 @@ import {
   updateComment,
 } from "./commentApi";
 import "./comments.css";
-import { EntityReferenceComposer, EntityReferenceText, type EntityReference } from "../component/entityReferences";
+import { EntityReferenceComposer, EntityReferenceText, referencesForTrimmedText, type EntityReference } from "../component/entityReferences";
 
 const SendIcon = FaPaperPlane as React.ComponentType<{
   "aria-hidden"?: boolean;
@@ -193,7 +193,7 @@ export default function CommentThread({
         selectedProfile,
         draft.trim() || "Shared a map",
         mapReference || undefined,
-        references,
+        referencesForTrimmedText(draft, references),
       );
       setComments((current) => [...current, comment]);
       setDraft("");
@@ -210,7 +210,7 @@ export default function CommentThread({
     setBusy(true);
     setError("");
     try {
-      const updated = await updateComment(editing, editDraft, editReferences);
+      const updated = await updateComment(editing, editDraft.trim(), referencesForTrimmedText(editDraft, editReferences));
       setComments((current) =>
         current.map((comment) =>
           comment.id === updated.id ? updated : comment,

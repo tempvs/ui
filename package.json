@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@lexical/clipboard": "^0.22.0",
+    "@lexical/react": "^0.22.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -11,6 +13,7 @@
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "bootstrap": "^5.3.3",
+    "lexical": "^0.22.0",
     "maplibre-gl": "^4.7.1",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.5",

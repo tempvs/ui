@@ -98,8 +98,35 @@ test("renders the posting profile and lets authors edit posts", async () => {
     screen.getByRole("button", { name: "Edit post author profile" }),
   ).toHaveTextContent("Red Company");
   const editor = screen.getByRole("textbox", { name: "Edit post content" });
-  (editor as HTMLDivElement).innerText = "Updated post";
-  fireEvent.input(editor);
+  // JSDOM has no layout API for selections. Chromium tests cover real caret geometry.
+  Range.prototype.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: 0,
+    height: 0,
+    toJSON: () => ({}),
+  });
+  Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+  // Lexical owns its DOM: simulate selecting the document and pasting text.
+  editor.focus();
+  const selection = window.getSelection()!;
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  fireEvent(document, new Event("selectionchange"));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  fireEvent.paste(editor, {
+    clipboardData: {
+      types: ["text/plain"],
+      getData: () => "Updated post",
+      files: [],
+    },
+  });
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Save post" })).toBeEnabled(),
   );
