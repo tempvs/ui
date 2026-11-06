@@ -603,23 +603,24 @@ export default function MapCanvas({
       .sort()
       .join("|");
     if (fittedPrivateMarkerSignature.current === signature) return;
+    const isInitialFit = fittedPrivateMarkerSignature.current === null;
     // A map attachment is often mounted while the post containing it is being
     // inserted. Its saved-centre fly animation may still be running when the
-    // resolved marker graph arrives. Stop that animation and measure the
-    // freshly laid-out canvas before calculating bounds; otherwise the old
-    // focal point can win and leave valid markers off-screen until a reload.
+    // resolved marker graph arrives. Only the first fit needs a resize; doing
+    // it for each profile toggle briefly clears the WebGL canvas and makes
+    // the surrounding map appear to blink.
     const timer = window.setTimeout(() => {
       if (!map.current) return;
       fittedPrivateMarkerSignature.current = signature;
       map.current.stop();
-      map.current.resize();
+      if (isInitialFit) map.current.resize();
       if (initialFitPoints.length === 1) {
         const point = initialFitPoints[0];
         if (!point) return;
         map.current.flyTo({
           center: [point.longitude, point.latitude],
           zoom: 6,
-          duration: 0,
+          duration: isInitialFit ? 0 : 650,
           essential: true,
         });
         return;
@@ -631,7 +632,7 @@ export default function MapCanvas({
       map.current.fitBounds(bounds, {
         padding: 64,
         maxZoom: 7,
-        duration: 0,
+        duration: isInitialFit ? 0 : 650,
         essential: true,
       });
     }, initialFitDelayMs);
