@@ -56,8 +56,8 @@ export function reconcileEntityReferences(
   });
 }
 
-export function EntityReferenceText({ content, references, className, inEditor = false }: {
-  content: string; references?: EntityReference[]; className?: string; inEditor?: boolean;
+export function EntityReferenceText({ content, references, className }: {
+  content: string; references?: EntityReference[]; className?: string;
 }) {
   const valid = (references || []).filter((reference) =>
     reference.start >= 0 && reference.end > reference.start && reference.end <= content.length &&
@@ -70,12 +70,7 @@ export function EntityReferenceText({ content, references, className, inEditor =
       cursor = reference.end;
       return <React.Fragment key={`${reference.entityType}:${reference.entityId}:${reference.start}`}>
         {text}
-        <Link
-          className="entity-reference"
-          to={pathFor(reference)}
-          contentEditable={inEditor ? false : undefined}
-          onMouseDown={inEditor ? (event) => event.stopPropagation() : undefined}
-        >
+        <Link className="entity-reference" to={pathFor(reference)}>
           @{reference.name}
           <span className="entity-reference-preview" role="tooltip">
             {reference.thumbnailUrl ? <img src={reference.thumbnailUrl} alt="" /> : <span className="entity-reference-placeholder" aria-hidden />}
@@ -88,44 +83,26 @@ export function EntityReferenceText({ content, references, className, inEditor =
   </span>;
 }
 
-function editorText(root: Node): string {
-  if (root.nodeType === Node.TEXT_NODE) return root.textContent || "";
-  if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE)
-    return "";
-  const element = root as Element;
-  if (element.classList?.contains("entity-reference-preview")) return "";
-  if (element.tagName === "BR") return "\n";
-  return Array.from(root.childNodes).map(editorText).join("");
-}
-
 function caretOffset(root: HTMLElement): number {
   const selection = window.getSelection();
-  if (!selection?.rangeCount) return editorText(root).length;
+  if (!selection?.rangeCount) return root.innerText.length;
   const range = selection.getRangeAt(0);
-  if (!root.contains(range.endContainer)) return editorText(root).length;
+  if (!root.contains(range.endContainer)) return root.innerText.length;
   const before = range.cloneRange();
   before.selectNodeContents(root);
   before.setEnd(range.endContainer, range.endOffset);
-  return editorText(before.cloneContents()).length;
+  return before.toString().length;
 }
 
 function setCaret(root: HTMLElement, offset: number) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      return (node.parentElement?.closest(".entity-reference-preview"))
-        ? NodeFilter.FILTER_REJECT
-        : NodeFilter.FILTER_ACCEPT;
-    },
-  });
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let remaining = offset;
   let node = walker.nextNode();
   while (node) {
     const length = node.textContent?.length || 0;
     if (remaining <= length) {
       const range = document.createRange();
-      const reference = node.parentElement?.closest(".entity-reference");
-      if (reference) range.setStartAfter(reference);
-      else range.setStart(node, remaining);
+      range.setStart(node, remaining);
       range.collapse(true);
       const selection = window.getSelection();
       selection?.removeAllRanges();
@@ -200,7 +177,7 @@ export function EntityReferenceComposer({
       aria-placeholder={placeholder}
       data-placeholder={placeholder}
       onInput={(event) => {
-      const next = editorText(event.currentTarget);
+      const next = event.currentTarget.innerText.replace(/\n$/, "");
       if (maxLength && next.length > maxLength) return;
       const cursor = caretOffset(event.currentTarget);
       pendingCaret.current = cursor;
@@ -212,7 +189,7 @@ export function EntityReferenceComposer({
       if (event.key === "Escape") setQuery(null);
       onKeyDown?.(event as unknown as React.KeyboardEvent<HTMLTextAreaElement>);
     }}>
-      <EntityReferenceText content={value} references={references} inEditor />
+      <EntityReferenceText content={value} references={references} />
     </div>
     {query !== null && <div className="entity-reference-menu" role="listbox" aria-label="Reference search results">
       {grouped.length ? grouped.map(([type, items]) => <section key={type}><h3>{labelFor(type)}s</h3>{items.map((item) => <button key={`${item.entityType}:${item.entityId}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => select(item)}><span className="entity-reference-menu-thumb">{item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" /> : null}</span><span>{item.name}<small>{labelFor(item.entityType)}</small></span></button>)}</section>) : <p>Keep typing to search profiles, clubs, events, and sources.</p>}
