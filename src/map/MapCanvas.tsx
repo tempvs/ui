@@ -455,14 +455,17 @@ export default function MapCanvas({
         .addTo(mapInstance);
       const reveal = () =>
         element.classList.remove("map-owned-marker-pending");
-      // `idle` runs after both DOM-marker placement and any fitBounds work
-      // scheduled by this render. That makes a newly checked profile enter at
-      // its final in-map location, never as a transient off-map thumbnail.
-      mapInstance.once("idle", reveal);
+      // Adding a DOM marker does not necessarily schedule MapLibre's `idle`
+      // event. Two animation frames are enough for MapLibre to apply its
+      // screen transform, while still guaranteeing the marker is revealed
+      // even when the camera is already stationary.
+      let revealFrame = window.requestAnimationFrame(() => {
+        revealFrame = window.requestAnimationFrame(reveal);
+      });
       ownedMarkerInstances.current.set(ownedMarker.key, {
         marker,
         dispose: () => {
-          mapInstance.off("idle", reveal);
+          window.cancelAnimationFrame(revealFrame);
           disposeMapGestures();
           disposePopup();
           marker.remove();
