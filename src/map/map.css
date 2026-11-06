@@ -2,6 +2,11 @@
   position: relative;
   min-height: 28rem;
   overflow: hidden;
+  /* MapLibre composites WebGL edges and DOM avatar markers independently.
+   * Clip their common, stable card parent instead of either internal map
+   * layer: this prevents a transient composited frame from escaping the map
+   * while keeping MapLibre's canvas free to render normally. */
+  clip-path: inset(0 round 0.7rem);
   border: 1px solid #d4c9b5;
   border-radius: 0.7rem;
   background: #b9d7e5;
