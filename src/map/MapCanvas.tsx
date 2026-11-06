@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -622,7 +622,7 @@ export default function MapCanvas({
     });
   }, [focus, ready]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!ready || !map.current || focus || !initialFitPoints.length) return;
     const signature = initialFitPoints
       .map(
@@ -633,12 +633,7 @@ export default function MapCanvas({
       .join("|");
     if (fittedPrivateMarkerSignature.current === signature) return;
     const isInitialFit = fittedPrivateMarkerSignature.current === null;
-    // A map attachment is often mounted while the post containing it is being
-    // inserted. Its saved-centre fly animation may still be running when the
-    // resolved marker graph arrives. Only the first fit needs a resize; doing
-    // it for each profile toggle briefly clears the WebGL canvas and makes
-    // the surrounding map appear to blink.
-    const timer = window.setTimeout(() => {
+    const applyFit = () => {
       if (!map.current) return;
       fittedPrivateMarkerSignature.current = signature;
       if (isInitialFit) {
@@ -666,7 +661,17 @@ export default function MapCanvas({
         duration: isInitialFit ? 0 : 650,
         essential: true,
       });
-    }, initialFitDelayMs);
+    };
+    // Start a filter's camera transition before React paints the changed DOM
+    // marker set. Previously the zero-delay timer let unpositioned avatars
+    // and the old edge source paint for one frame, then replaced them while
+    // fitBounds was already moving the camera. The initial attachment case
+    // may still need its explicit layout delay; interactive toggles must not.
+    if (!isInitialFit || initialFitDelayMs === 0) {
+      applyFit();
+      return undefined;
+    }
+    const timer = window.setTimeout(applyFit, initialFitDelayMs);
     return () => window.clearTimeout(timer);
   }, [focus, initialFitDelayMs, initialFitPoints, ready]);
 
