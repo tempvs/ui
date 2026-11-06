@@ -522,6 +522,7 @@ export default function PostPanel({
       {(canCreate || (targetType === "PROFILE" && Boolean(currentProfileId))) && (
         <div className="post-composer-wrap">
           <EntityReferenceComposer
+            aria-label="Write a post"
             rows={3}
             className="post-composer"
             value={draft}
@@ -630,6 +631,7 @@ export default function PostPanel({
                 {editing ? (
                   <div className="post-edit-wrap">
                     <EntityReferenceComposer
+                      aria-label="Edit post content"
                       rows={3}
                       className="post-composer"
                       value={editDraft}

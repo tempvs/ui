@@ -97,9 +97,9 @@ test("renders the posting profile and lets authors edit posts", async () => {
   expect(
     screen.getByRole("button", { name: "Edit post author profile" }),
   ).toHaveTextContent("Red Company");
-  fireEvent.change(screen.getByDisplayValue("Original post"), {
-    target: { value: "Updated post" },
-  });
+  const editor = screen.getByRole("textbox", { name: "Edit post content" });
+  (editor as HTMLDivElement).innerText = "Updated post";
+  fireEvent.input(editor);
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Save post" })).toBeEnabled(),
   );

@@ -123,6 +123,7 @@ export function EntityReferenceComposer({
   disabled,
   maxLength,
   onKeyDown,
+  "aria-label": ariaLabel,
 }: {
   value: string;
   references: EntityReference[];
@@ -171,6 +172,7 @@ export function EntityReferenceComposer({
       contentEditable={!disabled}
       suppressContentEditableWarning
       role="textbox"
+      aria-label={ariaLabel}
       aria-multiline="true"
       aria-placeholder={placeholder}
       data-placeholder={placeholder}
