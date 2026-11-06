@@ -195,7 +195,8 @@ export function EntityReferenceText({
 }
 
 function editorText(root: Node): string {
-  if (root.nodeType === Node.TEXT_NODE) return root.textContent || "";
+  if (root.nodeType === Node.TEXT_NODE)
+    return (root.textContent || "").replace(/\u200b/g, "");
   if (
     root.nodeType !== Node.ELEMENT_NODE &&
     root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE
@@ -233,8 +234,13 @@ function setCaret(root: HTMLElement, offset: number) {
     if (remaining <= length) {
       const range = document.createRange();
       const reference = node.parentElement?.closest(".entity-reference");
-      if (reference) range.setStartAfter(reference);
-      else range.setStart(node, remaining);
+      if (reference) {
+        const caret = reference.nextElementSibling;
+        if (caret?.classList.contains("entity-reference-caret")) {
+          range.selectNodeContents(caret);
+          range.collapse(false);
+        } else range.setStartAfter(reference);
+      } else range.setStart(node, remaining);
       range.collapse(true);
       const selection = window.getSelection();
       selection?.removeAllRanges();
@@ -302,6 +308,12 @@ function renderEditor(
     preview.append(details);
     link.append(preview);
     root.append(link);
+    // Browsers cannot reliably place an editable caret immediately after a
+    // contenteditable=false link without a real editable node to land in.
+    const caret = document.createElement("span");
+    caret.className = "entity-reference-caret";
+    caret.append(document.createTextNode("\u200b"));
+    root.append(caret);
     cursor = reference.end;
   });
   appendText(content.slice(cursor));
@@ -459,7 +471,9 @@ export function EntityReferenceComposer({
           // `innerText` matches what the user can edit (and is also what jsdom
           // updates when tests simulate a rich-editor input event). The preview
           // is display:none except while a reference is being inspected.
-          const next = event.currentTarget.innerText.replace(/\n$/, "");
+          const next = event.currentTarget.innerText
+            .replace(/\u200b/g, "")
+            .replace(/\n$/, "");
           if (maxLength && next.length > maxLength) return;
           const cursor = caretOffset(event.currentTarget);
           pendingCaret.current = cursor;
