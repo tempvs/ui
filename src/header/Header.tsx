@@ -78,6 +78,8 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       this.handleCurrentProfileChange.bind(this);
     this.reloadOwnedProfiles = this.reloadOwnedProfiles.bind(this);
     this.reloadOnboardingStatus = this.reloadOnboardingStatus.bind(this);
+    this.handleWindowFocus = this.handleWindowFocus.bind(this);
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
   }
 
   componentDidMount() {
@@ -90,6 +92,19 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       "tempvs:onboarding-status-changed",
       this.reloadOnboardingStatus,
     );
+    window.addEventListener("focus", this.handleWindowFocus);
+    document.addEventListener(
+      "visibilitychange",
+      this.handleVisibilityChange,
+    );
+  }
+
+  componentDidUpdate(previousProps: HeaderProps) {
+    // Creation and source-linking flows can finish without remounting the
+    // persistent header. Re-read when navigation completes so an earlier
+    // in-memory onboarding result cannot keep a finished member prompted.
+    if (previousProps.locationPath !== this.props.locationPath)
+      this.reloadOnboardingStatus();
   }
 
   componentWillUnmount() {
@@ -101,6 +116,20 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       "tempvs:onboarding-status-changed",
       this.reloadOnboardingStatus,
     );
+    window.removeEventListener("focus", this.handleWindowFocus);
+    document.removeEventListener(
+      "visibilitychange",
+      this.handleVisibilityChange,
+    );
+  }
+
+  handleWindowFocus() {
+    this.reloadOnboardingStatus();
+  }
+
+  handleVisibilityChange() {
+    if (document.visibilityState === "visible")
+      this.reloadOnboardingStatus();
   }
 
   reloadOwnedProfiles() {
