@@ -1244,37 +1244,26 @@ h3 {
   width: 100%;
 }
 
-.profile-stash-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 2.7rem;
-  touch-action: manipulation;
+.profile-items-title {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
-.profile-stash-action,
-.profile-stash-link-wrap {
-  width: 100%;
+.profile-items-label {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.profile-stash-link-wrap {
-  position: relative;
-  z-index: 1;
-  pointer-events: auto;
-}
-
-/* The coachmark wrapper must preserve the full-width primary action. */
-.profile-stash-link-wrap > .coachmark-anchor {
+.profile-items-pagination {
   display: flex;
-  width: 100%;
-}
-
-.profile-stash-hint {
-  margin-top: 0.4rem;
-  color: #6c6354;
-  font-size: 0.8rem;
-  text-align: center;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
 }
 
 .profile-following-panel {

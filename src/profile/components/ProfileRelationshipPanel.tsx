@@ -5,6 +5,7 @@ import TextFilterInput from '../../component/TextFilterInput';
 
 type Props<T> = {
   title: string;
+  titleContent?: React.ReactNode;
   items: T[];
   loaded: boolean;
   filterPlaceholder: string;
@@ -25,6 +26,7 @@ type Props<T> = {
 /** Shared filtered section used for profile following and membership relationships. */
 export default function ProfileRelationshipPanel<T>({
   title,
+  titleContent,
   items,
   loaded,
   filterPlaceholder,
@@ -58,7 +60,7 @@ export default function ProfileRelationshipPanel<T>({
     aria-label={contentRegionLabel ? undefined : title}
   >
     <div className="profile-relationship-heading">
-      <h3>{title}</h3>
+      <h3>{titleContent ?? title}</h3>
       <div className="profile-relationship-heading-controls">
         <TextFilterInput
           value={activeFilter}

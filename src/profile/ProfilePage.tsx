@@ -25,7 +25,7 @@ import ProfileAvatarPanel from "./components/ProfileAvatarPanel";
 import PhotoAlbumsPanel from "../component/PhotoAlbumsPanel";
 import ProfileFollowingPanel from "./components/ProfileFollowingPanel";
 import ProfileFieldsPanel from "./components/ProfileFieldsPanel";
-import ProfileStashLink from "./components/ProfileStashLink";
+import ProfileItemsPanel from "./components/ProfileItemsPanel";
 import type { Club } from "../club/clubApi";
 import EditableHistoricalRangeField from "../component/EditableHistoricalRangeField";
 import ProfileHeaderBreadcrumb from "./components/ProfileHeaderBreadcrumb";
@@ -1844,17 +1844,14 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               )}
             </PageColumn>
             <PageColumn>
-              {isClubProfile && (
-                <div className="mb-3 profile-stash-action">
-                  <div className="d-flex justify-content-start">
-                    <ProfileStashLink
-                      profileId={this.state.profileId || ""}
-                      alias={this.state.alias}
-                      editable={isEditable}
-                      label={this.t("profile.stash.button", "Owned items")}
-                    />
-                  </div>
-                </div>
+              {isClubProfile && this.state.profileId && (
+                <ProfileItemsPanel
+                  key={this.state.profileId}
+                  profileId={this.state.profileId}
+                  alias={this.state.alias}
+                  editable={isEditable}
+                  t={this.t.bind(this)}
+                />
               )}
               {isClubProfile && this.state.profileId && (
                 <OnDemandPanel
