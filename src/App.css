@@ -1250,22 +1250,6 @@ h3 {
   text-underline-offset: 0.15em;
 }
 
-.profile-items-label {
-  display: grid;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.profile-items-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-}
-
 .profile-following-panel {
   padding: 0.7rem;
   border: 1px solid rgba(87, 102, 98, 0.14);

@@ -122,6 +122,15 @@ export async function getGroupItems(groupId: Id, { page = 0, size = 40 }: PageRe
   return cachedStashRead(groupItemReads, `${groupId}:${size}`, () => loadGroupItems(groupId, size));
 }
 
+/** One cursor page for compact lists; full collection views keep getGroupItems. */
+export async function getGroupItemsPage(groupId: Id, nextToken?: string): Promise<{ content: StashItem[]; nextToken?: string }> {
+  const query = new URLSearchParams({ limit: '9' });
+  if (nextToken) query.set('nextToken', nextToken);
+  const result = await requestJson<StashItem[] | CursorPage<StashItem>>(`/api/stash/group/${groupId}/item?${query}`);
+  return Array.isArray(result) ? { content: result, nextToken: undefined }
+    : { content: result.content || [], nextToken: result.nextToken };
+}
+
 export async function getGroupItemsByIds(groupIds: readonly Id[]): Promise<Map<string, StashItem[]>> {
   const ids = Array.from(new Set(groupIds.map(String).filter(Boolean)));
   const pages = await Promise.all(ids.slice(0, 40).length ? [requestJson<{ content?: Array<{ groupId: string; items: StashItem[] }> }>(`/api/stash/groups/items?groupIds=${encodeURIComponent(ids.slice(0, 40).join(","))}`)] : []);

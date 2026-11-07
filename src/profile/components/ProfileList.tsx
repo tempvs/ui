@@ -3,6 +3,7 @@ import React from 'react';
 import { Profile } from '../profileTypes';
 import { PeriodBadge } from '../../util/periods';
 import ProfileThumbnailLink from './ProfileThumbnailLink';
+import ThumbnailList from '../../component/ThumbnailList';
 
 type ProfileListProps = {
   profiles: Profile[];
@@ -22,8 +23,8 @@ export default function ProfileList({
   renderMeta,
   actionPosition = 'end',
 }: ProfileListProps) {
-  return <ul className={['profile-list', className].filter(Boolean).join(' ')}>
-    {profiles.map(profile => <li key={String(profile.id)}>
+  return <ThumbnailList items={profiles} getKey={profile => String(profile.id)}
+    className={['profile-list', className].filter(Boolean).join(' ')} renderItem={profile => <>
       {actionPosition === 'start' && renderActions?.(profile)}
       <div className="profile-list-entry">
         <div className="profile-list-profile">
@@ -33,6 +34,5 @@ export default function ProfileList({
         {showPeriod && <PeriodBadge period={profile.period} />}
       </div>
       {actionPosition === 'end' && renderActions?.(profile)}
-    </li>)}
-  </ul>;
+    </>} />;
 }

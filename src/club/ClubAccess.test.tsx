@@ -9,7 +9,7 @@ import { Club, getJoinOptions, getProfileClubs, listClubs } from './clubApi';
 
 const club: Club = { id: 1, name: 'Longbow Company', description: 'Living history', location: 'York', contactEmail: null,
   period: 'HIGH_MIDDLE_AGES', creatorUserId: 'user-10', adminUserIds: [], canManage: false, canManageAdmins: false };
-const response = (data: unknown, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data) } as Response);
+const response = (data: unknown, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data), json: async () => data } as Response);
 
 function wrap(child: React.ReactNode, path = '/') {
   return render(<IntlProvider locale="en" messages={{}}><MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{child}</MemoryRouter></IntlProvider>);
@@ -45,7 +45,7 @@ test('HTML fallback greys and disables the clubs page without an error alert', a
 test('a failed optional members read leaves the Club page usable and shows a local retry error', async () => {
   jest.spyOn(global, 'fetch').mockImplementation(async input => String(input).includes('/participants')
     ? response({ detail: 'Profile service is unavailable' }, 503)
-    : String(input).includes('/followers') ? response({ content: [], hasMore: false }) : response(club));
+    : /\/followers|\/images\/albums\/|\/api\/post\//.test(String(input)) ? response({ content: [], hasMore: false }) : response(club));
   const view = wrap(<Routes><Route path="/clubs/:id" element={<ClubPage />} /></Routes>, '/clubs/1');
   expect(await screen.findByText('Club name')).toBeInTheDocument();
   expect(view.container.querySelector('.clubs-page')).not.toHaveClass('club-service-unavailable');

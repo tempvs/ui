@@ -3,12 +3,10 @@ import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { FaPlus, FaTrash } from "react-icons/fa";
 
 import ConfirmationModal from "./ConfirmationModal";
-import DefaultHourglassImage from "./DefaultHourglassImage";
+import ThumbnailList, { ThumbnailEntry } from "./ThumbnailList";
 import IconActionButton from "./IconActionButton";
 import InlineEditableText from "./InlineEditableText";
 import StackedImageGallery, { type GalleryImage } from "./StackedImageGallery";
-import { getImageThumbnails } from "../image/imageApi";
-import RefreshingImage from "../image/RefreshingImage";
 import ProfileRelationshipPanel from "../profile/components/ProfileRelationshipPanel";
 import "./PhotoAlbumsPanel.css";
 
@@ -50,6 +48,9 @@ export default function PhotoAlbumsPanel({
   editable: boolean;
 }) {
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [listError, setListError] = useState("");
+  const readVersion = useRef(0);
   const [covers, setCovers] = useState<Record<string, GalleryImage | null>>({});
   const [selected, setSelected] = useState<Album | null>(null);
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -63,28 +64,24 @@ export default function PhotoAlbumsPanel({
   const file = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
+    const version = ++readVersion.current;
+    setListError("");
     const page = await api<{ content: Album[] }>(
       `/${targetType}/${encodeURIComponent(String(targetId))}`,
     );
-    setAlbums(page.content);
-    const thumbnails = await getImageThumbnails(
-      page.content.map((album) => ({
-        resourceType: "album",
-        resourceId: album.id,
-      })),
-    ).catch(() => []);
-    setCovers(
-      Object.fromEntries(
-        thumbnails.map((value) => [
-          value.resourceId,
-          value.image as GalleryImage | null,
-        ]),
-      ),
-    );
+    if (version !== readVersion.current) return;
+    setAlbums(page.content || []);
+    setLoaded(true);
   }, [targetId, targetType]);
 
   useEffect(() => {
-    void reload().catch(() => undefined);
+    let active = true;
+    setLoaded(false);
+    setAlbums([]);
+    void reload().catch(cause => {
+      if (active) { setListError((cause as Error).message); setLoaded(true); }
+    });
+    return () => { active = false; readVersion.current += 1; };
   }, [reload]);
 
   const openAlbum = async (album: Album) => {
@@ -320,7 +317,9 @@ export default function PhotoAlbumsPanel({
       <ProfileRelationshipPanel
         title="Albums"
         items={albums}
-        loaded
+        loaded={loaded}
+        error={listError}
+        onRetry={() => { void reload().catch(cause => setListError((cause as Error).message)); }}
         filterPlaceholder="Filter albums"
         getSearchText={(album) => album.name}
         emptyText="No albums yet."
@@ -343,32 +342,13 @@ export default function PhotoAlbumsPanel({
           ) : undefined
         }
         renderItems={(visibleAlbums) => (
-          <div className="photo-album-tiles mt-3">
-            {visibleAlbums.map((album) => (
-              <button
-                type="button"
-                className="photo-album-tile"
-                key={album.id}
+          <ThumbnailList items={visibleAlbums} getKey={album => album.id}
+            renderItem={album => <ThumbnailEntry
+                label={album.name}
+                meta={album.description}
+                image={{ ...covers[album.id], resourceType: "album", resourceId: album.id }}
                 onClick={() => void openAlbum(album)}
-              >
-                <div className="photo-album-tile-cover">
-                  {covers[album.id]?.id !== undefined ? (
-                    <RefreshingImage
-                      image={{ ...covers[album.id], resourceType: "album", resourceId: album.id } as GalleryImage}
-                      variant="thumbnail"
-                      alt={album.name}
-                    />
-                  ) : (
-                    <DefaultHourglassImage alt="No album image yet." />
-                  )}
-                </div>
-                <div className="photo-album-tile-copy">
-                  <strong>{album.name}</strong>
-                  {album.description && <span>{album.description}</span>}
-                </div>
-              </button>
-            ))}
-          </div>
+            />} />
         )}
       />
 

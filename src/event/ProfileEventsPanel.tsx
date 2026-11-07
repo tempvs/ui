@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ProfileRelationshipPanel from '../profile/components/ProfileRelationshipPanel';
 import EventTileList from './EventTileList';
 import { getFollowedEvents, getParticipatingEvents, TempvsEvent } from './eventApi';
@@ -7,26 +7,38 @@ export default function ProfileEventsPanel({ profileId, kind, hideWhenEmpty = fa
   const [events, setEvents] = useState<TempvsEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
-  const requestEvents = () => kind === 'followed' ? getFollowedEvents(profileId) : getParticipatingEvents(profileId);
-  const load = () => {
-    setLoaded(false);
-    setError('');
-    return requestEvents()
-      .then(value => setEvents(value.content || []))
-      .catch(error => setError((error as Error).message))
-      .finally(() => setLoaded(true));
-  };
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const loadMore = useRef<() => void>(() => {});
   useEffect(() => {
     let active = true;
+    let fetching = false;
+    let nextToken: string | undefined;
     setLoaded(false);
+    setEvents([]);
+    setHasMore(false);
     setError('');
-    requestEvents()
-      .then(value => { if (active) setEvents(value.content || []); })
-      .catch(error => { if (active) setError((error as Error).message); })
-      .finally(() => { if (active) setLoaded(true); });
+    const load = async () => {
+      if (!active || fetching) return;
+      fetching = true;
+      setLoading(true);
+      setError('');
+      try {
+        const value = await (kind === 'followed' ? getFollowedEvents(profileId, nextToken) : getParticipatingEvents(profileId, nextToken));
+        if (!active) return;
+        setEvents(current => Array.from(new Map([...current, ...(value.content || [])].map(event => [event.id, event])).values()));
+        nextToken = value.nextToken;
+        setHasMore(Boolean(nextToken));
+      } catch (cause) {
+        if (active) setError((cause as Error).message);
+      } finally {
+        fetching = false;
+        if (active) { setLoaded(true); setLoading(false); }
+      }
+    };
+    loadMore.current = () => { void load(); };
+    void load();
     return () => { active = false; };
-    // requestEvents always reflects these two request parameters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, profileId]);
   return <ProfileRelationshipPanel
     title="Events"
@@ -38,7 +50,9 @@ export default function ProfileEventsPanel({ profileId, kind, hideWhenEmpty = fa
     emptyText={kind === 'followed' ? 'No followed events yet.' : 'No event memberships yet.'}
     noMatchesText={kind === 'followed' ? 'No followed events match this filter.' : 'No event memberships match this filter.'}
     error={error}
-    onRetry={load}
+    onRetry={() => loadMore.current()}
+    loadingMore={loading && loaded}
+    onReachEnd={hasMore && !loading ? () => loadMore.current() : undefined}
     hideWhenEmpty={hideWhenEmpty}
   />;
 }

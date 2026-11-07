@@ -4,6 +4,7 @@ import { FaCheck, FaTimes } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 import TextFilterInput from '../component/TextFilterInput';
+import ThumbnailList from '../component/ThumbnailList';
 import { buildProfileLabel } from '../profile/currentProfile';
 import { fetchProfileById } from '../profile/profileApi';
 import ProfileThumbnailLink from '../profile/components/ProfileThumbnailLink';
@@ -109,9 +110,8 @@ export default function ClubEventRequestsPanel({ clubId, reviewerProfileId }: Pr
     {error && <Alert variant="danger">{error}</Alert>}
     {!loading && !error && rows.length === 0 && <p>No event participation requests are waiting for club approval.</p>}
     {!loading && !error && rows.length > 0 && visibleRows.length === 0 && <p>No event requests match this filter.</p>}
-    {visibleRows.length > 0 && <div className="club-scroll-list" role="region" aria-label="Event participation requests">
-      <ul className="club-member-list">
-        {visibleRows.map(row => <li key={`${row.application.eventId}:${row.application.id}`}>
+    {visibleRows.length > 0 && <ThumbnailList items={visibleRows} getKey={row => `${row.application.eventId}:${row.application.id}`}
+      label="Event participation requests" className="club-member-list" renderItem={row => <>
           <div className="profile-list-entry club-event-request-entry">
             {row.profile ? <ProfileThumbnailLink profile={row.profile} /> : <span>Profile unavailable</span>}
             <span className="club-event-request-event">
@@ -122,9 +122,7 @@ export default function ClubEventRequestsPanel({ clubId, reviewerProfileId }: Pr
             <Button className="club-icon-action" size="sm" variant="outline-success" disabled={busyId != null} aria-label="Approve event participation request" title="Approve" onClick={() => void decide(row.application, 'approve')}><ApproveIcon aria-hidden="true" /></Button>
             <Button className="club-icon-action" size="sm" variant="outline-danger" disabled={busyId != null} aria-label="Reject event participation request" title="Reject" onClick={() => void decide(row.application, 'reject')}><RejectIcon aria-hidden="true" /></Button>
           </div>
-        </li>)}
-      </ul>
-    </div>}
+        </>} />}
     {loading && <p role="status">Loading event participation requests…</p>}
   </section>;
 }

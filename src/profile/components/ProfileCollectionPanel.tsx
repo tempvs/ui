@@ -51,12 +51,8 @@ export default function ProfileCollectionPanel({
     filter={filter}
     onFilterChange={onFilterChange}
     contentRegionLabel={title}
-    renderItems={visibleProfiles => <div className="club-scroll-list" role="region" aria-label={title} onScroll={event => {
-      const element = event.currentTarget;
-      if (onReachEnd && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) onReachEnd();
-    }}>
-      <ProfileList profiles={visibleProfiles} className="club-member-list" renderActions={renderActions} />
-      {loading && <p role="status" className="text-muted mb-2">Loading…</p>}
-    </div>}
+    loadingMore={loading && profiles.length > 0}
+    onReachEnd={onReachEnd}
+    renderItems={visibleProfiles => <ProfileList profiles={visibleProfiles} className="club-member-list" renderActions={renderActions} />}
   />;
 }

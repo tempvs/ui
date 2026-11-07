@@ -1,0 +1,88 @@
+.thumbnail-list-viewport.club-scroll-list {
+  --thumbnail-row-height: 4rem;
+  max-height: calc(3 * var(--thumbnail-row-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0;
+  margin-top: 0.65rem;
+}
+
+ul.thumbnail-list {
+  display: block;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+ul.thumbnail-list > li.thumbnail-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  height: var(--thumbnail-row-height, 4rem);
+  box-sizing: border-box;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee9e2;
+  min-width: 0;
+}
+
+.thumbnail-list-row > .profile-list-entry,
+.thumbnail-list-row > .thumbnail-entry {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.thumbnail-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
+button.thumbnail-entry {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.thumbnail-entry img.thumbnail-entry-image {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  object-fit: cover;
+  border: 1px solid #ddd8d0;
+  border-radius: 0.4rem;
+  background: #f4f1ec;
+}
+
+.thumbnail-entry-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.thumbnail-entry-copy > span,
+.thumbnail-entry-copy > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumbnail-entry-copy > small {
+  color: #6c6258;
+  font-size: 0.8rem;
+}
+
+.thumbnail-list-row > .club-actions {
+  flex-wrap: nowrap;
+}
+
+.thumbnail-list-row .btn {
+  flex-shrink: 0;
+}

@@ -51,9 +51,10 @@ test('renders club participation as a club tile with indented profile tiles', ()
 
   expect(screen.getByRole('link', { name: 'Longbow Company' })).toHaveAttribute('href', '/clubs/longbow-company');
   expect(screen.getByRole('link', { name: 'Robin Hood' })).toHaveAttribute('href', '/profile/profile-1');
-  const group = rendered.container.querySelector('.event-club-participation')!;
-  expect(group.querySelector('.club-thumbnail-link')).toBeInTheDocument();
-  expect(group.querySelector('.event-club-participant-profiles .profile-thumbnail-link')).toBeInTheDocument();
+  expect(rendered.container.querySelector('.club-thumbnail-link')).toBeInTheDocument();
+  expect(rendered.container.querySelector('.event-club-participant-profiles .profile-thumbnail-link')).toBeInTheDocument();
+  expect(rendered.container.querySelectorAll('.thumbnail-list-viewport')).toHaveLength(1);
+  expect(rendered.container.querySelectorAll('.thumbnail-list-row')).toHaveLength(2);
 });
 
 test('filters grouped participation by club or profile and preserves application actions', () => {

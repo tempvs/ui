@@ -5,6 +5,7 @@ import { Id } from '../profile/profileTypes';
 import { buildProfileLabel } from '../profile/currentProfile';
 import ProfileList from '../profile/components/ProfileList';
 import TextFilterInput from '../component/TextFilterInput';
+import { ThumbnailListViewport } from '../component/ThumbnailList';
 import { decideJoinRequest, getJoinRequests, JoinRequest } from './clubApi';
 
 export default function JoinRequestsPanel({ clubId, onDecision }: {
@@ -75,20 +76,17 @@ export default function JoinRequestsPanel({ clubId, onDecision }: {
     {error && <Alert variant="danger">{error} <Button variant="link" onClick={() => loadMore.current()}>{t('retry', 'Retry')}</Button></Alert>}
     {!loading && !error && requests.length === 0 && <p>{t('noRequests', 'No pending join requests.')}</p>}
     {!loading && !error && requests.length > 0 && visibleRequests.length === 0 && <p>{t('noMatchingRequests', 'No requests match this filter.')}</p>}
-    {requests.length > 0 && <div className="club-scroll-list" role="region" aria-label={t('joinRequests', 'Join requests')} onScroll={event => {
-      const element = event.currentTarget;
-      if (hasMore && !loading && element.scrollTop + element.clientHeight >= element.scrollHeight - 80) loadMore.current();
-    }}>
-      <ProfileList profiles={visibleProfiles} showPeriod className="club-member-list" renderActions={profile => {
+    {requests.length > 0 && <ThumbnailListViewport key={filter} items={visibleProfiles} label={t('joinRequests', 'Join requests')}
+      loading={loading} onReachEnd={hasMore && !loading && !error ? () => loadMore.current() : undefined}
+      renderItems={profiles => <ProfileList profiles={profiles} showPeriod className="club-member-list" renderActions={profile => {
         const request = visibleRequests.find(candidate => String(candidate.profile?.id) === String(profile.id));
         if (!request) return null;
         return <div className="club-actions">
           <Button size="sm" variant="outline-success" disabled={busy} onClick={() => decide(request, 'accept')}>{t('accept', 'Accept')}</Button>
           <Button size="sm" variant="outline-danger" disabled={busy} onClick={() => decide(request, 'reject')}>{t('reject', 'Reject')}</Button>
         </div>;
-      }} />
-      {visibleRequests.filter(request => !request.profile).map(request => <p key={request.id}>{t('unavailableProfile', 'Profile no longer available')}</p>)}
-    </div>}
+      }} />} />}
+    {visibleRequests.filter(request => !request.profile).map(request => <p key={request.id}>{t('unavailableProfile', 'Profile no longer available')}</p>)}
     {loading && <p role="status">{t('loadingRequests', 'Loading requests…')}</p>}
   </section>;
 }

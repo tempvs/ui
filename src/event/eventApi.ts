@@ -234,15 +234,15 @@ export function unfollowEvent(eventId: string, profileId: string) {
   );
 }
 
-export function getFollowedEvents(profileId: string) {
+export function getFollowedEvents(profileId: string, nextToken?: string) {
   return request<EventList>(
-    `/profiles/${encodeURIComponent(profileId)}/followed-events`,
+    `/profiles/${encodeURIComponent(profileId)}/followed-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ''}`,
   );
 }
 
-export function getParticipatingEvents(profileId: string) {
+export function getParticipatingEvents(profileId: string, nextToken?: string) {
   return request<EventList>(
-    `/profiles/${encodeURIComponent(profileId)}/participating-events`,
+    `/profiles/${encodeURIComponent(profileId)}/participating-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ''}`,
   );
 }
 

@@ -30,7 +30,7 @@ export default function ClubFollowersPanel({ clubId, revision, canManage = false
     setFollowers([]); setLoading(true); setError(''); setHasMore(false);
     const load = async () => {
       if (!active || fetching || !more) return;
-      fetching = true; setLoading(true);
+      fetching = true; setLoading(true); setError('');
       try {
         const page = await getClubFollowers(clubId, nextToken);
         if (!active) return;

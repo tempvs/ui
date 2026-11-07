@@ -1,8 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
-
-import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../../component/DefaultHourglassImage";
-import RefreshingImage from "../../image/RefreshingImage";
+import { ThumbnailEntry } from "../../component/ThumbnailList";
 import { buildProfileLabel } from "../currentProfile";
 import { Profile } from "../profileTypes";
 
@@ -33,20 +30,14 @@ export default function ProfileThumbnailLink({
     .join(" ");
 
   return (
-    <Link to={`/profile/${profile.alias || profile.id}`} className={classes}>
-      <RefreshingImage
+    <ThumbnailEntry to={`/profile/${profile.alias || profile.id}`} className={classes}
+      label={label} displayLabel={displayLabel}
         image={{
           resourceType: "profile",
           resourceId: profile.id,
           thumbnailUrl: profile.avatarUrl,
         }}
-        variant="thumbnail"
-        fallbackSrc={DEFAULT_HOURGLASS_IMAGE_SRC}
-        className="profile-thumbnail-link-image"
-        alt=""
-        loading="lazy"
-      />
-      {displayLabel && <span>{label}</span>}
-    </Link>
+        imageClassName="profile-thumbnail-link-image"
+    />
   );
 }

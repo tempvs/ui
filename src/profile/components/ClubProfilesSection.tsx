@@ -4,6 +4,7 @@ import { Button, Form, Modal } from "react-bootstrap";
 import PlusActionButton from "../../component/PlusActionButton";
 import Spinner from "../../component/Spinner";
 import DismissibleCoachmark from "../../component/DismissibleCoachmark";
+import ThumbnailList, { ThumbnailEntry } from "../../component/ThumbnailList";
 import { MessageFormatter } from "../profileTypes";
 
 type ClubProfile = {
@@ -215,21 +216,9 @@ export default function ClubProfilesSection({
             </div>
           )}
           {clubProfilesLoaded && visibleClubProfiles.length > 0 && (
-            <div className="profile-club-list">
-              {visibleClubProfiles.map((clubProfile) => (
-                <div key={clubProfile.id} className="profile-club-list-item">
-                  <Button
-                    variant="outline-secondary"
-                    className="profile-club-button"
-                    onClick={() => onOpenProfile(clubProfile)}
-                  >
-                    <span className="profile-club-button-name">
-                      {clubProfile.firstName}
-                    </span>
-                  </Button>
-                </div>
-              ))}
-            </div>
+            <ThumbnailList items={visibleClubProfiles} getKey={profile => profile.id}
+              renderItem={profile => <ThumbnailEntry label={profile.firstName || "Unnamed profile"}
+                image={{ resourceType: "profile", resourceId: profile.id }} onClick={() => onOpenProfile(profile)} />} />
           )}
         </section>
       )}
