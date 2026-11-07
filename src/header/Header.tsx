@@ -17,6 +17,7 @@ import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchUserProfileByUserId,
+  getOnboardingPreferences,
   getOnboardingStatus,
 } from "../profile/profileApi";
 import {
@@ -58,6 +59,9 @@ type HeaderProps = {
 };
 
 class HeaderContent extends Component<HeaderProps, HeaderState> {
+  private onboardingRequest = 0;
+  private completedOnboardingUserId: string | null = null;
+
   constructor(props: HeaderProps) {
     super(props);
     this.state = {
@@ -108,6 +112,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
   }
 
   componentWillUnmount() {
+    this.onboardingRequest += 1;
     window.removeEventListener(
       "tempvs:owned-profiles-changed",
       this.reloadOwnedProfiles,
@@ -138,20 +143,47 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
   }
 
   reloadOnboardingStatus() {
-    if (!this.state.currentUserId) return;
-    void getOnboardingStatus()
-      .then((status) => {
+    const userId = this.state.currentUserId;
+    if (!userId) return;
+    const request = ++this.onboardingRequest;
+    void Promise.all([
+      getOnboardingStatus(),
+      getOnboardingPreferences().catch(() => null),
+    ])
+      .then(([status, preferences]) => {
+        if (
+          request !== this.onboardingRequest ||
+          userId !== this.state.currentUserId
+        )
+          return;
+        const counts = [
+          status.personaCount,
+          status.itemCount,
+          status.sourcedItemCount,
+          status.connectionCount,
+        ];
+        const complete = counts.every(count => count > 0);
+        if (complete || preferences?.celebratedAt)
+          this.completedOnboardingUserId = userId;
         this.setState({
+          // Partial reads use zero for unavailable services. They cannot prove
+          // that setup is unfinished, and must never undo known completion.
           onboardingIncomplete:
-            status.personaCount === 0 ||
-            status.itemCount === 0 ||
-            status.sourcedItemCount === 0 ||
-            status.connectionCount === 0,
+            this.completedOnboardingUserId !== userId &&
+            !preferences?.dismissedAt &&
+            !status.partial &&
+            counts.some(count => count === 0),
         });
       })
       // A notification must not imply incomplete setup when the status cannot
       // be read (for example during a rolling API deployment).
-      .catch(() => this.setState({ onboardingIncomplete: false }));
+      .catch(() => {
+        if (
+          request === this.onboardingRequest &&
+          userId === this.state.currentUserId
+        )
+          this.setState({ onboardingIncomplete: false });
+      });
   }
 
   loadOAuthProfile() {
@@ -202,16 +234,17 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       });
 
     const toPromiseClubProfiles = () =>
-      new Promise<Profile[]>((resolve) => {
+      new Promise<Profile[] | null>((resolve) => {
         fetchClubProfiles(userId, {
           onSuccess: (profiles) =>
             resolve(Array.isArray(profiles) ? profiles : []),
-          onError: () => resolve([]),
+          onError: () => resolve(null),
         });
       });
 
     Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
-      .then(([userProfileResult, clubProfiles]) => {
+      .then(([userProfileResult, clubProfilesResult]) => {
+        const clubProfiles = clubProfilesResult || [];
         const userProfile = userProfileResult.profile;
         const profileOptions = buildOwnedProfileOptions(
           userProfile,
@@ -231,20 +264,14 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
-          // A member with a personal profile but no persona cannot have
-          // completed setup. This deliberately remains a reliable first-use
-          // fallback if the aggregate onboarding endpoint is briefly
-          // unavailable after registration or deployment.
-          onboardingIncomplete:
-            Boolean(userProfile) && clubProfiles.length === 0
-              ? true
-              : this.state.onboardingIncomplete,
           // When the user has no club profile, guide them back to their
           // current personal profile. Once they create a persona, the picker
           // takes over as the only header hint so the two prompts never
           // overlap.
           showProfileNavigationCoachmark:
-            Boolean(userProfile) && clubProfiles.length === 0,
+            Boolean(userProfile) &&
+            clubProfilesResult !== null &&
+            clubProfiles.length === 0,
           profileNavigationCoachmarkId: "open-current-profile",
           showProfilePickerCoachmark,
         });
