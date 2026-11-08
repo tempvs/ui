@@ -575,7 +575,7 @@ function sourceChangeActionLabel(
       PROPOSAL_APPLIED: "approved and applied a proposal",
       PROPOSAL_REJECTED: "rejected a proposal",
       PROPOSAL_SUPERSEDED: "superseded an outdated proposal",
-      CHANGESET_APPLIED: "approved and applied a changeset",
+      CHANGESET_APPLIED: "published a changeset",
       CHANGESET_REJECTED: "rejected a changeset",
       CHANGESET_WITHDRAWN: "withdrew a changeset",
       CHANGESET_SUPERSEDED: "superseded an outdated changeset",

@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { formatAppDateTime } from "../../i18n/appLocale";
-import SourceChangesetDiff, { summarizeSourceChangeset } from "./SourceChangesetDiff";
+import SourceChangesetDiff, {
+  summarizeSourceChangeset,
+} from "./SourceChangesetDiff";
 import type {
   LibrarySource,
   LibrarySourceImage,
@@ -72,8 +74,11 @@ export default function SourceChangesetProposalCard({
             </span>
             <span>
               <strong>
-                {changeset.status[0]}
-                {changeset.status.slice(1).toLowerCase()} changeset
+                {changeset.status === "APPROVED"
+                  ? "Approved — ready to publish"
+                  : changeset.status === "APPLIED"
+                    ? "Published changeset"
+                    : `${changeset.status[0]}${changeset.status.slice(1).toLowerCase()} changeset`}
               </strong>
               <span className="source-changeset-summary">
                 {summary.length ? summary.join(" · ") : "No content changes"}

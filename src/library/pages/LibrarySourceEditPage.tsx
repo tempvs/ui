@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -23,6 +23,7 @@ import {
   getSource,
   getSourceImages,
   getSourceChangesets,
+  getSourceChangeset,
   proposeSourceDeletion,
   rebaseSourceChangeset,
   uploadSourceChangesetImage,
@@ -143,6 +144,8 @@ function isRangeValid(draft: Draft) {
 /** Explicit source edit flow. It deliberately creates one reviewable changeset. */
 export default function LibrarySourceEditPage() {
   const { sourceId } = useParams();
+  const [searchParams] = useSearchParams();
+  const selectedChangesetId = searchParams.get("changeset");
   const navigate = useNavigate();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -189,9 +192,14 @@ export default function LibrarySourceEditPage() {
           "Unable to load source changesets.",
         );
       const changesets = changesetsResult?.data?.content || [];
+      if (selectedChangesetId && !changesets.some(changeset => changeset.id === selectedChangesetId)) {
+        const selected = await getSourceChangeset(sourceId, selectedChangesetId);
+        if (!selected.ok || !selected.data || !("changeset" in selected.data)) throw new Error("Unable to load the selected proposal.");
+        changesets.push(selected.data.changeset);
+      }
       const pendingCreation = changesets.find(
         (changeset) =>
-          changeset.kind === "CREATE" && changeset.status === "PENDING",
+          changeset.kind === "CREATE" && (changeset.status === "PENDING" || changeset.status === "APPROVED"),
       );
       // A creation proposal has no public source projection yet. The review
       // API still exposes its immutable snapshot to Library editors, which is
@@ -214,8 +222,8 @@ export default function LibrarySourceEditPage() {
       const pending =
         changesets.find(
           (changeset) =>
-            changeset.status === "PENDING" &&
-            changeset.proposerId === ownUserId,
+            (changeset.status === "PENDING" || changeset.status === "APPROVED") &&
+            (selectedChangesetId ? changeset.id === selectedChangesetId : changeset.proposerId === ownUserId),
         ) || null;
       setOwnPending(pending);
       if (pending?.kind === "DELETE") {
@@ -241,7 +249,7 @@ export default function LibrarySourceEditPage() {
     } finally {
       setLoading(false);
     }
-  }, [navigate, sourceId]);
+  }, [navigate, sourceId, selectedChangesetId]);
 
   useEffect(() => {
     void load();
@@ -756,7 +764,7 @@ export default function LibrarySourceEditPage() {
               </legend>
               <p className="small text-muted">
                 Images are shown here for review. Changes stay private until the
-                changeset is approved.
+                changeset is approved and published.
               </p>
               <Form.Control
                 ref={imageInputRef}
@@ -898,7 +906,7 @@ export default function LibrarySourceEditPage() {
         <Modal.Body>
           <p className="text-muted">
             The published source and its images will stay unchanged until
-            another Library editor approves this changeset.
+            another Library editor approves this changeset and you publish it.
           </p>
           <SourceChangesetDiff
             base={{
@@ -951,7 +959,7 @@ export default function LibrarySourceEditPage() {
       <ConfirmationModal
         show={showDeleteConfirmation}
         title="Delete source"
-        message="Create a deletion changeset for review? The source remains visible until another Library editor approves it."
+        message="Create a deletion changeset for review? The source remains visible until another Library editor approves it and you publish it."
         confirmLabel="Delete source"
         busy={submitting}
         onHide={() => !submitting && setShowDeleteConfirmation(false)}

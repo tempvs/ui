@@ -12,7 +12,7 @@ import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   approveSourceChangeset,
-  overrideApproveSourceChangeset,
+  publishSourceChangeset,
   getLibraryViewer,
   getSourceChangeset,
   getSourceChangesetImages,
@@ -41,6 +41,8 @@ function responseError(
 }
 
 function statusLabel(status: SourceChangeset["status"]) {
+  if (status === "APPROVED") return "Approved — ready to publish";
+  if (status === "APPLIED") return "Published";
   return status.slice(0, 1) + status.slice(1).toLowerCase();
 }
 
@@ -83,7 +85,13 @@ export default function LibrarySourceChangesetPage() {
       setSource(detail.source);
       setChangeset(detail.changeset);
       setViewerId(viewer?.userId || null);
-      setCanOverrideApprovals(Boolean(viewer?.roles?.includes("TEMPVS_ADMIN")));
+      setCanOverrideApprovals(
+        Boolean(
+          viewer?.roles?.some(
+            (role) => role === "TEMPVS_ADMIN" || role === "LIBRARY_ADMIN",
+          ),
+        ),
+      );
       const [published, staged] = await Promise.all([
         getSourceImages(detail.source.id).catch(() => null),
         getSourceChangesetImages(detail.source.id, detail.changeset.id).catch(
@@ -137,7 +145,7 @@ export default function LibrarySourceChangesetPage() {
   }, [changeset, source]);
 
   const perform = async (
-    operation: "approve" | "override" | "reject" | "withdraw",
+    operation: "approve" | "publish" | "reject" | "withdraw",
   ) => {
     if (!changeset) return;
     setBusy(true);
@@ -151,8 +159,8 @@ export default function LibrarySourceChangesetPage() {
               changeset.version,
               comment.trim() || undefined,
             )
-          : operation === "override"
-            ? await overrideApproveSourceChangeset(
+          : operation === "publish"
+            ? await publishSourceChangeset(
                 sourceId,
                 changeset.id,
                 changeset.version,
@@ -174,7 +182,7 @@ export default function LibrarySourceChangesetPage() {
       setShowReject(false);
       setShowWithdraw(false);
       setComment("");
-      if (operation === "approve" || operation === "override") {
+      if (operation === "publish") {
         const approvedSource =
           result.data &&
           typeof result.data === "object" &&
@@ -235,7 +243,11 @@ export default function LibrarySourceChangesetPage() {
       </PageLayout>
     );
   const pending = changeset.status === "PENDING";
+  const approved = changeset.status === "APPROVED";
   const own = changeset.proposerId === viewerId;
+  const contributor =
+    own ||
+    changeset.amendments?.some((amendment) => amendment.userId === viewerId);
   return (
     <PageLayout
       header={{
@@ -295,18 +307,72 @@ export default function LibrarySourceChangesetPage() {
               <div>{changeset.reviewComment}</div>
             </div>
           )}
+          <div className="mt-3 text-start small">
+            <div>Proposed by {changeset.proposerId}</div>
+            {(changeset.amendments || []).map((amendment, index) => (
+              <div key={`amendment-${index}`}>
+                Revision {amendment.revision} amended by {amendment.userId} on{" "}
+                {formatAppDateTime(amendment.amendedAt)}
+              </div>
+            ))}
+            {(changeset.approvals || []).map((approval, index) => (
+              <div key={index}>
+                Approved by {approval.userId} on{" "}
+                {formatAppDateTime(approval.approvedAt)}
+                {approval.revision !== (changeset.revision ?? changeset.version)
+                  ? " (earlier revision)"
+                  : ""}
+              </div>
+            ))}
+            {changeset.publishedBy && (
+              <div>
+                Published by {changeset.publishedBy} on{" "}
+                {formatAppDateTime(changeset.publishedAt!)}
+                {changeset.publicationReason
+                  ? ` — ${changeset.publicationReason}`
+                  : ""}
+              </div>
+            )}
+          </div>
+          {approved && (
+            <div className="alert alert-success mt-3 text-start">
+              Approved — ready to publish. The public Library has not changed
+              yet.
+              {(own || canOverrideApprovals) && (
+                <>
+                  {!own && (
+                    <Form.Control
+                      className="mt-2"
+                      as="textarea"
+                      aria-label="Reason for publishing on behalf"
+                      placeholder="Explain why you are publishing on the author's behalf"
+                      value={comment}
+                      onChange={(event) => setComment(event.target.value)}
+                    />
+                  )}
+                  <Button
+                    className="mt-2"
+                    disabled={busy || (!own && !comment.trim())}
+                    onClick={() => void perform("publish")}
+                  >
+                    {own ? "Publish" : "Publish on author's behalf"}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+          {(pending || approved) && changeset.kind !== "DELETE" && (
+            <Link
+              to={`/library/source/${source.id}/edit?changeset=${changeset.id}`}
+              className="btn btn-outline-dark mt-3"
+            >
+              Amend proposal (requires a new approval)
+            </Link>
+          )}
           {pending && (
             <div className="d-flex justify-content-end gap-2 mt-4 flex-wrap">
               {own ? (
                 <>
-                  {changeset.kind !== "DELETE" && (
-                    <Link
-                      to={`/library/source/${source.id}/edit`}
-                      className="btn btn-outline-dark"
-                    >
-                      Amend
-                    </Link>
-                  )}
                   <Button
                     variant="outline-danger"
                     disabled={busy}
@@ -314,17 +380,8 @@ export default function LibrarySourceChangesetPage() {
                   >
                     Withdraw
                   </Button>
-                  {canOverrideApprovals && (
-                    <Button
-                      variant="warning"
-                      disabled={busy}
-                      onClick={() => void perform("override")}
-                    >
-                      Approve as Tempvs Admin
-                    </Button>
-                  )}
                 </>
-              ) : (
+              ) : !contributor ? (
                 <>
                   <Button
                     variant="outline-danger"
@@ -341,7 +398,7 @@ export default function LibrarySourceChangesetPage() {
                     Approve
                   </Button>
                 </>
-              )}
+              ) : null}
             </div>
           )}
         </div>

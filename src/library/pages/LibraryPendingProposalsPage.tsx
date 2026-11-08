@@ -177,8 +177,8 @@ export function LibraryPendingProposalsContent({
   };
 
   const heading = period
-    ? "Pending period changesets"
-    : "All pending source changesets";
+    ? "Period review and publication queue"
+    : "Source review and publication queue";
   return (
     <>
       <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
@@ -226,7 +226,7 @@ export function LibraryPendingProposalsContent({
       {loading && <Spinner />}
       {!loading && rows.length === 0 && (
         <div className="tempvs-plain-message text-muted">
-          No pending changesets.
+          No changesets awaiting review or publication.
         </div>
       )}
       {!loading &&

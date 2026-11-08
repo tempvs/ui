@@ -94,7 +94,7 @@ export type SourceChangeProposal = {
 };
 
 export type SourceChangesetStatus =
-  "PENDING" | "APPLIED" | "REJECTED" | "WITHDRAWN" | "SUPERSEDED";
+  "PENDING" | "APPROVED" | "APPLIED" | "REJECTED" | "WITHDRAWN" | "SUPERSEDED";
 
 export type SourceChangesetSnapshot = Required<
   Pick<LibrarySource, "name" | "description" | "period" | "type">
@@ -123,6 +123,12 @@ export type SourceChangeset = {
   reviewerId?: string | null;
   reviewedAt?: string | null;
   reviewComment?: string | null;
+  revision?: number;
+  approvals?: Array<{ userId: string; revision: number; approvedAt: string; comment?: string }>;
+  amendments?: Array<{ userId: string; revision: number; amendedAt: string }>;
+  publishedBy?: string;
+  publishedAt?: string;
+  publicationReason?: string;
 };
 
 export type SourceChangesetDraft = {
@@ -740,7 +746,19 @@ export function approveSourceChangeset(
   });
 }
 
-/** Explicit TEMPVS_ADMIN exception for approving the caller's own changeset. */
+export function publishSourceChangeset(
+  sourceId: string | undefined,
+  changesetId: string,
+  version: number,
+  comment?: string,
+) {
+  return fetchJson<{ source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/publish`,
+    { method: "POST", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify(comment ? { comment } : {}) },
+  );
+}
+
+/** Retained for compatibility; self-approval overrides are rejected by the API. */
 export function overrideApproveSourceChangeset(
   sourceId: string | undefined,
   changesetId: string,

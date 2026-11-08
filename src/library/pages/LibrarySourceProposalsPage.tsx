@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import Spinner from "../../component/Spinner";
 import { getErrorMessage } from "../../util/errors";
@@ -8,13 +8,11 @@ import SourceChangesetProposalCard from "../components/SourceChangesetProposalCa
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import {
   approveSourceChangeset,
-  overrideApproveSourceChangeset,
   getLibraryViewer,
   getSource,
   getSourceChangesets,
   getSourceChangesetImages,
   getSourceImages,
-  projectApprovedSourceImages,
   rejectSourceChangeset,
   type LibrarySource,
   type LibrarySourceImage,
@@ -28,7 +26,6 @@ const PROPOSALS_PAGE_SIZE = 20;
 /** Source-local changeset history and review queue. */
 export default function LibrarySourceProposalsPage() {
   const { sourceId } = useParams();
-  const navigate = useNavigate();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changesets, setChangesets] = useState<SourceChangeset[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
@@ -42,7 +39,6 @@ export default function LibrarySourceProposalsPage() {
     () => new Set(),
   );
   const [viewerId, setViewerId] = useState<string | null>(null);
-  const [canOverrideApprovals, setCanOverrideApprovals] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -69,7 +65,6 @@ export default function LibrarySourceProposalsPage() {
       }
       setSource(sourceResult.data);
       setViewerId(viewer?.userId || null);
-      setCanOverrideApprovals(Boolean(viewer?.roles?.includes("TEMPVS_ADMIN")));
       const loadedSourceId = sourceResult.data.id;
       const content = changesetsResult.data?.content || [];
       setChangesets(content);
@@ -106,52 +101,16 @@ export default function LibrarySourceProposalsPage() {
     void load();
   }, [load]);
 
-  const approve = async (changeset: SourceChangeset, override = false) => {
+  const approve = async (changeset: SourceChangeset) => {
     setBusy(changeset.id);
     try {
-      const result = override
-        ? await overrideApproveSourceChangeset(
-            sourceId,
-            changeset.id,
-            changeset.version,
-          )
-        : await approveSourceChangeset(
-            sourceId,
-            changeset.id,
-            changeset.version,
-          );
-      if (!result.ok) throw new Error("Unable to approve the changeset.");
-      const approvedSource =
-        result.data &&
-        typeof result.data === "object" &&
-        "source" in result.data
-          ? result.data.source
-          : undefined;
-      const approvedImages = approvedSource
-        ? projectApprovedSourceImages(
-            publishedImages,
-            changeset,
-            stagedImagesByChangeset[changeset.id] || [],
-          )
-        : undefined;
-      navigate(
-        changeset.kind === "DELETE"
-          ? source?.period
-            ? `/library/period/${source.period.toLowerCase()}`
-            : "/library"
-          : `/library/source/${sourceId}`,
-        {
-          replace: true,
-          state: approvedSource
-            ? {
-                approvedSource,
-                approvedImages,
-                approvedImageOperations: changeset.imageOperations,
-              }
-            : undefined,
-        },
+      const result = await approveSourceChangeset(
+        sourceId,
+        changeset.id,
+        changeset.version,
       );
-      return;
+      if (!result.ok) throw new Error("Unable to approve the changeset.");
+      await load();
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -289,7 +248,11 @@ export default function LibrarySourceProposalsPage() {
                 staged: stagedImagesByChangeset[changeset.id] || [],
               }}
               actions={
-                pending && !own ? (
+                pending &&
+                !own &&
+                !changeset.amendments?.some(
+                  (amendment) => amendment.userId === viewerId,
+                ) ? (
                   <>
                     <Button
                       size="sm"
@@ -308,15 +271,6 @@ export default function LibrarySourceProposalsPage() {
                       Approve
                     </Button>
                   </>
-                ) : pending && own && canOverrideApprovals ? (
-                  <Button
-                    size="sm"
-                    variant="warning"
-                    disabled={busy !== null}
-                    onClick={() => void approve(changeset, true)}
-                  >
-                    Approve as Tempvs Admin
-                  </Button>
                 ) : null
               }
             />
