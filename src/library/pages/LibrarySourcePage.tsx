@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
 import ChangeLogEntry from "../../component/ChangeLogEntry";
@@ -22,6 +22,7 @@ import {
   getSourceImages,
   getSourceProfiles,
   getSourceChangeLog,
+  getSourceChangesets,
   setSourceCover,
   LibrarySource,
   LibrarySourceImage,
@@ -47,6 +48,7 @@ const EMPTY_APPROVED_IMAGE_OPERATIONS: SourceImageOperation[] = [];
 
 export default function LibrarySourcePage() {
   const { sourceId } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const approvalNavigation = location.state as {
     approvedSource?: LibrarySource;
@@ -100,6 +102,14 @@ export default function LibrarySourcePage() {
         getLibraryViewer(),
       ]);
       if (!sourceResult.ok) {
+        if (sourceResult.status === 404 && canEditSource(viewer)) {
+          const proposals = await getSourceChangesets(sourceId);
+          const creation = proposals.data?.content.find(changeset => changeset.kind === "CREATE" && (changeset.status === "PENDING" || changeset.status === "APPROVED"));
+          if (proposals.ok && creation) {
+            navigate(`/library/source/${sourceId}/changesets/${creation.id}`, { replace: true });
+            return;
+          }
+        }
         throw new Error("Unable to load the source.");
       }
 
@@ -195,6 +205,7 @@ export default function LibrarySourcePage() {
     approvedImages,
     publishedImagesBeforeApproval,
     sourceId,
+    navigate,
   ]);
 
   // Keep the staged replacement visible during Image's asynchronous promotion,

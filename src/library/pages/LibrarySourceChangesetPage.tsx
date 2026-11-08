@@ -15,6 +15,8 @@ import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   approveSourceChangeset,
+  addSourceProposalTask,
+  updateSourceProposalTask,
   publishSourceChangeset,
   getLibraryViewer,
   getSourceChangeset,
@@ -70,6 +72,8 @@ export default function LibrarySourceChangesetPage() {
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [comment, setComment] = useState("");
+  const [taskText, setTaskText] = useState("");
+  const [taskBlocking, setTaskBlocking] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,6 +114,11 @@ export default function LibrarySourceChangesetPage() {
           ...(detail.changeset.publishedBy
             ? [detail.changeset.publishedBy]
             : []),
+          ...(detail.changeset.tasks || []).flatMap((task) =>
+            [task.createdBy, task.resolvedBy, task.reopenedBy].filter(
+              (id): id is string => Boolean(id),
+            ),
+          ),
         ]),
       );
       const [published, staged, profiles] = await Promise.all([
@@ -254,6 +263,41 @@ export default function LibrarySourceChangesetPage() {
     }
   };
 
+  const saveTask = async (taskId?: string, status?: "OPEN" | "RESOLVED") => {
+    if (!source || !changeset) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result =
+        taskId && status
+          ? await updateSourceProposalTask(
+              source.id,
+              changeset.id,
+              taskId,
+              changeset.version,
+              status,
+            )
+          : await addSourceProposalTask(
+              source.id,
+              changeset.id,
+              changeset.version,
+              taskText.trim(),
+              taskBlocking,
+            );
+      if (!result.ok)
+        throw responseError(
+          result,
+          "Unable to save the task. Reload the proposal and try again.",
+        );
+      if (!taskId) setTaskText("");
+      await load();
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading)
     return (
       <PageLayout header={{ title: "LIBRARY" }}>
@@ -284,6 +328,12 @@ export default function LibrarySourceChangesetPage() {
     );
   };
   const approved = changeset.status === "APPROVED";
+  const unpublished = pending || approved;
+  const blockingTasks = (changeset.tasks || []).filter(
+    (task) => task.blocking && task.status === "OPEN",
+  );
+  const proposalPath = `/library/source/${source.id}/changesets/${changeset.id}`;
+  const editPath = `/library/source/${source.id}/edit?changeset=${changeset.id}`;
   const own = changeset.proposerId === viewerId;
   const contributor =
     own ||
@@ -296,8 +346,17 @@ export default function LibrarySourceChangesetPage() {
             period={source.period}
             trailingItem={{
               label: source.name,
-              to: `/library/source/${source.id}`,
+              to:
+                changeset.kind === "CREATE" && changeset.status !== "APPLIED"
+                  ? proposalPath
+                  : `/library/source/${source.id}`,
             }}
+            trailingItems={[
+              { label: "Proposal", to: proposalPath },
+              ...(unpublished && changeset.kind !== "DELETE"
+                ? [{ label: "Edit proposal", to: editPath }]
+                : []),
+            ]}
           />
         ),
         backgroundColor: "#f3efe4",
@@ -337,6 +396,124 @@ export default function LibrarySourceChangesetPage() {
               staged: stagedImages,
             }}
           />
+          <section
+            className="border rounded p-3 mt-3 text-start"
+            aria-labelledby="proposal-tasks-title"
+          >
+            <h2 id="proposal-tasks-title" className="h5">
+              Action items
+            </h2>
+            {blockingTasks.length > 0 && (
+              <p className="text-danger" role="status">
+                Blocked until {blockingTasks.length} action item
+                {blockingTasks.length === 1 ? " is" : "s are"} resolved.
+                Approval and publication are unavailable.
+              </p>
+            )}
+            {!(changeset.tasks || []).length && (
+              <p className="text-muted">No action items yet.</p>
+            )}
+            <ul className="list-unstyled">
+              {(changeset.tasks || []).map((task) => (
+                <li key={task.id} className="border-bottom py-2">
+                  <div className="d-flex justify-content-between gap-2 align-items-start">
+                    <div>
+                      <span
+                        className={`badge me-2 ${task.status === "RESOLVED" ? "text-bg-success" : task.blocking ? "text-bg-danger" : "text-bg-secondary"}`}
+                      >
+                        {task.status === "RESOLVED"
+                          ? "Resolved"
+                          : task.blocking
+                            ? "Blocking"
+                            : "Suggestion"}
+                      </span>
+                      <span
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {task.text}
+                      </span>
+                      <div className="small text-muted mt-1">
+                        Added by {userProfileLink(task.createdBy)} on{" "}
+                        {formatAppDateTime(task.createdAt)}
+                      </div>
+                      {task.status === "RESOLVED" && task.resolvedBy && (
+                        <div className="small">
+                          Resolved by {userProfileLink(task.resolvedBy)}
+                        </div>
+                      )}
+                    </div>
+                    {unpublished &&
+                      (task.createdBy === viewerId || canOverrideApprovals) && (
+                        <Button
+                          size="sm"
+                          variant="outline-dark"
+                          disabled={busy}
+                          onClick={() =>
+                            void saveTask(
+                              task.id,
+                              task.status === "OPEN" ? "RESOLVED" : "OPEN",
+                            )
+                          }
+                        >
+                          {task.status === "OPEN"
+                            ? "Resolve task"
+                            : "Reopen task"}
+                        </Button>
+                      )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {unpublished && (
+              <Form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (taskText.trim()) void saveTask();
+                }}
+              >
+                <Form.Label htmlFor="proposal-task-text">
+                  New action item
+                </Form.Label>
+                <Form.Control
+                  id="proposal-task-text"
+                  as="textarea"
+                  rows={2}
+                  maxLength={2000}
+                  value={taskText}
+                  onChange={(event) => setTaskText(event.target.value)}
+                  placeholder="For example: provide a source for this date"
+                  disabled={busy}
+                />
+                <Form.Check
+                  className="my-2"
+                  id="proposal-task-blocking"
+                  label="Block approval and publication until resolved"
+                  checked={taskBlocking}
+                  onChange={(event) => setTaskBlocking(event.target.checked)}
+                  disabled={busy}
+                />
+                <p className="small text-muted">
+                  The task creator or an admin can resolve or reopen a task.
+                  Discuss fixes in the proposal comments below.
+                </p>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline-dark"
+                  disabled={
+                    busy ||
+                    !taskText.trim() ||
+                    (changeset.tasks?.length ?? 0) >= 50
+                  }
+                >
+                  Add task
+                </Button>
+              </Form>
+            )}
+          </section>
           <CommentThread
             targetType="SOURCE_CHANGESET"
             targetId={`${source.id}:${changeset.id}`}
@@ -393,7 +570,11 @@ export default function LibrarySourceChangesetPage() {
                   )}
                   <Button
                     className="mt-2"
-                    disabled={busy || (!own && !comment.trim())}
+                    disabled={
+                      busy ||
+                      blockingTasks.length > 0 ||
+                      (!own && !comment.trim())
+                    }
                     onClick={() => void perform("publish")}
                   >
                     {own ? "Publish" : "Publish on author's behalf"}
@@ -433,7 +614,7 @@ export default function LibrarySourceChangesetPage() {
                   </Button>
                   <Button
                     variant="success"
-                    disabled={busy}
+                    disabled={busy || blockingTasks.length > 0}
                     onClick={() => void perform("approve")}
                   >
                     Approve

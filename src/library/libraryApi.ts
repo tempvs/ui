@@ -107,6 +107,19 @@ export type SourceChangesetSnapshot = Required<
   heldAtPlaceName?: string | null;
 };
 
+export type SourceProposalTask = {
+  id: string;
+  text: string;
+  blocking: boolean;
+  status: "OPEN" | "RESOLVED";
+  createdBy: string;
+  createdAt: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  reopenedBy?: string;
+  reopenedAt?: string;
+};
+
 export type SourceChangeset = {
   id: string;
   sourceId: string;
@@ -129,6 +142,7 @@ export type SourceChangeset = {
   publishedBy?: string;
   publishedAt?: string;
   publicationReason?: string;
+  tasks?: SourceProposalTask[];
 };
 
 export type SourceChangesetDraft = {
@@ -743,6 +757,18 @@ export function approveSourceChangeset(
     method: "POST",
     headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
     body: JSON.stringify(comment ? { comment } : {}),
+  });
+}
+
+export function addSourceProposalTask(sourceId: string, changesetId: string, version: number, text: string, blocking: boolean) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(`/api/library/source/${sourceId}/changesets/${changesetId}/tasks`, {
+    method: "POST", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ text, blocking }),
+  });
+}
+
+export function updateSourceProposalTask(sourceId: string, changesetId: string, taskId: string, version: number, status: SourceProposalTask["status"]) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(`/api/library/source/${sourceId}/changesets/${changesetId}/tasks/${taskId}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ status }),
   });
 }
 

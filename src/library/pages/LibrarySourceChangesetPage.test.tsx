@@ -7,7 +7,18 @@ import LibrarySourceChangesetPage from "./LibrarySourceChangesetPage";
 jest.mock(
   "../../component/PageLayout",
   () =>
-    ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
+    ({
+      children,
+      header,
+    }: {
+      children: React.ReactNode;
+      header?: { title?: React.ReactNode };
+    }) => (
+      <main>
+        {header?.title}
+        {children}
+      </main>
+    ),
 );
 jest.mock("../../comment/CommentThread", () => () => null);
 jest.mock("../../profile/profileApi", () => ({
@@ -22,6 +33,8 @@ jest.mock("../libraryApi", () => ({
   publishSourceChangeset: jest.fn(),
   rejectSourceChangeset: jest.fn(),
   withdrawSourceChangeset: jest.fn(),
+  addSourceProposalTask: jest.fn(),
+  updateSourceProposalTask: jest.fn(),
   projectApprovedSourceImages: jest.fn().mockReturnValue([]),
 }));
 
@@ -263,4 +276,115 @@ test("profile lookup failure keeps the proposal usable and never displays raw us
   ).toHaveAttribute("href", "/profile/user/author");
   expect(screen.queryByText("Proposed by author")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+});
+
+test("an unpublished source breadcrumb stays on the proposal and offers proposal editing", async () => {
+  api.getSourceChangeset.mockResolvedValue({
+    ok: true,
+    data: { source, changeset: { ...proposal, kind: "CREATE" } },
+  });
+  mount();
+  const nameLink = await screen.findByRole("link", { name: "Original source" });
+  expect(nameLink).toHaveAttribute(
+    "href",
+    "/library/source/source-1/changesets/proposal-1",
+  );
+  expect(screen.getByRole("link", { name: "Edit proposal" })).toHaveAttribute(
+    "href",
+    "/library/source/source-1/edit?changeset=proposal-1",
+  );
+  fireEvent.click(nameLink);
+  expect(screen.queryByText("Published source page")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add task" })).toBeInTheDocument();
+});
+
+test("reviewers can add a blocking action item and resolve it before approving", async () => {
+  const task = {
+    id: "task-1",
+    text: "Provide evidence for the date",
+    blocking: true,
+    status: "OPEN",
+    createdBy: "reviewer",
+    createdAt: proposal.createdAt,
+  };
+  api.addSourceProposalTask.mockImplementation(async () => {
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: { source, changeset: { ...proposal, version: 2, tasks: [task] } },
+    });
+    return { ok: true };
+  });
+  api.updateSourceProposalTask.mockImplementation(async () => {
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: {
+        source,
+        changeset: {
+          ...proposal,
+          version: 3,
+          tasks: [{ ...task, status: "RESOLVED", resolvedBy: "reviewer" }],
+        },
+      },
+    });
+    return { ok: true };
+  });
+  mount();
+  fireEvent.change(await screen.findByLabelText("New action item"), {
+    target: { value: task.text },
+  });
+  expect(
+    screen.getByLabelText("Block approval and publication until resolved"),
+  ).toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+  await screen.findByText(task.text);
+  expect(api.addSourceProposalTask).toHaveBeenCalledWith(
+    "source-1",
+    "proposal-1",
+    1,
+    task.text,
+    true,
+  );
+  expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+  expect(screen.getByText(/Blocked until 1 action item/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Resolve task" }));
+  await screen.findByText("Resolved");
+  expect(api.updateSourceProposalTask).toHaveBeenCalledWith(
+    "source-1",
+    "proposal-1",
+    "task-1",
+    2,
+    "RESOLVED",
+  );
+  expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
+});
+
+test("authors cannot resolve another reviewer's blocking task or publish around it", async () => {
+  api.getLibraryViewer.mockResolvedValue({
+    userId: "author",
+    roles: ["LIBRARY_SCRIBE"],
+  });
+  api.getSourceChangeset.mockResolvedValue({
+    ok: true,
+    data: {
+      source,
+      changeset: {
+        ...approved,
+        tasks: [
+          {
+            id: "task-1",
+            text: "Reviewer must verify this date",
+            blocking: true,
+            status: "OPEN",
+            createdBy: "reviewer",
+            createdAt: proposal.createdAt,
+          },
+        ],
+      },
+    },
+  });
+  mount();
+  expect(await screen.findByRole("button", { name: "Publish" })).toBeDisabled();
+  expect(
+    screen.queryByRole("button", { name: "Resolve task" }),
+  ).not.toBeInTheDocument();
 });

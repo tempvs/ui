@@ -192,14 +192,22 @@ export default function LibrarySourceEditPage() {
           "Unable to load source changesets.",
         );
       const changesets = changesetsResult?.data?.content || [];
-      if (selectedChangesetId && !changesets.some(changeset => changeset.id === selectedChangesetId)) {
-        const selected = await getSourceChangeset(sourceId, selectedChangesetId);
-        if (!selected.ok || !selected.data || !("changeset" in selected.data)) throw new Error("Unable to load the selected proposal.");
+      if (
+        selectedChangesetId &&
+        !changesets.some((changeset) => changeset.id === selectedChangesetId)
+      ) {
+        const selected = await getSourceChangeset(
+          sourceId,
+          selectedChangesetId,
+        );
+        if (!selected.ok || !selected.data || !("changeset" in selected.data))
+          throw new Error("Unable to load the selected proposal.");
         changesets.push(selected.data.changeset);
       }
       const pendingCreation = changesets.find(
         (changeset) =>
-          changeset.kind === "CREATE" && (changeset.status === "PENDING" || changeset.status === "APPROVED"),
+          changeset.kind === "CREATE" &&
+          (changeset.status === "PENDING" || changeset.status === "APPROVED"),
       );
       // A creation proposal has no public source projection yet. The review
       // API still exposes its immutable snapshot to Library editors, which is
@@ -222,8 +230,11 @@ export default function LibrarySourceEditPage() {
       const pending =
         changesets.find(
           (changeset) =>
-            (changeset.status === "PENDING" || changeset.status === "APPROVED") &&
-            (selectedChangesetId ? changeset.id === selectedChangesetId : changeset.proposerId === ownUserId),
+            (changeset.status === "PENDING" ||
+              changeset.status === "APPROVED") &&
+            (selectedChangesetId
+              ? changeset.id === selectedChangesetId
+              : changeset.proposerId === ownUserId),
         ) || null;
       setOwnPending(pending);
       if (pending?.kind === "DELETE") {
@@ -525,8 +536,22 @@ export default function LibrarySourceEditPage() {
             period={source.period}
             trailingItem={{
               label: source.name,
-              to: `/library/source/${source.id}`,
+              to:
+                isUnpublishedCreation && ownPending
+                  ? `/library/source/${source.id}/changesets/${ownPending.id}`
+                  : `/library/source/${source.id}`,
             }}
+            trailingItems={[
+              ...(ownPending
+                ? [
+                    {
+                      label: "Proposal",
+                      to: `/library/source/${source.id}/changesets/${ownPending.id}`,
+                    },
+                  ]
+                : []),
+              { label: ownPending ? "Edit proposal" : "Propose changes" },
+            ]}
           />
         ),
         backgroundColor: "#f3efe4",
@@ -555,8 +580,8 @@ export default function LibrarySourceEditPage() {
           </p>
           {ownPending && (
             <div className="alert alert-warning small">
-              You have a pending changeset. Submitting this form will amend that
-              changeset.
+              You are editing an existing proposal. Submitting this form will
+              amend it and require a new approval.
             </div>
           )}
           {ownPending && ownPending.baseVersion !== source.version && (
