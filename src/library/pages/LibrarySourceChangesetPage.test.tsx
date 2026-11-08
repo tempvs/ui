@@ -10,6 +10,9 @@ jest.mock(
     ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 );
 jest.mock("../../comment/CommentThread", () => () => null);
+jest.mock("../../profile/profileApi", () => ({
+  getUserProfilesByUserIds: jest.fn(),
+}));
 jest.mock("../libraryApi", () => ({
   getLibraryViewer: jest.fn(),
   getSourceChangeset: jest.fn(),
@@ -23,6 +26,7 @@ jest.mock("../libraryApi", () => ({
 }));
 
 const api = jest.requireMock("../libraryApi");
+const profileApi = jest.requireMock("../../profile/profileApi");
 const source = {
   id: "source-1",
   name: "Original source",
@@ -54,6 +58,15 @@ const approved = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  profileApi.getUserProfilesByUserIds.mockImplementation(
+    async (ids: string[]) =>
+      ids.map((id) => ({
+        id: `profile-${id}`,
+        userId: id,
+        firstName: `Name ${id}`,
+        alias: `alias-${id}`,
+      })),
+  );
   api.getLibraryViewer.mockResolvedValue({
     userId: "reviewer",
     roles: ["LIBRARY_SCRIBE"],
@@ -172,7 +185,7 @@ test("an editor who amended the proposal cannot approve it", async () => {
     },
   });
   mount();
-  await screen.findByText("Proposed by author");
+  await screen.findByRole("link", { name: "Name author" });
   expect(
     screen.queryByRole("button", { name: "Approve" }),
   ).not.toBeInTheDocument();
@@ -180,4 +193,74 @@ test("an editor who amended the proposal cannot approve it", async () => {
     "href",
     "/library/source/source-1/edit?changeset=proposal-1",
   );
+});
+
+test("shows clickable profile names for proposal authors, contributors, approvers and publishers", async () => {
+  const authorId = "84c8b468-80b1-7052-a33f-b8e41fe2c3b1";
+  const people = [
+    {
+      id: "author-profile",
+      userId: authorId,
+      firstName: "Anton",
+      lastName: "Hlinisty",
+      alias: "anton",
+    },
+    { id: "contributor-profile", userId: "contributor", nickName: "Scribe" },
+    {
+      id: "reviewer-profile",
+      userId: "reviewer",
+      firstName: "Julia",
+      alias: "julia",
+    },
+    {
+      id: "publisher-profile",
+      userId: "publisher",
+      nickName: "Archivarius",
+      alias: "archivarius",
+    },
+  ];
+  profileApi.getUserProfilesByUserIds.mockResolvedValue(people);
+  api.getSourceChangeset.mockResolvedValue({
+    ok: true,
+    data: {
+      source,
+      changeset: {
+        ...approved,
+        proposerId: authorId,
+        status: "APPLIED",
+        publishedBy: "publisher",
+        publishedAt: proposal.createdAt,
+        amendments: [
+          { userId: "contributor", revision: 1, amendedAt: proposal.createdAt },
+        ],
+      },
+    },
+  });
+  mount();
+  const names = ["Anton Hlinisty", "Scribe", "Julia", "Archivarius"];
+  for (let index = 0; index < names.length; index += 1) {
+    const person = people[index];
+    expect(
+      await screen.findByRole("link", { name: names[index] }),
+    ).toHaveAttribute("href", `/profile/${person.alias || person.id}`);
+  }
+  expect(document.body).not.toHaveTextContent(authorId);
+  expect(profileApi.getUserProfilesByUserIds).toHaveBeenCalledWith([
+    authorId,
+    "reviewer",
+    "contributor",
+    "publisher",
+  ]);
+});
+
+test("profile lookup failure keeps the proposal usable and never displays raw user IDs", async () => {
+  profileApi.getUserProfilesByUserIds.mockRejectedValue(
+    new Error("unavailable"),
+  );
+  mount();
+  expect(
+    await screen.findByRole("link", { name: "User profile" }),
+  ).toHaveAttribute("href", "/profile/user/author");
+  expect(screen.queryByText("Proposed by author")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
 });

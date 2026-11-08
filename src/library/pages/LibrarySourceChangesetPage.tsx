@@ -8,6 +8,9 @@ import Spinner from "../../component/Spinner";
 import CommentThread from "../../comment/CommentThread";
 import { formatAppDateTime } from "../../i18n/appLocale";
 import { getErrorMessage } from "../../util/errors";
+import { getUserProfilesByUserIds } from "../../profile/profileApi";
+import { buildProfileLabel } from "../../profile/currentProfile";
+import type { Profile } from "../../profile/profileTypes";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
@@ -53,6 +56,9 @@ export default function LibrarySourceChangesetPage() {
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changeset, setChangeset] = useState<SourceChangeset | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [actorProfiles, setActorProfiles] = useState<Record<string, Profile>>(
+    {},
+  );
   const [canOverrideApprovals, setCanOverrideApprovals] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -92,12 +98,32 @@ export default function LibrarySourceChangesetPage() {
           ),
         ),
       );
-      const [published, staged] = await Promise.all([
+      const actorIds = Array.from(
+        new Set([
+          detail.changeset.proposerId,
+          ...(detail.changeset.approvals || []).map(
+            (approval) => approval.userId,
+          ),
+          ...(detail.changeset.amendments || []).map(
+            (amendment) => amendment.userId,
+          ),
+          ...(detail.changeset.publishedBy
+            ? [detail.changeset.publishedBy]
+            : []),
+        ]),
+      );
+      const [published, staged, profiles] = await Promise.all([
         getSourceImages(detail.source.id).catch(() => null),
         getSourceChangesetImages(detail.source.id, detail.changeset.id).catch(
           () => null,
         ),
+        getUserProfilesByUserIds(actorIds).catch(() => []),
       ]);
+      setActorProfiles(
+        Object.fromEntries(
+          profiles.map((profile) => [String(profile.userId), profile]),
+        ),
+      );
       setPublishedImages(published?.data || []);
       setStagedImages(staged?.data || []);
     } catch (caught) {
@@ -243,6 +269,20 @@ export default function LibrarySourceChangesetPage() {
       </PageLayout>
     );
   const pending = changeset.status === "PENDING";
+  const userProfileLink = (userId: string) => {
+    const profile = actorProfiles[userId];
+    return (
+      <Link
+        to={
+          profile
+            ? `/profile/${profile.alias || profile.id}`
+            : `/profile/user/${userId}`
+        }
+      >
+        {buildProfileLabel(profile, "User profile")}
+      </Link>
+    );
+  };
   const approved = changeset.status === "APPROVED";
   const own = changeset.proposerId === viewerId;
   const contributor =
@@ -308,16 +348,17 @@ export default function LibrarySourceChangesetPage() {
             </div>
           )}
           <div className="mt-3 text-start small">
-            <div>Proposed by {changeset.proposerId}</div>
+            <div>Proposed by {userProfileLink(changeset.proposerId)}</div>
             {(changeset.amendments || []).map((amendment, index) => (
               <div key={`amendment-${index}`}>
-                Revision {amendment.revision} amended by {amendment.userId} on{" "}
+                Revision {amendment.revision} amended by{" "}
+                {userProfileLink(amendment.userId)} on{" "}
                 {formatAppDateTime(amendment.amendedAt)}
               </div>
             ))}
             {(changeset.approvals || []).map((approval, index) => (
               <div key={index}>
-                Approved by {approval.userId} on{" "}
+                Approved by {userProfileLink(approval.userId)} on{" "}
                 {formatAppDateTime(approval.approvedAt)}
                 {approval.revision !== (changeset.revision ?? changeset.version)
                   ? " (earlier revision)"
@@ -326,7 +367,7 @@ export default function LibrarySourceChangesetPage() {
             ))}
             {changeset.publishedBy && (
               <div>
-                Published by {changeset.publishedBy} on{" "}
+                Published by {userProfileLink(changeset.publishedBy)} on{" "}
                 {formatAppDateTime(changeset.publishedAt!)}
                 {changeset.publicationReason
                   ? ` — ${changeset.publicationReason}`
