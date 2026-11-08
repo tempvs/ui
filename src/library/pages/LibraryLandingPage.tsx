@@ -18,6 +18,7 @@ import LibrarySectionHeader from "../components/LibrarySectionHeader";
 import { PERIODS } from "../libraryShared";
 import {
   canAccessLibraryAdministration,
+  canEditSource,
   getPrimaryRoleMeta,
 } from "../libraryRoles";
 
@@ -113,6 +114,11 @@ export default function LibraryLandingPage() {
             {roleMeta.label}
           </span>
         </OverlayTrigger>
+      )}
+      {canEditSource(userInfo) && (
+        <Link to="/library/proposals" className="btn btn-outline-dark btn-sm">
+          Pending proposals
+        </Link>
       )}
       {(welcome?.adminPanelAvailable ||
         canAccessLibraryAdministration(userInfo)) && (

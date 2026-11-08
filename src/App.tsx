@@ -214,6 +214,10 @@ function App() {
               element={<LibrarySourceProposalsPage />}
             />
             <Route
+              path="/library/proposals"
+              element={<LibraryPendingProposalsPage />}
+            />
+            <Route
               path="/library/period/:period/proposals"
               element={<LibraryPendingProposalsPage />}
             />

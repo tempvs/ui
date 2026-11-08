@@ -269,7 +269,7 @@ export function LibraryPendingProposalsContent({
   );
 }
 
-/** Dedicated period queue route; it supplies the shared page header. */
+/** Library-wide or period-specific queue with the shared page header. */
 export default function LibraryPendingProposalsPage() {
   const { period } = useParams();
 
@@ -282,7 +282,7 @@ export default function LibraryPendingProposalsPage() {
         middleContent={
           <Link
             className="btn btn-outline-dark btn-sm"
-            to={`/library/period/${period}`}
+            to={period ? `/library/period/${period}` : "/library"}
           >
             Back
           </Link>
