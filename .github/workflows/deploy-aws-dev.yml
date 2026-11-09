@@ -57,9 +57,10 @@ jobs:
           npm run build
       - name: Run public browser smoke tests
         run: |
-          # The runner's Azure mirror can stall on the font packages needed by Chromium.
+          # Use the archive mirror over HTTPS: HTTP package requests can stall
+          # while installing the fonts needed by Chromium.
           if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
+            sudo sed -i -e 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' -e 's|http://|https://|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium
           npm run e2e -- --grep "public"
