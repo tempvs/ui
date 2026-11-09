@@ -1,0 +1,59 @@
+.library-journey {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d9ccb0;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fffdf7;
+  color: #343c36;
+  text-align: left;
+}
+.library-journey-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.library-journey-intro {
+  max-width: 65rem;
+  margin: 0.5rem 0 1rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.library-journey-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 0.75rem;
+}
+.library-journey-step {
+  padding: 0.85rem;
+  border: 1px solid #e1ddd1;
+  border-radius: 0.5rem;
+  background: white;
+}
+.library-journey-step.learned {
+  background: #f4f8f3;
+}
+.library-journey-step h2 {
+  font-size: 1rem;
+  margin: 0 0 0.4rem;
+}
+.library-journey-step p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 0.6rem;
+}
+.library-hint-block {
+  display: block;
+  width: 100%;
+}
+.library-hint {
+  display: inline-flex;
+}
+.dismissible-coachmark.library-coachmark {
+  width: min(23rem, calc(100vw - 2rem));
+}
+.library-hint-block.coachmark-anchor--visible {
+  z-index: auto;
+}

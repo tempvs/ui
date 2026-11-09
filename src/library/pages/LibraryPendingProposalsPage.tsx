@@ -24,6 +24,7 @@ import {
   getTypeLabel,
 } from "../libraryShared";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import { useLibraryTopic } from "../onboarding/LibraryJourney";
 
 type PendingProposalsContentProps = {
   period?: string | null;
@@ -46,6 +47,7 @@ export function LibraryPendingProposalsContent({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  useLibraryTopic("status", !loading && !error);
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(

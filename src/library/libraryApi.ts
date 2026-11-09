@@ -1,4 +1,5 @@
 import { getViewer, type Viewer } from "../auth/viewerApi";
+import { libraryLearningUser, observeLibraryResponse } from "./onboarding/libraryLearning";
 
 export type ApiResponse<TData = unknown> = {
   ok: boolean;
@@ -308,8 +309,11 @@ async function fetchJson<TData = unknown>(
   url: string,
   options: FetchJsonOptions = {},
 ): Promise<ApiResponse<TData>> {
+  const learningUser = libraryLearningUser();
   const response = await fetch(url, options);
-  return parseResponse<TData>(response);
+  const result = await parseResponse<TData>(response);
+  if (result.ok) observeLibraryResponse(learningUser, url, options.method || "GET", result.data);
+  return result;
 }
 
 export function getLibraryViewer(options?: {
@@ -395,6 +399,7 @@ export async function findSources({
 }
 
 export async function createSource(payload: SourcePayload) {
+  const learningUser = libraryLearningUser();
   const response = await fetch("/api/library/source", {
     method: "POST",
     headers: {
@@ -404,9 +409,11 @@ export async function createSource(payload: SourcePayload) {
     body: JSON.stringify(payload),
   });
 
-  return parseResponse<
+  const result = await parseResponse<
     { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
   >(response);
+  if (result.ok) observeLibraryResponse(learningUser, "/api/library/source", "POST", result.data);
+  return result;
 }
 
 export function getAdminRoleRequests({

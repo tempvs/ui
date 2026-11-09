@@ -28,12 +28,9 @@ import {
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import { LibraryHint, useLibraryTopic } from "../onboarding/LibraryJourney";
 import SourceCard from "../components/SourceCard";
-import {
-  getTypeLabel,
-  PAGE_SIZE,
-  TYPES,
-} from "../libraryShared";
+import { getTypeLabel, PAGE_SIZE, TYPES } from "../libraryShared";
 import { canContribute, canEditSource } from "../libraryRoles";
 import { LibraryViewer } from "../libraryApi";
 import { rangeFromInputs } from "../../search/publicSearchFilterContract";
@@ -92,6 +89,7 @@ export default function LibraryPeriodPage() {
   const [pendingProposalCount, setPendingProposalCount] = useState<
     number | null
   >(null);
+  useLibraryTopic("browse", !loading && !error);
 
   const periodCode = (period || "").toUpperCase();
   const sourceRange = useMemo(() => rangeFromInputs(from, to), [from, to]);
@@ -106,9 +104,7 @@ export default function LibraryPeriodPage() {
     () =>
       [...sources].sort((left, right) => {
         if (sortOrder === "NAME_ASC" || sortOrder === "NAME_DESC") {
-          const comparison = (left.name || "").localeCompare(
-            right.name || "",
-          );
+          const comparison = (left.name || "").localeCompare(right.name || "");
           return sortOrder === "NAME_ASC" ? comparison : -comparison;
         }
 
@@ -179,7 +175,9 @@ export default function LibraryPeriodPage() {
             }
             return [
               source.id,
-              imageResult.data.find((image) => image.id === source.coverImageId) ||
+              imageResult.data.find(
+                (image) => image.id === source.coverImageId,
+              ) ||
                 imageResult.data[0] ||
                 null,
             ] as const;
@@ -235,7 +233,9 @@ export default function LibraryPeriodPage() {
             return [
               source.id,
               imageResult.ok
-                ? imageResult.data?.find((image) => image.id === source.coverImageId) ||
+                ? imageResult.data?.find(
+                    (image) => image.id === source.coverImageId,
+                  ) ||
                   imageResult.data?.[0] ||
                   null
                 : null,
@@ -504,7 +504,8 @@ export default function LibraryPeriodPage() {
             <>
               <div className="catalogue-results-toolbar" aria-live="polite">
                 <span>
-                  Showing {sources.length} source{sources.length === 1 ? "" : "s"}
+                  Showing {sources.length} source
+                  {sources.length === 1 ? "" : "s"}
                 </span>
                 <div className="d-flex align-items-center gap-2">
                   <ResultSortSelect
@@ -513,10 +514,7 @@ export default function LibraryPeriodPage() {
                     onChange={(value) =>
                       setSortOrder(
                         value as
-                          | "NAME_ASC"
-                          | "NAME_DESC"
-                          | "YEAR_ASC"
-                          | "YEAR_DESC",
+                          "NAME_ASC" | "NAME_DESC" | "YEAR_ASC" | "YEAR_DESC",
                       )
                     }
                     options={[
@@ -527,21 +525,28 @@ export default function LibraryPeriodPage() {
                     ]}
                   />
                   {canContribute(userInfo) && (
-                    <PlusActionButton
-                      title="Create source"
-                      onClick={() => {
-                        setError(null);
-                        setDraftSource({
-                          name: "",
-                          description: "",
-                          type: "",
-                        });
-                        setDraftImages([]);
-                        setDraftFrom({ year: "", era: "AD" });
-                        setDraftTo({ year: "", era: "AD" });
-                        setShowCreateModal(true);
-                      }}
-                    />
+                    <LibraryHint
+                      topic="proposal"
+                      enabled={!showCreateModal}
+                      priority={20}
+                      message="Use + to propose a source. Review it before submitting; approval and publication happen separately."
+                    >
+                      <PlusActionButton
+                        title="Create source"
+                        onClick={() => {
+                          setError(null);
+                          setDraftSource({
+                            name: "",
+                            description: "",
+                            type: "",
+                          });
+                          setDraftImages([]);
+                          setDraftFrom({ year: "", era: "AD" });
+                          setDraftTo({ year: "", era: "AD" });
+                          setShowCreateModal(true);
+                        }}
+                      />
+                    </LibraryHint>
                   )}
                 </div>
               </div>
@@ -553,11 +558,21 @@ export default function LibraryPeriodPage() {
               <Row className="g-3">
                 {sortedSources.map((source) => (
                   <Col md={6} key={source.id}>
-                    <SourceCard
-                      source={source}
-                      showPeriodBadge={false}
-                      firstImage={sourcePreviewImages[source.id] || null}
-                    />
+                    <LibraryHint
+                      topic="source"
+                      enabled={
+                        source.id === sortedSources[0]?.id && !showCreateModal
+                      }
+                      priority={5}
+                      message="Open a source to read its evidence and images. Link sources to your equipment from the item's editor."
+                      className="library-hint-block"
+                    >
+                      <SourceCard
+                        source={source}
+                        showPeriodBadge={false}
+                        firstImage={sourcePreviewImages[source.id] || null}
+                      />
+                    </LibraryHint>
                   </Col>
                 ))}
               </Row>
@@ -713,12 +728,14 @@ function placeSearchNames(place: MapPlace): string[] {
   return [
     place.canonicalName,
     ...(place.names ?? []).map((name) => name.value),
-  ].filter((name, index, values) =>
-    Boolean(name.trim()) &&
-    values.findIndex(
-      (candidate) =>
-        candidate.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
-    ) === index,
+  ].filter(
+    (name, index, values) =>
+      Boolean(name.trim()) &&
+      values.findIndex(
+        (candidate) =>
+          candidate.trim().toLocaleLowerCase() ===
+          name.trim().toLocaleLowerCase(),
+      ) === index,
   );
 }
 

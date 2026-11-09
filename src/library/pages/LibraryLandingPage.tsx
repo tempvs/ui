@@ -15,6 +15,10 @@ import {
   updateRoleRequest,
 } from "../libraryApi";
 import LibrarySectionHeader from "../components/LibrarySectionHeader";
+import {
+  LibraryHint,
+  useLibraryJourneyViewer,
+} from "../onboarding/LibraryJourney";
 import { PERIODS } from "../libraryShared";
 import {
   canAccessLibraryAdministration,
@@ -26,6 +30,7 @@ export default function LibraryLandingPage() {
   const [loading, setLoading] = useState(true);
   const [welcome, setWelcome] = useState<LibraryWelcome | null>(null);
   const [userInfo, setUserInfo] = useState<LibraryViewer>(null);
+  useLibraryJourneyViewer(userInfo);
   const [error, setError] = useState<string | null>(null);
 
   const loadWelcome = async () => {
@@ -116,15 +121,27 @@ export default function LibraryLandingPage() {
         </OverlayTrigger>
       )}
       {canEditSource(userInfo) && (
-        <Link to="/library/proposals" className="btn btn-outline-dark btn-sm">
-          Pending proposals
-        </Link>
+        <LibraryHint
+          topic="status"
+          priority={20}
+          message="Open Pending proposals to review submissions. A source's Changesets also shows closed and published proposals."
+        >
+          <Link to="/library/proposals" className="btn btn-outline-dark btn-sm">
+            Pending proposals
+          </Link>
+        </LibraryHint>
       )}
       {(welcome?.adminPanelAvailable ||
         canAccessLibraryAdministration(userInfo)) && (
-        <Link to="/library/admin" className="btn btn-dark btn-sm">
-          Open Library administration
-        </Link>
+        <LibraryHint
+          topic="members"
+          priority={30}
+          message="Manage Library membership and role requests here. Access depends on your Library role."
+        >
+          <Link to="/library/admin" className="btn btn-dark btn-sm">
+            Open Library administration
+          </Link>
+        </LibraryHint>
       )}
       {roleRequests.map((request) => (
         <OverlayTrigger
@@ -177,12 +194,20 @@ export default function LibraryLandingPage() {
             <Row className="g-3">
               {periods.map((period) => (
                 <Col md={6} xl={4} key={period}>
-                  <Link
-                    to={`/library/period/${period}`}
-                    className="text-decoration-none text-reset"
+                  <LibraryHint
+                    topic="browse"
+                    priority={5}
+                    enabled={period === periods[0]}
+                    message="Choose a period to search its sources by name, type, dates, and location."
+                    className="library-hint-block"
                   >
-                    <PeriodTile period={period} />
-                  </Link>
+                    <Link
+                      to={`/library/period/${period}`}
+                      className="text-decoration-none text-reset"
+                    >
+                      <PeriodTile period={period} />
+                    </Link>
+                  </LibraryHint>
                 </Col>
               ))}
             </Row>

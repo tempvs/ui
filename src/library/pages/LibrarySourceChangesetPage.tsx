@@ -31,6 +31,10 @@ import {
   withdrawSourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
+import {
+  LibraryHint,
+  useLibraryProposalEvidence,
+} from "../onboarding/LibraryJourney";
 
 function responseError(
   response: { status: number; data: unknown },
@@ -58,6 +62,7 @@ export default function LibrarySourceChangesetPage() {
   const navigate = useNavigate();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changeset, setChangeset] = useState<SourceChangeset | null>(null);
+  useLibraryProposalEvidence(changeset);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [actorProfiles, setActorProfiles] = useState<Record<string, Profile>>(
     {},
@@ -539,16 +544,24 @@ export default function LibrarySourceChangesetPage() {
                 <Form.Label htmlFor="proposal-task-text">
                   New action item
                 </Form.Label>
-                <Form.Control
-                  id="proposal-task-text"
-                  as="textarea"
-                  rows={2}
-                  maxLength={2000}
-                  value={taskText}
-                  onChange={(event) => setTaskText(event.target.value)}
-                  placeholder="For example: provide a source for this date"
-                  disabled={busy}
-                />
+                <LibraryHint
+                  topic="tasks"
+                  priority={20}
+                  enabled={!overrideAction && !showReject && !showWithdraw}
+                  message="Add a concrete action item if a change needs work. The author amends and replies; the task creator verifies the fix. Blocking tasks stop approval and publication."
+                  className="library-hint-block"
+                >
+                  <Form.Control
+                    id="proposal-task-text"
+                    as="textarea"
+                    rows={2}
+                    maxLength={2000}
+                    value={taskText}
+                    onChange={(event) => setTaskText(event.target.value)}
+                    placeholder="For example: provide a source for this date"
+                    disabled={busy}
+                  />
+                </LibraryHint>
                 <Form.Check
                   className="my-2"
                   id="proposal-task-blocking"
@@ -639,20 +652,33 @@ export default function LibrarySourceChangesetPage() {
                       onChange={(event) => setComment(event.target.value)}
                     />
                   )}
-                  <Button
-                    className="mt-2"
-                    variant={own ? "primary" : "warning"}
-                    disabled={
-                      busy ||
-                      blockingTasks.length > 0 ||
-                      (!own && !comment.trim())
+                  <LibraryHint
+                    topic="publish"
+                    priority={5}
+                    enabled={
+                      own &&
+                      blockingTasks.length === 0 &&
+                      !overrideAction &&
+                      !showReject &&
+                      !showWithdraw
                     }
-                    onClick={() => void perform("publish")}
+                    message="Approval is complete. Publish makes this revision visible in the public Library."
                   >
-                    {own
-                      ? "Publish"
-                      : "Admin override: publish on author's behalf"}
-                  </Button>
+                    <Button
+                      className="mt-2"
+                      variant={own ? "primary" : "warning"}
+                      disabled={
+                        busy ||
+                        blockingTasks.length > 0 ||
+                        (!own && !comment.trim())
+                      }
+                      onClick={() => void perform("publish")}
+                    >
+                      {own
+                        ? "Publish"
+                        : "Admin override: publish on author's behalf"}
+                    </Button>
+                  </LibraryHint>
                 </>
               )}
             </div>
@@ -686,13 +712,25 @@ export default function LibrarySourceChangesetPage() {
                   >
                     Reject
                   </Button>
-                  <Button
-                    variant="success"
-                    disabled={busy || blockingTasks.length > 0}
-                    onClick={() => void perform("approve")}
+                  <LibraryHint
+                    topic="review"
+                    priority={10}
+                    enabled={
+                      blockingTasks.length === 0 &&
+                      !overrideAction &&
+                      !showReject &&
+                      !showWithdraw
+                    }
+                    message="Check the changes, images, comments, and tasks first. Approve records your review; the author still needs to publish."
                   >
-                    Approve
-                  </Button>
+                    <Button
+                      variant="success"
+                      disabled={busy || blockingTasks.length > 0}
+                      onClick={() => void perform("approve")}
+                    >
+                      Approve
+                    </Button>
+                  </LibraryHint>
                 </>
               ) : null}
               {canOverrideApprovals && (

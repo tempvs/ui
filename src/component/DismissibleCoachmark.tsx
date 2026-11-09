@@ -9,6 +9,8 @@ type DismissibleCoachmarkProps = {
   children: React.ReactNode;
   className?: string;
   placement?: "side" | "below";
+  onDismiss?: () => void;
+  tooltipClassName?: string;
 };
 
 type CoachmarkPosition = {
@@ -29,6 +31,8 @@ export default function DismissibleCoachmark({
   children,
   className,
   placement = "side",
+  onDismiss,
+  tooltipClassName,
 }: DismissibleCoachmarkProps) {
   const storageKey = `tempvs:coachmark:${id}`;
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -55,6 +59,7 @@ export default function DismissibleCoachmark({
     } catch {
       // The hint remains dismissible even where browser storage is unavailable.
     }
+    onDismiss?.();
   };
   const shown = visible && !isDismissed();
 
@@ -162,7 +167,7 @@ export default function DismissibleCoachmark({
         createPortal(
           <span
             ref={coachmarkRef}
-            className={`dismissible-coachmark dismissible-coachmark--${position?.side ?? "right"}`}
+            className={`dismissible-coachmark dismissible-coachmark--${position?.side ?? "right"}${tooltipClassName ? ` ${tooltipClassName}` : ""}`}
             style={{
               left: position?.left ?? 0,
               top: position?.top ?? 0,

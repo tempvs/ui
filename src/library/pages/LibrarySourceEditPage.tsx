@@ -35,6 +35,7 @@ import {
 } from "../libraryApi";
 import { TYPES } from "../libraryShared";
 import { canEditSource } from "../libraryRoles";
+import { LibraryHint } from "../onboarding/LibraryJourney";
 
 type Draft = {
   name: string;
@@ -912,9 +913,15 @@ export default function LibrarySourceEditPage() {
               </Button>
             </fieldset>
             <div className="d-flex justify-content-end">
-              <Button type="submit" variant="dark" disabled={!canReview}>
-                Review changes
-              </Button>
+              <LibraryHint
+                topic="proposal"
+                enabled={canReview && !showReview && !showDeleteConfirmation}
+                message="Review the before-and-after changes, then submit your proposal for independent approval."
+              >
+                <Button type="submit" variant="dark" disabled={!canReview}>
+                  Review changes
+                </Button>
+              </LibraryHint>
             </div>
           </Form>
         </div>

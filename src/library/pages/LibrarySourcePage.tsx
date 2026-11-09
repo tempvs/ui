@@ -33,6 +33,7 @@ import {
   SourceChangeLogEntry,
 } from "../libraryApi";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
+import { LibraryHint, useLibraryTopic } from "../onboarding/LibraryJourney";
 import { canContribute, canEditSource } from "../libraryRoles";
 import { getErrorMessage } from "../../util/errors";
 import ProfileList from "../../profile/components/ProfileList";
@@ -70,6 +71,7 @@ export default function LibrarySourcePage() {
   );
   const visibleSourceRef = useRef<LibrarySource | null>(approvedSource || null);
   const [images, setImages] = useState<LibrarySourceImage[]>(approvedImages);
+  useLibraryTopic("source", Boolean(source) && !loading);
   const [sourceProfiles, setSourceProfiles] = useState<LibrarySourceProfile[]>(
     [],
   );
@@ -344,18 +346,30 @@ export default function LibrarySourcePage() {
         borderColor: "#d9ccb0",
         rightContent: canEdit ? (
           <div className="d-flex gap-2">
-            <Link
-              to={`/library/source/${source.id}/proposals`}
-              className="btn btn-outline-dark btn-sm"
+            <LibraryHint
+              topic="status"
+              priority={20}
+              message="Changesets shows this source's proposals, their status, and published history."
             >
-              Changesets
-            </Link>
-            <Link
-              to={`/library/source/${source.id}/edit`}
-              className="btn btn-dark btn-sm"
+              <Link
+                to={`/library/source/${source.id}/proposals`}
+                className="btn btn-outline-dark btn-sm"
+              >
+                Changesets
+              </Link>
+            </LibraryHint>
+            <LibraryHint
+              topic="proposal"
+              priority={10}
+              message="Edit source to propose an improvement. Review and submit your changes before another member approves them."
             >
-              Edit source
-            </Link>
+              <Link
+                to={`/library/source/${source.id}/edit`}
+                className="btn btn-dark btn-sm"
+              >
+                Edit source
+              </Link>
+            </LibraryHint>
           </div>
         ) : null,
       }}
