@@ -116,8 +116,10 @@ export type SourceProposalTask = {
   createdAt: string;
   resolvedBy?: string;
   resolvedAt?: string;
+  resolutionOverrideReason?: string;
   reopenedBy?: string;
   reopenedAt?: string;
+  reopenOverrideReason?: string;
 };
 
 export type SourceChangeset = {
@@ -137,7 +139,7 @@ export type SourceChangeset = {
   reviewedAt?: string | null;
   reviewComment?: string | null;
   revision?: number;
-  approvals?: Array<{ userId: string; revision: number; approvedAt: string; comment?: string }>;
+  approvals?: Array<{ userId: string; revision: number; approvedAt: string; comment?: string; adminOverride?: boolean }>;
   amendments?: Array<{ userId: string; revision: number; amendedAt: string }>;
   publishedBy?: string;
   publishedAt?: string;
@@ -766,9 +768,9 @@ export function addSourceProposalTask(sourceId: string, changesetId: string, ver
   });
 }
 
-export function updateSourceProposalTask(sourceId: string, changesetId: string, taskId: string, version: number, status: SourceProposalTask["status"]) {
+export function updateSourceProposalTask(sourceId: string, changesetId: string, taskId: string, version: number, status: SourceProposalTask["status"], adminOverride = false, comment?: string) {
   return fetchJson<SourceChangeset | ApiErrorPayload>(`/api/library/source/${sourceId}/changesets/${changesetId}/tasks/${taskId}`, {
-    method: "PATCH", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ status }),
+    method: "PATCH", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ status, ...(adminOverride ? { adminOverride: true, comment } : {}) }),
   });
 }
 
@@ -784,7 +786,7 @@ export function publishSourceChangeset(
   );
 }
 
-/** Retained for compatibility; self-approval overrides are rejected by the API. */
+/** Explicit, audited administrator approval; does not publish the proposal. */
 export function overrideApproveSourceChangeset(
   sourceId: string | undefined,
   changesetId: string,

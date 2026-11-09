@@ -30,6 +30,7 @@ jest.mock("../libraryApi", () => ({
   getSourceImages: jest.fn(),
   getSourceChangesetImages: jest.fn(),
   approveSourceChangeset: jest.fn(),
+  overrideApproveSourceChangeset: jest.fn(),
   publishSourceChangeset: jest.fn(),
   rejectSourceChangeset: jest.fn(),
   withdrawSourceChangeset: jest.fn(),
@@ -386,5 +387,167 @@ test("authors cannot resolve another reviewer's blocking task or publish around 
   expect(await screen.findByRole("button", { name: "Publish" })).toBeDisabled();
   expect(
     screen.queryByRole("button", { name: "Resolve task" }),
+  ).not.toBeInTheDocument();
+});
+
+test("an admin author gets a yellow, reason-required proposal approval override without publishing", async () => {
+  api.getLibraryViewer.mockResolvedValue({
+    userId: "author",
+    roles: ["TEMPVS_ADMIN"],
+  });
+  api.overrideApproveSourceChangeset.mockImplementation(async () => {
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: {
+        source,
+        changeset: {
+          ...approved,
+          approvals: [
+            {
+              userId: "author",
+              revision: 1,
+              adminOverride: true,
+              approvedAt: proposal.createdAt,
+              comment: "Reviewed as administrator",
+            },
+          ],
+        },
+      },
+    });
+    return { ok: true };
+  });
+  mount();
+  const override = await screen.findByRole("button", {
+    name: "Admin override: approve proposal",
+  });
+  expect(override).toHaveClass("btn-warning");
+  expect(
+    screen.queryByRole("button", { name: "Approve" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(override);
+  expect(
+    screen.getByRole("button", { name: "Confirm admin override" }),
+  ).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Reason for admin override"), {
+    target: { value: "Reviewed as administrator" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm admin override" }),
+  );
+  await screen.findByRole("button", { name: "Publish" });
+  expect(api.overrideApproveSourceChangeset).toHaveBeenCalledWith(
+    "source-1",
+    "proposal-1",
+    1,
+    "Reviewed as administrator",
+  );
+  expect(api.publishSourceChangeset).not.toHaveBeenCalled();
+  expect(screen.getByText(/Approved by admin override by/)).toBeInTheDocument();
+});
+
+test("an admin resolving another reviewer's task uses the yellow override action and records a reason", async () => {
+  const task = {
+    id: "task-1",
+    text: "Verify reference",
+    blocking: true,
+    status: "OPEN",
+    createdBy: "reviewer",
+    createdAt: proposal.createdAt,
+  };
+  api.getLibraryViewer.mockResolvedValue({
+    userId: "author",
+    roles: ["LIBRARY_ADMIN"],
+  });
+  api.getSourceChangeset.mockResolvedValue({
+    ok: true,
+    data: { source, changeset: { ...proposal, tasks: [task] } },
+  });
+  api.updateSourceProposalTask.mockImplementation(async () => {
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: {
+        source,
+        changeset: {
+          ...proposal,
+          version: 2,
+          tasks: [
+            {
+              ...task,
+              status: "RESOLVED",
+              resolvedBy: "author",
+              resolutionOverrideReason: "I verified the source",
+            },
+          ],
+        },
+      },
+    });
+    return { ok: true };
+  });
+  mount();
+  const override = await screen.findByRole("button", {
+    name: "Admin override: resolve task",
+  });
+  expect(override).toHaveClass("btn-warning");
+  expect(
+    screen.queryByRole("button", { name: "Resolve task" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Admin override: approve proposal" }),
+  ).toBeDisabled();
+  fireEvent.click(override);
+  expect(
+    screen.getByRole("button", { name: "Confirm admin override" }),
+  ).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Reason for admin override"), {
+    target: { value: "I verified the source" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm admin override" }),
+  );
+  await screen.findByText(/Admin override: I verified the source/);
+  expect(api.updateSourceProposalTask).toHaveBeenCalledWith(
+    "source-1",
+    "proposal-1",
+    "task-1",
+    1,
+    "RESOLVED",
+    true,
+    "I verified the source",
+  );
+  expect(
+    screen.getByRole("button", { name: "Admin override: approve proposal" }),
+  ).toBeEnabled();
+});
+
+test("admins use the regular resolve action for tasks they created themselves", async () => {
+  api.getLibraryViewer.mockResolvedValue({
+    userId: "reviewer",
+    roles: ["LIBRARY_ADMIN"],
+  });
+  api.getSourceChangeset.mockResolvedValue({
+    ok: true,
+    data: {
+      source,
+      changeset: {
+        ...proposal,
+        tasks: [
+          {
+            id: "task-1",
+            text: "Check date",
+            blocking: true,
+            status: "OPEN",
+            createdBy: "reviewer",
+            createdAt: proposal.createdAt,
+          },
+        ],
+      },
+    },
+  });
+  mount();
+  expect(
+    await screen.findByRole("button", { name: "Resolve task" }),
+  ).toHaveClass("btn-outline-dark");
+  expect(
+    screen.queryByRole("button", { name: "Admin override: resolve task" }),
   ).not.toBeInTheDocument();
 });

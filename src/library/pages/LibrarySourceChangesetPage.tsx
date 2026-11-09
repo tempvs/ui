@@ -15,6 +15,7 @@ import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
   approveSourceChangeset,
+  overrideApproveSourceChangeset,
   addSourceProposalTask,
   updateSourceProposalTask,
   publishSourceChangeset,
@@ -74,6 +75,12 @@ export default function LibrarySourceChangesetPage() {
   const [comment, setComment] = useState("");
   const [taskText, setTaskText] = useState("");
   const [taskBlocking, setTaskBlocking] = useState(true);
+  const [overrideAction, setOverrideAction] = useState<
+    | { kind: "approve" }
+    | { kind: "task"; taskId: string; status: "OPEN" | "RESOLVED" }
+    | null
+  >(null);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,7 +187,8 @@ export default function LibrarySourceChangesetPage() {
   }, [changeset, source]);
 
   const perform = async (
-    operation: "approve" | "publish" | "reject" | "withdraw",
+    operation: "approve" | "override" | "publish" | "reject" | "withdraw",
+    reason?: string,
   ) => {
     if (!changeset) return;
     setBusy(true);
@@ -194,27 +202,36 @@ export default function LibrarySourceChangesetPage() {
               changeset.version,
               comment.trim() || undefined,
             )
-          : operation === "publish"
-            ? await publishSourceChangeset(
+          : operation === "override"
+            ? await overrideApproveSourceChangeset(
                 sourceId,
                 changeset.id,
                 changeset.version,
-                comment.trim() || undefined,
+                reason,
               )
-            : operation === "reject"
-              ? await rejectSourceChangeset(
+            : operation === "publish"
+              ? await publishSourceChangeset(
                   sourceId,
                   changeset.id,
                   changeset.version,
-                  comment.trim(),
+                  comment.trim() || undefined,
                 )
-              : await withdrawSourceChangeset(
-                  sourceId,
-                  changeset.id,
-                  changeset.version,
-                );
+              : operation === "reject"
+                ? await rejectSourceChangeset(
+                    sourceId,
+                    changeset.id,
+                    changeset.version,
+                    comment.trim(),
+                  )
+                : await withdrawSourceChangeset(
+                    sourceId,
+                    changeset.id,
+                    changeset.version,
+                  );
       if (!result.ok) throw new Error(`Unable to ${operation} this changeset.`);
       setShowReject(false);
+      setOverrideAction(null);
+      setOverrideReason("");
       setShowWithdraw(false);
       setComment("");
       if (operation === "publish") {
@@ -263,20 +280,35 @@ export default function LibrarySourceChangesetPage() {
     }
   };
 
-  const saveTask = async (taskId?: string, status?: "OPEN" | "RESOLVED") => {
+  const saveTask = async (
+    taskId?: string,
+    status?: "OPEN" | "RESOLVED",
+    adminOverride = false,
+    reason?: string,
+  ) => {
     if (!source || !changeset) return;
     setBusy(true);
     setError(null);
     try {
       const result =
         taskId && status
-          ? await updateSourceProposalTask(
-              source.id,
-              changeset.id,
-              taskId,
-              changeset.version,
-              status,
-            )
+          ? adminOverride
+            ? await updateSourceProposalTask(
+                source.id,
+                changeset.id,
+                taskId,
+                changeset.version,
+                status,
+                true,
+                reason,
+              )
+            : await updateSourceProposalTask(
+                source.id,
+                changeset.id,
+                taskId,
+                changeset.version,
+                status,
+              )
           : await addSourceProposalTask(
               source.id,
               changeset.id,
@@ -290,6 +322,8 @@ export default function LibrarySourceChangesetPage() {
           "Unable to save the task. Reload the proposal and try again.",
         );
       if (!taskId) setTaskText("");
+      setOverrideAction(null);
+      setOverrideReason("");
       await load();
     } catch (caught) {
       setError(getErrorMessage(caught));
@@ -442,6 +476,17 @@ export default function LibrarySourceChangesetPage() {
                       {task.status === "RESOLVED" && task.resolvedBy && (
                         <div className="small">
                           Resolved by {userProfileLink(task.resolvedBy)}
+                          {task.resolutionOverrideReason
+                            ? ` (Admin override: ${task.resolutionOverrideReason})`
+                            : ""}
+                        </div>
+                      )}
+                      {task.status === "OPEN" && task.reopenedBy && (
+                        <div className="small">
+                          Reopened by {userProfileLink(task.reopenedBy)}
+                          {task.reopenOverrideReason
+                            ? ` (Admin override: ${task.reopenOverrideReason})`
+                            : ""}
                         </div>
                       )}
                     </div>
@@ -449,18 +494,35 @@ export default function LibrarySourceChangesetPage() {
                       (task.createdBy === viewerId || canOverrideApprovals) && (
                         <Button
                           size="sm"
-                          variant="outline-dark"
+                          variant={
+                            task.createdBy === viewerId
+                              ? "outline-dark"
+                              : "warning"
+                          }
                           disabled={busy}
                           onClick={() =>
-                            void saveTask(
-                              task.id,
-                              task.status === "OPEN" ? "RESOLVED" : "OPEN",
-                            )
+                            task.createdBy === viewerId
+                              ? void saveTask(
+                                  task.id,
+                                  task.status === "OPEN" ? "RESOLVED" : "OPEN",
+                                )
+                              : setOverrideAction({
+                                  kind: "task",
+                                  taskId: task.id,
+                                  status:
+                                    task.status === "OPEN"
+                                      ? "RESOLVED"
+                                      : "OPEN",
+                                })
                           }
                         >
-                          {task.status === "OPEN"
-                            ? "Resolve task"
-                            : "Reopen task"}
+                          {task.createdBy !== viewerId
+                            ? task.status === "OPEN"
+                              ? "Admin override: resolve task"
+                              : "Admin override: reopen task"
+                            : task.status === "OPEN"
+                              ? "Resolve task"
+                              : "Reopen task"}
                         </Button>
                       )}
                   </div>
@@ -535,8 +597,14 @@ export default function LibrarySourceChangesetPage() {
             ))}
             {(changeset.approvals || []).map((approval, index) => (
               <div key={index}>
-                Approved by {userProfileLink(approval.userId)} on{" "}
+                {approval.adminOverride
+                  ? "Approved by admin override by "
+                  : "Approved by "}
+                {userProfileLink(approval.userId)} on{" "}
                 {formatAppDateTime(approval.approvedAt)}
+                {approval.adminOverride && approval.comment
+                  ? ` — ${approval.comment}`
+                  : ""}
                 {approval.revision !== (changeset.revision ?? changeset.version)
                   ? " (earlier revision)"
                   : ""}
@@ -621,10 +689,89 @@ export default function LibrarySourceChangesetPage() {
                   </Button>
                 </>
               ) : null}
+              {canOverrideApprovals && (
+                <Button
+                  variant="warning"
+                  disabled={busy || blockingTasks.length > 0}
+                  onClick={() => setOverrideAction({ kind: "approve" })}
+                >
+                  Admin override: approve proposal
+                </Button>
+              )}
             </div>
           )}
         </div>
       </div>
+      <Modal
+        show={Boolean(overrideAction)}
+        onHide={() => {
+          if (!busy) {
+            setOverrideAction(null);
+            setOverrideReason("");
+            setError(null);
+          }
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Admin override</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            {overrideAction?.kind === "approve"
+              ? "Approve this revision using administrator privileges, including your own proposal. This does not publish it or bypass unresolved blockers."
+              : "Use administrator privileges to change a task created by another reviewer."}{" "}
+            Your identity and reason will be recorded.
+          </p>
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+          <Form.Label htmlFor="admin-override-reason">
+            Reason for admin override
+          </Form.Label>
+          <Form.Control
+            id="admin-override-reason"
+            as="textarea"
+            rows={3}
+            maxLength={10000}
+            value={overrideReason}
+            onChange={(event) => setOverrideReason(event.target.value)}
+            disabled={busy}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            disabled={busy}
+            onClick={() => {
+              setOverrideAction(null);
+              setOverrideReason("");
+              setError(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="warning"
+            disabled={busy || !overrideReason.trim()}
+            onClick={() => {
+              if (overrideAction?.kind === "approve")
+                void perform("override", overrideReason.trim());
+              else if (overrideAction?.kind === "task")
+                void saveTask(
+                  overrideAction.taskId,
+                  overrideAction.status,
+                  true,
+                  overrideReason.trim(),
+                );
+            }}
+          >
+            Confirm admin override
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <ConfirmationModal
         show={showWithdraw}
         title="Withdraw changeset"
