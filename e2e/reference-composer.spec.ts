@@ -147,7 +147,17 @@ test("public composer supports keyboard reference selection, deletion, undo and 
   await editor.press("Control+Shift+z");
   await expect(page.getByTestId("document")).toContainText("hello");
   await editor.press("Control+a");
-  const clipboard = await editor.evaluate((node) => {
+  await expect
+    .poll(() =>
+      editor.evaluate((node) => node.ownerDocument.getSelection()?.toString()),
+    )
+    .toBe("@Alex Archer hello");
+  const clipboard = await editor.evaluate(async (node) => {
+    // Synthetic clipboard events bypass native keyboard event sequencing.
+    // Let selectionchange and the editor's pending reconciliation finish first.
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
     const data = new DataTransfer();
     node.dispatchEvent(
       new ClipboardEvent("copy", {
@@ -160,8 +170,24 @@ test("public composer supports keyboard reference selection, deletion, undo and 
       [...data.types].map((type) => [type, data.getData(type)]),
     );
   });
+  expect(clipboard["application/x-lexical-editor"]).toContain(
+    '"type":"tempvs-reference"',
+  );
   await editor.press("Control+End");
-  await editor.evaluate((node, entries) => {
+  await expect
+    .poll(() =>
+      editor.evaluate((node) => {
+        const selection = node.ownerDocument.getSelection();
+        return Boolean(
+          selection?.isCollapsed && node.contains(selection.anchorNode),
+        );
+      }),
+    )
+    .toBe(true);
+  await editor.evaluate(async (node, entries) => {
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
     const data = new DataTransfer();
     Object.entries(entries).forEach(([type, text]) => data.setData(type, text));
     node.dispatchEvent(
