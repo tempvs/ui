@@ -144,6 +144,7 @@ export type SourceChangeset = {
   publishedBy?: string;
   publishedAt?: string;
   publicationReason?: string;
+  publicationAdminOverride?: boolean;
   tasks?: SourceProposalTask[];
 };
 

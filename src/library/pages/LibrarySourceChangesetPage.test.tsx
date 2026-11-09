@@ -156,34 +156,38 @@ test("the author can publish the approved revision", async () => {
   );
 });
 
-test("admin publication on behalf requires an explanation", async () => {
-  api.getLibraryViewer.mockResolvedValue({
-    userId: "admin",
-    roles: ["LIBRARY_ADMIN"],
-  });
-  api.getSourceChangeset.mockResolvedValue({
-    ok: true,
-    data: { source, changeset: approved },
-  });
-  api.publishSourceChangeset.mockResolvedValue({ ok: false });
-  mount();
-  const publish = await screen.findByRole("button", {
-    name: "Publish on author's behalf",
-  });
-  expect(publish).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Reason for publishing on behalf"), {
-    target: { value: "Author requested publication" },
-  });
-  fireEvent.click(publish);
-  await waitFor(() =>
-    expect(api.publishSourceChangeset).toHaveBeenCalledWith(
-      "source-1",
-      "proposal-1",
-      2,
-      "Author requested publication",
-    ),
-  );
-});
+test.each(["LIBRARY_ADMIN", "TEMPVS_ADMIN"])(
+  "%s gets a yellow publication override requiring an explanation",
+  async (role) => {
+    api.getLibraryViewer.mockResolvedValue({
+      userId: "admin",
+      roles: [role],
+    });
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: { source, changeset: approved },
+    });
+    api.publishSourceChangeset.mockResolvedValue({ ok: false });
+    mount();
+    const publish = await screen.findByRole("button", {
+      name: "Admin override: publish on author's behalf",
+    });
+    expect(publish).toBeDisabled();
+    expect(publish).toHaveClass("btn-warning");
+    fireEvent.change(screen.getByLabelText("Reason for publishing on behalf"), {
+      target: { value: "Author requested publication" },
+    });
+    fireEvent.click(publish);
+    await waitFor(() =>
+      expect(api.publishSourceChangeset).toHaveBeenCalledWith(
+        "source-1",
+        "proposal-1",
+        2,
+        "Author requested publication",
+      ),
+    );
+  },
+);
 
 test("an editor who amended the proposal cannot approve it", async () => {
   api.getSourceChangeset.mockResolvedValue({
@@ -551,3 +555,43 @@ test("admins use the regular resolve action for tasks they created themselves", 
     screen.queryByRole("button", { name: "Admin override: resolve task" }),
   ).not.toBeInTheDocument();
 });
+
+test.each(["LIBRARY_SCRIBE", "LIBRARY_ARCHIVARIUS"])(
+  "%s cannot see task or publication overrides",
+  async (role) => {
+    api.getLibraryViewer.mockResolvedValue({
+      userId: "other-member",
+      roles: [role],
+    });
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: {
+        source,
+        changeset: {
+          ...approved,
+          tasks: [
+            {
+              id: "task-1",
+              text: "Check evidence",
+              blocking: false,
+              status: "OPEN",
+              createdBy: "reviewer",
+              createdAt: proposal.createdAt,
+            },
+          ],
+        },
+      },
+    });
+    mount();
+    await screen.findByText("Check evidence");
+    expect(
+      screen.queryByRole("button", { name: /Admin override/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Resolve task" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Publish" }),
+    ).not.toBeInTheDocument();
+  },
+);

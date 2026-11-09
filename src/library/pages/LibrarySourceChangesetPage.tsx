@@ -612,7 +612,10 @@ export default function LibrarySourceChangesetPage() {
             ))}
             {changeset.publishedBy && (
               <div>
-                Published by {userProfileLink(changeset.publishedBy)} on{" "}
+                {changeset.publicationAdminOverride
+                  ? "Published using admin override by "
+                  : "Published by "}
+                {userProfileLink(changeset.publishedBy)} on{" "}
                 {formatAppDateTime(changeset.publishedAt!)}
                 {changeset.publicationReason
                   ? ` — ${changeset.publicationReason}`
@@ -638,6 +641,7 @@ export default function LibrarySourceChangesetPage() {
                   )}
                   <Button
                     className="mt-2"
+                    variant={own ? "primary" : "warning"}
                     disabled={
                       busy ||
                       blockingTasks.length > 0 ||
@@ -645,7 +649,9 @@ export default function LibrarySourceChangesetPage() {
                     }
                     onClick={() => void perform("publish")}
                   >
-                    {own ? "Publish" : "Publish on author's behalf"}
+                    {own
+                      ? "Publish"
+                      : "Admin override: publish on author's behalf"}
                   </Button>
                 </>
               )}
