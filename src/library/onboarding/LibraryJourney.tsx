@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getLibraryViewer, type LibraryViewer } from "../libraryApi";
 import {
   canAccessLibraryAdministration,
@@ -49,6 +49,8 @@ export function librarySteps(viewer: LibraryViewer): Step[] {
       id: "browse",
       title: "Find a source",
       copy: "Choose a historical period, then search by name or filter by type, dates, and place.",
+      to: "/library",
+      action: "Browse periods",
     },
     {
       id: "source",
@@ -306,6 +308,7 @@ export default function LibraryJourney({
 }) {
   const journey = useContext(Context);
   const [expanded, setExpanded] = useState(false);
+  const libraryLanding = useLocation().pathname.replace(/\/+$/, "") === "/library";
   const steps = useMemo(
     () => librarySteps(journey?.viewer || null),
     [journey?.viewer],
@@ -364,7 +367,7 @@ export default function LibraryJourney({
                   <p>{step.copy}</p>
                   {!learned.includes(step.id) && (
                     <div className="d-flex gap-2 flex-wrap align-items-center">
-                      {step.to && (
+                      {step.to && !(step.id === "browse" && libraryLanding) && (
                         <Link
                           className="btn btn-outline-dark btn-sm"
                           to={step.to}
