@@ -49,8 +49,6 @@ export function librarySteps(viewer: LibraryViewer): Step[] {
       id: "browse",
       title: "Find a source",
       copy: "Choose a historical period, then search by name or filter by type, dates, and place.",
-      to: "/library",
-      action: "Browse periods",
     },
     {
       id: "source",
