@@ -25,7 +25,7 @@ type ClubProfilesSectionProps = {
   clubProfileDeleteTarget?: ClubProfile | null;
   clubProfileDeleteError?: unknown;
   periods: string[];
-  getPeriodLabel: (period: string) => string;
+  getPeriodOptionLabel: (period: string) => string;
   t: MessageFormatter;
   onShowCreate?: React.MouseEventHandler<HTMLElement>;
   onHideCreate?: () => void;
@@ -49,7 +49,7 @@ export default function ClubProfilesSection({
   clubProfileDeleteTarget,
   clubProfileDeleteError,
   periods,
-  getPeriodLabel,
+  getPeriodOptionLabel,
   t,
   onShowCreate,
   onHideCreate,
@@ -110,7 +110,7 @@ export default function ClubProfilesSection({
               </option>
               {periods.map((period) => (
                 <option key={period} value={period}>
-                  {getPeriodLabel(period)}
+                  {getPeriodOptionLabel(period)}
                 </option>
               ))}
             </Form.Select>

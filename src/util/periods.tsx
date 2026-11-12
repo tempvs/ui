@@ -40,6 +40,19 @@ export function getPeriodLabel(intl: IntlShape, period: PeriodValue): string {
   return intl.formatMessage({ id: messageId, defaultMessage: period || '' });
 }
 
+/** Date guidance belongs to editing choices; navigation and filters use the name. */
+export function getPeriodOptionLabel(intl: IntlShape, period: PeriodValue): string {
+  const label = getPeriodLabel(intl, period);
+  if (!period || !PERIODS.includes(period.toUpperCase() as Period)) {
+    return label;
+  }
+  const range = intl.formatMessage({
+    id: `period.${period.toLowerCase()}.range`,
+    defaultMessage: '',
+  });
+  return range ? `${label} (${range})` : label;
+}
+
 export function PeriodBadge({ period }: PeriodBadgeProps) {
   const intl = useIntl();
   const label = getPeriodLabel(intl, period);

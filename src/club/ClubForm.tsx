@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { getPeriodLabel, PERIODS, Period } from "../util/periods";
+import { getPeriodOptionLabel, PERIODS, Period } from "../util/periods";
 import { ClubDraft } from "./clubApi";
 import ProfilePicker, {
   ProfilePickerOption,
@@ -114,7 +114,7 @@ export default function ClubForm({
             >
               {PERIODS.map((period) => (
                 <option key={period} value={period}>
-                  {getPeriodLabel(intl, period)}
+                  {getPeriodOptionLabel(intl, period)}
                 </option>
               ))}
             </Form.Select>

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Dropdown, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 
-import { getPeriodLabel, PERIODS, type Period } from "../util/periods";
+import { getPeriodLabel, getPeriodOptionLabel, PERIODS, type Period } from "../util/periods";
 
 type Props = {
   selected: readonly Period[];
@@ -12,6 +12,8 @@ type Props = {
   className?: string;
   /** Render choices directly when a search sidebar has room for them. */
   display?: "dropdown" | "checkboxes";
+  /** Editing forms show date guidance; search filters keep period names only. */
+  includeRanges?: boolean;
 };
 
 /** Compact, reusable multi-period facet for catalogue searches. */
@@ -22,6 +24,7 @@ export default function PeriodMultiSelect({
   disabled = false,
   className = "",
   display = "dropdown",
+  includeRanges = false,
 }: Props) {
   const intl = useIntl();
   const chosen = useMemo(() => new Set(selected), [selected]);
@@ -45,7 +48,7 @@ export default function PeriodMultiSelect({
           key={period}
           id={`period-filter-${ariaLabel.replace(/[^a-z0-9]+/gi, "-")}-${period}`}
           type="checkbox"
-          label={getPeriodLabel(intl, period)}
+          label={includeRanges ? getPeriodOptionLabel(intl, period) : getPeriodLabel(intl, period)}
           checked={chosen.has(period)}
           disabled={disabled}
           onChange={() => toggle(period)}

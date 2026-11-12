@@ -6,7 +6,31 @@ import EditableFieldRow, { SaveStatus } from './EditableFieldRow';
 type EditableSelectOption = {
   value: string | number;
   label: React.ReactNode;
+  readOnlyLabel?: React.ReactNode;
 };
+
+type SelectFieldControlProps = {
+  value?: string | number | string[];
+  options: EditableSelectOption[];
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+  onBlur?: React.FocusEventHandler<HTMLSelectElement>;
+  autoFocus?: boolean;
+  className?: string;
+  readOnly?: boolean;
+  disabled?: boolean;
+};
+
+function SelectFieldControl({ options, readOnly, disabled, ...props }: SelectFieldControlProps) {
+  return (
+    <Form.Select size="sm" {...props} disabled={readOnly || disabled}>
+      {options.map(option => (
+        <option key={option.value} value={option.value}>
+          {readOnly ? option.readOnlyLabel ?? option.label : option.label}
+        </option>
+      ))}
+    </Form.Select>
+  );
+}
 
 type EditableSelectFieldRowProps = {
   label?: React.ReactNode;
@@ -44,16 +68,12 @@ export default function EditableSelectFieldRow({
       label={label}
       editable={editable}
       control={(
-        <Form.Select
-          size="sm"
+        <SelectFieldControl
           value={value}
+          options={options}
           onChange={onChange}
           onBlur={onBlur}
-        >
-          {options.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </Form.Select>
+        />
       )}
       status={status}
       readOnlyValue={readOnlyValue}

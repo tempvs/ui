@@ -13,8 +13,8 @@ test("Interwar renders in the Library and the shared picker submits its API valu
       <PeriodMultiSelect selected={[]} onChange={onChange} display="checkboxes" />
     </IntlProvider>,
   );
-  expect(screen.getByRole("heading", { name: "Interwar (1918–1939)" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Interwar" })).toBeInTheDocument();
   expect(screen.getByText(/years between World War I and World War II/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("checkbox", { name: "Interwar (1918–1939)" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Interwar" }));
   expect(onChange).toHaveBeenCalledWith(["INTERWAR"]);
 });

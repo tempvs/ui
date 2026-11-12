@@ -94,6 +94,7 @@ export default function EventForm({
       <Form.Group className="mb-4">
         <Form.Label>Periods</Form.Label>
         <PeriodMultiSelect
+          includeRanges
           ariaLabel="Event periods"
           selected={periods}
           onChange={setPeriods}

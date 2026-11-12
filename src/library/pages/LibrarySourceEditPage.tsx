@@ -14,7 +14,7 @@ import type { MapPlace } from "../../map/mapApi";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
-import { getPeriodLabel, PERIODS } from "../../util/periods";
+import { getPeriodOptionLabel, PERIODS } from "../../util/periods";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
@@ -651,7 +651,7 @@ export default function LibrarySourceEditPage() {
                   <option value="">Choose period</option>
                   {PERIODS.map((period) => (
                     <option key={period} value={period}>
-                      {getPeriodLabel(intl, period)}
+                      {getPeriodOptionLabel(intl, period)}
                     </option>
                   ))}
                 </Form.Select>

@@ -15,6 +15,7 @@ import { clearAllTimers, clearTimer, TimerRecord } from "../util/timers";
 import {
   PERIODS,
   getPeriodLabel as getSharedPeriodLabel,
+  getPeriodOptionLabel as getSharedPeriodOptionLabel,
 } from "../util/periods";
 import ClubProfilesSection from "./components/ClubProfilesSection";
 import ProfileClubPanel from "../club/ProfileClubPanel";
@@ -719,6 +720,10 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
 
   getPeriodLabel(period?: string | null) {
     return getSharedPeriodLabel(this.props.intl, period);
+  }
+
+  getPeriodOptionLabel(period?: string | null) {
+    return getSharedPeriodOptionLabel(this.props.intl, period);
   }
 
   resetFieldStatus(
@@ -1771,6 +1776,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 periods={[...PERIODS]}
                 t={this.t.bind(this)}
                 getPeriodLabel={this.getPeriodLabel.bind(this)}
+                getPeriodOptionLabel={this.getPeriodOptionLabel.bind(this)}
                 editable={isEditable}
                 onInputChange={this.handleInputChange}
                 onFieldBlur={this.handleFieldBlur}
@@ -1899,7 +1905,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 clubProfileDeleteTarget={this.state.clubProfileDeleteTarget}
                 clubProfileDeleteError={this.state.clubProfileDeleteError}
                 periods={[...PERIODS]}
-                getPeriodLabel={this.getPeriodLabel.bind(this)}
+                getPeriodOptionLabel={this.getPeriodOptionLabel.bind(this)}
                 t={this.t.bind(this)}
                 onShowCreate={() =>
                   this.setState({

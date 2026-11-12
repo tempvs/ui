@@ -31,6 +31,7 @@ type ProfileFieldsPanelProps = {
   periods: string[];
   t: MessageFormatter;
   getPeriodLabel: (period?: string | null) => string;
+  getPeriodOptionLabel: (period?: string | null) => string;
   editable: boolean;
   onInputChange: (event: { target: { name: string; value: string } }) => void;
   onFieldBlur: (field: ProfileField) => void;
@@ -53,6 +54,7 @@ export default function ProfileFieldsPanel({
   periods,
   t,
   getPeriodLabel,
+  getPeriodOptionLabel,
   editable,
   onInputChange,
   onFieldBlur,
@@ -243,7 +245,8 @@ export default function ProfileFieldsPanel({
                 },
                 ...periods.map((period) => ({
                   value: period,
-                  label: getPeriodLabel(period),
+                  label: getPeriodOptionLabel(period),
+                  readOnlyLabel: getPeriodLabel(period),
                 })),
               ]}
               className="mb-0"

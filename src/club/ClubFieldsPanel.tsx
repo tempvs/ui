@@ -11,7 +11,7 @@ import PlacePickerField, {
 } from "../component/PlacePickerField";
 import type { MapPlace } from "../map/mapApi";
 import { loadClubRelatedMapContent } from "../map/ownedMapContent";
-import { PERIODS, getPeriodLabel } from "../util/periods";
+import { PERIODS, getPeriodLabel, getPeriodOptionLabel } from "../util/periods";
 import { Club, ClubDraft } from "./clubApi";
 
 export type ClubField = keyof ClubDraft;
@@ -116,7 +116,8 @@ export default function ClubFieldsPanel({
             readOnlyValue={getPeriodLabel(intl, club.period)}
             options={PERIODS.map((period) => ({
               value: period,
-              label: getPeriodLabel(intl, period),
+              label: getPeriodOptionLabel(intl, period),
+              readOnlyLabel: getPeriodLabel(intl, period),
             }))}
             onChange={(event) => onChange("period", event.target.value)}
             onBlur={() => onBlur("period")}

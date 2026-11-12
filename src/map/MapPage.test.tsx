@@ -169,10 +169,10 @@ test("starts with empty temporal filters", () => {
   expect(
     screen.queryByRole("combobox", { name: "Period" }),
   ).not.toBeInTheDocument();
-  expect(screen.getAllByRole("checkbox", { name: "Classical antiquity (c. 900 BC–AD 500)" })).toHaveLength(
+  expect(screen.getAllByRole("checkbox", { name: "Classical antiquity" })).toHaveLength(
     1,
   );
-  expect(screen.getByRole("checkbox", { name: "Classical antiquity (c. 900 BC–AD 500)" })).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Classical antiquity" })).not.toBeChecked();
   expect(
     screen.getByRole("checkbox", { name: "Enable period filter" }),
   ).not.toBeChecked();

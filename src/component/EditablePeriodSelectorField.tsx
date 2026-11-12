@@ -5,7 +5,7 @@ import { useIntl } from "react-intl";
 import InlineSaveStatus from "./InlineSaveStatus";
 import { SaveStatus } from "./EditableFieldRow";
 import useInlineEditing from "./useInlineEditing";
-import { PERIODS, getPeriodLabel, type Period } from "../util/periods";
+import { PERIODS, getPeriodLabel, getPeriodOptionLabel, type Period } from "../util/periods";
 
 type Props = {
   label: React.ReactNode;
@@ -72,8 +72,8 @@ export default function EditablePeriodSelectorField({
                       className={`event-period-selector-option${isSelected ? " is-selected" : ""}`}
                       onClick={() => toggle(period)}
                     >
-                      <span>{getPeriodLabel(intl, period)}</span>
-                      {isSelected && <CheckIcon aria-label={`${getPeriodLabel(intl, period)} selected`} />}
+                      <span>{getPeriodOptionLabel(intl, period)}</span>
+                      {isSelected && <CheckIcon aria-label={`${getPeriodOptionLabel(intl, period)} selected`} />}
                     </button>
                   );
                 })}
