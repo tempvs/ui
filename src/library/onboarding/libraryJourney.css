@@ -21,28 +21,12 @@
   line-height: 1.5;
   text-wrap: pretty;
 }
-.library-journey-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
-  gap: 0.75rem;
-}
-.library-journey-step {
-  padding: 0.85rem;
-  border: 1px solid #e1ddd1;
-  border-radius: 0.5rem;
-  background: white;
-}
-.library-journey-step.learned {
-  background: #f4f8f3;
-}
-.library-journey-step h2 {
-  font-size: 1rem;
-  margin: 0 0 0.4rem;
-}
-.library-journey-step p {
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin-bottom: 0.6rem;
+.library-journey > .onboarding-progress { margin-top: 0.5rem; }
+.library-journey-notice { margin: 0.65rem 0 0; color: #506059; font-size: 0.9rem; }
+.library-journey-step { border-radius: 0.5rem; }
+.library-learned-topics summary { cursor: pointer; color: #33453d; }
+@media (max-width: 575.98px) {
+  .library-journey { margin-left: 0.75rem !important; margin-right: 0.75rem !important; padding: 0.75rem; }
 }
 .library-hint-block {
   display: block;

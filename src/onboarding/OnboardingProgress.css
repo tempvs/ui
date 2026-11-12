@@ -1,0 +1,23 @@
+.onboarding-progress { min-width: 0; width: 100%; color: #33453d; text-align: left; }
+.onboarding-progress-copy { line-height: 1.5; overflow-wrap: anywhere; }
+.onboarding-progress-track { height: 0.55rem; margin-top: 0.45rem; overflow: hidden; border-radius: 999px; background: rgba(62, 96, 79, 0.16); }
+.onboarding-progress-track > span { display: block; height: 100%; border-radius: inherit; background: #486e5a; transition: width 0.2s ease; }
+.onboarding-progress--compact { font-size: 0.9rem; }
+.onboarding-progress--compact .onboarding-progress-track { height: 0.35rem; }
+.onboarding-progress-state { margin: 0; color: #5b6862; font-size: 0.9rem; }
+
+.onboarding-steps { display: grid; gap: 0.75rem; margin-top: 1rem; padding-left: 0; list-style: none; }
+.onboarding-step { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.85rem; align-items: center; padding: 1rem; border: 1px solid rgba(87, 102, 98, 0.18); background: rgba(255, 255, 255, 0.88); box-shadow: 0 0.65rem 1.75rem rgba(31, 38, 35, 0.06); }
+.onboarding-step-complete { background: #f6fbf7; }
+.onboarding-step-number { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; background: #e7eee9; color: #2b6040; font-weight: 700; }
+.onboarding-step h2 { margin: 0; color: #1f2623; font-size: 1rem; }
+.onboarding-step p { margin: 0.25rem 0 0; color: #5b6862; font-size: 0.9rem; line-height: 1.5; }
+.onboarding-step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; max-width: 19rem; }
+.onboarding-complete { color: #2e6846; font-size: 0.85rem; font-weight: 700; }
+@media (max-width: 767.98px) {
+  .onboarding-step { grid-template-columns: auto minmax(0, 1fr); }
+  .onboarding-step > .btn, .onboarding-step-actions, .onboarding-step > .onboarding-complete { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-progress-track > span { transition: none; }
+}

@@ -48,6 +48,36 @@ test.beforeAll(async () => {
   bundle = fs.readFileSync(path.join(outputPath, "fixture.js"), "utf8");
 });
 
+test("public profile setup fixture shares expanded and compact progress without extra status reads", async ({ page }, testInfo) => {
+  let statusReads = 0;
+  await page.route("**/onboarding-fixture", (route) => route.fulfill({
+    contentType: "text/html",
+    body: '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><div id="root"></div><script src="/library-fixture.js"></script>',
+  }));
+  await page.route("**/library-fixture.js", (route) => route.fulfill({ contentType: "text/javascript", body: bundle }));
+  await page.route("**/api/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    let body: unknown = { content: [] };
+    if (pathname === "/api/profile/profile/onboarding-status") {
+      statusReads++;
+      body = { personaCount: 1, itemCount: 1, sourcedItemCount: 0, connectionCount: 0 };
+    } else if (pathname === "/api/profile/profile/onboarding-preferences") body = {};
+    else if (pathname === "/api/profile/club-profile") body = [{ id: "persona-1", type: "CLUB" }];
+    await route.fulfill({ json: body });
+  });
+  await page.goto("/onboarding-fixture");
+  await expect(page.getByRole("progressbar", { name: "Profile setup" })).toHaveAttribute("aria-valuenow", "50");
+  await expect(page.getByText("2 of 4 foundations complete")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("profile-guide.png"), fullPage: true });
+  await page.getByRole("button", { name: "Show my wall now" }).click();
+  await expect(page.getByRole("button", { name: "Resume setup" })).toBeVisible();
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
+  expect(statusReads).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("profile-resume.png"), fullPage: true });
+});
+
 test("public Library guide fixture keeps plus hints visible, dismissible, and account progress cached", async ({
   page,
 }, testInfo) => {
@@ -102,6 +132,9 @@ test("public Library guide fixture keeps plus hints visible, dismissible, and ac
   });
   await page.goto("/library");
   await expect(page.getByText("7 of 8 topics learned")).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Library guide" })).toHaveAttribute("aria-valuenow", "88");
+  const topic = page.locator('[data-topic="proposal"]');
+  await expect(topic.locator(".onboarding-step-number")).toHaveText("4");
   await page.screenshot({
     path: testInfo.outputPath("library-guide.png"),
     fullPage: true,
@@ -113,6 +146,8 @@ test("public Library guide fixture keeps plus hints visible, dismissible, and ac
   ).toBe(true);
   await page.locator('a[href="/library/period/ancient"]').click();
   const plus = page.getByRole("button", { name: "Create source", exact: true });
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "88");
+  await expect(page.getByRole("button", { name: "Open Library guide" })).toBeVisible();
   await expect(plus).toBeVisible();
   // A pulsing target deliberately never meets Playwright's stable-element check.
   await plus.evaluate((button) => button.scrollIntoView({ block: "center" }));
@@ -203,4 +238,19 @@ test("public Library guide fixture keeps plus hints visible, dismissible, and ac
   await expect(page.getByText("7 of 8 topics learned")).toBeVisible();
   expect(reads).toBe(1);
   expect(progress.dismissedHints).toContain("proposal");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await page.locator(".onboarding-progress-track > span").evaluate((bar) => getComputedStyle(bar).transitionDuration)).toBe("0s");
+  const acknowledge = page.locator('[data-topic="proposal"]').getByRole("button", { name: "I already know this" });
+  await acknowledge.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  await expect(page.getByText(/Library guide complete/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Library guide" })).toBeFocused();
+  await expect.poll(() => writes).toBe(2);
+  expect(reads).toBe(1);
+  await page.reload();
+  await expect(page.getByText("8 of 8 topics learned")).toBeVisible();
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  expect(reads).toBe(2);
+  expect(writes).toBe(2);
 });

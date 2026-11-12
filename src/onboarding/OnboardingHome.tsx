@@ -17,6 +17,7 @@ import { getGroupItemsByIds, getProfileStash } from "../profile/stashApi";
 import type { Profile } from "../profile/profileTypes";
 import Spinner from "../component/Spinner";
 import WallPage from "../wall/WallPage";
+import OnboardingProgress from "./OnboardingProgress";
 
 import "./onboarding.css";
 
@@ -257,7 +258,7 @@ export default function OnboardingHome({ userId }: { userId: string }) {
         )}
         {!ready && (
           <section className="onboarding-resume mx-4 mx-xl-5 mt-4" aria-label="Setup progress">
-            <span>{completeSteps} of {steps.length} foundations complete</span>
+            <OnboardingProgress completed={completeSteps} total={steps.length} label="Profile setup" countLabel="foundations complete" compact status={loading ? "loading" : error ? "unavailable" : "ready"} />
             <Button variant="link" className="p-0" onClick={resumeGuide}>Resume setup</Button>
           </section>
         )}
@@ -283,12 +284,7 @@ export default function OnboardingHome({ userId }: { userId: string }) {
           members with the appropriate role can propose improvements, which
           are reviewed before publication.
         </p>
-        <div className="onboarding-progress-copy" aria-live="polite">
-          <strong>{completeSteps} of {steps.length}</strong> foundations complete
-        </div>
-        <div className="onboarding-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={completeSteps} aria-label={`${completeSteps} of ${steps.length} foundations complete`}>
-          <span style={{ width: `${(completeSteps / steps.length) * 100}%` }} />
-        </div>
+        <OnboardingProgress completed={completeSteps} total={steps.length} label="Profile setup" countLabel="foundations complete" />
         {status.partial && (
           <p className="onboarding-partial-status" role="status">
             Some setup details are still updating. Your completed work is safe;

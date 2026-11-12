@@ -16,6 +16,7 @@ import {
   getRoles,
 } from "../libraryRoles";
 import DismissibleCoachmark from "../../component/DismissibleCoachmark";
+import OnboardingProgress from "../../onboarding/OnboardingProgress";
 import {
   libraryLearningSnapshot,
   loadLibraryLearning,
@@ -117,6 +118,7 @@ type JourneyContext = {
   viewer: LibraryViewer;
   refreshViewer: (viewer: LibraryViewer) => void;
   ready: boolean;
+  failed: boolean;
   hidden: boolean;
   learned: LibraryTopic[];
   dismissed: LibraryTopic[];
@@ -216,6 +218,7 @@ export function LibraryJourneyProvider({
         viewer,
         refreshViewer,
         ready: Boolean(snapshot?.ready),
+        failed: Boolean(snapshot?.failed),
         hidden,
         learned,
         dismissed,
@@ -308,32 +311,94 @@ export default function LibraryJourney({
 }) {
   const journey = useContext(Context);
   const [expanded, setExpanded] = useState(false);
+  const [roleNotice, setRoleNotice] = useState("");
+  const previousRole = useRef<{ userId: string; topics: LibraryTopic[] } | null>(null);
+  const guide = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const focusAfterLearning = useRef<LibraryTopic | "toggle" | null>(null);
   const libraryLanding = useLocation().pathname.replace(/\/+$/, "") === "/library";
   const steps = useMemo(
     () => librarySteps(journey?.viewer || null),
     [journey?.viewer],
   );
+  const userId = journey?.viewer?.userId;
+  const learned = journey?.learned;
+  useEffect(() => {
+    setExpanded(false);
+    setRoleNotice("");
+  }, [userId]);
+  useEffect(() => {
+    if (!userId || !journey?.ready) return;
+    const previous = previousRole.current;
+    const topics = steps.map((step) => step.id);
+    if (previous?.userId === userId) {
+      const added = topics.filter((topic) => !previous.topics.includes(topic)).length;
+      if (added) setRoleNotice(`You have ${added} new contributor ${added === 1 ? "topic" : "topics"}. Your previous progress is saved.`);
+      else if (previous.topics.length !== topics.length) setRoleNotice("");
+    }
+    previousRole.current = { userId, topics };
+  }, [userId, journey?.ready, steps]);
+  useEffect(() => {
+    const topic = focusAfterLearning.current;
+    if (!topic) return;
+    focusAfterLearning.current = null;
+    const next = topic === "toggle" ? null : guide.current?.querySelector<HTMLButtonElement>(`[data-topic="${topic}"] button`);
+    (next || toggle.current)?.focus();
+  }, [learned]);
   if (!journey?.viewer) return null;
-  const { viewer, ready, hidden, learned } = journey;
+  const { viewer, ready, failed, hidden } = journey;
+  const completed = new Set(learned);
   const audience = libraryAudience(viewer);
-  const complete = steps.every((step) => learned.includes(step.id));
+  const complete = ready && steps.every((step) => completed.has(step.id));
+  const completeCount = steps.filter((step) => completed.has(step.id)).length;
   const shown = expanded || (!compact && ready && !hidden && !complete);
   const changeVisibility = (hide: boolean) => {
     updateLibraryLearning(viewer.userId, { audience, hidden: hide });
     setExpanded(!hide);
   };
+  const renderSteps = (isLearned: boolean) => (
+    <ol className="onboarding-steps library-journey-steps" aria-label={isLearned ? "Learned Library topics" : "Library topics to learn"}>
+      {steps.map((step, index) => ({ step, number: index + 1 }))
+        .filter(({ step }) => completed.has(step.id) === isLearned)
+        .map(({ step, number }) => (
+          <li key={step.id} value={number}>
+            <section data-topic={step.id} className={`onboarding-step library-journey-step${isLearned ? " onboarding-step-complete learned" : ""}`}>
+              <span className="onboarding-step-number" aria-hidden="true">{isLearned ? "✓" : number}</span>
+              <div>
+                <h2>{step.title}</h2>
+                <p>{step.copy}</p>
+              </div>
+              {isLearned ? <span className="onboarding-complete">Learned</span> : (
+                <div className="onboarding-step-actions">
+                  {step.to && !(step.id === "browse" && libraryLanding) && (
+                    <Link className="btn btn-outline-dark btn-sm" to={step.to}>{step.action}</Link>
+                  )}
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => {
+                    const next = steps.slice(number).find((candidate) => !completed.has(candidate.id))
+                      || steps.find((candidate) => candidate.id !== step.id && !completed.has(candidate.id));
+                    focusAfterLearning.current = next?.id || "toggle";
+                    updateLibraryLearning(viewer.userId, { learned: [step.id] });
+                  }}>
+                    {step.id === "workflow" || step.id === "overrides" ? "Got it" : "I already know this"}
+                  </button>
+                </div>
+              )}
+            </section>
+          </li>
+        ))}
+    </ol>
+  );
   return (
-    <aside className="library-journey mx-4 mx-xl-5" aria-label="Library guide">
+    <aside ref={guide} className="library-journey mx-4 mx-xl-5" aria-label="Library guide">
       <div className="library-journey-heading">
         <div>
           <strong>Library guide</strong>
           <span className="ms-2 text-muted small">
-            {ready
-              ? `${steps.filter((step) => learned.includes(step.id)).length} of ${steps.length} topics learned`
-              : "Learn at your own pace"}
+            {{ reader: "Reader", contributor: "Scribe", archivarius: "Archivarius", admin: "Admin" }[audience]}
           </span>
         </div>
         <button
+          ref={toggle}
           type="button"
           className="btn btn-link btn-sm"
           onClick={() => changeVisibility(shown)}
@@ -341,6 +406,9 @@ export default function LibraryJourney({
           {shown ? "Hide guide and hints" : "Open Library guide"}
         </button>
       </div>
+      <OnboardingProgress completed={completeCount} total={steps.length} label="Library guide" countLabel="topics learned" compact={!shown} status={ready ? "ready" : failed ? "unavailable" : "loading"} />
+      {roleNotice && <p className="library-journey-notice" role="status">{roleNotice}</p>}
+      {complete && !shown && <p className="library-journey-notice">Library guide complete. Reopen it whenever you need a reference.</p>}
       {shown && (
         <>
           <p className="library-journey-intro">
@@ -348,69 +416,14 @@ export default function LibraryJourney({
               ? "Explore public historical evidence. Request Scribe access on the Library page when you are ready to contribute."
               : "Propose → discuss and resolve tasks → independent approval → author publishes. Learn at your own pace; there is no need to create practice content."}
           </p>
-          <div className="library-journey-steps">
-            {steps
-              .filter((step) => !learned.includes(step.id))
-              .map((step) => (
-                <section
-                  key={step.id}
-                  className={
-                    learned.includes(step.id)
-                      ? "library-journey-step learned"
-                      : "library-journey-step"
-                  }
-                >
-                  <h2>
-                    {learned.includes(step.id) ? "✓ " : ""}
-                    {step.title}
-                  </h2>
-                  <p>{step.copy}</p>
-                  {!learned.includes(step.id) && (
-                    <div className="d-flex gap-2 flex-wrap align-items-center">
-                      {step.to && !(step.id === "browse" && libraryLanding) && (
-                        <Link
-                          className="btn btn-outline-dark btn-sm"
-                          to={step.to}
-                        >
-                          {step.action}
-                        </Link>
-                      )}
-                      <button
-                        className="btn btn-link btn-sm"
-                        onClick={() =>
-                          updateLibraryLearning(viewer.userId, {
-                            learned: [step.id],
-                          })
-                        }
-                      >
-                        {step.id === "workflow" || step.id === "overrides"
-                          ? "Got it"
-                          : "I already know this"}
-                      </button>
-                    </div>
-                  )}
-                </section>
-              ))}
-          </div>
-          {steps.some((step) => learned.includes(step.id)) && (
+          {renderSteps(false)}
+          {completeCount > 0 && (
             <details className="library-learned-topics mt-3">
               <summary>
                 Learned topics (
-                {steps.filter((step) => learned.includes(step.id)).length})
+                {completeCount})
               </summary>
-              <div className="library-journey-steps mt-2">
-                {steps
-                  .filter((step) => learned.includes(step.id))
-                  .map((step) => (
-                    <section
-                      className="library-journey-step learned"
-                      key={step.id}
-                    >
-                      <h2>✓ {step.title}</h2>
-                      <p>{step.copy}</p>
-                    </section>
-                  ))}
-              </div>
+              {renderSteps(true)}
             </details>
           )}
         </>

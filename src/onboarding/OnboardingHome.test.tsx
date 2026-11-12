@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import OnboardingHome from "./OnboardingHome";
@@ -64,6 +64,22 @@ test("shows the guided journey and does not treat an empty profile as ready", as
   expect(screen.getByText("0 of 4", { exact: false })).toBeInTheDocument();
   expect(screen.getAllByRole("link", { name: "Create a profile" })[0]).toHaveAttribute("href", "/profile?returnTo=%2F");
   expect(screen.queryByText("Your wall")).not.toBeInTheDocument();
+  expect(screen.getByRole("progressbar", { name: "Profile setup" })).toHaveAttribute("aria-valuenow", "0");
+});
+
+test("half-completed setup shares its percentage with the compact Wall resume control", async () => {
+  const api = jest.requireMock("../profile/profileApi") as Record<string, jest.Mock>;
+  api.getOnboardingStatus.mockResolvedValue({ personaCount: 1, itemCount: 1, sourcedItemCount: 0, connectionCount: 0, partial: true });
+  render(<MemoryRouter><OnboardingHome userId="half-setup" /></MemoryRouter>);
+  await screen.findByText("50% complete");
+  expect(screen.getByText(/Some setup details are still updating/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Show my wall now" }));
+  expect(screen.getByText("Your wall")).toBeInTheDocument();
+  expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
+  expect(screen.getByText("2 of 4 foundations complete")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Resume setup" }));
+  await screen.findByRole("heading", { name: "Bring your history to life" });
+  expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
 });
 
 test("hands an established member to the regular wall", async () => {

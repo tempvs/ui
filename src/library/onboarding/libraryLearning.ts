@@ -29,6 +29,7 @@ type Update = {
 type Entry = {
   progress: LearningProgress;
   ready: boolean;
+  failed?: boolean;
   read?: Promise<void>;
   pending: LibraryTopic[];
   dismissed: LibraryTopic[];
@@ -186,11 +187,13 @@ export function loadLibraryLearning(id: string): Promise<void> {
             );
       }
       current.ready = true;
+      current.failed = false;
       emit(id);
       schedule(id);
     } catch {
       // Do not show potentially stale hints when account progress cannot be read.
       current.ready = false;
+      current.failed = true;
       current.read = undefined;
       listeners.forEach((listener) => listener());
     }
