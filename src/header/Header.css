@@ -701,6 +701,16 @@
   font-size: 0.9rem;
 }
 
+.auth-account-dropdown .dropdown-item {
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.auth-account-dropdown .dropdown-item:hover,
+.auth-account-dropdown .dropdown-item:focus-visible {
+  background-color: #f5f7f4;
+  box-shadow: 0 0.15rem 0.45rem rgba(31, 38, 35, 0.12);
+}
+
 .Header .auth-account-logout.btn {
   width: 100%;
   justify-content: flex-start;
