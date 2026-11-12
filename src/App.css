@@ -573,16 +573,15 @@ h3 {
   white-space: nowrap;
 }
 
-/* A club profile's two compact historical fields deliberately behave as one
-   row. The parent profile layout gives this row six grid columns; below the
-   tablet breakpoint it may wrap rather than overflow the viewport. */
+/* Period labels include date ranges; allow the exact-year fields to wrap
+   when the combined controls need more room. */
 .profile-period-years-row {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .profile-period-years-row > div,
 .profile-years-field {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 

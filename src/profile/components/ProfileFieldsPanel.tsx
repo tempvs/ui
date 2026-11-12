@@ -247,7 +247,7 @@ export default function ProfileFieldsPanel({
                 })),
               ]}
               className="mb-0"
-              fieldMaxWidth="8.5rem"
+              fieldMaxWidth="24rem"
               labelWidth="auto"
               savingTitle={t("profile.status.saving", "Saving")}
               errorTitle={t("profile.status.saveFailed", "Save failed")}

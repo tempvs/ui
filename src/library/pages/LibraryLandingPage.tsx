@@ -188,7 +188,10 @@ export default function LibraryLandingPage() {
               </h1>
               <p className="text-muted small mb-0">
                 Browse the catalogue by era, then drill into individual sources
-                and their image gallery.
+                and their image gallery. Date ranges are approximate and some
+                historical transitions overlap. These browsing categories follow
+                mainly European conventions; use each record’s specific years
+                for precise dating.
               </p>
             </div>
             <Row className="g-3">

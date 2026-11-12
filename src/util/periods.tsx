@@ -8,9 +8,11 @@ export const PERIODS = [
   'EARLY_MIDDLE_AGES',
   'HIGH_MIDDLE_AGES',
   'LATE_MIDDLE_AGES',
+  // Keep the persisted identifier and Library URLs for the Early modern category.
   'RENAISSANCE',
   'MODERN',
   'WWI',
+  'INTERWAR',
   'WWII',
   'CONTEMPORARY',
   'OTHER',

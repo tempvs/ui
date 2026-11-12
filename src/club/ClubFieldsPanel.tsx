@@ -122,7 +122,7 @@ export default function ClubFieldsPanel({
             onBlur={() => onBlur("period")}
             status={statuses.period}
             className="mb-0"
-            fieldMaxWidth="10rem"
+            fieldMaxWidth="24rem"
             labelWidth="auto"
             savingTitle="Saving"
             errorTitle="Save failed"

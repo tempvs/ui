@@ -2,11 +2,13 @@ import React from "react";
 import {
   act,
   fireEvent,
-  render,
+  render as renderWithTestingLibrary,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
+import { IntlProvider } from "react-intl";
+import messages from "../translations/en.json";
 
 import { getViewer } from "../auth/viewerApi";
 import MapPage from "./MapPage";
@@ -21,6 +23,14 @@ import {
 import { loadOwnedMapContent, loadSharedMapScope } from "./ownedMapContent";
 
 const mockMapRender = jest.fn();
+
+function render(element: React.ReactElement) {
+  return renderWithTestingLibrary(
+    <IntlProvider locale="en" messages={messages}>
+      {element}
+    </IntlProvider>,
+  );
+}
 
 jest.mock("../auth/viewerApi", () => ({
   getViewer: jest.fn(),
@@ -159,10 +169,10 @@ test("starts with empty temporal filters", () => {
   expect(
     screen.queryByRole("combobox", { name: "Period" }),
   ).not.toBeInTheDocument();
-  expect(screen.getAllByRole("checkbox", { name: "Antiquity" })).toHaveLength(
+  expect(screen.getAllByRole("checkbox", { name: "Classical antiquity (c. 900 BC–AD 500)" })).toHaveLength(
     1,
   );
-  expect(screen.getByRole("checkbox", { name: "Antiquity" })).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Classical antiquity (c. 900 BC–AD 500)" })).not.toBeChecked();
   expect(
     screen.getByRole("checkbox", { name: "Enable period filter" }),
   ).not.toBeChecked();

@@ -1,10 +1,12 @@
 import React from "react";
 import { Form } from "react-bootstrap";
+import { useIntl } from "react-intl";
 
 import HistoricalRangeFilter, {
   type HistoricalYearInput,
 } from "../component/HistoricalRangeFilter";
 import { PERIODS, TYPES } from "../library/libraryShared";
+import { getPeriodLabel } from "../util/periods";
 import type { MapEntityLocation, SourceLocationRole } from "./mapApi";
 
 type Props = {
@@ -279,6 +281,7 @@ function PeriodFilter({
   open: boolean;
   onToggle: () => void;
 }) {
+  const intl = useIntl();
   return (
     <div className="map-period-filter-row">
       <Form.Check
@@ -305,7 +308,7 @@ function PeriodFilter({
             <Form.Check
               key={period}
               id={`${idPrefix}-period-${period}`}
-              label={readable(period)}
+              label={getPeriodLabel(intl, period)}
               checked={periods.includes(period)}
               onChange={() => onChange(toggle(periods, period))}
             />

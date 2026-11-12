@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import PageLayout from "../../component/PageLayout";
@@ -13,7 +14,7 @@ import type { MapPlace } from "../../map/mapApi";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
-import { PERIODS } from "../../util/periods";
+import { getPeriodLabel, PERIODS } from "../../util/periods";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
@@ -144,6 +145,7 @@ function isRangeValid(draft: Draft) {
 
 /** Explicit source edit flow. It deliberately creates one reviewable changeset. */
 export default function LibrarySourceEditPage() {
+  const intl = useIntl();
   const { sourceId } = useParams();
   const [searchParams] = useSearchParams();
   const selectedChangesetId = searchParams.get("changeset");
@@ -649,7 +651,7 @@ export default function LibrarySourceEditPage() {
                   <option value="">Choose period</option>
                   {PERIODS.map((period) => (
                     <option key={period} value={period}>
-                      {period.replaceAll("_", " ")}
+                      {getPeriodLabel(intl, period)}
                     </option>
                   ))}
                 </Form.Select>

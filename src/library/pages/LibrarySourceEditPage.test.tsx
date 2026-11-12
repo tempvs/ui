@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import LibrarySourceEditPage from "./LibrarySourceEditPage";
+import messages from "../../translations/en.json";
 
 jest.mock(
   "../../component/PageLayout",
@@ -66,7 +67,7 @@ test.each(["PENDING", "APPROVED"])(
       },
     });
     render(
-      <IntlProvider locale="en">
+      <IntlProvider locale="en" messages={messages}>
         <MemoryRouter
           initialEntries={[
             "/library/source/source-1/edit?changeset=proposal-1",
@@ -89,6 +90,15 @@ test.each(["PENDING", "APPROVED"])(
       "/library/source/source-1/changesets/proposal-1",
     );
     expect(screen.getByText("Edit proposal")).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Modern / pre-WWI (c. 1700–1914)" }),
+    ).toHaveValue("MODERN");
+    expect(
+      screen.getByRole("option", { name: "Early modern (c. 1500–1700)" }),
+    ).toHaveValue("RENAISSANCE");
+    expect(
+      screen.getByRole("option", { name: "Interwar (1918–1939)" }),
+    ).toHaveValue("INTERWAR");
     expect(
       screen.getByText(/You are editing an existing proposal/),
     ).toBeInTheDocument();
