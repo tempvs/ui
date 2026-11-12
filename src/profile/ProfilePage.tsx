@@ -292,7 +292,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
           clubProfilesLoaded: true,
           clubProfilesMessage: this.t(
             "profile.clubProfiles.loadFailed",
-            "Unable to load club profiles.",
+            "Unable to load reenactment profiles.",
           ),
         }),
       );
@@ -1629,7 +1629,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
               getPeriodLabel={this.getPeriodLabel.bind(this)}
               emptyLabel={this.t(
                 "profile.clubProfiles.noneOther",
-                "No other club profiles",
+                "No other reenactment profiles",
               )}
             />
           ) : (

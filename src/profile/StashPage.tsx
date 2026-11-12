@@ -166,7 +166,7 @@ function StashPage({ intl }: StashPageProps) {
                   id: "stash-club-profile-switcher",
                   emptyLabel: t(
                     "profile.clubProfiles.noneOther",
-                    "No other club profiles",
+                    "No other reenactment profiles",
                   ),
                   items: siblingClubProfiles.map((clubProfile) => ({
                     key: clubProfile.id,

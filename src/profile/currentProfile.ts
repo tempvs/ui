@@ -102,7 +102,7 @@ export function buildOwnedProfileOptions(userProfile: Profile | null, clubProfil
 
     options.push({
       value: toProfileValue(profile.id),
-      label: buildProfileLabel(profile, 'Club profile'),
+      label: buildProfileLabel(profile, 'Reenactment profile'),
       path: `/profile/${profile.id}`,
       profile,
     });

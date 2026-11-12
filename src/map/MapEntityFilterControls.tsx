@@ -195,7 +195,11 @@ export default function MapEntityFilterControls({
                                     inline
                                     key={profileType}
                                     id={`${idPrefix}-profile-type-${profileType}`}
-                                    label={readable(profileType)}
+                                    label={
+                                      profileType === "CLUB"
+                                        ? "Reenactment profile"
+                                        : readable(profileType)
+                                    }
                                     checked={profileTypes.includes(profileType)}
                                     onChange={() =>
                                       onProfileTypesChange(

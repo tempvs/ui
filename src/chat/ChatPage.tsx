@@ -98,7 +98,7 @@ function toPromiseClubProfiles(userId: string) {
   return new Promise<Profile[]>((resolve, reject) => {
     fetchClubProfiles(userId, {
       onSuccess: (profiles) => resolve(Array.isArray(profiles) ? profiles : []),
-      onError: () => reject(new Error("Unable to load club profiles")),
+      onError: () => reject(new Error("Unable to load reenactment profiles")),
     });
   });
 }

@@ -264,7 +264,7 @@ export default function ProfileFieldsPanel({
                 availableTitle="Use the year range of a club this profile belongs to"
                 unavailableTitle="None of this profile's clubs has a year range yet"
                 dialogTitle="Choose a club year range"
-                dialogDescription="This club profile belongs to more than one club with a year range. Choose the club whose years it should use."
+                dialogDescription="This reenactment profile belongs to more than one club with a year range. Choose the club whose years it should use."
                 renderDetail={(club) =>
                   formatHistoricalRange(club.from || null, club.to || null)
                 }

@@ -105,7 +105,7 @@ export default function StashItemAdminPage() {
         <Alert variant="danger" className="mt-3">{error}</Alert>
       ) : !canManage ? (
         <Alert variant="danger" className="mt-3">
-          Item administration is available only to the owner of this club profile.
+          Item administration is available only to the owner of this reenactment profile.
         </Alert>
       ) : (
         <section className="club-panel mt-3">

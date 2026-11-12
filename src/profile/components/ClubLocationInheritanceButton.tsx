@@ -20,7 +20,7 @@ export default function ClubLocationInheritanceButton({
   availableTitle = "Use the location of a club this profile belongs to",
   unavailableTitle = "None of this profile's clubs has a location yet",
   dialogTitle = "Choose a club location",
-  dialogDescription = "This club profile belongs to more than one club. Choose the club whose location it should use.",
+  dialogDescription = "This reenactment profile belongs to more than one club. Choose the club whose location it should use.",
   renderDetail = (club) => club.location,
 }: {
   profileId: string;

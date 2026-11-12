@@ -167,7 +167,7 @@ test("starts with empty temporal filters", () => {
     screen.getByRole("checkbox", { name: "Enable period filter" }),
   ).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: "User" })).toBeChecked();
-  expect(screen.getByRole("checkbox", { name: "Club" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Reenactment profile" })).toBeChecked();
   expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
   expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue("");
 });

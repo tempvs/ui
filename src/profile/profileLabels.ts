@@ -13,7 +13,7 @@ export function buildProfileLabel(profile: ProfileLabelSource): string {
 export function buildClubProfileLabel(
   profile: ProfileLabelSource,
   getPeriodLabel: PeriodLabelResolver,
-  fallback = 'Club profile'
+  fallback = 'Reenactment profile'
 ): string {
   const baseLabel = buildProfileLabel(profile) || fallback;
   return profile?.period ? `${baseLabel} (${getPeriodLabel(profile.period)})` : baseLabel;

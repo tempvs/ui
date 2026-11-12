@@ -25,11 +25,11 @@ test('clubs page renders the older array response instead of crashing', async ()
 
 test.each(['', 'null', '<!doctype html><html>UI fallback</html>'])('invalid club response %p does not blank the profile', async body => {
   jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, text: async () => body } as Response);
-  wrap(<><h1>Club profile</h1><ProfileClubPanel profileId={5} editable /></>);
+  wrap(<><h1>Reenactment profile</h1><ProfileClubPanel profileId={5} editable /></>);
   const panel = await screen.findByRole('region', { name: 'Clubs' });
   await waitFor(() => expect(panel).toHaveClass('club-service-unavailable'));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Club profile' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Reenactment profile' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Join club' })).not.toBeInTheDocument();
 });
 

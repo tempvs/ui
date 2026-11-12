@@ -38,13 +38,13 @@ function StashAdminPage() {
       },
       onMissing: () => {
         if (!active) return;
-        setError("Club profile not found.");
+        setError("Reenactment profile not found.");
         setProfile(null);
         setLoading(false);
       },
       onError: () => {
         if (!active) return;
-        setError("Unable to load this club profile.");
+        setError("Unable to load this reenactment profile.");
         setProfile(null);
         setLoading(false);
       },
@@ -86,7 +86,7 @@ function StashAdminPage() {
   const profilePath = profile ? `/profile/${profile.alias || profile.id}` : `/profile/${id}`;
   const stashPath = profile ? `/stash/${profile.alias || profile.id}` : `/stash/${id}`;
   const label = profile
-    ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Club profile"
+    ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Reenactment profile"
     : "Owned items";
 
   const removeGroup = async () => {
@@ -131,7 +131,7 @@ function StashAdminPage() {
         <Alert variant="danger" className="mt-3">{error}</Alert>
       ) : !canManage ? (
         <Alert variant="danger" className="mt-3">
-          Stash management is available only to the owner of a club profile.
+          Stash management is available only to the owner of a reenactment profile.
         </Alert>
       ) : (
         <section className="club-panel mt-3">

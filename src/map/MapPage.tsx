@@ -1264,7 +1264,7 @@ export default function MapPage() {
                   <Form.Check
                     key={marker.entityId}
                     id={`map-profile-${marker.entityId}`}
-                    label={`${marker.profileType === "CLUB" ? "Club profile" : "User profile"}: ${marker.label}`}
+                    label={`${marker.profileType === "CLUB" ? "Reenactment profile" : "User profile"}: ${marker.label}`}
                     checked={!hiddenProfileIds.includes(marker.entityId)}
                     onChange={(event) => {
                       const next = event.target.checked

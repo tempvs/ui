@@ -59,7 +59,7 @@ export default function ProfileAdminPage() {
       String(profile.userId) === String(viewerId),
   );
   const label = profile
-    ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Club profile"
+    ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Reenactment profile"
     : "Profile";
 
   const remove = async () => {
@@ -103,7 +103,7 @@ export default function ProfileAdminPage() {
         <Alert variant="danger" className="mt-3">{error}</Alert>
       ) : !canManage ? (
         <Alert variant="danger" className="mt-3">
-          Profile administration is available only to the owner of a club profile.
+          Profile administration is available only to the owner of a reenactment profile.
         </Alert>
       ) : (
         <section className="club-panel mt-3">
@@ -116,7 +116,7 @@ export default function ProfileAdminPage() {
           <div className="border-top pt-3 mt-4">
             <h2 className="h6">Danger zone</h2>
             <p className="text-muted small">
-              Deleting this club profile does not delete your user account or other profiles.
+              Deleting this reenactment profile does not delete your user account or other profiles.
             </p>
             <Button
               variant="outline-danger"
@@ -130,8 +130,8 @@ export default function ProfileAdminPage() {
       )}
       <ConfirmationModal
         show={confirmingDelete}
-        title="Delete club profile"
-        message="Are you sure you want to delete this club profile? This cannot be undone."
+        title="Delete reenactment profile"
+        message="Are you sure you want to delete this reenactment profile? This cannot be undone."
         confirmLabel="Delete profile"
         busy={deleting}
         onHide={() => {

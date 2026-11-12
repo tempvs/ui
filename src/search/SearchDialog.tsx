@@ -72,7 +72,7 @@ const TimesIcon = FaTimes as React.ComponentType<{ className?: string }>;
 
 function getProfileTypeLabel(profileType: string | null | undefined) {
   if (profileType === "CLUB") {
-    return "Club";
+    return "Reenactment profile";
   }
 
   if (profileType === "USER") {
@@ -998,7 +998,7 @@ export default function SearchDialog() {
                               <Form.Check
                                 type="checkbox"
                                 id="profile-type-club"
-                                label="Club"
+                                label="Reenactment profile"
                                 checked={selectedProfileTypes.includes("CLUB")}
                                 onChange={() =>
                                   handleToggle(

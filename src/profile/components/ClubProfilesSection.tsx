@@ -66,7 +66,7 @@ export default function ClubProfilesSection({
       <p className="profile-entry-copy">
         {t(
           "profile.clubProfile.create.subtitle",
-          "Create a club profile with its own name, alias, and period.",
+          "Create a reenactment profile with its own name, alias, and period.",
         )}
       </p>
       <div className="profile-entry-grid">
@@ -124,7 +124,7 @@ export default function ClubProfilesSection({
         <div className="tempvs-plain-message profile-entry-message profile-entry-message-error">
           {t(
             "profile.clubProfile.create.failed",
-            "Unable to create club profile right now.",
+            "Unable to create reenactment profile right now.",
           )}
         </div>
       ) : null}
@@ -134,7 +134,7 @@ export default function ClubProfilesSection({
           variant="secondary"
           type="submit"
         >
-          {t("profile.clubProfile.create.submit", "Create club profile")}
+          {t("profile.clubProfile.create.submit", "Create reenactment profile")}
         </Button>
       </div>
     </>
@@ -145,7 +145,7 @@ export default function ClubProfilesSection({
         {t("profile.clubProfile.delete.confirm", "Delete {name}?", {
           name:
             clubProfileName ||
-            t("profile.clubProfile.delete.fallbackName", "this club profile"),
+            t("profile.clubProfile.delete.fallbackName", "this reenactment profile"),
         })}
       </p>
       {clubProfileDeleteError ? (
@@ -166,7 +166,7 @@ export default function ClubProfilesSection({
           variant="danger"
           onClick={onDelete}
         >
-          {t("profile.clubProfile.delete.submit", "Delete club profile")}
+          {t("profile.clubProfile.delete.submit", "Delete reenactment profile")}
         </Button>
       </div>
     </>
@@ -179,12 +179,12 @@ export default function ClubProfilesSection({
           <div className="profile-club-section-header">
             <div>
               <h4 className="profile-club-section-title">
-                {t("profile.clubProfiles.title", "Club profiles")}
+                {t("profile.clubProfiles.title", "Reenactment profiles")}
               </h4>
               <p className="profile-club-section-copy">
                 {t(
                   "profile.clubProfiles.subtitle",
-                  "Keep separate club identities ready for each period.",
+                  "Keep separate reenactment identities ready for each period.",
                 )}
               </p>
             </div>
@@ -198,7 +198,7 @@ export default function ClubProfilesSection({
                   onClick={onShowCreate}
                   title={t(
                     "profile.clubProfile.create.title",
-                    "Create club profile",
+                    "Create reenactment profile",
                   )}
                 />
               </DismissibleCoachmark>
@@ -212,7 +212,7 @@ export default function ClubProfilesSection({
           )}
           {clubProfilesLoaded && showEmptyMessage && (
             <div className="profile-club-empty">
-              {t("profile.clubProfiles.empty", "No club profiles yet.")}
+              {t("profile.clubProfiles.empty", "No reenactment profiles yet.")}
             </div>
           )}
           {clubProfilesLoaded && visibleClubProfiles.length > 0 && (
@@ -233,10 +233,10 @@ export default function ClubProfilesSection({
         <Modal.Header closeButton className="profile-entry-modal-header">
           <div className="profile-entry-modal-title-block">
             <span className="profile-entry-modal-kicker">
-              {t("profile.clubProfile.kicker", "Club profile")}
+              {t("profile.clubProfile.kicker", "Reenactment profile")}
             </span>
             <Modal.Title className="profile-entry-modal-title">
-              {t("profile.clubProfile.create.title", "Create club profile")}
+              {t("profile.clubProfile.create.title", "Create reenactment profile")}
             </Modal.Title>
           </div>
         </Modal.Header>
@@ -262,7 +262,7 @@ export default function ClubProfilesSection({
               {t("profile.clubProfile.delete.kicker", "Delete")}
             </span>
             <Modal.Title className="profile-entry-modal-title">
-              {t("profile.clubProfile.delete.title", "Delete club profile")}
+              {t("profile.clubProfile.delete.title", "Delete reenactment profile")}
             </Modal.Title>
           </div>
         </Modal.Header>

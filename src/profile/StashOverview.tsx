@@ -2242,7 +2242,7 @@ export default function StashOverview({
             <div className="small text-muted">
               {t(
                 "profile.stash.itemPeriodInherited",
-                "Period is inherited from the club profile",
+                "Period is inherited from the reenactment profile",
               )}
               : {getPeriodLabel(profile?.period)}
             </div>

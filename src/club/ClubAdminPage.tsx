@@ -380,7 +380,7 @@ export default function ClubAdminPage() {
                   <p className="text-muted">
                     {t(
                       "adminHint",
-                      "Choose a club profile from this period. Its owner becomes a club administrator.",
+                      "Choose a reenactment profile from this period. Its owner becomes a club administrator.",
                     )}
                   </p>
                   <ProfilePicker

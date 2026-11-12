@@ -993,14 +993,14 @@ export default function ClubPage() {
           <p className="text-muted">
             {t(
               "manageClubMembership",
-              "Manage membership for each of your club profiles.",
+              "Manage membership for each of your reenactment profiles.",
             )}
           </p>
           {ownedClubProfiles.length === 0 && (
             <p>
               {t(
                 "noClubProfilesToApply",
-                "Create a club profile before applying for membership.",
+                "Create a reenactment profile before applying for membership.",
               )}
             </p>
           )}
