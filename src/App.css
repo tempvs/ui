@@ -61,14 +61,6 @@ html {
   50% { transform: scale(1.08); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .coachmark-anchor--visible :is(a, button, input, select, textarea) {
-    animation: none;
-    outline: 2px solid rgba(154, 106, 25, 0.65);
-    outline-offset: 2px;
-  }
-}
-
 .dismissible-coachmark {
   position: fixed;
   /* Coachmarks are rendered through a portal and must remain above the fixed
@@ -82,9 +74,9 @@ html {
   max-width: calc(100vw - 2rem);
   min-height: 0;
   padding: 0.65rem 2.15rem 0.65rem 0.85rem;
-  border: 1px solid rgba(125, 94, 47, 0.55);
+  border: 1px solid transparent;
   border-radius: 0.9rem !important;
-  background: #fffefd;
+  isolation: isolate;
   color: #49391f;
   font-size: 0.88rem;
   font-weight: 600;
@@ -93,18 +85,36 @@ html {
   white-space: normal;
   overflow: visible;
   overflow-wrap: anywhere;
-  box-shadow: 0 0.35rem 1rem rgba(55, 43, 22, 0.18);
   /* A portal can overlap the action it points to. A hint must never consume
      a navigation tap; only its explicit dismiss control is interactive. */
   pointer-events: none;
 }
 
-.dismissible-coachmark > span:first-child {
+.dismissible-coachmark-message {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.dismissible-coachmark::before {
+/* Animate only the decorative frame. Message layout and the dismiss action
+   stay fixed while the frame shrinks as its target button grows. */
+.dismissible-coachmark-frame {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border: 1px solid rgba(125, 94, 47, 0.55);
+  border-radius: inherit !important;
+  background: #fffefd;
+  box-shadow: 0 0.35rem 1rem rgba(55, 43, 22, 0.18);
+  animation: coachmark-frame-pulse 1.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes coachmark-frame-pulse {
+  0%, 100% { transform: scale(1.025); }
+  50% { transform: scale(1); }
+}
+
+.dismissible-coachmark-frame::before {
   position: absolute;
   top: calc(var(--coachmark-pointer-top) - 0.75rem);
   width: 0;
@@ -112,7 +122,7 @@ html {
   content: "";
 }
 
-.dismissible-coachmark::after {
+.dismissible-coachmark-frame::after {
   position: absolute;
   top: calc(var(--coachmark-pointer-top) - 0.58rem);
   width: 0;
@@ -120,35 +130,47 @@ html {
   content: "";
 }
 
-.dismissible-coachmark--right::before {
+.dismissible-coachmark--right .dismissible-coachmark-frame {
+  transform-origin: 0 var(--coachmark-pointer-top);
+}
+
+.dismissible-coachmark--right .dismissible-coachmark-frame::before {
   left: -0.82rem;
   border-top: 0.75rem solid transparent;
   border-right: 0.82rem solid rgba(125, 94, 47, 0.72);
   border-bottom: 0.75rem solid transparent;
 }
 
-.dismissible-coachmark--right::after {
+.dismissible-coachmark--right .dismissible-coachmark-frame::after {
   left: -0.66rem;
   border-top: 0.58rem solid transparent;
   border-right: 0.66rem solid #fffefd;
   border-bottom: 0.58rem solid transparent;
 }
 
-.dismissible-coachmark--left::before {
+.dismissible-coachmark--left .dismissible-coachmark-frame {
+  transform-origin: 100% var(--coachmark-pointer-top);
+}
+
+.dismissible-coachmark--left .dismissible-coachmark-frame::before {
   right: -0.82rem;
   border-top: 0.75rem solid transparent;
   border-bottom: 0.75rem solid transparent;
   border-left: 0.82rem solid rgba(125, 94, 47, 0.72);
 }
 
-.dismissible-coachmark--left::after {
+.dismissible-coachmark--left .dismissible-coachmark-frame::after {
   right: -0.66rem;
   border-top: 0.58rem solid transparent;
   border-bottom: 0.58rem solid transparent;
   border-left: 0.66rem solid #fffefd;
 }
 
-.dismissible-coachmark--below::before {
+.dismissible-coachmark--below .dismissible-coachmark-frame {
+  transform-origin: var(--coachmark-pointer-left) 0;
+}
+
+.dismissible-coachmark--below .dismissible-coachmark-frame::before {
   top: -0.82rem;
   left: calc(var(--coachmark-pointer-left) - 0.75rem);
   border-right: 0.75rem solid transparent;
@@ -156,7 +178,7 @@ html {
   border-left: 0.75rem solid transparent;
 }
 
-.dismissible-coachmark--below::after {
+.dismissible-coachmark--below .dismissible-coachmark-frame::after {
   top: -0.66rem;
   left: calc(var(--coachmark-pointer-left) - 0.58rem);
   border-right: 0.58rem solid transparent;
@@ -182,6 +204,19 @@ html {
   font-size: 0.75rem;
   line-height: 1;
   pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coachmark-anchor--visible :is(a, button, input, select, textarea) {
+    animation: none;
+    outline: 2px solid rgba(154, 106, 25, 0.65);
+    outline-offset: 2px;
+  }
+
+  .dismissible-coachmark-frame {
+    animation: none;
+    transform: none;
+  }
 }
 
 .page-columns {

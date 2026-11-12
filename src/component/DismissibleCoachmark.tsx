@@ -177,7 +177,8 @@ export default function DismissibleCoachmark({
             } as React.CSSProperties}
             role="status"
           >
-            <span>{message}</span>
+            <span className="dismissible-coachmark-frame" aria-hidden="true" />
+            <span className="dismissible-coachmark-message">{message}</span>
             <button type="button" onClick={close} aria-label="Dismiss hint" title="Dismiss hint">
               <CloseIcon aria-hidden />
             </button>

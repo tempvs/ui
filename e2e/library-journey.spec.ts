@@ -127,6 +127,45 @@ test("public Library guide fixture keeps plus hints visible, dismissible, and ac
   expect(
     await plus.evaluate((button) => getComputedStyle(button).animationName),
   ).toBe("coachmark-attention-pulse");
+  const pulse = await plus.evaluate((button) => {
+    const tooltip = document.querySelector(".dismissible-coachmark")!;
+    const frame = tooltip.querySelector(".dismissible-coachmark-frame")!;
+    const message = tooltip.querySelector(".dismissible-coachmark-message")!;
+    const close = tooltip.querySelector("button")!;
+    const buttonAnimation = button.getAnimations()[0];
+    const frameAnimation = frame.getAnimations()[0];
+    const startDifference = Math.abs(
+      Number(buttonAnimation.startTime) - Number(frameAnimation.startTime),
+    );
+    const duration = Number(buttonAnimation.effect!.getTiming().duration);
+    buttonAnimation.pause();
+    frameAnimation.pause();
+    const samples = [0, duration / 2].map((time) => {
+      buttonAnimation.currentTime = time;
+      frameAnimation.currentTime = time;
+      return {
+        buttonScale: new DOMMatrix(getComputedStyle(button).transform).a,
+        frameScale: new DOMMatrix(getComputedStyle(frame).transform).a,
+        message: message.getBoundingClientRect().toJSON(),
+        close: close.getBoundingClientRect().toJSON(),
+        frame: frame.getBoundingClientRect().toJSON(),
+      };
+    });
+    return { startDifference, samples };
+  });
+  expect(pulse.startDifference).toBeLessThan(1);
+  expect(pulse.samples[0].buttonScale).toBeLessThan(
+    pulse.samples[1].buttonScale,
+  );
+  expect(pulse.samples[0].frameScale).toBeGreaterThan(
+    pulse.samples[1].frameScale,
+  );
+  expect(pulse.samples[0].message).toEqual(pulse.samples[1].message);
+  expect(pulse.samples[0].close).toEqual(pulse.samples[1].close);
+  for (const sample of pulse.samples) {
+    expect(sample.frame.left).toBeGreaterThanOrEqual(0);
+    expect(sample.frame.right).toBeLessThanOrEqual(page.viewportSize()!.width);
+  }
   const box = await hint.boundingBox();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
@@ -134,6 +173,23 @@ test("public Library guide fixture keeps plus hints visible, dismissible, and ac
     path: testInfo.outputPath("library-plus-hint.png"),
     fullPage: true,
   });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await hint
+      .locator(".dismissible-coachmark-frame")
+      .evaluate((frame) => getComputedStyle(frame).animationName),
+  ).toBe("none");
+  expect(
+    await plus.evaluate((button) => getComputedStyle(button).animationName),
+  ).toBe("none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect
+    .poll(() =>
+      hint
+        .locator(".dismissible-coachmark-frame")
+        .evaluate((frame) => getComputedStyle(frame).animationName),
+    )
+    .toBe("coachmark-frame-pulse");
   await page.getByRole("button", { name: "Dismiss hint" }).click();
   await expect(hint).toHaveCount(0);
   expect(
