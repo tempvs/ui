@@ -803,6 +803,7 @@ function StashItemPage({ intl }: StashItemPageProps) {
               previewSize="default"
               mode="multiple"
               editable={isEditable}
+              disabled={imageUploading}
               onAddImage={
                 isEditable ? () => setImageUploadVisible(true) : undefined
               }

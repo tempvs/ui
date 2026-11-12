@@ -99,6 +99,7 @@ export default function MultiImageFilePicker({
                       },
                     ]}
                     editable
+                    disabled={disabled}
                     editableDescription={false}
                     showComments={false}
                     onDeleteImage={() => removeFile(index)}

@@ -115,7 +115,8 @@ export default function ClubPhotoPanel({
         title={club.name}
         imageClassName="club-detail-photo"
         emptyText={t("photoEmpty", "No club photo yet.")}
-        editable={club.canManage && !busy}
+        editable={club.canManage}
+        disabled={busy}
         onUploadImage={club.canManage ? () => openPicker() : undefined}
         onReplaceImage={
           club.canManage ? openPicker : undefined

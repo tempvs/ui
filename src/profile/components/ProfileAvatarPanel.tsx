@@ -70,12 +70,12 @@ export default function ProfileAvatarPanel({
             )}
             title={t("profile.avatar.title", "Profile picture")}
             editable={isEditable}
-            onAddImage={
+            disabled={!avatarLoaded || avatarUploadStatus === "uploading"}
+            onUploadImage={
               isEditable && avatarLoaded
-                ? () => onOpenFilePicker?.()
+                ? onOpenFilePicker
                 : undefined
             }
-            canAddImage={false}
             onReplaceImage={isEditable ? (image) => onReplaceImage?.(image) : undefined}
             onDeleteImage={isEditable ? (imageId) => onDelete?.(imageId) : undefined}
             imageDrafts={avatarImageDrafts}

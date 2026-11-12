@@ -82,7 +82,8 @@ export default function EventPhotoPanel({
         images={galleryImages}
         title={name}
         emptyText="No event picture yet."
-        editable={editable && !busy}
+        editable={editable}
+        disabled={busy}
         onUploadImage={editable ? openPicker : undefined}
         onReplaceImage={editable ? openPicker : undefined}
         onDeleteImage={editable ? remove : undefined}

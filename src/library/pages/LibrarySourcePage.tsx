@@ -477,6 +477,9 @@ export default function LibrarySourcePage() {
             key={`album-${source.id}`}
             images={albumImages}
             title="Source photo album"
+            editable={canEdit}
+            editableDescription={false}
+            onAddImage={() => navigate(`/library/source/${source.id}/edit`)}
             emptyText="No photos in this album yet."
             previewSize="compact"
             wrapperClassName="source-image-gallery"

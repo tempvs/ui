@@ -459,7 +459,9 @@ export default function PhotoAlbumsPanel({
                   resourceId: selected.id,
                 }))}
                 title={selected.name}
-                editable={editable && !busy}
+                editable={editable}
+                disabled={busy}
+                editableDescription={editable && !busy}
                 onAddImage={
                   editable
                     ? () => {

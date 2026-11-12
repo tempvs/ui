@@ -922,8 +922,12 @@ test("managers upload a club photo and see the saved image", async () => {
   wrap(
     <ClubPhotoPanel club={{ ...club, canManage: true }} onChange={onChange} />,
   );
+  const input = screen.getByLabelText("Upload club photo");
+  const openPicker = jest.spyOn(input, "click");
+  fireEvent.click(screen.getByRole("button", { name: "Upload image" }));
+  expect(openPicker).toHaveBeenCalledTimes(1);
   const file = new File(["photo"], "club.png", { type: "image/png" });
-  fireEvent.change(screen.getByLabelText("Upload club photo"), {
+  fireEvent.change(input, {
     target: { files: [file] },
   });
   await waitFor(() =>
@@ -953,6 +957,7 @@ test("photo uploads reject unsupported files and visitors cannot upload", async 
     "/photo",
   );
   expect(screen.queryByLabelText("Replace club photo")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Upload image|Replace image|Delete image/ })).not.toBeInTheDocument();
 });
 
 test("club search and profile tiles resolve migrated image IDs through the image API", async () => {

@@ -1603,6 +1603,7 @@ export default function StashOverview({
                         t("profile.stash.groupName", "Collection")
                       }
                       editable={isEditable}
+                      disabled={groupImageUploading}
                       onUploadImage={
                         isEditable
                           ? () => setGroupImageTarget(activeGroup)

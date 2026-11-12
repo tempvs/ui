@@ -30,14 +30,18 @@ type StackedImageGalleryProps = {
   previewSize?: "default" | "compact" | "inventory";
   mode?: "single" | "multiple";
   editable?: boolean;
+  /** Keep image actions visible but unavailable while a request is pending. */
+  disabled?: boolean;
   /** Allows metadata editing without exposing image upload/delete controls. */
   editableDescription?: boolean;
   onDeleteImage?: (
     imageId: GalleryImage["id"],
   ) => void | Promise<unknown>;
   onReplaceImage?: (image: GalleryImage) => void;
+  /** Add a picture to a multiple-image gallery, including its empty state. */
   onAddImage?: () => void;
   canAddImage?: boolean;
+  /** Upload the first picture in a single-image gallery. */
   onUploadImage?: () => void;
   emptyContent?: React.ReactNode;
   imageDrafts?: Record<string | number, string | undefined>;
@@ -82,6 +86,7 @@ export default function StackedImageGallery({
   previewSize = "default",
   mode = "multiple",
   editable = false,
+  disabled = false,
   editableDescription = editable,
   onDeleteImage,
   onReplaceImage,
@@ -205,6 +210,7 @@ export default function StackedImageGallery({
         <ImageOverlayActionButton
           className={`position-absolute top-0 start-0 m-3 stacked-image-gallery-image-action ${className}`.trim()}
           fontSize="0.9rem"
+          disabled={disabled}
           onClick={(event) => {
             event.stopPropagation();
             onReplaceImage(image);
@@ -220,6 +226,7 @@ export default function StackedImageGallery({
         <ConfirmingTrashButton
           className={`position-absolute top-0 end-0 m-3 stacked-image-gallery-image-action ${className}`.trim()}
           fontSize="0.9rem"
+          disabled={disabled}
           title={deleteTitle}
           confirmTitle={deleteConfirmTitle}
           confirmMessage={deleteConfirmMessage}
@@ -233,10 +240,11 @@ export default function StackedImageGallery({
   );
 
   const addImageAction =
-    !isSingle && canAddImage && onAddImage ? (
+    !isSingle && editable && canAddImage && onAddImage ? (
       <ImageOverlayActionButton
         className="position-absolute top-0 end-0 m-2 stacked-image-gallery-add-image"
         fontSize="0.9rem"
+        disabled={disabled}
         onClick={(event) => {
           event.stopPropagation();
           onAddImage();
@@ -254,6 +262,7 @@ export default function StackedImageGallery({
       <ImageOverlayActionButton
         className="position-absolute top-0 start-0 m-2"
         fontSize="0.9rem"
+        disabled={disabled}
         onClick={(event) => {
           event.stopPropagation();
           onUploadImage();
