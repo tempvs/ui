@@ -110,7 +110,7 @@ html {
 }
 
 @keyframes coachmark-frame-pulse {
-  0%, 100% { transform: scale(1.025); }
+  0%, 100% { transform: scale(1.025, 1.05); }
   50% { transform: scale(1); }
 }
 
