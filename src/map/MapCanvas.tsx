@@ -10,6 +10,7 @@ import {
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
 import { formatPlaceNameRange } from "./placeNames";
 import { closeMapPopup, showMapPopup } from "./mapPopups";
+import MapCanvasBoundary from "./MapCanvasBoundary";
 import "./map.css";
 
 /** Required attribution for the bundled Natural Earth reference basemap. */
@@ -122,7 +123,17 @@ function preloadBasemap(): Promise<GeoJSON.FeatureCollection | null> {
  * ocean; land, lakes and country boundaries are one static public-domain GeoJSON.
  * Dynamic Map API results are the only per-request source.
  */
-export default function MapCanvas({
+export default function MapCanvas(props: MapCanvasProps) {
+  const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt((value) => value + 1);
+  return (
+    <MapCanvasBoundary key={attempt} onRetry={retry}>
+      <InteractiveMapCanvas {...props} onRetry={retry} />
+    </MapCanvasBoundary>
+  );
+}
+
+function InteractiveMapCanvas({
   places,
   entities,
   ownedMarkers = EMPTY_OWNED_MARKERS,
@@ -142,7 +153,8 @@ export default function MapCanvas({
   onOwnedMarkerSelect,
   onThumbnailMarkerSelect,
   onMapError,
-}: MapCanvasProps) {
+  onRetry,
+}: MapCanvasProps & { onRetry: () => void }) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const selectedPlaceMarker = useRef<maplibregl.Marker | null>(null);
@@ -161,6 +173,8 @@ export default function MapCanvas({
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
+  const [contextLost, setContextLost] = useState(false);
+  const [fatalError, setFatalError] = useState<Error | null>(null);
   const [basemapData, setBasemapData] =
     useState<GeoJSON.FeatureCollection | null>(null);
   const [basemapReady, setBasemapReady] = useState(false);
@@ -272,55 +286,7 @@ export default function MapCanvas({
       attributionControl: false,
     });
     map.current = next;
-    // Disable the gesture handlers as well as their constructor options. This
-    // covers trackpad right-click/two-finger rotation in every MapLibre view,
-    // including the small related-location modals.
-    next.dragRotate.disable();
-    next.touchZoomRotate.disableRotation();
-    next.touchPitch.disable();
-    next.addControl(new maplibregl.NavigationControl({ showCompass: false }));
-    next.addControl(
-      new maplibregl.AttributionControl({
-        compact: true,
-        customAttribution: MAP_ATTRIBUTION,
-      }),
-    );
-    next.on("error", (event) => {
-      const message = event.error?.message || "The map could not be displayed.";
-      if (!/source .* is not loaded/i.test(message)) errorRef.current(message);
-    });
-    next.on("click", (event) => {
-      closeMapPopup(next);
-      coordinatePickRef.current?.({
-        latitude: event.lngLat.lat,
-        longitude: event.lngLat.lng,
-      });
-    });
-    next.on("load", () => {
-      if (!active) return;
-      disposeMarkerLayers = addMarkerLayers(
-        next,
-        (key) => selectRef.current(key),
-        (id) => {
-          const place = placesRef.current.find((item) => item.id === id);
-          if (place) placeSelectRef.current?.(place);
-          return place;
-        },
-        initialOwnedConnections.current,
-        initialOwnedMarkers.current,
-      );
-      setReady(true);
-      // The modal has finished its CSS transition by now, but the GeoJSON
-      // source can finish painting one frame later. Re-measure at idle so the
-      // complete world is redrawn into the final viewport rather than keeping
-      // a clipped WebGL buffer from the transition frame.
-      const resizeWhenIdle = () => {
-        if (active) next.resize();
-      };
-      next.once("idle", resizeWhenIdle);
-      next.once("remove", () => next.off("idle", resizeWhenIdle));
-    });
-    return () => {
+    const dispose = () => {
       active = false;
       selectedPlaceMarker.current?.remove();
       selectedPlaceMarker.current = null;
@@ -333,6 +299,80 @@ export default function MapCanvas({
       next.remove();
       map.current = null;
     };
+    try {
+      // Disable the gesture handlers as well as their constructor options. This
+      // covers trackpad right-click/two-finger rotation in every MapLibre view,
+      // including the small related-location modals.
+      next.dragRotate.disable();
+      next.touchZoomRotate.disableRotation();
+      next.touchPitch.disable();
+      next.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+      next.addControl(
+        new maplibregl.AttributionControl({
+          compact: true,
+          customAttribution: MAP_ATTRIBUTION,
+        }),
+      );
+      next.on("error", (event) => {
+        const message =
+          event.error?.message || "The map could not be displayed.";
+        if (!/source .* is not loaded/i.test(message))
+          errorRef.current(message);
+      });
+      // MapLibre prevents the default context-loss action and restores its
+      // renderer automatically. Keep that recovery path, with a manual retry
+      // if Chrome's GPU context never comes back.
+      next.on("webglcontextlost", () => {
+        if (active) setContextLost(true);
+      });
+      next.on("webglcontextrestored", () => {
+        if (active) setContextLost(false);
+      });
+      next.on("click", (event) => {
+        closeMapPopup(next);
+        coordinatePickRef.current?.({
+          latitude: event.lngLat.lat,
+          longitude: event.lngLat.lng,
+        });
+      });
+      next.on("load", () => {
+        if (!active) return;
+        try {
+          disposeMarkerLayers = addMarkerLayers(
+            next,
+            (key) => selectRef.current(key),
+            (id) => {
+              const place = placesRef.current.find((item) => item.id === id);
+              if (place) placeSelectRef.current?.(place);
+              return place;
+            },
+            initialOwnedConnections.current,
+            initialOwnedMarkers.current,
+          );
+          setReady(true);
+          // The modal has finished its CSS transition by now, but the GeoJSON
+          // source can finish painting one frame later. Re-measure at idle so the
+          // complete world is redrawn into the final viewport rather than keeping
+          // a clipped WebGL buffer from the transition frame.
+          const resizeWhenIdle = () => {
+            if (active) next.resize();
+          };
+          next.once("idle", resizeWhenIdle);
+          next.once("remove", () => next.off("idle", resizeWhenIdle));
+        } catch (error) {
+          // MapLibre callbacks run outside React's lifecycle. Re-throw during
+          // render so the local boundary can release the map and offer retry.
+          setFatalError(
+            error instanceof Error ? error : new Error(String(error)),
+          );
+        }
+      });
+    } catch (error) {
+      // An effect that throws before returning cannot register its cleanup.
+      dispose();
+      throw error;
+    }
+    return dispose;
   }, [basemapData, basemapReady]);
 
   useEffect(() => {
@@ -457,8 +497,7 @@ export default function MapCanvas({
       })
         .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
         .addTo(mapInstance);
-      const reveal = () =>
-        element.classList.remove("map-owned-marker-pending");
+      const reveal = () => element.classList.remove("map-owned-marker-pending");
       // Adding a DOM marker does not necessarily schedule MapLibre's `idle`
       // event. Two animation frames are enough for MapLibre to apply its
       // screen transform, while still guaranteeing the marker is revealed
@@ -678,9 +717,27 @@ export default function MapCanvas({
     return () => window.clearTimeout(timer);
   }, [focus, initialFitDelayMs, initialFitPoints, ready]);
 
+  if (fatalError) throw fatalError;
+
   return (
-    <div className="map-canvas-shell" aria-label="Interactive world map">
+    <div
+      className="map-canvas-shell"
+      aria-label="Interactive world map"
+      aria-busy={!ready || contextLost}
+    >
       <div ref={element} className="map-canvas" />
+      {contextLost && (
+        <div className="map-canvas-recovery" role="status">
+          <p>Map graphics were interrupted. Waiting for recovery…</p>
+          <button
+            type="button"
+            className="btn btn-outline-dark btn-sm"
+            onClick={onRetry}
+          >
+            Retry map
+          </button>
+        </div>
+      )}
       <div className="map-legend" aria-label="Map legend">
         <span>
           <i className="map-legend-dot map-legend-profile" />

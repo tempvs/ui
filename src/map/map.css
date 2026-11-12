@@ -23,6 +23,19 @@
   overflow: hidden;
 }
 
+.map-canvas-fallback {
+  padding: 1rem;
+  background: #fffdf7;
+}
+
+.map-canvas-recovery {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1rem;
+  background: rgb(255 253 247 / 95%);
+}
+
 .map-legend {
   position: absolute;
   right: 0.75rem;
