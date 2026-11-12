@@ -49,6 +49,7 @@ export type PersistedProfile = {
 };
 
 export type OauthProfile = {
+  picture?: string | null;
   name?: string | null;
   email?: string | null;
   userId?: string | null;

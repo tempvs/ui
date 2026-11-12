@@ -14,7 +14,7 @@ export default function LoginRegisterButton() {
   return (
     <>
       <HeaderIconPopover text="login.popover" defaultMessage="Log in">
-        <Button className="header-icon-button" variant="default" onClick={() => setShow(true)}>
+        <Button className="header-icon-button" variant="default" aria-label="Log in" onClick={() => setShow(true)}>
           <SignInIcon />
         </Button>
       </HeaderIconPopover>

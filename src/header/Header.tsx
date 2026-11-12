@@ -12,13 +12,14 @@ import MapButton from "../map/MapButton";
 import NotificationButton from "../notification/NotificationButton";
 import SearchDialog from "../search/SearchDialog";
 import LoginRegisterButton from "../auth/LoginRegisterButton";
-import LogOutButton from "../auth/LogOutButton";
+import AccountMenu from "../auth/AccountMenu";
 import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchUserProfileByUserId,
   getOnboardingPreferences,
   getOnboardingStatus,
+  getProfileAvatar,
 } from "../profile/profileApi";
 import {
   buildOwnedProfileOptions,
@@ -26,23 +27,17 @@ import {
   resolveCurrentProfileOption,
   setStoredCurrentProfileValue,
 } from "../profile/currentProfile";
-import { Profile } from "../profile/profileTypes";
+import { OauthProfile, Profile } from "../profile/profileTypes";
 import ProfilePicker from "../profile/components/ProfilePicker";
 import DismissibleCoachmark from "../component/DismissibleCoachmark";
 
 import "./Header.css";
 
-type OAuthProfile = {
-  picture?: string | null;
-  name?: string | null;
-  email?: string | null;
-  userId?: string | null;
-};
-
 type HeaderState = {
   loggedIn: boolean | undefined;
   avatarUrl: string | null;
   avatarText: string | null;
+  accountName: string | null;
   currentUserId: string | null;
   currentProfileValue: string | null;
   currentProfilePath: string;
@@ -61,6 +56,7 @@ type HeaderProps = {
 class HeaderContent extends Component<HeaderProps, HeaderState> {
   private onboardingRequest = 0;
   private completedOnboardingUserId: string | null = null;
+  private oauthProfile: OauthProfile | null = null;
 
   constructor(props: HeaderProps) {
     super(props);
@@ -68,6 +64,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       loggedIn: undefined,
       avatarUrl: null,
       avatarText: null,
+      accountName: null,
       currentUserId: null,
       currentProfileValue: null,
       currentProfilePath: "/profile",
@@ -192,6 +189,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         loggedIn: false,
         avatarUrl: null,
         avatarText: null,
+        accountName: null,
         currentUserId: null,
         currentProfileValue: null,
         currentProfilePath: "/profile",
@@ -204,11 +202,13 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         return;
       }
 
-      const oauthProfile = (result.oauthProfile || null) as OAuthProfile | null;
+      const oauthProfile = result.oauthProfile || null;
+      this.oauthProfile = oauthProfile;
       this.setState(
         {
           avatarUrl: oauthProfile?.picture || null,
           avatarText: this.buildAvatarText(oauthProfile),
+          accountName: oauthProfile?.name?.trim() || null,
           loggedIn: true,
           currentUserId: String(result.currentUserId),
         },
@@ -244,8 +244,20 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
 
     Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
       .then(([userProfileResult, clubProfilesResult]) => {
+        if (this.state.currentUserId !== userId) return;
         const clubProfiles = clubProfilesResult || [];
         const userProfile = userProfileResult.profile;
+        const accountName = this.oauthProfile?.name?.trim() ||
+          `${userProfile?.firstName || ""} ${userProfile?.lastName || ""}`.trim() ||
+          userProfile?.nickName?.trim() || null;
+        const accountEmail = this.oauthProfile?.email || userProfile?.profileEmail;
+        const googlePicture = this.oauthProfile?.picture || null;
+        if (!googlePicture && userProfile?.id) {
+          void getProfileAvatar(userProfile.id).then(avatar => {
+            if (this.state.currentUserId === userId)
+              this.setState({ avatarUrl: avatar?.thumbnailUrl || avatar?.url || userProfile.avatarUrl || null });
+          }).catch(() => undefined);
+        }
         const profileOptions = buildOwnedProfileOptions(
           userProfile,
           clubProfiles,
@@ -261,6 +273,9 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             "tempvs:coachmark:pick-current-profile",
           );
         this.setState({
+          accountName,
+          avatarText: this.buildAvatarText({ name: accountName, email: accountEmail }),
+          avatarUrl: googlePicture || userProfile?.avatarUrl || null,
           profileOptions,
           currentProfileValue: currentProfile?.value || null,
           currentProfilePath: currentProfile?.path || "/profile",
@@ -309,7 +324,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
     });
   }
 
-  buildAvatarText(profile?: OAuthProfile | null) {
+  buildAvatarText(profile?: OauthProfile | null) {
     const name = (profile?.name || "").trim();
     if (name) {
       const words = name.split(/\s+/).filter(Boolean);
@@ -363,6 +378,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                   />
                   <DismissibleCoachmark
                     id={`pick-current-profile:${this.state.currentUserId || "anonymous"}`}
+                    className="header-profile-picker-coachmark"
                     visible={this.state.showProfilePickerCoachmark}
                     message="Pick your current profile here."
                   >
@@ -397,9 +413,10 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             </div>
             <div className="header-auth-control">
               {this.state.loggedIn ? (
-                <LogOutButton
+                <AccountMenu
                   avatarUrl={this.state.avatarUrl}
                   avatarText={this.state.avatarText}
+                  name={this.state.accountName}
                 />
               ) : (
                 <LoginRegisterButton />

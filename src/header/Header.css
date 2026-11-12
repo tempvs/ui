@@ -18,11 +18,10 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
-  margin-right: 0.5rem;
   min-width: 2rem;
   min-height: 2rem;
   aspect-ratio: 1 / 1;
-  border-radius: 50%;
+  border-radius: 50% !important;
   overflow: hidden;
   flex: 0 0 auto;
 }
@@ -287,10 +286,20 @@
     display: contents;
   }
 
-  .header-profile-select.profile-picker {
+  .header-profile-picker-coachmark {
     grid-column: 1 / -1;
     grid-row: 2;
+    min-width: 0;
     width: 100%;
+  }
+
+  .header-profile-select.profile-picker {
+    width: 100%;
+  }
+
+  .header-auth-control > * {
+    grid-column: 9;
+    grid-row: 1;
   }
 
   .header-main-actions {
@@ -540,22 +549,6 @@
     min-width: 0;
     min-height: 2.5rem;
   }
-
-  /* The signed-in avatar used to sit beside the sign-out icon. Together they
-     made the ninth mobile navigation cell wider than the viewport. The avatar
-     remains the sign-out control on phones, while its tooltip keeps the action
-     explicit. */
-  .auth-control-button--with-avatar {
-    padding: 0.2rem;
-  }
-
-  .auth-control-button--with-avatar .auth-avatar-badge {
-    margin-right: 0;
-  }
-
-  .auth-control-button--with-avatar svg {
-    display: none;
-  }
 }
 
 @media (max-width: 359.98px) {
@@ -661,19 +654,57 @@
   padding-top: 0.1rem;
 }
 
-.auth-control-button {
-  padding: 0.2rem 0.3rem;
+.auth-account-menu {
+  justify-self: end;
+}
+
+.Header .auth-avatar-toggle.btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 50% !important;
+  padding: 0.2rem;
   border: 0;
   background: transparent;
   box-shadow: none;
-  gap: 0.15rem;
 }
 
-.auth-control-button:hover,
-.auth-control-button:focus,
-.auth-control-button:active {
+.auth-avatar-toggle::after {
+  display: none;
+}
+
+.auth-avatar-toggle:hover,
+.auth-avatar-toggle:focus,
+.auth-avatar-toggle:active {
   background: rgba(26, 115, 232, 0.08);
   box-shadow: none;
+}
+
+.auth-avatar-toggle:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.auth-account-dropdown {
+  min-width: 12rem;
+  max-width: calc(100vw - 1rem);
+  border: 1px solid rgba(87, 102, 98, 0.14);
+  box-shadow: 0 0.6rem 1.5rem rgba(31, 38, 35, 0.16);
+}
+
+.auth-account-name {
+  max-width: 18rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: #1f2623;
+  font-size: 0.9rem;
+}
+
+.Header .auth-account-logout.btn {
+  width: 100%;
+  justify-content: flex-start;
+  border: 0;
 }
 
 .auth-modal-dialog {
