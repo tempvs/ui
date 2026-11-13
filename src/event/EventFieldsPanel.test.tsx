@@ -26,6 +26,15 @@ const event: TempvsEvent = {
   version: 1,
 };
 
+test("shows cancelled occurrence history separately from scheduled dates", () => {
+  render(<IntlProvider locale="en" messages={{}}>
+    <EventFieldsPanel event={{ ...event, cancelledOccurrences: [{ id: 'old-date', eventId: event.id, startsAt: '2026-10-02T18:00:00Z', endsAt: '2026-10-02T21:00:00Z', timeZone: 'UTC', status: 'CANCELLED' }] }} editable={false} statuses={{}} onChange={jest.fn()} onBlur={jest.fn()} />
+  </IntlProvider>);
+  expect(screen.getByRole('heading', { name: 'Cancelled dates' })).toBeInTheDocument();
+  expect(screen.getByText('Attendance history stays linked to these cancelled dates.')).toBeInTheDocument();
+  expect(screen.getByText('Cancelled')).toBeInTheDocument();
+});
+
 test("uses shared inline inputs for editable event metadata", () => {
   const onChange = jest.fn();
   const onBlur = jest.fn();

@@ -80,6 +80,7 @@ export type TempvsEvent = {
   updatedAt: string;
   version: number;
   upcomingOccurrences?: EventOccurrence[];
+  cancelledOccurrences?: EventOccurrence[];
   applicationOccurrenceId?: string;
 };
 

@@ -284,6 +284,11 @@ export default function EventFieldsPanel({
           />
         </>
       )}
+      {event.schedule.kind === "RECURRING" && (
+        <p className="text-muted small">
+          Repeats at the same local start time. Short months use their last valid day.
+        </p>
+      )}
       {event.schedule.kind === "RECURRING" &&
         (event.upcomingOccurrences || []).length > 0 && (
           <>
@@ -297,6 +302,20 @@ export default function EventFieldsPanel({
             </ul>
           </>
         )}
+      {(event.cancelledOccurrences || []).length > 0 && (
+        <>
+          <h2 className="event-occurrences-heading">Cancelled dates</h2>
+          <p className="text-muted small">Attendance history stays linked to these cancelled dates.</p>
+          <ul className="event-occurrences">
+            {event.cancelledOccurrences?.map(occurrence => (
+              <li key={occurrence.id}>
+                <time>{displayDateTime(occurrence.startsAt)}</time>
+                <span>Cancelled</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
