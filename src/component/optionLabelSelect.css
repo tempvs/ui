@@ -9,6 +9,7 @@
 
 .option-label-select > select.form-select {
   position: absolute;
+  z-index: 0;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -25,10 +26,13 @@
 }
 
 .option-label-select > .option-label-select-value {
+  position: relative;
+  z-index: 1;
   display: block;
   pointer-events: none;
-  border-color: transparent;
-  background: none;
+  border-color: transparent !important;
+  background: none !important;
+  box-shadow: none !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

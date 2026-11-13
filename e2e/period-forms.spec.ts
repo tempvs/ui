@@ -22,7 +22,7 @@ test.beforeAll(async () => {
   bundle = fs.readFileSync(path.join(outputPath, 'fixture.js'), 'utf8');
 });
 
-test('public period forms immediately display a plain name after native selection', async ({ page }) => {
+test('public period forms immediately display a plain name after native selection', async ({ page }, testInfo) => {
   await page.route('**/period-form-fixture', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><div id="root"></div><script src="/period-form-fixture.js"></script>' }));
   await page.route('**/period-form-fixture.js', route => route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: bundle }));
   await page.goto('/period-form-fixture');
@@ -46,6 +46,24 @@ test('public period forms immediately display a plain name after native selectio
   expect(Math.abs((await inline.boundingBox())!.width - beforeWidth)).toBeLessThan(1);
   expect(Math.abs((await page.getByTestId('adjacent-years').boundingBox())!.x - beforeYears)).toBeLessThan(1);
   const inlineSelect = inline.getByRole('combobox');
+  const selectedImage = await inline.locator('.option-label-select-value').screenshot({ scale: 'css', path: testInfo.outputPath('period-edit-value.png') });
+  const visibleTextPixels = await page.evaluate(async data => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${data}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const { data: pixels } = context.getImageData(2, 2, Math.min(110, image.width - 40), image.height - 4);
+    let count = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index] < 180 && pixels[index + 1] < 180 && pixels[index + 2] < 180 && pixels[index + 3] > 128) count++;
+    }
+    return count;
+  }, selectedImage.toString('base64'));
+  expect(visibleTextPixels, 'the selected period text must remain visibly painted in edit mode').toBeGreaterThan(40);
   await inlineSelect.selectOption('WWI');
   await expect(inline.locator('.option-label-select-value')).toHaveText('World War I');
   await expect(inlineSelect).toHaveCSS('color', 'rgba(0, 0, 0, 0)');

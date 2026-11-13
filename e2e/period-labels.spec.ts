@@ -22,6 +22,8 @@ for (const path of ["/clubs", "/events"]) {
     await expect(tooltip).toBeVisible();
     const labelBounds = (await filters.getByText("Interwar", { exact: true }).boundingBox())!;
     const tooltipBounds = (await tooltip.boundingBox())!;
-    expect(tooltipBounds.x - labelBounds.x - labelBounds.width).toBeLessThan(16);
+    const gap = tooltipBounds.x - labelBounds.x - labelBounds.width;
+    expect(gap).toBeGreaterThan(16);
+    expect(gap).toBeLessThan(40);
   });
 }

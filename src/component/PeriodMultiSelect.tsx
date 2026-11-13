@@ -65,7 +65,7 @@ export default function PeriodMultiSelect({
             delay={{ show: 200, hide: 0 }}
             overlay={<Tooltip id={`${tooltipId}-${period}`}>{getPeriodRangeLabel(intl, period)}</Tooltip>}
           >
-            <div style={{ width: "fit-content", maxWidth: "100%" }}>{check}</div>
+            <div style={{ width: "fit-content", maxWidth: "100%", paddingInlineEnd: "3ch" }}>{check}</div>
           </OverlayTrigger>
         ) : <React.Fragment key={period}>{check}</React.Fragment>;
       })}
