@@ -14,7 +14,8 @@ import type { MapPlace } from "../../map/mapApi";
 import { type HistoricalYearInput } from "../../component/HistoricalRangeFilter";
 import { getErrorMessage } from "../../util/errors";
 import { prepareImageFile } from "../../util/fileUtils";
-import { getPeriodOptionLabel, PERIODS } from "../../util/periods";
+import { getPeriodLabel, getPeriodOptionLabel, PERIODS } from "../../util/periods";
+import OptionLabelSelect from "../../component/OptionLabelSelect";
 import LibraryPeriodBreadcrumb from "../components/LibraryPeriodBreadcrumb";
 import SourceChangesetDiff from "../components/SourceChangesetDiff";
 import {
@@ -643,18 +644,15 @@ export default function LibrarySourceEditPage() {
             <div className="row g-3 mb-3">
               <Form.Group className="col-md-4">
                 <Form.Label>Period</Form.Label>
-                <Form.Select
+                <OptionLabelSelect
                   required
                   value={draft.period}
                   onChange={(event) => update("period", event.target.value)}
-                >
-                  <option value="">Choose period</option>
-                  {PERIODS.map((period) => (
-                    <option key={period} value={period}>
-                      {getPeriodOptionLabel(intl, period)}
-                    </option>
-                  ))}
-                </Form.Select>
+                  options={[
+                    { value: "", label: "Choose period" },
+                    ...PERIODS.map(period => ({ value: period, label: getPeriodOptionLabel(intl, period), readOnlyLabel: getPeriodLabel(intl, period) })),
+                  ]}
+                />
               </Form.Group>
               <Form.Group className="col-md-4">
                 <Form.Label>Type</Form.Label>

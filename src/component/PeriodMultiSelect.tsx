@@ -1,8 +1,8 @@
-import React, { useMemo } from "react";
-import { Dropdown, Form } from "react-bootstrap";
+import React, { useId, useMemo } from "react";
+import { Dropdown, Form, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { useIntl } from "react-intl";
 
-import { getPeriodLabel, getPeriodOptionLabel, PERIODS, type Period } from "../util/periods";
+import { getPeriodLabel, getPeriodOptionLabel, getPeriodRangeLabel, PERIODS, type Period } from "../util/periods";
 
 type Props = {
   selected: readonly Period[];
@@ -14,6 +14,7 @@ type Props = {
   display?: "dropdown" | "checkboxes";
   /** Editing forms show date guidance; search filters keep period names only. */
   includeRanges?: boolean;
+  showRangeTooltips?: boolean;
 };
 
 /** Compact, reusable multi-period facet for catalogue searches. */
@@ -25,8 +26,10 @@ export default function PeriodMultiSelect({
   className = "",
   display = "dropdown",
   includeRanges = false,
+  showRangeTooltips = false,
 }: Props) {
   const intl = useIntl();
+  const tooltipId = useId();
   const chosen = useMemo(() => new Set(selected), [selected]);
   const label = selected.length
     ? selected.length === 1
@@ -43,9 +46,8 @@ export default function PeriodMultiSelect({
 
   const options = (
     <>
-      {PERIODS.map((period) => (
-        <Form.Check
-          key={period}
+      {PERIODS.map((period) => {
+        const check = <Form.Check
           id={`period-filter-${ariaLabel.replace(/[^a-z0-9]+/gi, "-")}-${period}`}
           type="checkbox"
           label={includeRanges ? getPeriodOptionLabel(intl, period) : getPeriodLabel(intl, period)}
@@ -53,8 +55,19 @@ export default function PeriodMultiSelect({
           disabled={disabled}
           onChange={() => toggle(period)}
           className="mb-1"
-        />
-      ))}
+        />;
+        return showRangeTooltips ? (
+          <OverlayTrigger
+            key={period}
+            trigger={["hover", "focus"]}
+            placement="right"
+            delay={{ show: 200, hide: 0 }}
+            overlay={<Tooltip id={`${tooltipId}-${period}`}>{getPeriodRangeLabel(intl, period)}</Tooltip>}
+          >
+            <div>{check}</div>
+          </OverlayTrigger>
+        ) : <React.Fragment key={period}>{check}</React.Fragment>;
+      })}
     </>
   );
 

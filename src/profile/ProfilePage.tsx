@@ -1907,6 +1907,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
                 periods={[...PERIODS]}
                 getPeriodOptionLabel={this.getPeriodOptionLabel.bind(this)}
                 t={this.t.bind(this)}
+                getPeriodLabel={this.getPeriodLabel.bind(this)}
                 onShowCreate={() =>
                   this.setState({
                     clubProfileCreateVisible: true,

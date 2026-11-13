@@ -200,6 +200,7 @@ export default function EventsPage() {
               onClearFilters={clearFilters}
             >
               <PeriodMultiSelect
+                showRangeTooltips
                 ariaLabel="Period"
                 selected={selectedPeriods}
                 onChange={setSelectedPeriods}

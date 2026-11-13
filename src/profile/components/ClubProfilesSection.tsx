@@ -6,6 +6,7 @@ import Spinner from "../../component/Spinner";
 import DismissibleCoachmark from "../../component/DismissibleCoachmark";
 import ThumbnailList, { ThumbnailEntry } from "../../component/ThumbnailList";
 import { MessageFormatter } from "../profileTypes";
+import OptionLabelSelect from "../../component/OptionLabelSelect";
 
 type ClubProfile = {
   id: string;
@@ -26,6 +27,7 @@ type ClubProfilesSectionProps = {
   clubProfileDeleteError?: unknown;
   periods: string[];
   getPeriodOptionLabel: (period: string) => string;
+  getPeriodLabel: (period: string) => string;
   t: MessageFormatter;
   onShowCreate?: React.MouseEventHandler<HTMLElement>;
   onHideCreate?: () => void;
@@ -50,6 +52,7 @@ export default function ClubProfilesSection({
   clubProfileDeleteError,
   periods,
   getPeriodOptionLabel,
+  getPeriodLabel,
   t,
   onShowCreate,
   onHideCreate,
@@ -99,21 +102,17 @@ export default function ClubProfilesSection({
             {t("profile.field.period", "Period")} *
           </Form.Label>
           <div className="profile-entry-select-shell">
-            <Form.Select
+            <OptionLabelSelect
+              id="clubPeriod"
               className="profile-entry-input profile-entry-select"
               name="period"
               required
               defaultValue=""
-            >
-              <option value="">
-                {t("profile.period.choose", "Choose a period")}
-              </option>
-              {periods.map((period) => (
-                <option key={period} value={period}>
-                  {getPeriodOptionLabel(period)}
-                </option>
-              ))}
-            </Form.Select>
+              options={[
+                { value: "", label: t("profile.period.choose", "Choose a period") },
+                ...periods.map(period => ({ value: period, label: getPeriodOptionLabel(period), readOnlyLabel: getPeriodLabel(period) })),
+              ]}
+            />
             <span className="profile-entry-select-caret" aria-hidden="true">
               ▾
             </span>

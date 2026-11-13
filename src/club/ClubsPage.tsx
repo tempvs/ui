@@ -279,6 +279,7 @@ export default function ClubsPage() {
                 inlineToggle
               />
               <PeriodMultiSelect
+                showRangeTooltips
                 ariaLabel={t("period", "Period")}
                 selected={selectedPeriods}
                 onChange={setSelectedPeriods}

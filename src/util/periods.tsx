@@ -40,16 +40,20 @@ export function getPeriodLabel(intl: IntlShape, period: PeriodValue): string {
   return intl.formatMessage({ id: messageId, defaultMessage: period || '' });
 }
 
-/** Date guidance belongs to editing choices; navigation and filters use the name. */
-export function getPeriodOptionLabel(intl: IntlShape, period: PeriodValue): string {
-  const label = getPeriodLabel(intl, period);
+export function getPeriodRangeLabel(intl: IntlShape, period: PeriodValue): string {
   if (!period || !PERIODS.includes(period.toUpperCase() as Period)) {
-    return label;
+    return '';
   }
-  const range = intl.formatMessage({
+  return intl.formatMessage({
     id: `period.${period.toLowerCase()}.range`,
     defaultMessage: '',
   });
+}
+
+/** Date guidance belongs to open choices; navigation and selected values use the name. */
+export function getPeriodOptionLabel(intl: IntlShape, period: PeriodValue): string {
+  const label = getPeriodLabel(intl, period);
+  const range = getPeriodRangeLabel(intl, period);
   return range ? `${label} (${range})` : label;
 }
 

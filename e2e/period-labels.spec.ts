@@ -17,5 +17,7 @@ for (const path of ["/clubs", "/events"]) {
     await expect(filters.getByRole("checkbox", { name: "Interwar", exact: true })).toBeVisible();
     await expect(filters.getByRole("checkbox", { name: "Modern / pre-WWI", exact: true })).toBeVisible();
     await expect(filters.locator(".period-multi-select-checkboxes")).not.toContainText(/\d/);
+    await filters.getByText("Interwar", { exact: true }).hover();
+    await expect(page.getByRole("tooltip").filter({ hasText: /^1918–1939$/ })).toBeVisible();
   });
 }

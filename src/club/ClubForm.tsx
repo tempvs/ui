@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
-import { getPeriodOptionLabel, PERIODS, Period } from "../util/periods";
+import { getPeriodLabel, getPeriodOptionLabel, PERIODS, Period } from "../util/periods";
+import OptionLabelSelect from "../component/OptionLabelSelect";
 import { ClubDraft } from "./clubApi";
 import ProfilePicker, {
   ProfilePickerOption,
@@ -105,19 +106,15 @@ export default function ClubForm({
           )}
           <Form.Group controlId="club-period" className="club-form-picker-row">
             <Form.Label>{t("period", "Period")}</Form.Label>
-            <Form.Select
+            <OptionLabelSelect
+              id="club-period"
               required
               value={draft.period}
+              options={PERIODS.map(period => ({ value: period, label: getPeriodOptionLabel(intl, period), readOnlyLabel: getPeriodLabel(intl, period) }))}
               onChange={(e) =>
                 setDraft({ ...draft, period: e.target.value as Period })
               }
-            >
-              {PERIODS.map((period) => (
-                <option key={period} value={period}>
-                  {getPeriodOptionLabel(intl, period)}
-                </option>
-              ))}
-            </Form.Select>
+            />
           </Form.Group>
         </div>
         <div className="club-actions mt-4">

@@ -1,0 +1,26 @@
+.option-label-select {
+  display: grid;
+  min-width: 0;
+}
+
+.option-label-select > .form-select {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.option-label-select > select.form-select {
+  color: transparent !important;
+}
+
+.option-label-select > select.form-select option {
+  color: var(--bs-body-color, #212529);
+}
+
+.option-label-select > .option-label-select-value {
+  pointer-events: none;
+  border-color: transparent;
+  background: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

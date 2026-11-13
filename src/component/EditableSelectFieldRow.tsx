@@ -2,6 +2,7 @@ import React from 'react';
 import { Form } from 'react-bootstrap';
 
 import EditableFieldRow, { SaveStatus } from './EditableFieldRow';
+import OptionLabelSelect from './OptionLabelSelect';
 
 type EditableSelectOption = {
   value: string | number;
@@ -21,6 +22,10 @@ type SelectFieldControlProps = {
 };
 
 function SelectFieldControl({ options, readOnly, disabled, ...props }: SelectFieldControlProps) {
+  if (options.some(option => option.readOnlyLabel !== undefined)) {
+    return <OptionLabelSelect size="sm" {...props} disabled={readOnly || disabled}
+      options={options.map(option => ({ ...option, label: readOnly ? option.readOnlyLabel ?? option.label : option.label }))} />;
+  }
   return (
     <Form.Select size="sm" {...props} disabled={readOnly || disabled}>
       {options.map(option => (
