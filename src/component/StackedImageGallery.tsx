@@ -8,10 +8,10 @@ import EditableImageDescription from "./EditableImageDescription";
 import ImageOverlayActionButton from "./ImageOverlayActionButton";
 import ImageDescriptionBlock from "./ImageDescriptionBlock";
 import { SaveStatus } from "./EditableFieldRow";
-import RefreshingImage from "../image/RefreshingImage";
+import RefreshingImage, { ImageReference } from "../image/RefreshingImage";
 import CommentThread from "../comment/CommentThread";
 
-export type GalleryImage = {
+export type GalleryImage = ImageReference & {
   id: string | number;
   url?: string | null;
   thumbnailUrl?: string | null;

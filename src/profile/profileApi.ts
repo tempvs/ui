@@ -1,4 +1,5 @@
 import { doFetch } from "../util/Fetcher";
+import { withUploadPreview } from "../image/uploadPreview";
 
 import {
   Avatar,
@@ -609,7 +610,7 @@ export async function uploadAvatar(
   if (!upload.ok) {
     throw new Error(`Profile picture upload failed (${upload.status})`);
   }
-  return intent.image;
+  return withUploadPreview(intent.image, file);
 }
 
 async function uploadProfileImageRequest(
@@ -657,7 +658,7 @@ async function uploadProfileImageRequest(
   if (!upload.ok) {
     throw new Error(`Profile picture upload failed (${upload.status})`);
   }
-  return intent.image;
+  return withUploadPreview(intent.image, file);
 }
 
 export function uploadProfileImage(

@@ -8,6 +8,7 @@ import {
   StashItemMarker,
   StashItemImage,
 } from './profileTypes';
+import { withUploadPreview } from '../image/uploadPreview';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -281,7 +282,7 @@ async function requestImageUpload<T>(url: string, method: 'POST' | 'PATCH', file
   if (!response.ok) {
     throw new Error(`Image upload failed with status ${response.status}`);
   }
-  return intent.image;
+  return withUploadPreview(intent.image, file);
 }
 
 /*

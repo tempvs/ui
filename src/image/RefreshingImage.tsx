@@ -9,6 +9,10 @@ export type ImageReference = {
   resourceId?: string | number | null;
   belongsTo?: string | null;
   entityId?: string | number | null;
+  activeVersionId?: string | null;
+  status?: string | null;
+  previewUrl?: string;
+  processing?: { versionId?: string; status?: string; errorCode?: string };
 };
 
 type RefreshingImageProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
@@ -44,8 +48,9 @@ function readImageMetadata(
   resourceType: string,
   resourceId: string | number,
   imageId: string | number | null | undefined,
+  expectedVersion?: string,
 ): Promise<ImageReference | null> {
-  const key = `${resourceType}:${resourceId}:${imageId ?? ''}`;
+  const key = `${resourceType}:${resourceId}:${imageId ?? ''}:${expectedVersion ?? ''}`;
   const now = Date.now();
   const existing = imageMetadataReads.get(key);
   if (existing && existing.expiresAt > now) return existing.request;
@@ -65,7 +70,8 @@ function readImageMetadata(
     image => {
       // Pending/absent images need a later retry. A published image with an
       // actual URL can be safely reused for this short page-session window.
-      if ((!image || (!image.url && !image.thumbnailUrl)) && imageMetadataReads.get(key) === entry) {
+      if ((!image || (!image.url && !image.thumbnailUrl) || isProcessing(image)
+        || (expectedVersion && image.activeVersionId !== expectedVersion)) && imageMetadataReads.get(key) === entry) {
         imageMetadataReads.delete(key);
       }
     },
@@ -81,9 +87,14 @@ async function refreshUrl(
   resourceId: string | number | null | undefined,
   imageId: string | number | null | undefined,
   variant: 'display' | 'thumbnail',
-): Promise<{ url: string | null; pending: boolean }> {
+  expectedVersion?: string,
+): Promise<{ url: string | null; pending: boolean; rejected?: boolean }> {
   if (!resourceType || resourceId == null) return { url: null, pending: false };
-  const refreshed = await readImageMetadata(resourceType, resourceId, imageId);
+  const refreshed = await readImageMetadata(resourceType, resourceId, imageId, expectedVersion);
+  if (refreshed?.status === 'REJECTED' || refreshed?.processing?.status === 'REJECTED') return { url: null, pending: false, rejected: true };
+  if (refreshed && (isProcessing(refreshed) || (expectedVersion && refreshed.activeVersionId !== expectedVersion))) {
+    return { url: null, pending: imageId != null };
+  }
   const url = refreshed ? initialUrl(refreshed, variant) : null;
   return {
     url,
@@ -91,6 +102,10 @@ async function refreshUrl(
     // Empty/error responses are not pending uploads and must not be polled.
     pending: imageId != null && refreshed != null && !url,
   };
+}
+
+function isProcessing(image: ImageReference): boolean {
+  return image.processing?.status === 'PENDING' || image.processing?.status === 'PROCESSING';
 }
 
 export default function RefreshingImage({
@@ -104,24 +119,31 @@ export default function RefreshingImage({
   ...imgProps
 }: RefreshingImageProps) {
   const source = initialUrl(image, variant);
+  const preview = image.previewUrl;
+  const expectedVersion = image.processing?.versionId;
+  const processing = isProcessing(image);
   const imageId = image.id;
   const resourceType = image.resourceType || image.belongsTo;
   const resourceId = image.resourceId ?? image.entityId;
-  const [currentSource, setCurrentSource] = useState(source);
+  const [currentSource, setCurrentSource] = useState(preview || source);
   const retried = useRef(false);
 
   useEffect(() => {
-    setCurrentSource(source);
+    setCurrentSource(preview || source);
     retried.current = false;
-    if (source || !resourceType || resourceId == null) return;
+    if ((source && !processing && !preview) || !resourceType || resourceId == null) return;
     let active = true;
     let retryTimer: number | undefined;
 
     const refreshPendingImage = async (attempt: number): Promise<void> => {
       let pending = false;
       try {
-        const result = await refreshUrl(resourceType, resourceId, imageId, variant);
+        const result = await refreshUrl(resourceType, resourceId, imageId, variant, expectedVersion);
         if (!active) return;
+        if (result.rejected) {
+          setCurrentSource(source);
+          return;
+        }
         if (result.url) {
           setCurrentSource(result.url);
           return;
@@ -147,7 +169,7 @@ export default function RefreshingImage({
       active = false;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [source, imageId, resourceType, resourceId, variant]);
+  }, [source, preview, processing, expectedVersion, imageId, resourceType, resourceId, variant]);
 
   const handleError: React.ReactEventHandler<HTMLImageElement> = event => {
     onError?.(event);
@@ -156,7 +178,7 @@ export default function RefreshingImage({
       return;
     }
     retried.current = true;
-    void refreshUrl(resourceType, resourceId, imageId, variant).then(result => {
+    void refreshUrl(resourceType, resourceId, imageId, variant, expectedVersion).then(result => {
       if (result.url && result.url !== currentSource) setCurrentSource(result.url);
       else if (fallbackSrc) setCurrentSource(fallbackSrc);
     }).catch(() => {

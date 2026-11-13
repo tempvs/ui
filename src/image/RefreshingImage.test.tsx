@@ -3,6 +3,25 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import RefreshingImage from './RefreshingImage';
 
+test('continues checking a same-ID replacement with an old URL until the requested version is active', async () => {
+  const old = { id: 'same-id-version-test', resourceType: 'profile', resourceId: 'version-profile', url: 'https://s3/previous', activeVersionId: 'old' };
+  const fetchMock = jest.spyOn(window, 'fetch')
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ content: [old] }) } as Response)
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ content: [{ ...old, activeVersionId: 'target', url: 'https://s3/replacement' }] }) } as Response);
+  render(<RefreshingImage image={{ ...old, processing: { versionId: 'target', status: 'PROCESSING' } }} alt='Replacement' />);
+  await waitFor(() => expect(screen.getByAltText('Replacement')).toHaveAttribute('src', 'https://s3/replacement'), { timeout: 2000 });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  fetchMock.mockRestore();
+});
+
+test('a rejected replacement restores the published image instead of retaining the optimistic preview', async () => {
+  const fetchMock = jest.spyOn(window, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ content: [{ processing: { status: 'REJECTED' } }] }) } as Response);
+  render(<RefreshingImage image={{ id: 'reject-replacement', resourceType: 'profile', resourceId: 'rejected-profile', url: 'https://s3/original', previewUrl: 'data:image/png;base64,cGl4ZWxz', processing: { versionId: 'bad', status: 'PENDING' } }} alt='Rejected replacement' />);
+  await waitFor(() => expect(screen.getByAltText('Rejected replacement')).toHaveAttribute('src', 'https://s3/original'));
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  fetchMock.mockRestore();
+});
+
 test('shows an hourglass while an uploaded image is still being processed', () => {
   render(<RefreshingImage image={{ id: 'image-1' }} alt="Club" />);
 

@@ -2,6 +2,7 @@ import { IntlShape } from "react-intl";
 
 import { SaveStatus } from "../component/EditableFieldRow";
 import { GalleryImage } from "../component/StackedImageGallery";
+import type { ImageReference } from "../image/RefreshingImage";
 
 export type Id = string | number;
 
@@ -60,7 +61,7 @@ export type CurrentUserInfo = {
   oauthProfile: OauthProfile | null;
 };
 
-export type Avatar = {
+export type Avatar = ImageReference & {
   id?: string | null;
   resourceType?: string | null;
   resourceId?: string | null;
