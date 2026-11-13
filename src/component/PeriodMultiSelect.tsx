@@ -61,10 +61,11 @@ export default function PeriodMultiSelect({
             key={period}
             trigger={["hover", "focus"]}
             placement="right"
+            popperConfig={{ modifiers: [{ name: "offset", options: { offset: [0, 4] } }] }}
             delay={{ show: 200, hide: 0 }}
             overlay={<Tooltip id={`${tooltipId}-${period}`}>{getPeriodRangeLabel(intl, period)}</Tooltip>}
           >
-            <div>{check}</div>
+            <div style={{ width: "fit-content", maxWidth: "100%" }}>{check}</div>
           </OverlayTrigger>
         ) : <React.Fragment key={period}>{check}</React.Fragment>;
       })}

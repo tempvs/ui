@@ -40,7 +40,11 @@ test('public period forms immediately display a plain name after native selectio
   expect(await create.evaluate(form => new FormData(form as HTMLFormElement).get('period'))).toBe('INTERWAR');
 
   const inline = page.getByTestId('inline-period');
+  const beforeWidth = (await inline.boundingBox())!.width;
+  const beforeYears = (await page.getByTestId('adjacent-years').boundingBox())!.x;
   await inline.locator('.inline-editable-control').click();
+  expect(Math.abs((await inline.boundingBox())!.width - beforeWidth)).toBeLessThan(1);
+  expect(Math.abs((await page.getByTestId('adjacent-years').boundingBox())!.x - beforeYears)).toBeLessThan(1);
   const inlineSelect = inline.getByRole('combobox');
   await inlineSelect.selectOption('WWI');
   await expect(inline.locator('.option-label-select-value')).toHaveText('World War I');
@@ -48,4 +52,15 @@ test('public period forms immediately display a plain name after native selectio
   await expect(inlineSelect.locator('option:checked')).toHaveText('World War I (1914–1918)');
   await page.getByRole('button', { name: 'Outside' }).click();
   await expect(inline.locator('.option-label-select-value')).toHaveText('World War I');
+  const event = page.getByTestId('event-period');
+  const beforeEvent = (await event.boundingBox())!;
+  const beforeOutside = (await page.getByRole('button', { name: 'Outside' }).boundingBox())!.y;
+  await event.getByRole('combobox').click();
+  const menu = event.getByRole('listbox');
+  await expect(menu).toBeVisible();
+  expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(beforeEvent.y + beforeEvent.height - 1);
+  expect(Math.abs((await event.boundingBox())!.width - beforeEvent.width)).toBeLessThan(1);
+  expect(Math.abs((await page.getByRole('button', { name: 'Outside' }).boundingBox())!.y - beforeOutside)).toBeLessThan(1);
+  await event.getByRole('combobox').press('Escape');
+  await expect(menu).not.toBeVisible();
 });

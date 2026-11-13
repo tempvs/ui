@@ -1,15 +1,23 @@
 .option-label-select {
-  display: grid;
+  position: relative;
   min-width: 0;
 }
 
 .option-label-select > .form-select {
-  grid-area: 1 / 1;
   min-width: 0;
 }
 
 .option-label-select > select.form-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   color: transparent !important;
+}
+
+.inline-editable-control .option-label-select {
+  width: 12rem;
+  max-width: 100%;
 }
 
 .option-label-select > select.form-select option {
@@ -17,6 +25,7 @@
 }
 
 .option-label-select > .option-label-select-value {
+  display: block;
   pointer-events: none;
   border-color: transparent;
   background: none;

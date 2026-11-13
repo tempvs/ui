@@ -121,8 +121,8 @@ test("event period choices include ranges while saved values use plain names", (
     </IntlProvider>,
   );
   fireEvent.click(screen.getByText("Interwar"));
-  expect(screen.getByRole("button", { name: /Interwar \(1918–1939\)/ })).toBeInTheDocument();
-  fireEvent.blur(screen.getByRole("button", { name: /Interwar \(1918–1939\)/ }), { relatedTarget: document.body });
+  expect(screen.getByRole("option", { name: /Interwar \(1918–1939\)/ })).toBeInTheDocument();
+  fireEvent.blur(screen.getByRole("option", { name: /Interwar \(1918–1939\)/ }), { relatedTarget: document.body });
   expect(screen.getByText("Interwar")).toBeInTheDocument();
   expect(screen.queryByText(/1918|1939/)).not.toBeInTheDocument();
 });

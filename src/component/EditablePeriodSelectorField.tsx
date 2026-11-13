@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useId, useMemo } from "react";
 import { FaCheck, FaPen } from "react-icons/fa";
 import { useIntl } from "react-intl";
 
@@ -31,6 +31,7 @@ export default function EditablePeriodSelectorField({
   className = "mb-2",
 }: Props) {
   const intl = useIntl();
+  const menuId = useId();
   const { editing, beginEditing, endEditing, editRootRef } = useInlineEditing(editable);
   const selected = useMemo(() => new Set(value), [value]);
   const toggle = (period: Period) => {
@@ -55,20 +56,42 @@ export default function EditablePeriodSelectorField({
           <div
             ref={editRootRef}
             tabIndex={0}
+            role="combobox"
+            aria-label={typeof label === "string" ? label : "Periods"}
+            aria-expanded={editing}
+            aria-controls={editing ? menuId : undefined}
+            aria-haspopup="listbox"
             className={`inline-editable-control event-period-selector ${editing ? "inline-editable-active" : "inline-editable-readonly"}`}
             onClick={() => {
               if (!editing) beginEditing();
             }}
             onBlur={finishEditing}
+            onKeyDown={event => {
+              if (event.key === "Escape" && editing) {
+                event.preventDefault();
+                onBlur();
+                endEditing();
+              } else if (event.target === event.currentTarget && ["Enter", " ", "ArrowDown"].includes(event.key)) {
+                event.preventDefault();
+                beginEditing();
+              }
+            }}
           >
-            {editing ? (
-              <div className="event-period-selector-options">
+            <div className="event-period-selector-summary">
+              {value.length
+                ? value.map((period) => <span key={period}>{getPeriodLabel(intl, period)}</span>)
+                : <span className="description-placeholder">No periods</span>}
+            </div>
+            {editing && (
+              <div id={menuId} role="listbox" aria-multiselectable="true" aria-label="Periods" className="event-period-selector-options">
                 {PERIODS.map((period) => {
                   const isSelected = selected.has(period);
                   return (
                     <button
                       key={period}
                       type="button"
+                      role="option"
+                      aria-selected={isSelected}
                       className={`event-period-selector-option${isSelected ? " is-selected" : ""}`}
                       onClick={() => toggle(period)}
                     >
@@ -77,12 +100,6 @@ export default function EditablePeriodSelectorField({
                     </button>
                   );
                 })}
-              </div>
-            ) : (
-              <div className="event-period-selector-summary">
-                {value.length
-                  ? value.map((period) => <span key={period}>{getPeriodLabel(intl, period)}</span>)
-                  : <span className="description-placeholder">No periods</span>}
               </div>
             )}
             {!editing && <span className="inline-editable-glyph" aria-hidden="true"><PenIcon /></span>}
