@@ -7,6 +7,7 @@ export type ImageThumbnail = {
 export type ResourceThumbnail = {
   resourceType: string;
   resourceId: string;
+  preferredImageId?: string;
   image: ImageThumbnail | null;
 };
 
@@ -23,6 +24,7 @@ let thumbnailFlushScheduled = false;
 type ThumbnailResource = {
   resourceType: string;
   resourceId: string;
+  preferredImageId?: string;
 };
 
 type ThumbnailRead = {
@@ -39,29 +41,44 @@ type ThumbnailRead = {
  * recently resolved thumbnails rather than creating one lookup per card.
  */
 export async function getImageThumbnails(
-  resources: Array<{ resourceType: string; resourceId: string | number }>,
+  resources: Array<{
+    resourceType: string;
+    resourceId: string | number;
+    preferredImageId?: string;
+  }>,
 ): Promise<ResourceThumbnail[]> {
   const unique = Array.from(
     new Map(
       resources.map((resource) => [
-        thumbnailKey(resource.resourceType, String(resource.resourceId)),
+        thumbnailKey(
+          resource.resourceType,
+          String(resource.resourceId),
+          resource.preferredImageId?.toLowerCase(),
+        ),
         {
           resourceType: resource.resourceType,
           resourceId: String(resource.resourceId),
+          ...(resource.preferredImageId
+            ? { preferredImageId: resource.preferredImageId.toLowerCase() }
+            : {}),
         },
       ]),
     ).values(),
   );
   const thumbnails = await Promise.all(unique.map(readThumbnailBatched));
-  return thumbnails.filter(
-    (thumbnail): thumbnail is ResourceThumbnail => Boolean(thumbnail),
+  return thumbnails.filter((thumbnail): thumbnail is ResourceThumbnail =>
+    Boolean(thumbnail),
   );
 }
 
 function readThumbnailBatched(
   resource: ThumbnailResource,
 ): Promise<ResourceThumbnail | null> {
-  const key = thumbnailKey(resource.resourceType, resource.resourceId);
+  const key = thumbnailKey(
+    resource.resourceType,
+    resource.resourceId,
+    resource.preferredImageId,
+  );
   const cached = thumbnailCache.get(key);
   if (cached && cached.expiresAt > Date.now())
     return Promise.resolve(cached.thumbnail);
@@ -108,12 +125,20 @@ async function flushThumbnailReads() {
     });
     if (!response.ok)
       throw new Error(`Image thumbnail lookup failed (${response.status})`);
-    const payload = (await response.json()) as { content?: ResourceThumbnail[] };
+    const payload = (await response.json()) as {
+      content?: ResourceThumbnail[];
+    };
     const byResource = new Map(
-      (Array.isArray(payload.content) ? payload.content : []).map((thumbnail) => [
-        thumbnailKey(thumbnail.resourceType, thumbnail.resourceId),
-        thumbnail,
-      ]),
+      (Array.isArray(payload.content) ? payload.content : []).map(
+        (thumbnail) => [
+          thumbnailKey(
+            thumbnail.resourceType,
+            thumbnail.resourceId,
+            thumbnail.preferredImageId,
+          ),
+          thumbnail,
+        ],
+      ),
     );
     entries.forEach(([key, read]) => {
       const thumbnail = byResource.get(key) || null;
@@ -135,6 +160,12 @@ async function flushThumbnailReads() {
   }
 }
 
-function thumbnailKey(resourceType: string, resourceId: string) {
-  return `${resourceType}:${resourceId}`;
+function thumbnailKey(
+  resourceType: string,
+  resourceId: string,
+  preferredImageId?: string,
+) {
+  // A cover image and the first image of the same resource are different
+  // representations. Neither cache entry may satisfy the other lookup.
+  return JSON.stringify([resourceType, resourceId, preferredImageId || null]);
 }

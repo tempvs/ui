@@ -22,12 +22,8 @@ import ResultSortSelect, {
   type ResultSortOption,
 } from "../component/ResultSortSelect";
 import RefreshingImage from "../image/RefreshingImage";
-import {
-  findSources,
-  getSourceImages,
-  LibrarySource,
-  LibrarySourceImage,
-} from "../library/libraryApi";
+import { getImageThumbnails, type ImageThumbnail } from "../image/imageApi";
+import { findSources, LibrarySource } from "../library/libraryApi";
 import SourceCard from "../library/components/SourceCard";
 import {
   getPeriodLabel,
@@ -35,8 +31,8 @@ import {
   PERIODS,
   TYPES,
 } from "../library/libraryShared";
-import { getProfileAvatar, searchProfiles } from "../profile/profileApi";
-import { Avatar, Profile } from "../profile/profileTypes";
+import { searchProfiles } from "../profile/profileApi";
+import { Profile } from "../profile/profileTypes";
 import { getErrorMessage } from "../util/errors";
 import { Club, listClubs } from "../club/clubApi";
 import { listEvents, TempvsEvent } from "../event/eventApi";
@@ -176,6 +172,8 @@ export default function SearchDialog() {
   const resultsPaneRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const searchGeneration = useRef(0);
+  const pendingPage = useRef<number | null>(null);
   const pagingRef = useRef({
     profilePage: 0,
     clubNextTokens: {} as Record<string, string | undefined>,
@@ -220,14 +218,14 @@ export default function SearchDialog() {
   const [error, setError] = useState<string | null>(null);
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
   const [profilePreviewImages, setProfilePreviewImages] = useState<
-    Record<string | number, Avatar | null>
+    Record<string | number, ImageThumbnail | null>
   >({});
   const [sourceResults, setSourceResults] = useState<LibrarySource[]>([]);
   const [clubResults, setClubResults] = useState<Club[]>([]);
   const [eventResults, setEventResults] = useState<TempvsEvent[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [sourcePreviewImages, setSourcePreviewImages] = useState<
-    Record<string | number, LibrarySourceImage | null>
+    Record<string | number, ImageThumbnail | null>
   >({});
   const profileSearchType =
     selectedProfileTypes.length === 1 ? selectedProfileTypes[0] : null;
@@ -269,10 +267,17 @@ export default function SearchDialog() {
 
   const runSearch = useCallback(
     async (tab: SearchTab, append = false) => {
+      if (append && pendingPage.current === searchGeneration.current) return;
+      const generation = append
+        ? searchGeneration.current
+        : ++searchGeneration.current;
+      pendingPage.current = generation;
       setLoading(true);
       setLoadingMore(append);
       setError(null);
       if (!append) {
+        setProfilePreviewImages({});
+        setSourcePreviewImages({});
         pagingRef.current = {
           profilePage: 0,
           clubNextTokens: {},
@@ -306,6 +311,7 @@ export default function SearchDialog() {
               }),
             ),
           );
+          if (generation !== searchGeneration.current) return;
           const results = resultPages.flat();
 
           const content = (Array.isArray(results) ? results : []).filter(
@@ -333,22 +339,25 @@ export default function SearchDialog() {
             : 0;
           setHasMore(resultPages.some((page) => page.length === PAGE_SIZE));
 
-          const previewEntries = await Promise.all(
-            (Array.isArray(results) ? results : []).map(async (profile) => {
-              try {
-                const avatar = await getProfileAvatar(profile.id);
-                return [profile.id, avatar] as const;
-              } catch (previewError) {
-                return [profile.id, null] as const;
-              }
-            }),
-          );
-
-          setProfilePreviewImages((previous) =>
-            append
-              ? { ...previous, ...Object.fromEntries(previewEntries) }
-              : Object.fromEntries(previewEntries),
-          );
+          // Results render immediately; thumbnail metadata is one shared,
+          // cached batch and cannot hold the search loading state open.
+          void getImageThumbnails(
+            content.map((profile) => ({
+              resourceType: "profile",
+              resourceId: profile.id,
+            })),
+          )
+            .then((entries) => {
+              if (generation !== searchGeneration.current) return;
+              const images = Object.fromEntries(
+                entries.map((entry) => [entry.resourceId, entry.image]),
+              );
+              setProfilePreviewImages((previous) => ({
+                ...previous,
+                ...images,
+              }));
+            })
+            .catch(() => undefined);
           return;
         }
 
@@ -368,6 +377,7 @@ export default function SearchDialog() {
               ),
             ),
           );
+          if (generation !== searchGeneration.current) return;
           const content = pages
             .flatMap((page) => page.content || [])
             .filter(
@@ -400,6 +410,7 @@ export default function SearchDialog() {
 
         if (tab === "events") {
           const result = await listEvents();
+          if (generation !== searchGeneration.current) return;
           const normalized = query.trim().toLocaleLowerCase();
           setEventResults(
             (result.content || []).filter(
@@ -436,6 +447,7 @@ export default function SearchDialog() {
             return result;
           }),
         );
+        if (generation !== searchGeneration.current) return;
         const sources = resultPages
           .flatMap((result) => (Array.isArray(result.data) ? result.data : []))
           .filter(
@@ -463,36 +475,32 @@ export default function SearchDialog() {
         );
         setHasMore(resultPages.some((result) => Boolean(result.nextToken)));
 
-        const previewEntries = await Promise.all(
-          sources.map(async (source) => {
-            try {
-              const imageResult = await getSourceImages(source.id);
-              if (!imageResult.ok || !Array.isArray(imageResult.data)) {
-                return [source.id, null] as const;
-              }
-
-              return [
-                source.id,
-                imageResult.data.find((image) => image.id === source.coverImageId) ||
-                  imageResult.data[0] ||
-                  null,
-              ] as const;
-            } catch (previewError) {
-              return [source.id, null] as const;
-            }
-          }),
-        );
-
-        setSourcePreviewImages((previous) =>
-          append
-            ? { ...previous, ...Object.fromEntries(previewEntries) }
-            : Object.fromEntries(previewEntries),
-        );
+        void getImageThumbnails(
+          sources.map((source) => ({
+            resourceType: "source",
+            resourceId: source.id,
+            ...(source.coverImageId
+              ? { preferredImageId: source.coverImageId }
+              : {}),
+          })),
+        )
+          .then((entries) => {
+            if (generation !== searchGeneration.current) return;
+            const images = Object.fromEntries(
+              entries.map((entry) => [entry.resourceId, entry.image]),
+            );
+            setSourcePreviewImages((previous) => ({ ...previous, ...images }));
+          })
+          .catch(() => undefined);
       } catch (searchError) {
-        setError(getErrorMessage(searchError));
+        if (generation === searchGeneration.current)
+          setError(getErrorMessage(searchError));
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (generation === searchGeneration.current) {
+          pendingPage.current = null;
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [
@@ -514,12 +522,16 @@ export default function SearchDialog() {
 
     setSearched(true);
 
+    // Old cursors do not belong to the query being entered during debounce.
+    setHasMore(false);
+
     const timeoutId = window.setTimeout(() => {
       void runSearch(activeTab);
     }, 120);
 
     return () => {
       window.clearTimeout(timeoutId);
+      searchGeneration.current += 1;
     };
   }, [
     activeTab,
@@ -527,7 +539,6 @@ export default function SearchDialog() {
     selectedProfileTypes,
     query,
     runSearch,
-    searched,
     selectedTypes,
     from,
     to,
@@ -537,14 +548,7 @@ export default function SearchDialog() {
   useEffect(() => {
     const target = loadMoreRef.current;
     const root = resultsPaneRef.current;
-    if (
-      !showPopover ||
-      !target ||
-      !root ||
-      !hasMore ||
-      loading ||
-      loadingMore
-    )
+    if (!showPopover || !target || !root || !hasMore || loading || loadingMore)
       return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -860,7 +864,10 @@ export default function SearchDialog() {
                     </div>
                     <div>
                       {recentSearches.map((recent) => (
-                        <span className="header-search-recent-chip" key={recent}>
+                        <span
+                          className="header-search-recent-chip"
+                          key={recent}
+                        >
                           <button
                             type="button"
                             className="header-search-recent-query"
@@ -901,7 +908,9 @@ export default function SearchDialog() {
                             : ""}
                         </span>
                         <ChevronDownIcon
-                          className={`search-filter-disclosure-caret${periodsExpanded ? " is-expanded" : ""}`}
+                          className={`search-filter-disclosure-caret${
+                            periodsExpanded ? " is-expanded" : ""
+                          }`}
                         />
                       </button>
                       {periodsExpanded && (
@@ -939,7 +948,9 @@ export default function SearchDialog() {
                       >
                         <span>Years</span>
                         <ChevronDownIcon
-                          className={`search-filter-disclosure-caret${yearsExpanded ? " is-expanded" : ""}`}
+                          className={`search-filter-disclosure-caret${
+                            yearsExpanded ? " is-expanded" : ""
+                          }`}
                         />
                       </button>
                       {yearsExpanded && (
@@ -974,7 +985,9 @@ export default function SearchDialog() {
                           >
                             <span>Profile type</span>
                             <ChevronDownIcon
-                              className={`search-filter-disclosure-caret${profileTypeExpanded ? " is-expanded" : ""}`}
+                              className={`search-filter-disclosure-caret${
+                                profileTypeExpanded ? " is-expanded" : ""
+                              }`}
                             />
                           </button>
                           {profileTypeExpanded && (
@@ -1084,7 +1097,9 @@ export default function SearchDialog() {
                                   {avatar &&
                                     (avatar.thumbnailUrl || avatar.url) && (
                                       <Link
-                                        to={`/profile/${profile.alias || profile.id}`}
+                                        to={`/profile/${
+                                          profile.alias || profile.id
+                                        }`}
                                         className="search-profile-image-link"
                                         onClick={closePopover}
                                       >
@@ -1107,7 +1122,9 @@ export default function SearchDialog() {
                                     <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                                       <Card.Title className="mb-0 fs-5">
                                         <Link
-                                          to={`/profile/${profile.alias || profile.id}`}
+                                          to={`/profile/${
+                                            profile.alias || profile.id
+                                          }`}
                                           className="link-dark text-decoration-underline"
                                           onClick={closePopover}
                                         >
