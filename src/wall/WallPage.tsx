@@ -1,23 +1,20 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button } from "react-bootstrap";
 
 import ConfirmationModal from "../component/ConfirmationModal";
 import PageLayout from "../component/PageLayout";
 import Spinner from "../component/Spinner";
-import { getFollowedClubs, getProfileClubs } from "../club/clubApi";
-import { getFollowedEvents, getParticipatingEvents } from "../event/eventApi";
 import {
   resolveCurrentOwnedProfileId,
   useCurrentProfileValue,
 } from "../profile/currentProfile";
 import {
   fetchClubProfiles,
-  getFollowingProfiles,
   getUserProfileByUserId,
 } from "../profile/profileApi";
-import { getGroupItems, getProfileStash } from "../profile/stashApi";
 import { Profile } from "../profile/profileTypes";
 import ActivityCard from "./ActivityCard";
+import { getWallTargets } from "./wallTargets";
 import {
   dismissWallItem,
   getWall,
@@ -33,65 +30,6 @@ function clubProfiles(userId: string) {
       onSuccess: resolve,
       onError: () => reject(new Error("Profiles could not be loaded")),
     }),
-  );
-}
-
-async function targetsFor(profileId: string): Promise<WallTarget[]> {
-  const targets: WallTarget[] = [
-    { type: "PROFILE", id: profileId, reason: "OWN_PROFILE" },
-  ];
-  const results = await Promise.allSettled([
-    getFollowingProfiles(profileId),
-    getFollowedClubs(profileId),
-    getProfileClubs(profileId),
-    getFollowedEvents(profileId),
-    getParticipatingEvents(profileId),
-    getProfileStash(profileId),
-  ]);
-  const add = (
-    type: WallTarget["type"],
-    id: unknown,
-    reason: WallTarget["reason"],
-  ) => {
-    if (id != null) targets.push({ type, id: String(id), reason });
-  };
-  if (results[0].status === "fulfilled")
-    results[0].value.forEach((item) =>
-      add("PROFILE", item.id, "FOLLOWED_PROFILE"),
-    );
-  if (results[1].status === "fulfilled")
-    results[1].value.forEach((item) => add("CLUB", item.id, "FOLLOWED_CLUB"));
-  if (results[2].status === "fulfilled")
-    results[2].value.forEach((item) => add("CLUB", item.id, "CLUB_MEMBER"));
-  if (results[3].status === "fulfilled")
-    results[3].value.content?.forEach((item) =>
-      add("EVENT", item.id, "FOLLOWED_EVENT"),
-    );
-  if (results[4].status === "fulfilled")
-    results[4].value.content?.forEach((item) =>
-      add("EVENT", item.id, "EVENT_PARTICIPANT"),
-    );
-  if (results[5].status === "fulfilled") {
-    const groups = results[5].value.groups || [];
-    const itemPages = await Promise.allSettled(
-      groups.map((group) => getGroupItems(group.id)),
-    );
-    itemPages.forEach((page) => {
-      if (page.status === "fulfilled")
-        page.value.forEach((item) =>
-          item.sources?.forEach((sourceId) =>
-            add("SOURCE", sourceId, "SOURCE_USED"),
-          ),
-        );
-    });
-  }
-  return Array.from(
-    new Map(
-      targets.map((target) => [
-        `${target.type}:${target.id}:${target.reason}`,
-        target,
-      ]),
-    ).values(),
   );
 }
 
@@ -122,14 +60,25 @@ export default function WallPage({
   const [error, setError] = useState<string>();
   const [dismissTarget, setDismissTarget] = useState<WallActivity | null>(null);
   const [dismissing, setDismissing] = useState(false);
+  const [targetNotice, setTargetNotice] = useState<string>();
+  const request = useRef<AbortController | null>(null);
+  const moreInFlight = useRef(false);
 
   const load = useCallback(
     async (
       activeProfileId: string,
       wallTargets: WallTarget[],
+      signal: AbortSignal,
       token?: string,
     ) => {
-      const page = await getWall(activeProfileId, wallTargets, token);
+      const page = await getWall(activeProfileId, wallTargets, token, signal);
+      if (signal.aborted) return;
+      setActivities((current) =>
+        token ? [...current, ...page.content] : page.content,
+      );
+      setNextToken(page.nextToken);
+      if (!token) setThumbnails({});
+      // Activity text is useful immediately. Optional images must not delay it.
       const resources = Array.from(
         new Map(
           page.content.map((activity) => {
@@ -145,79 +94,104 @@ export default function WallPage({
       // A missing image is a normal case. Keep the activity visible and let the
       // shared image component render its hourglass; do not fall back to N
       // individual image metadata calls.
-      const thumbnailPage = resources.length
-        ? await getWallThumbnails(resources).catch(() => undefined)
-        : undefined;
-      const nextThumbnails = Object.fromEntries(
-        (thumbnailPage || []).map((entry) => [
-          `${entry.resourceType}:${entry.resourceId}`,
-          entry.image,
-        ]),
-      );
-      setActivities((current) =>
-        token ? [...current, ...page.content] : page.content,
-      );
-      setThumbnails((current) =>
-        token ? { ...current, ...nextThumbnails } : nextThumbnails,
-      );
-      setNextToken(page.nextToken);
+      if (resources.length)
+        void getWallThumbnails(resources)
+          .then((entries) => {
+            if (signal.aborted) return;
+            const images = Object.fromEntries(
+              entries.map((entry) => [
+                `${entry.resourceType}:${entry.resourceId}`,
+                entry.image,
+              ]),
+            );
+            setThumbnails((current) => ({ ...current, ...images }));
+          })
+          .catch(() => undefined);
     },
     [],
   );
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
+    request.current = controller;
+    moreInFlight.current = false;
+    setLoadingMore(false);
     setLoading(true);
     setError(undefined);
+    setTargetNotice(undefined);
+    setNextToken(undefined);
+    setProfileId(null);
+    setDismissTarget(null);
+    setDismissing(false);
     Promise.all([getUserProfileByUserId(userId), clubProfiles(userId)])
       .then(async ([personal, clubs]) => {
+        if (controller.signal.aborted) return;
         const selectedId = resolveCurrentOwnedProfileId([
           ...(personal ? [personal] : []),
           ...clubs,
         ]);
         if (!selectedId) throw new Error("Create a profile to see your wall.");
-        const wallTargets = await targetsFor(selectedId);
-        if (!active) return;
+        const result = await getWallTargets(selectedId, controller.signal);
+        if (controller.signal.aborted) return;
+        setTargetNotice(
+          result.incomplete
+            ? "Some relationships could not be loaded. This wall may be incomplete. Reload to retry."
+            : result.limited
+            ? "This wall covers the first 60 relationship targets. Some updates may be outside this view."
+            : undefined,
+        );
         setProfileId(selectedId);
-        setTargets(wallTargets);
-        await load(selectedId, wallTargets);
+        setTargets(result.targets);
+        await load(selectedId, result.targets, controller.signal);
       })
       .catch((reason) => {
-        if (active) setError((reason as Error).message);
+        if (!controller.signal.aborted) setError((reason as Error).message);
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      active = false;
-    };
+    return () => controller.abort();
   }, [currentProfileValue, load, userId]);
 
   const loadMore = async () => {
-    if (!profileId || !nextToken) return;
+    const signal = request.current?.signal;
+    if (
+      !profileId ||
+      !nextToken ||
+      !signal ||
+      signal.aborted ||
+      moreInFlight.current
+    )
+      return;
+    moreInFlight.current = true;
     setLoadingMore(true);
     setError(undefined);
     try {
-      await load(profileId, targets, nextToken);
+      await load(profileId, targets, signal, nextToken);
     } catch (reason) {
-      setError((reason as Error).message);
+      if (!signal.aborted) setError((reason as Error).message);
     } finally {
-      setLoadingMore(false);
+      if (!signal.aborted) {
+        moreInFlight.current = false;
+        setLoadingMore(false);
+      }
     }
   };
   const dismiss = async () => {
     if (!profileId || !dismissTarget) return;
+    const signal = request.current?.signal;
     setDismissing(true);
     try {
       await dismissWallItem(profileId, dismissTarget.id);
+      if (signal?.aborted) return;
       setActivities((items) =>
         items.filter((item) => item.id !== dismissTarget.id),
       );
       setDismissTarget(null);
     } catch (reason) {
-      setError((reason as Error).message);
+      if (!signal?.aborted) setError((reason as Error).message);
     } finally {
-      setDismissing(false);
+      if (!signal?.aborted) setDismissing(false);
     }
   };
 
@@ -233,6 +207,7 @@ export default function WallPage({
             </p>
           </div>
         </div>
+        {targetNotice && <Alert variant="warning">{targetNotice}</Alert>}
         {error && <Alert variant="danger">{error}</Alert>}
         {loading ? (
           <div className="wall-loading">

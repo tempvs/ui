@@ -60,13 +60,14 @@ export function getWall(
   profileId: string,
   targets: WallTarget[],
   nextToken?: string,
+  signal?: AbortSignal,
 ) {
   const params = new URLSearchParams({ profileId, limit: "20" });
   targets.forEach((target) =>
     params.append("target", `${target.type}:${target.id}:${target.reason}`),
   );
   if (nextToken) params.set("nextToken", nextToken);
-  return response<WallPage>(`/api/wall?${params}`);
+  return response<WallPage>(`/api/wall?${params}`, { signal });
 }
 
 export function dismissWallItem(profileId: string, activityId: string) {
