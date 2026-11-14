@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import MapCanvas from "../map/MapCanvas";
+// This panel is reachable from Header's search results. Keep MapLibre behind
+// the map boundary so every page does not download it before opening a place.
+import MapCanvas from "../map/LazyMapCanvas";
 import { getMapPlace, type MapPlace } from "../map/mapApi";
 import PlaceNamesList from "./PlaceNamesList";
 import Spinner from "./Spinner";
