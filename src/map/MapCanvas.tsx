@@ -98,6 +98,7 @@ const EMPTY_FIT_POINTS: NonNullable<MapCanvasProps["initialFitPoints"]> = [];
 type OwnedMarkerInstance = {
   marker: maplibregl.Marker;
   dispose: () => void;
+  contentKey: string;
 };
 
 const BASEMAP_URL = "/maps/basemap.geojson";
@@ -404,14 +405,16 @@ function InteractiveMapCanvas({
   useEffect(() => {
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-entities") as
-      GeoJSONSource | undefined;
+      | GeoJSONSource
+      | undefined;
     source?.setData(entityCollection(entities, placeReferences));
   }, [entities, placeReferences, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-places") as
-      GeoJSONSource | undefined;
+      | GeoJSONSource
+      | undefined;
     source?.setData(placeCollection(places));
   }, [places, ready]);
 
@@ -428,12 +431,25 @@ function InteractiveMapCanvas({
     });
     ownedMarkers.forEach((ownedMarker) => {
       const markerOffset = offsets.get(ownedMarker.key) || [0, 0];
+      const contentKey = JSON.stringify([
+        ownedMarker.label,
+        ownedMarker.placeName,
+        ownedMarker.thumbnailUrl,
+        ownedMarker.path,
+        placeReferences.get(ownedMarker.placeId),
+      ]);
       const existing = ownedMarkerInstances.current.get(ownedMarker.key);
-      if (existing) {
+      if (existing?.contentKey === contentKey) {
         existing.marker
           .setLngLat([ownedMarker.longitude, ownedMarker.latitude])
           .setOffset(markerOffset);
         return;
+      }
+      // Geometry can arrive before images and aliases. Refresh changed marker
+      // content without rebuilding every unchanged marker in the graph.
+      if (existing) {
+        existing.dispose();
+        ownedMarkerInstances.current.delete(ownedMarker.key);
       }
       const element = document.createElement("button");
       element.type = "button";
@@ -507,6 +523,7 @@ function InteractiveMapCanvas({
       });
       ownedMarkerInstances.current.set(ownedMarker.key, {
         marker,
+        contentKey,
         dispose: () => {
           window.cancelAnimationFrame(revealFrame);
           disposeMapGestures();
@@ -581,7 +598,8 @@ function InteractiveMapCanvas({
     const data = ownedConnectionCollection(ownedConnections, ownedMarkers);
     const sync = () => {
       const source = mapInstance.getSource("map-owned-connections") as
-        GeoJSONSource | undefined;
+        | GeoJSONSource
+        | undefined;
       source?.setData(data);
     };
     // A map can report its initial load before every style source has become

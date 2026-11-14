@@ -42,7 +42,6 @@ import MapCanvas, { entityKey } from "./MapCanvas";
 import MapEntityFilterControls from "./MapEntityFilterControls";
 import {
   loadSharedMapScope,
-  loadOwnedMapContent,
   filterOwnedMapContentByProfiles,
   type OwnedMapConnection,
   type OwnedMapMarker,
@@ -154,6 +153,9 @@ export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [ownedTruncated, setOwnedTruncated] = useState(false);
+  const [ownedMapLoading, setOwnedMapLoading] = useState(false);
+  const [ownedMapError, setOwnedMapError] = useState("");
+  const [ownedMapAttempt, setOwnedMapAttempt] = useState(0);
   const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
@@ -330,76 +332,64 @@ export default function MapPage() {
     };
   }, [viewer]);
 
-  // A URL scope is a public page graph and wins over the recipient's private
-  // "my map" overlay. Without this branch, opening a club/profile share URL
-  // would silently replace the page-specific markers with the viewer's data.
+  const effectiveScopeType =
+    sharedScope?.type || (viewer && showOwnedMap ? "USER" : undefined);
+  const effectiveScopeId =
+    sharedScope?.id || (viewer && showOwnedMap ? viewer.userId : undefined);
+  const effectiveScope = useMemo(
+    () =>
+      effectiveScopeType && effectiveScopeId
+        ? { type: effectiveScopeType, id: effectiveScopeId }
+        : null,
+    [effectiveScopeType, effectiveScopeId],
+  );
+  const loadedScopeKey = useRef<string>();
+
+  // URL hydration adds the same USER scope used for the initial personal map.
+  // Its identity must stay stable so it does not start a second graph load.
   useEffect(() => {
     let active = true;
-    if (sharedScope) {
+    const key = effectiveScope
+      ? `${effectiveScope.type}:${effectiveScope.id}`
+      : undefined;
+    if (loadedScopeKey.current !== key) {
       setOwnedMarkers([]);
-      setOwnedTruncated(false);
       setOwnedConnections([]);
       setOwnedProfiles([]);
-      void loadSharedMapScope(sharedScope)
-        .then((content) => {
-          if (!active) return;
-          setOwnedMarkers(content.markers);
-          setOwnedTruncated(content.truncated === true);
-          setOwnedConnections(content.connections);
-          setOwnedProfiles(content.profiles || []);
-        })
-        .catch(() => {
-          if (active) {
-            setOwnedMarkers([]);
-            setOwnedTruncated(false);
-            setOwnedConnections([]);
-            setOwnedProfiles([]);
-          }
-        });
-      return () => {
-        active = false;
-      };
-    }
-    // Opening the Map from horizontal navigation should be useful even before
-    // a search: show the signed-in person's own graph. This is deliberately
-    // separate from public, URL-addressable page slices above.
-    if (!viewer || !showOwnedMap) {
-      setOwnedMarkers([]);
       setOwnedTruncated(false);
-      setOwnedConnections([]);
-      setOwnedProfiles([]);
-      return () => {
-        active = false;
-      };
+      loadedScopeKey.current = key;
     }
-    void loadOwnedMapContent(viewer.userId, (content) => {
+    setOwnedMapError("");
+    if (!effectiveScope) {
+      setOwnedMapLoading(false);
+      return;
+    }
+    setOwnedMapLoading(true);
+    const publish = (
+      content: Parameters<typeof filterOwnedMapContentByProfiles>[0],
+    ) => {
       if (!active) return;
       setOwnedMarkers(content.markers);
       setOwnedTruncated(content.truncated === true);
       setOwnedConnections(content.connections);
       setOwnedProfiles(content.profiles || []);
-    })
-      .then((content) => {
-        if (!active) return;
-        setOwnedMarkers(content.markers);
-        setOwnedTruncated(content.truncated === true);
-        setOwnedConnections(content.connections);
-        setOwnedProfiles(content.profiles || []);
-      })
+      if (content.markers.length) setOwnedMapLoading(false);
+    };
+    void loadSharedMapScope(effectiveScope, publish)
+      .then(publish)
       .catch(() => {
-        // Ownership context is a convenience. Keep public map search usable
-        // when an optional profile, club, or stash read is unavailable.
-        if (active) {
-          setOwnedMarkers([]);
-          setOwnedTruncated(false);
-          setOwnedConnections([]);
-          setOwnedProfiles([]);
-        }
+        if (active)
+          setOwnedMapError(
+            "Some map data could not be loaded. Retry to load your map.",
+          );
+      })
+      .finally(() => {
+        if (active) setOwnedMapLoading(false);
       });
     return () => {
       active = false;
     };
-  }, [sharedScope, showOwnedMap, viewer]);
+  }, [effectiveScope, ownedMapAttempt]);
 
   const fromYear = toAstronomicalYear(from);
   const toYear = toAstronomicalYear(to);
@@ -1447,6 +1437,23 @@ export default function MapPage() {
             )}
           </div>
         </div>
+        {ownedMapLoading && (
+          <p className="small text-muted mt-2 mb-0" role="status">
+            Loading map objects...
+          </p>
+        )}
+        {ownedMapError && (
+          <Alert className="mt-3 mb-0" variant="warning">
+            {ownedMapError}{" "}
+            <Button
+              size="sm"
+              variant="outline-dark"
+              onClick={() => setOwnedMapAttempt((attempt) => attempt + 1)}
+            >
+              Retry map data
+            </Button>
+          </Alert>
+        )}
         {ownedTruncated && (
           <Alert className="mt-3 mb-0" variant="warning">
             This map shows a limited part of the collection.

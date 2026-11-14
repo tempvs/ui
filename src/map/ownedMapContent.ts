@@ -126,7 +126,14 @@ export function filterOwnedMapContentByProfiles(
 const sharedScopeReadTtlMs = 30_000;
 const sharedScopeReads = new Map<
   string,
-  { expiresAt: number; request: Promise<OwnedMapContent> }
+  {
+    expiresAt: number;
+    request: Promise<OwnedMapContent>;
+    progress: {
+      latest?: OwnedMapContent;
+      listeners: Set<(content: OwnedMapContent) => void>;
+    };
+  }
 >();
 
 /**
@@ -316,22 +323,47 @@ function eventLocations(event: TempvsEvent): RelatedLocation[] {
  * here: a copied URL must show the same resource graph to every recipient. */
 export async function loadSharedMapScope(
   scope: SharedMapScope,
+  onProgress?: (content: OwnedMapContent) => void,
 ): Promise<OwnedMapContent> {
   const key = `${scope.type}:${scope.id}`;
   const now = Date.now();
-  const existing = sharedScopeReads.get(key);
-  if (existing && existing.expiresAt > now) return existing.request;
-  const request = loadSharedMapScopeUncached(scope);
-  const entry = { expiresAt: now + sharedScopeReadTtlMs, request };
-  sharedScopeReads.set(key, entry);
-  request.catch(() => {
-    if (sharedScopeReads.get(key) === entry) sharedScopeReads.delete(key);
-  });
-  return request;
+  let entry = sharedScopeReads.get(key);
+  if (!entry || entry.expiresAt <= now) {
+    const progress: {
+      latest?: OwnedMapContent;
+      listeners: Set<(content: OwnedMapContent) => void>;
+    } = { listeners: new Set() };
+    const publish = (content: OwnedMapContent) => {
+      progress.latest = content;
+      progress.listeners.forEach((listener) => listener(content));
+    };
+    const request = loadSharedMapScopeUncached(scope, publish).then(
+      (content) => {
+        publish(content);
+        return content;
+      },
+    );
+    entry = { expiresAt: now + sharedScopeReadTtlMs, request, progress };
+    const created = entry;
+    sharedScopeReads.set(key, created);
+    request.catch(() => {
+      if (sharedScopeReads.get(key) === created) sharedScopeReads.delete(key);
+    });
+  }
+  if (onProgress) {
+    entry.progress.listeners.add(onProgress);
+    if (entry.progress.latest) onProgress(entry.progress.latest);
+  }
+  try {
+    return await entry.request;
+  } finally {
+    if (onProgress) entry.progress.listeners.delete(onProgress);
+  }
 }
 
 async function loadSharedMapScopeUncached(
   scope: SharedMapScope,
+  onProgress: (content: OwnedMapContent) => void,
 ): Promise<OwnedMapContent> {
   switch (scope.type) {
     case "USER":
@@ -339,7 +371,7 @@ async function loadSharedMapScopeUncached(
       // the owner's own Map page. The URL identifies that owner, never the
       // recipient, so copying it cannot silently substitute another user's
       // profiles, clubs, or source relationships.
-      return loadOwnedMapContent(scope.id);
+      return loadOwnedMapContent(scope.id, onProgress);
     case "PROFILE": {
       return projectionMapContent("PROFILE", scope.id);
     }
@@ -363,10 +395,14 @@ async function loadSharedResourceContent(
   scope: SharedMapScope,
 ): Promise<OwnedMapContent> {
   const content = await projectionMapContent(
-    scope.type as MapProjection["scope"], scope.id,
-  ).catch(() => ({ markers: [], connections: [] } as OwnedMapContent));
+    scope.type as MapProjection["scope"],
+    scope.id,
+  ).catch(() => ({ markers: [], connections: [] }) as OwnedMapContent);
   const expectedCount = scope.type === "CLUB" ? 1 : 2;
-  if (content.markers.length >= expectedCount && content.markers.every((pin) => pin.thumbnailUrl))
+  if (
+    content.markers.length >= expectedCount &&
+    content.markers.every((pin) => pin.thumbnailUrl)
+  )
     return content;
 
   let expected: RelatedLocation[];
@@ -480,6 +516,7 @@ type RelatedLocation = {
 async function addExpectedLocations(
   content: OwnedMapContent,
   expected: RelatedLocation[],
+  includeThumbnails = true,
 ): Promise<OwnedMapContent> {
   // Use the resource's current avatar/carousel image even when its location
   // was already present in an older projection without thumbnail metadata.
@@ -517,7 +554,9 @@ async function addExpectedLocations(
       resourceType: location.entityType.toLowerCase(),
       resourceId: location.entityId,
     }));
-  const thumbnails = await thumbnailUrls(absentThumbnailResources);
+  const thumbnails = includeThumbnails
+    ? await thumbnailUrls(absentThumbnailResources)
+    : new Map<string, string>();
   const markers = missing.flatMap((location) => {
     const place = location.placeId ? places.get(location.placeId) : undefined;
     if (!place) return [];
@@ -652,17 +691,41 @@ export async function loadOwnedMapContent(
         : []),
     ].filter((profile): profile is Profile => Boolean(profile)),
   );
+  if (
+    !profiles.length &&
+    (personalResult.status === "rejected" ||
+      clubProfilesResult.status === "rejected")
+  )
+    throw new Error("Unable to load map profiles");
+  const profileChoices: OwnedMapProfile[] = profiles.map((profile) => ({
+    id: profile.id,
+    label: profileLabel(profile),
+    profileType: profile.id === personalProfile?.id ? "USER" : "CLUB",
+    ...(profile.id !== personalProfile?.id && personalProfile?.id
+      ? { ownerProfileId: personalProfile.id }
+      : {}),
+  }));
+  const snapshot = (content: OwnedMapContent): OwnedMapContent => ({
+    ...addClubProfileConnections(
+      content,
+      personalProfile?.id,
+      profiles
+        .filter((profile) => profile.id !== personalProfile?.id)
+        .map((profile) => profile.id),
+    ),
+    profiles: profileChoices,
+  });
+  // The chooser is identity data. Neither images nor the map projection may
+  // prevent it from appearing while the graph is still being fetched.
+  onProgress?.(snapshot({ markers: [], connections: [] }));
   const projections = await getMapProjections(
     "PROFILE",
     profiles.map((profile) => profile.id),
   );
-  const projectionContent = await mergeProjectionContent(projections);
-  // A profile save publishes its location asynchronously. Older records can
-  // also retain an entity-location row without its derived profile graph.
-  // Keep /map truthful and useful during either gap by resolving the same
-  // approved place that the profile already references; the projection will
-  // replace this bounded fallback once it arrives.
-  const content = addClubProfileConnections(
+  const projectionContent = mergeProjectionContent(projections, profiles);
+  // Resolve approved fallback positions before framing the graph so every
+  // profile is included in the initial viewport. Images remain optional.
+  const content = snapshot(
     await addExpectedLocations(
       projectionContent,
       profiles
@@ -670,30 +733,55 @@ export async function loadOwnedMapContent(
           (profile) =>
             !projectionContent.markers.some(
               (marker) =>
-                marker.entityType === "PROFILE" && marker.entityId === profile.id,
+                marker.entityType === "PROFILE" &&
+                marker.entityId === profile.id,
             ),
         )
         .flatMap(profileLocations),
+      false,
     ),
-    personalProfile?.id,
-    profiles.filter((profile) => profile.id !== personalProfile?.id).map((profile) => profile.id),
   );
-  const profileChoices: OwnedMapProfile[] = profiles.map((profile) => ({
-    id: profile.id,
-    label: profileLabel(profile),
-    profileType: profile.id === personalProfile?.id ? "USER" : "CLUB",
-    ...(profile.id === personalProfile?.id
-      ? {}
-      : personalProfile?.id
-        ? { ownerProfileId: personalProfile.id }
-        : {}),
-  }));
-  const withProfiles: OwnedMapContent = {
+  onProgress?.(content);
+  const knownProfileIds = new Set(profiles.map((profile) => profile.id));
+  const [thumbnails, extraProfiles] = await Promise.all([
+    thumbnailUrls(
+      content.markers.map((marker) => ({
+        resourceType: marker.entityType.toLowerCase(),
+        resourceId: marker.entityId,
+      })),
+    ),
+    getProfilesByIds(
+      content.markers
+        .filter(
+          (marker) =>
+            marker.entityType === "PROFILE" &&
+            !knownProfileIds.has(marker.entityId),
+        )
+        .map((marker) => marker.entityId),
+    ).catch(() => []),
+  ]);
+  const aliases = new Map(
+    [...profiles, ...extraProfiles].map((profile) => [
+      profile.id,
+      profile.alias?.trim() || profile.id,
+    ]),
+  );
+  const enriched: OwnedMapContent = {
     ...content,
-    profiles: profileChoices,
+    markers: content.markers.map((pin) => ({
+      ...pin,
+      thumbnailUrl:
+        thumbnails.get(`${pin.entityType.toLowerCase()}:${pin.entityId}`) ||
+        pin.thumbnailUrl,
+      path: projectionPath(
+        pin.entityType,
+        pin.entityId,
+        aliases.get(pin.entityId),
+      ),
+    })),
   };
-  onProgress?.(withProfiles);
-  return withProfiles;
+  onProgress?.(enriched);
+  return enriched;
 }
 
 function profileLabel(profile: Profile): string {
@@ -752,19 +840,26 @@ function addClubProfileConnections(
   const connections = [...content.connections];
   clubProfileIds.forEach((clubProfileId) => {
     const clubProfile = markers.find(
-      (marker) => marker.entityType === "PROFILE" && marker.entityId === clubProfileId,
+      (marker) =>
+        marker.entityType === "PROFILE" && marker.entityId === clubProfileId,
     );
     if (!clubProfile) return;
     const key = `USER_CLUB_PROFILE:${personal.key}:${clubProfile.key}`;
     if (!connections.some((connection) => connection.key === key))
-      connections.push({ key, fromKey: personal.key, toKey: clubProfile.key, kind: "USER_CLUB_PROFILE" });
+      connections.push({
+        key,
+        fromKey: personal.key,
+        toKey: clubProfile.key,
+        kind: "USER_CLUB_PROFILE",
+      });
   });
   return { ...content, markers, connections };
 }
 
-async function mergeProjectionContent(
+function mergeProjectionContent(
   projections: MapProjection[],
-): Promise<OwnedMapContent> {
+  profiles: Profile[],
+): OwnedMapContent {
   const markers = projections.flatMap((projection) => projection.markers);
   const uniqueMarkers = Array.from(
     new Map(
@@ -774,47 +869,35 @@ async function mergeProjectionContent(
       ]),
     ).values(),
   );
-  const [thumbnails, profiles] = await Promise.all([
-    thumbnailUrls(
-      uniqueMarkers.map((marker) => ({
-        resourceType: marker.entityType.toLowerCase() as
-          | "profile"
-          | "club"
-          | "source"
-          | "event",
-        resourceId: marker.entityId,
-      })),
-    ),
-    getProfilesByIds(
-      uniqueMarkers
-        .filter((marker) => marker.entityType === "PROFILE")
-        .map((marker) => marker.entityId),
-    ).catch(() => []),
-  ]);
   const aliases = new Map(
-    profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
+    profiles.map((profile) => [
+      profile.id,
+      profile.alias?.trim() || profile.id,
+    ]),
   );
   return {
-    ...(projections.some((projection) => projection.truncated) ? { truncated: true } : {}),
-    markers: uniqueMarkers.map((value) => marker({
-      entityType: value.entityType,
-      entityId: value.entityId,
-      locationRole: value.locationRole,
-      label: value.label,
-      placeId: value.placeId,
-      placeName: value.placeName,
-      latitude: value.latitude,
-      longitude: value.longitude,
-      thumbnailUrl:
-        thumbnails.get(`${value.entityType.toLowerCase()}:${value.entityId}`) ||
-        null,
-      ...(value.profileType ? { profileType: value.profileType } : {}),
-      path: projectionPath(
-        value.entityType,
-        value.entityId,
-        aliases.get(value.entityId),
-      ),
-    })),
+    ...(projections.some((projection) => projection.truncated)
+      ? { truncated: true }
+      : {}),
+    markers: uniqueMarkers.map((value) =>
+      marker({
+        entityType: value.entityType,
+        entityId: value.entityId,
+        locationRole: value.locationRole,
+        label: value.label,
+        placeId: value.placeId,
+        placeName: value.placeName,
+        latitude: value.latitude,
+        longitude: value.longitude,
+        thumbnailUrl: null,
+        ...(value.profileType ? { profileType: value.profileType } : {}),
+        path: projectionPath(
+          value.entityType,
+          value.entityId,
+          aliases.get(value.entityId),
+        ),
+      }),
+    ),
     connections: Array.from(
       new Map(
         projections

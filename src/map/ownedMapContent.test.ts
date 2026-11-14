@@ -1,5 +1,10 @@
 import { getClub, getProfileClubs } from "../club/clubApi";
-import { getSource, getSourceImages, getSourcesByIds } from "../library/libraryApi";
+import { waitFor } from "@testing-library/react";
+import {
+  getSource,
+  getSourceImages,
+  getSourcesByIds,
+} from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
@@ -107,6 +112,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   jest.mocked(getUserProfileByUserId).mockResolvedValue({
     id: "personal",
+    alias: "albvs",
     firstName: "Antonius",
     lastName: "Primvs",
     locationPlaceId: "rome",
@@ -591,7 +597,14 @@ test("loads the owned map from persisted profile projections", async () => {
   const firstProgress = new Promise<void>((resolve) => {
     publishFirstProgress = resolve;
   });
-  const progress = jest.fn(() => publishFirstProgress?.());
+  const progress = jest.fn((content) => {
+    if (
+      content.markers.some(
+        (marker: { entityId: string }) => marker.entityId === "personal",
+      )
+    )
+      publishFirstProgress?.();
+  });
   const contentPromise = loadOwnedMapContent("viewer", progress);
 
   await firstProgress;
@@ -609,4 +622,85 @@ test("loads the owned map from persisted profile projections", async () => {
 
   releaseClubReads?.();
   await contentPromise;
+});
+
+test("publishes profile choices and map geometry before thumbnail metadata resolves", async () => {
+  let releaseImages!: (
+    value: Awaited<ReturnType<typeof getImageThumbnails>>,
+  ) => void;
+  const images = new Promise<Awaited<ReturnType<typeof getImageThumbnails>>>(
+    (resolve) => {
+      releaseImages = resolve;
+    },
+  );
+  jest.mocked(getImageThumbnails).mockReturnValue(images);
+  const progress = jest.fn();
+  const request = loadOwnedMapContent("delayed-images-owner", progress);
+  try {
+    await waitFor(() =>
+      expect(progress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profiles: expect.arrayContaining([
+            expect.objectContaining({ id: "personal" }),
+            expect.objectContaining({ id: "club-profile" }),
+          ]),
+          markers: expect.arrayContaining([
+            expect.objectContaining({ entityType: "SOURCE" }),
+            expect.objectContaining({ entityType: "PROFILE" }),
+          ]),
+        }),
+      ),
+    );
+  } finally {
+    releaseImages([]);
+    await request;
+  }
+});
+
+test("shares progressive geometry with callers joining an in-flight USER map", async () => {
+  let releaseImages!: (
+    value: Awaited<ReturnType<typeof getImageThumbnails>>,
+  ) => void;
+  const images = new Promise<Awaited<ReturnType<typeof getImageThumbnails>>>(
+    (resolve) => {
+      releaseImages = resolve;
+    },
+  );
+  jest.mocked(getImageThumbnails).mockReturnValue(images);
+  const firstProgress = jest.fn();
+  const first = loadSharedMapScope(
+    { type: "USER", id: "joined-progress-owner" },
+    firstProgress,
+  );
+  let second: Promise<unknown> | undefined;
+  try {
+    await waitFor(() =>
+      expect(firstProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          markers: expect.arrayContaining([
+            expect.objectContaining({ entityType: "SOURCE" }),
+          ]),
+        }),
+      ),
+    );
+    const secondProgress = jest.fn();
+    second = loadSharedMapScope(
+      { type: "USER", id: "joined-progress-owner" },
+      secondProgress,
+    );
+    expect(secondProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profiles: expect.arrayContaining([
+          expect.objectContaining({ id: "personal" }),
+        ]),
+        markers: expect.arrayContaining([
+          expect.objectContaining({ entityType: "SOURCE" }),
+        ]),
+      }),
+    );
+    expect(getMapProjections).toHaveBeenCalledTimes(1);
+  } finally {
+    releaseImages([]);
+    await Promise.all([first, second]);
+  }
 });

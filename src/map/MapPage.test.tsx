@@ -141,6 +141,93 @@ const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
 const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
 const mockSaveMapSnapshot = jest.mocked(saveMapSnapshot);
 
+test("opening /map keeps progressive objects and profile controls through USER scope hydration", async () => {
+  mockGetViewer.mockResolvedValue({ userId: "viewer-1", roles: [] });
+  let complete!: (content: any) => void;
+  const pendingImages = new Promise<any>((resolve) => {
+    complete = resolve;
+  });
+  const marker = {
+    key: "PROFILE:p:CURRENT_RESIDENCE",
+    entityType: "PROFILE",
+    entityId: "p",
+    label: "Marcus",
+    profileType: "USER",
+    placeId: "rome",
+    latitude: 41.9,
+    longitude: 12.5,
+  };
+  const graph = {
+    markers: [marker],
+    connections: [],
+    profiles: [{ id: "p", label: "Marcus", profileType: "USER" }],
+  } as any;
+  mockLoadSharedMapScope.mockImplementationOnce((_scope, publish) => {
+    publish?.({ ...graph, markers: [] });
+    publish?.(graph);
+    return pendingImages;
+  });
+  render(
+    <MemoryRouter initialEntries={["/map"]}>
+      <MapPage />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
+  try {
+    expect(
+      await screen.findByRole("checkbox", { name: "User profile: Marcus" }),
+    ).toBeChecked();
+    await waitFor(() =>
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+        "data-fit-count",
+        "1",
+      ),
+    );
+    expect(screen.getByTestId("map-location")).toHaveTextContent(
+      "scope=USER&scopeId=viewer-1",
+    );
+    expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => complete(graph));
+  }
+});
+
+test("a graph failure preserves available profiles and offers a working retry", async () => {
+  mockGetViewer.mockResolvedValue({ userId: "viewer-1", roles: [] });
+  mockLoadSharedMapScope
+    .mockImplementationOnce(async (_scope, publish) => {
+      publish?.({
+        markers: [],
+        connections: [],
+        profiles: [{ id: "p", label: "Marcus", profileType: "USER" }],
+      });
+      throw new Error("Unavailable projection");
+    })
+    .mockResolvedValueOnce({
+      markers: [],
+      connections: [],
+      profiles: [{ id: "p", label: "Marcus", profileType: "USER" }],
+    });
+  render(
+    <MemoryRouter initialEntries={["/map"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  expect(
+    await screen.findByRole("button", { name: "Retry map data" }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("checkbox", { name: "User profile: Marcus" }),
+  ).toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Retry map data" }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "Retry map data" }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(2);
+});
+
 function deferredMapPage() {
   let resolve!: (
     value: Awaited<ReturnType<typeof nearbyMapEntitiesPage>>,
@@ -841,10 +928,13 @@ test("retains a shared public graph while hydrating a copied map URL", async () 
   );
 
   await waitFor(() =>
-    expect(mockLoadSharedMapScope).toHaveBeenCalledWith({
-      type: "PROFILE",
-      id: "profile-1",
-    }),
+    expect(mockLoadSharedMapScope).toHaveBeenCalledWith(
+      {
+        type: "PROFILE",
+        id: "profile-1",
+      },
+      expect.any(Function),
+    ),
   );
   await waitFor(() =>
     expect(screen.getByTestId("map-location")).toHaveTextContent(
@@ -862,10 +952,13 @@ test("hydrates a copied personal map from the original user scope", async () => 
   );
 
   await waitFor(() =>
-    expect(mockLoadSharedMapScope).toHaveBeenCalledWith({
-      type: "USER",
-      id: "owner-1",
-    }),
+    expect(mockLoadSharedMapScope).toHaveBeenCalledWith(
+      {
+        type: "USER",
+        id: "owner-1",
+      },
+      expect.any(Function),
+    ),
   );
   expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();
 });
