@@ -324,6 +324,7 @@ export default function RelatedMapModal({
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
+          {relatedContent.truncated && <Alert variant="warning">This map shows a limited part of the collection.</Alert>}
           {place === null && !error && (
             <Alert variant="warning">This place is no longer available.</Alert>
           )}

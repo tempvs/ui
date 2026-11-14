@@ -102,6 +102,7 @@ export default function MapPage() {
   const [entities, setEntities] = useState<MapEntityLocation[]>([]);
   const [entityNextCursor, setEntityNextCursor] = useState<string | null>(null);
   const [loadingMoreEntities, setLoadingMoreEntities] = useState(false);
+  const [entitiesTruncated, setEntitiesTruncated] = useState(false);
   const [types, setTypes] = useState<MapEntityLocation["entityType"][]>(() =>
     parseEntityTypes(params.get("types")),
   );
@@ -146,6 +147,7 @@ export default function MapPage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [ownedTruncated, setOwnedTruncated] = useState(false);
   const [ownedMarkers, setOwnedMarkers] = useState<OwnedMapMarker[]>([]);
   const [ownedConnections, setOwnedConnections] = useState<
     OwnedMapConnection[]
@@ -305,18 +307,21 @@ export default function MapPage() {
     let active = true;
     if (sharedScope) {
       setOwnedMarkers([]);
+      setOwnedTruncated(false);
       setOwnedConnections([]);
       setOwnedProfiles([]);
       void loadSharedMapScope(sharedScope)
         .then((content) => {
           if (!active) return;
           setOwnedMarkers(content.markers);
+          setOwnedTruncated(content.truncated === true);
           setOwnedConnections(content.connections);
           setOwnedProfiles(content.profiles || []);
         })
         .catch(() => {
           if (active) {
             setOwnedMarkers([]);
+            setOwnedTruncated(false);
             setOwnedConnections([]);
             setOwnedProfiles([]);
           }
@@ -330,6 +335,7 @@ export default function MapPage() {
     // separate from public, URL-addressable page slices above.
     if (!viewer || !showOwnedMap) {
       setOwnedMarkers([]);
+      setOwnedTruncated(false);
       setOwnedConnections([]);
       setOwnedProfiles([]);
       return () => {
@@ -339,12 +345,14 @@ export default function MapPage() {
     void loadOwnedMapContent(viewer.userId, (content) => {
       if (!active) return;
       setOwnedMarkers(content.markers);
+      setOwnedTruncated(content.truncated === true);
       setOwnedConnections(content.connections);
       setOwnedProfiles(content.profiles || []);
     })
       .then((content) => {
         if (!active) return;
         setOwnedMarkers(content.markers);
+        setOwnedTruncated(content.truncated === true);
         setOwnedConnections(content.connections);
         setOwnedProfiles(content.profiles || []);
       })
@@ -353,6 +361,7 @@ export default function MapPage() {
         // when an optional profile, club, or stash read is unavailable.
         if (active) {
           setOwnedMarkers([]);
+          setOwnedTruncated(false);
           setOwnedConnections([]);
           setOwnedProfiles([]);
         }
@@ -451,6 +460,7 @@ export default function MapPage() {
 
     const requestId = ++entityFilterRequest.current;
     setEntityNextCursor(null);
+    setEntitiesTruncated(false);
     if (!types.length) {
       setEntities([]);
       return;
@@ -475,6 +485,7 @@ export default function MapPage() {
         if (requestId !== entityFilterRequest.current) return;
         setEntities(page.items);
         setEntityNextCursor(page.nextCursor ?? null);
+        setEntitiesTruncated(page.truncated === true);
       })
       .catch(() => {
         if (requestId !== entityFilterRequest.current) return;
@@ -553,6 +564,7 @@ export default function MapPage() {
     setLongitude(String(selected.longitude));
     setShowOwnedMap(false);
     setOwnedMarkers([]);
+    setOwnedTruncated(false);
     setOwnedConnections([]);
     setOwnedProfiles([]);
     setSelectedPlaceId(selected.id);
@@ -596,6 +608,7 @@ export default function MapPage() {
       setItems([selected]);
       setEntities(nearbyEntityPage.items);
       setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
+      setEntitiesTruncated(nearbyEntityPage.truncated === true);
     } catch (caught) {
       setError((caught as Error).message || "Unable to load places.");
     } finally {
@@ -717,6 +730,7 @@ export default function MapPage() {
         setItems(linkedPlace ? [linkedPlace] : []);
         setEntities(nearbyEntityPage.items);
         setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
+        setEntitiesTruncated(nearbyEntityPage.truncated === true);
       } else {
         setItems(
           (await searchPlacesWithNameRange(trimmed, undefined, from, to)).map(
@@ -728,6 +742,7 @@ export default function MapPage() {
         );
         setEntities([]);
         setEntityNextCursor(null);
+        setEntitiesTruncated(false);
       }
     } catch (caught) {
       setError((caught as Error).message || "Unable to load places.");
@@ -787,6 +802,7 @@ export default function MapPage() {
         ];
       });
       setEntityNextCursor(page.nextCursor ?? null);
+      setEntitiesTruncated(page.truncated === true);
     } catch (caught) {
       setError((caught as Error).message || "Unable to load more content.");
     } finally {
@@ -1310,6 +1326,16 @@ export default function MapPage() {
             )}
           </div>
         </div>
+        {ownedTruncated && (
+          <Alert className="mt-3 mb-0" variant="warning">
+            This map shows a limited part of the collection.
+          </Alert>
+        )}
+        {entitiesTruncated && (
+          <Alert className="mt-3 mb-0" variant="warning">
+            Showing a limited set of nearby results. Narrow the area or filters to explore more.
+          </Alert>
+        )}
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
             {error}

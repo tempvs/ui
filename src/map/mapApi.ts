@@ -113,12 +113,14 @@ export type MapEntityLocation = {
 };
 
 export type MapEntityLocationPage = {
+  truncated?: boolean;
   items: MapEntityLocation[];
   nextCursor?: string;
   counts?: Partial<Record<MapEntityLocation["entityType"], number>>;
 };
 
 export type MapProjection = {
+  truncated?: boolean;
   scope: "PROFILE" | "CLUB" | "SOURCE" | "EVENT";
   id: string;
   markers: MapEntityLocation[];
@@ -1066,6 +1068,7 @@ export async function nearbyMapEntitiesPage(
   const body = (await responseJson(response)) as {
     items?: unknown;
     nextCursor?: unknown;
+    truncated?: unknown;
   } | null;
   const nextCursor =
     body && typeof body.nextCursor === "string" ? body.nextCursor : undefined;
@@ -1074,5 +1077,6 @@ export async function nearbyMapEntitiesPage(
       ? (body?.items as MapEntityLocation[])
       : [],
     ...(nextCursor ? { nextCursor } : {}),
+    ...(body?.truncated === true ? { truncated: true } : {}),
   };
 }

@@ -275,6 +275,14 @@ test("focuses the map after both coordinate fields lose focus without loading ne
   ).not.toBeInTheDocument();
 });
 
+test("explains when nearby map results reach the display window", async () => {
+  mockGetViewer.mockResolvedValue(null);
+  mockNearbyMapPlaces.mockResolvedValue([]);
+  mockNearbyMapEntitiesPage.mockResolvedValue({ items: [], truncated: true });
+  render(<MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}><MapPage /></MemoryRouter>);
+  expect(await screen.findByText("Showing a limited set of nearby results. Narrow the area or filters to explore more.")).toBeInTheDocument();
+});
+
 test("restores shared period and layer-specific discovery facets from a map URL", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);

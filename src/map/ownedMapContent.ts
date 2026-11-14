@@ -68,6 +68,7 @@ export type OwnedMapProfile = {
 };
 
 export type OwnedMapContent = {
+  truncated?: boolean;
   markers: OwnedMapMarker[];
   connections: OwnedMapConnection[];
   profiles?: OwnedMapProfile[];
@@ -403,7 +404,7 @@ async function projectionMapContent(
     // old records that were never backfilled). Profile maps have no such
     // local fallback and retain the original error behavior.
     if (!expectedLocations.length) throw error;
-    projection = { scope, id, markers: [], connections: [] };
+    projection = { scope, id, markers: [], connections: [], truncated: true };
   }
   const markers = deduplicateProjectionMarkers(projection.markers);
   const [thumbnails, profiles] = await Promise.all([
@@ -453,6 +454,7 @@ async function projectionMapContent(
     // the already-fetched snapshot for older records until their next async
     // projection refresh; no page traversal or additional request is needed.
     connections: projection.connections,
+    ...(projection.truncated ? { truncated: true } : {}),
   };
   const complete = await addExpectedLocations(content, expectedLocations);
   return {
@@ -793,6 +795,7 @@ async function mergeProjectionContent(
     profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
   );
   return {
+    ...(projections.some((projection) => projection.truncated) ? { truncated: true } : {}),
     markers: uniqueMarkers.map((value) => marker({
       entityType: value.entityType,
       entityId: value.entityId,

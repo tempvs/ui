@@ -5,6 +5,12 @@ import {
   nearbyMapEntitiesPage,
 } from "./mapApi";
 
+test("preserves explicit truncation on nearby result pages", async () => {
+  const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({ ok: true, text: async () => JSON.stringify({ items: [], truncated: true }) } as Response);
+  await expect(nearbyMapEntitiesPage(41, 12, 25, ["SOURCE"])).resolves.toMatchObject({ truncated: true });
+  fetchMock.mockRestore();
+});
+
 test("prefers a stable UUID over a legacy place id for shareable references", () => {
   expect(
     mapPlaceReference({
