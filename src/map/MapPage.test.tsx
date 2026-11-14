@@ -63,7 +63,12 @@ jest.mock("./MapCanvas", () => {
       ownedMarkerLayout?: Array<{ key: string }>;
       entities?: Array<{ key?: string; label: string }>;
     }) => {
-      mockMapRender({ focus, ownedMarkers, ownedConnections, ownedMarkerLayout });
+      mockMapRender({
+        focus,
+        ownedMarkers,
+        ownedConnections,
+        ownedMarkerLayout,
+      });
       return React.createElement(
         "div",
         {
@@ -114,7 +119,8 @@ jest.mock("./mapApi", () => ({
 }));
 
 jest.mock("./ownedMapContent", () => ({
-  filterOwnedMapContentByProfiles: jest.requireActual("./ownedMapContent").filterOwnedMapContentByProfiles,
+  filterOwnedMapContentByProfiles:
+    jest.requireActual("./ownedMapContent").filterOwnedMapContentByProfiles,
   loadSharedMapScope: jest.fn().mockResolvedValue({
     markers: [],
     connections: [],
@@ -134,6 +140,169 @@ const mockGetMapPlace = jest.mocked(getMapPlace);
 const mockLoadSharedMapScope = jest.mocked(loadSharedMapScope);
 const mockLoadOwnedMapContent = jest.mocked(loadOwnedMapContent);
 const mockSaveMapSnapshot = jest.mocked(saveMapSnapshot);
+
+function deferredMapPage() {
+  let resolve!: (
+    value: Awaited<ReturnType<typeof nearbyMapEntitiesPage>>,
+  ) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<
+    Awaited<ReturnType<typeof nearbyMapEntitiesPage>>
+  >((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+function mapTestEntity(id: string) {
+  return {
+    entityType: "PROFILE" as const,
+    entityId: id,
+    locationRole: "CURRENT_RESIDENCE" as const,
+    label: id,
+    placeId: "seed:rome",
+    placeName: "Rome",
+    latitude: 41.9,
+    longitude: 12.5,
+  };
+}
+
+afterEach(() => jest.useRealTimers());
+
+test("coalesces year edits and keeps previous markers until the latest page resolves", async () => {
+  const latest = deferredMapPage();
+  mockNearbyMapEntitiesPage
+    .mockResolvedValueOnce({ items: [mapTestEntity("Previous result")] })
+    .mockReturnValueOnce(latest.promise);
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await screen.findByRole("link", { name: "Previous result" });
+  jest.useFakeTimers();
+  const year = screen.getAllByRole("textbox", { name: "Year" })[0];
+  for (const value of ["1", "18", "185", "1850"]) {
+    fireEvent.change(year, { target: { value } });
+    act(() => jest.advanceTimersByTime(100));
+  }
+  expect(mockNearbyMapEntitiesPage).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("link", { name: "Previous result" })).toBeVisible();
+  expect(screen.getByRole("status")).toHaveTextContent("Updating map");
+  await act(async () => jest.advanceTimersByTime(150));
+  expect(mockNearbyMapEntitiesPage).toHaveBeenCalledTimes(2);
+  expect(mockNearbyMapEntitiesPage.mock.calls[1][7]).toMatchObject({
+    from: 1850,
+  });
+  expect(screen.getByRole("link", { name: "Previous result" })).toBeVisible();
+  await act(async () =>
+    latest.resolve({ items: [mapTestEntity("Latest result")] }),
+  );
+  expect(screen.getByRole("link", { name: "Latest result" })).toBeVisible();
+  expect(
+    screen.queryByRole("link", { name: "Previous result" }),
+  ).not.toBeInTheDocument();
+});
+
+test("aborts superseded filters and ignores late responses even if transport ignores abort", async () => {
+  const obsolete = deferredMapPage();
+  mockNearbyMapEntitiesPage
+    .mockResolvedValueOnce({ items: [] })
+    .mockReturnValueOnce(obsolete.promise)
+    .mockResolvedValueOnce({ items: [mapTestEntity("Current result")] });
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "User" }));
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenCalledTimes(2),
+  );
+  const signal = mockNearbyMapEntitiesPage.mock.calls[1][5]!;
+  fireEvent.click(screen.getByRole("checkbox", { name: "User" }));
+  await screen.findByRole("link", { name: "Current result" });
+  expect(signal.aborted).toBe(true);
+  await act(async () =>
+    obsolete.resolve({ items: [mapTestEntity("Obsolete result")] }),
+  );
+  expect(
+    screen.queryByRole("link", { name: "Obsolete result" }),
+  ).not.toBeInTheDocument();
+});
+
+test("keeps previous results on refresh failure without reusing their cursor for new filters", async () => {
+  const latest = deferredMapPage();
+  mockNearbyMapEntitiesPage
+    .mockResolvedValueOnce({
+      items: [mapTestEntity("Previous result")],
+      nextCursor: "old-cursor",
+    })
+    .mockReturnValueOnce(latest.promise);
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await screen.findByRole("link", { name: "Previous result" });
+  fireEvent.click(screen.getByRole("checkbox", { name: "User" }));
+  expect(screen.getByRole("button", { name: "Show more" })).toBeDisabled();
+  await act(async () => latest.reject(new Error("Offline")));
+  expect(screen.getByRole("link", { name: "Previous result" })).toBeVisible();
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Previous results are still shown",
+  );
+  expect(screen.getByRole("button", { name: "Show more" })).toBeDisabled();
+});
+
+test("discards an old pagination page after the filters change", async () => {
+  const older = deferredMapPage();
+  mockNearbyMapEntitiesPage
+    .mockResolvedValueOnce({
+      items: [mapTestEntity("First result")],
+      nextCursor: "older",
+    })
+    .mockReturnValueOnce(older.promise)
+    .mockResolvedValueOnce({ items: [mapTestEntity("New filters result")] });
+  render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await screen.findByRole("link", { name: "First result" });
+  fireEvent.click(screen.getByRole("button", { name: "Show more" }));
+  const signal = mockNearbyMapEntitiesPage.mock.calls[1][5]!;
+  fireEvent.click(screen.getByRole("checkbox", { name: "Show Club" }));
+  await screen.findByRole("link", { name: "New filters result" });
+  expect(signal.aborted).toBe(true);
+  await act(async () =>
+    older.resolve({ items: [mapTestEntity("Old page result")] }),
+  );
+  expect(
+    screen.queryByRole("link", { name: "Old page result" }),
+  ).not.toBeInTheDocument();
+});
+
+test("unmounting aborts the current map result request", async () => {
+  const pending = deferredMapPage();
+  mockNearbyMapEntitiesPage.mockReturnValueOnce(pending.promise);
+  const view = render(
+    <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5"]}>
+      <MapPage />
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(mockNearbyMapEntitiesPage).toHaveBeenCalledTimes(1),
+  );
+  const signal = mockNearbyMapEntitiesPage.mock.calls[0][5]!;
+  view.unmount();
+  expect(signal.aborted).toBe(true);
+  await act(async () => pending.resolve({ items: [] }));
+});
 
 function LocationProbe() {
   const location = useLocation();
@@ -169,15 +338,19 @@ test("starts with empty temporal filters", () => {
   expect(
     screen.queryByRole("combobox", { name: "Period" }),
   ).not.toBeInTheDocument();
-  expect(screen.getAllByRole("checkbox", { name: "Classical antiquity" })).toHaveLength(
-    1,
-  );
-  expect(screen.getByRole("checkbox", { name: "Classical antiquity" })).not.toBeChecked();
+  expect(
+    screen.getAllByRole("checkbox", { name: "Classical antiquity" }),
+  ).toHaveLength(1);
+  expect(
+    screen.getByRole("checkbox", { name: "Classical antiquity" }),
+  ).not.toBeChecked();
   expect(
     screen.getByRole("checkbox", { name: "Enable period filter" }),
   ).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: "User" })).toBeChecked();
-  expect(screen.getByRole("checkbox", { name: "Reenactment profile" })).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Reenactment profile" }),
+  ).toBeChecked();
   expect(screen.getAllByRole("textbox", { name: "Year" })[0]).toHaveValue("");
   expect(screen.getAllByRole("textbox", { name: "Year" })[1]).toHaveValue("");
 });
@@ -279,8 +452,18 @@ test("explains when nearby map results reach the display window", async () => {
   mockGetViewer.mockResolvedValue(null);
   mockNearbyMapPlaces.mockResolvedValue([]);
   mockNearbyMapEntitiesPage.mockResolvedValue({ items: [], truncated: true });
-  render(<MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}><MapPage /></MemoryRouter>);
-  expect(await screen.findByText("Showing a limited set of nearby results. Narrow the area or filters to explore more.")).toBeInTheDocument();
+  render(
+    <MemoryRouter
+      initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25&types=PROFILE"]}
+    >
+      <MapPage />
+    </MemoryRouter>,
+  );
+  expect(
+    await screen.findByText(
+      "Showing a limited set of nearby results. Narrow the area or filters to explore more.",
+    ),
+  ).toBeInTheDocument();
 });
 
 test("restores shared period and layer-specific discovery facets from a map URL", async () => {
@@ -305,7 +488,7 @@ test("restores shared period and layer-specific discovery facets from a map URL"
       25,
       ["PROFILE", "EVENT"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       {
         periods: ["ANTIQUITY"],
@@ -385,7 +568,7 @@ test("loads the next bounded page of nearby compact markers", async () => {
     25,
     ["PROFILE"],
     undefined,
-    undefined,
+    expect.any(AbortSignal),
     ["DISCOVERED_AT"],
     {},
     {},
@@ -457,7 +640,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"] },
       { periods: ["ANTIQUITY"] },
@@ -481,7 +664,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       {},
       {},
@@ -502,7 +685,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"] },
       { periods: ["ANTIQUITY"] },
@@ -524,7 +707,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"] },
       { periods: ["ANTIQUITY"], includePast: true },
@@ -545,7 +728,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       { periods: ["ANTIQUITY"], from: 27 },
       { periods: ["ANTIQUITY"], includePast: true, from: 27 },
@@ -557,7 +740,7 @@ test("refreshes nearby markers as temporal filters change", async () => {
   );
 });
 
-test("hides out-of-range map markers before and after a year-filter refresh", async () => {
+test("applies year filters when the replacement result page arrives", async () => {
   mockNearbyMapEntitiesPage.mockResolvedValue({
     items: [
       {
@@ -596,7 +779,7 @@ test("hides out-of-range map markers before and after a year-filter refresh", as
   ).not.toBeInTheDocument();
 });
 
-test("filters profile markers immediately when a profile type is unchecked", async () => {
+test("requests new profile types immediately when a type is unchecked", async () => {
   render(
     <MemoryRouter initialEntries={["/map?lat=41.9&lng=12.5&radiusKm=25"]}>
       <MapPage />
@@ -613,7 +796,7 @@ test("filters profile markers immediately when a profile type is unchecked", asy
       25,
       ["PROFILE", "CLUB", "EVENT", "SOURCE"],
       undefined,
-      undefined,
+      expect.any(AbortSignal),
       ["DISCOVERED_AT"],
       {},
       {},
@@ -746,38 +929,65 @@ test("profile toggles filter the loaded graph after 200ms without reloading, cle
   const markers = [profile, source];
   mockLoadSharedMapScope.mockResolvedValue({
     markers,
-    connections: [{
-      key: "profile-source",
-      kind: "PROFILE_SOURCE",
-      fromKey: profile.key,
-      toKey: source.key,
-    }],
+    connections: [
+      {
+        key: "profile-source",
+        kind: "PROFILE_SOURCE",
+        fromKey: profile.key,
+        toKey: source.key,
+      },
+    ],
     profiles: [{ id: "profile-1", label: "Marcus", profileType: "USER" }],
   } as never);
   render(
-    <MemoryRouter initialEntries={["/map?scope=USER&scopeId=owner-1&lat=41.9&lng=12.5"]}>
+    <MemoryRouter
+      initialEntries={["/map?scope=USER&scopeId=owner-1&lat=41.9&lng=12.5"]}
+    >
       <MapPage />
       <LocationProbe />
     </MemoryRouter>,
   );
   await waitFor(() =>
-    expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", "2"),
+    expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+      "data-fit-count",
+      "2",
+    ),
   );
   expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(1);
   mockMapRender.mockClear();
   jest.useFakeTimers();
   try {
-    const checkbox = screen.getByRole("checkbox", { name: "User profile: Marcus" });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "User profile: Marcus",
+    });
     for (const checked of [false, true, false, true]) {
       fireEvent.click(checkbox);
       expect(checkbox).toHaveProperty("checked", checked);
-      expect(screen.getByRole("checkbox", { name: "User profile: Marcus" })).toBe(checkbox);
-      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "0" : "2");
-      act(() => { jest.advanceTimersByTime(199); });
-      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "0" : "2");
-      act(() => { jest.advanceTimersByTime(1); });
-      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-fit-count", checked ? "2" : "0");
-      expect(screen.getByTestId("map-canvas")).toHaveAttribute("data-edge-count", checked ? "1" : "0");
+      expect(
+        screen.getByRole("checkbox", { name: "User profile: Marcus" }),
+      ).toBe(checkbox);
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+        "data-fit-count",
+        checked ? "0" : "2",
+      );
+      act(() => {
+        jest.advanceTimersByTime(199);
+      });
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+        "data-fit-count",
+        checked ? "0" : "2",
+      );
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+        "data-fit-count",
+        checked ? "2" : "0",
+      );
+      expect(screen.getByTestId("map-canvas")).toHaveAttribute(
+        "data-edge-count",
+        checked ? "1" : "0",
+      );
       expect(mockLoadSharedMapScope).toHaveBeenCalledTimes(1);
     }
     expect(mockMapRender.mock.calls.length).toBeGreaterThan(0);

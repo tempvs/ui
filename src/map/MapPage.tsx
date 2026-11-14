@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import {
   FaFloppyDisk as FloppyDiskIcon,
@@ -186,7 +192,29 @@ export default function MapPage() {
   const [shareDestinationsLoading, setShareDestinationsLoading] =
     useState(false);
   const suggestionRequest = useRef(0);
-  const entityFilterRequest = useRef(0);
+  const resultRequest = useRef<AbortController | null>(null);
+  const filterRefreshTimer = useRef<number>();
+  const paginationInFlight = useRef(false);
+  const [resultQueryKey, setResultQueryKey] = useState<string | null>(null);
+  const editableFilterSignature = `${from.year}:${from.era}|${to.year}:${to.era}|${radius}`;
+  const previousEditableFilters = useRef(editableFilterSignature);
+  const beginResultRequest = useCallback(() => {
+    resultRequest.current?.abort();
+    window.clearTimeout(filterRefreshTimer.current);
+    filterRefreshTimer.current = undefined;
+    paginationInFlight.current = false;
+    setLoadingMoreEntities(false);
+    const controller = new AbortController();
+    resultRequest.current = controller;
+    return controller;
+  }, []);
+  useEffect(
+    () => () => {
+      resultRequest.current?.abort();
+      window.clearTimeout(filterRefreshTimer.current);
+    },
+    [],
+  );
   const appliedEntityFilterSignature = useRef<string | null>(null);
   const coordinateFieldsRef = useRef<HTMLDivElement>(null);
   const mapSectionRef = useRef<HTMLElement>(null);
@@ -240,7 +268,9 @@ export default function MapPage() {
         );
         if (shareDestination === "club") {
           const clubGroups = await Promise.all(
-            profiles.map((profile) => getProfileClubs(profile.id).catch(() => [])),
+            profiles.map((profile) =>
+              getProfileClubs(profile.id).catch(() => []),
+            ),
           );
           if (active)
             setShareClubs(
@@ -252,9 +282,9 @@ export default function MapPage() {
             );
           return;
         }
-        const events = await listEvents().catch(
-          () => ({ content: [] as TempvsEvent[] }),
-        );
+        const events = await listEvents().catch(() => ({
+          content: [] as TempvsEvent[],
+        }));
         if (active)
           setShareEvents(
             events.content.filter(
@@ -436,17 +466,42 @@ export default function MapPage() {
     ],
   );
 
-  // The initial nearby-content request belongs to search()/selectPlace().
-  // Afterwards, changing a map filter refreshes just the marker layer, with
-  // no extra submit button or full place search required.
+  const entityViewFilters = useMemo(
+    () => ({
+      types,
+      sourceRoles,
+      periods: periodsEnabled ? periods : [],
+      fromYear,
+      toYear,
+      includePastEvents,
+    }),
+    [
+      types,
+      sourceRoles,
+      periods,
+      periodsEnabled,
+      fromYear,
+      toYear,
+      includePastEvents,
+    ],
+  );
+  const [appliedViewFilters, setAppliedViewFilters] =
+    useState(entityViewFilters);
+  const currentResultQueryKey = `${latitude}|${longitude}|${entityFilterSignature}`;
+
+  // Keep the last complete result page until the replacement succeeds. Text
+  // edits settle briefly; checkbox changes refresh immediately.
   useEffect(() => {
+    const editableChanged =
+      previousEditableFilters.current !== editableFilterSignature;
+    previousEditableFilters.current = editableFilterSignature;
     if (appliedEntityFilterSignature.current === null) {
       appliedEntityFilterSignature.current = entityFilterSignature;
       return;
     }
     if (appliedEntityFilterSignature.current === entityFilterSignature) return;
     appliedEntityFilterSignature.current = entityFilterSignature;
-
+    const controller = beginResultRequest();
     const lat = Number(latitude);
     const lng = Number(longitude);
     if (
@@ -455,44 +510,68 @@ export default function MapPage() {
       !Number.isFinite(lat) ||
       !Number.isFinite(lng) ||
       !isValidHistoricalRange(from, to)
-    )
-      return;
-
-    const requestId = ++entityFilterRequest.current;
-    setEntityNextCursor(null);
-    setEntitiesTruncated(false);
-    if (!types.length) {
-      setEntities([]);
+    ) {
+      setLoading(false);
       return;
     }
-    setEntities([]);
-    void nearbyMapEntitiesPage(
-      lat,
-      lng,
-      Number(radius),
-      types,
-      undefined,
-      undefined,
-      sourceRoles,
-      sourceFilters,
-      eventFilters,
-      undefined,
-      undefined,
-      profileFilters,
-      clubFilters,
-    )
-      .then((page) => {
-        if (requestId !== entityFilterRequest.current) return;
+    setError("");
+    if (!types.length) {
+      setEntities([]);
+      setEntityNextCursor(null);
+      setEntitiesTruncated(false);
+      setAppliedViewFilters(entityViewFilters);
+      setResultQueryKey(currentResultQueryKey);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const refresh = async () => {
+      try {
+        const page = await nearbyMapEntitiesPage(
+          lat,
+          lng,
+          Number(radius),
+          types,
+          undefined,
+          controller.signal,
+          sourceRoles,
+          sourceFilters,
+          eventFilters,
+          undefined,
+          undefined,
+          profileFilters,
+          clubFilters,
+        );
+        if (controller.signal.aborted) return;
         setEntities(page.items);
         setEntityNextCursor(page.nextCursor ?? null);
         setEntitiesTruncated(page.truncated === true);
-      })
-      .catch(() => {
-        if (requestId !== entityFilterRequest.current) return;
-        setError("Unable to refresh nearby content.");
-      });
+        setAppliedViewFilters(entityViewFilters);
+        setResultQueryKey(currentResultQueryKey);
+      } catch {
+        if (!controller.signal.aborted)
+          setError(
+            "Unable to refresh nearby content. Previous results are still shown.",
+          );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+    const timer = editableChanged
+      ? window.setTimeout(() => void refresh(), 250)
+      : undefined;
+    filterRefreshTimer.current = timer;
+    if (timer === undefined) void refresh();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [
+    beginResultRequest,
+    currentResultQueryKey,
+    editableFilterSignature,
     entityFilterSignature,
+    entityViewFilters,
     eventFilters,
     from,
     latitude,
@@ -552,6 +631,8 @@ export default function MapPage() {
   }, [query, selectedPlaceId, from, to]);
 
   const selectPlace = async (place: MapPlace) => {
+    const controller = beginResultRequest();
+    setLoading(true);
     const selected = {
       ...place,
       matchedName: place.matchedName || matchingPlaceName(place, query),
@@ -589,30 +670,36 @@ export default function MapPage() {
     setLoading(true);
     try {
       const nearbyEntityPage = await (types.length
-          ? nearbyMapEntitiesPage(
-              selected.latitude,
-              selected.longitude,
-              Number(radius),
-              types,
-              undefined,
-              undefined,
-              sourceRoles,
-              sourceFilters,
-              eventFilters,
-              undefined,
-              undefined,
-              profileFilters,
-              clubFilters,
-            )
-          : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+        ? nearbyMapEntitiesPage(
+            selected.latitude,
+            selected.longitude,
+            Number(radius),
+            types,
+            undefined,
+            controller.signal,
+            sourceRoles,
+            sourceFilters,
+            eventFilters,
+            undefined,
+            undefined,
+            profileFilters,
+            clubFilters,
+          )
+        : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+      if (controller.signal.aborted) return;
+      setAppliedViewFilters(entityViewFilters);
+      setResultQueryKey(
+        `${selected.latitude}|${selected.longitude}|${entityFilterSignature}`,
+      );
       setItems([selected]);
       setEntities(nearbyEntityPage.items);
       setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
       setEntitiesTruncated(nearbyEntityPage.truncated === true);
     } catch (caught) {
-      setError((caught as Error).message || "Unable to load places.");
+      if (!controller.signal.aborted)
+        setError((caught as Error).message || "Unable to load places.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
@@ -620,6 +707,8 @@ export default function MapPage() {
     useCurrentCoordinates?: boolean;
     scrollToMap?: boolean;
   }) => {
+    const controller = beginResultRequest();
+    setLoading(false);
     setError("");
     setMapError("");
     const trimmed = query.trim();
@@ -628,13 +717,19 @@ export default function MapPage() {
       : params.get("placeId");
     let linkedPlace: MapPlace | null = null;
     if (linkedPlaceId) {
+      setLoading(true);
       try {
-        linkedPlace = await getMapPlace(linkedPlaceId);
+        linkedPlace = await getMapPlace(linkedPlaceId, controller.signal);
+        if (controller.signal.aborted) return;
       } catch (caught) {
-        setError((caught as Error).message || "Unable to load this place.");
+        if (!controller.signal.aborted) {
+          setError((caught as Error).message || "Unable to load this place.");
+          setLoading(false);
+        }
         return;
       }
       if (!linkedPlace) {
+        setLoading(false);
         setError("This place is no longer available.");
         return;
       }
@@ -649,6 +744,7 @@ export default function MapPage() {
     const lng = Number(activeLongitude);
     const hasCoordinates = activeLatitude !== "" || activeLongitude !== "";
     if (!isValidHistoricalRange(from, to)) {
+      setLoading(false);
       setError("Years must be chronological positive years.");
       return;
     }
@@ -711,43 +807,54 @@ export default function MapPage() {
     try {
       if (hasCoordinates) {
         const nearbyEntityPage = await (types.length
-            ? nearbyMapEntitiesPage(
-                lat,
-                lng,
-                Number(radius),
-                types,
-                undefined,
-                undefined,
-                sourceRoles,
-                sourceFilters,
-                eventFilters,
-                undefined,
-                undefined,
-                profileFilters,
-                clubFilters,
-              )
-            : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+          ? nearbyMapEntitiesPage(
+              lat,
+              lng,
+              Number(radius),
+              types,
+              undefined,
+              controller.signal,
+              sourceRoles,
+              sourceFilters,
+              eventFilters,
+              undefined,
+              undefined,
+              profileFilters,
+              clubFilters,
+            )
+          : Promise.resolve<MapEntityLocationPage>({ items: [] }));
+        if (controller.signal.aborted) return;
+        setAppliedViewFilters(entityViewFilters);
+        setResultQueryKey(
+          `${activeLatitude}|${activeLongitude}|${entityFilterSignature}`,
+        );
         setItems(linkedPlace ? [linkedPlace] : []);
         setEntities(nearbyEntityPage.items);
         setEntityNextCursor(nearbyEntityPage.nextCursor ?? null);
         setEntitiesTruncated(nearbyEntityPage.truncated === true);
       } else {
+        const places = await searchPlacesWithNameRange(
+          trimmed,
+          controller.signal,
+          from,
+          to,
+        );
+        if (controller.signal.aborted) return;
         setItems(
-          (await searchPlacesWithNameRange(trimmed, undefined, from, to)).map(
-            (place) => ({
-              ...place,
-              matchedName: matchingPlaceName(place, trimmed),
-            }),
-          ),
+          places.map((place) => ({
+            ...place,
+            matchedName: matchingPlaceName(place, trimmed),
+          })),
         );
         setEntities([]);
         setEntityNextCursor(null);
         setEntitiesTruncated(false);
       }
     } catch (caught) {
-      setError((caught as Error).message || "Unable to load places.");
+      if (!controller.signal.aborted)
+        setError((caught as Error).message || "Unable to load places.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
@@ -773,10 +880,18 @@ export default function MapPage() {
   }, []);
 
   const loadMoreEntities = async () => {
-    if (loadingMoreEntities || !entityNextCursor) return;
+    if (
+      paginationInFlight.current ||
+      loading ||
+      !entityNextCursor ||
+      resultQueryKey !== currentResultQueryKey
+    )
+      return;
     const lat = Number(latitude);
     const lng = Number(longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const controller = beginResultRequest();
+    paginationInFlight.current = true;
     setLoadingMoreEntities(true);
     try {
       const page = await nearbyMapEntitiesPage(
@@ -785,7 +900,7 @@ export default function MapPage() {
         Number(radius),
         types,
         undefined,
-        undefined,
+        controller.signal,
         sourceRoles,
         sourceFilters,
         eventFilters,
@@ -794,6 +909,7 @@ export default function MapPage() {
         profileFilters,
         clubFilters,
       );
+      if (controller.signal.aborted) return;
       setEntities((current) => {
         const known = new Set(current.map((entity) => entityKey(entity)));
         return [
@@ -804,43 +920,43 @@ export default function MapPage() {
       setEntityNextCursor(page.nextCursor ?? null);
       setEntitiesTruncated(page.truncated === true);
     } catch (caught) {
-      setError((caught as Error).message || "Unable to load more content.");
+      if (!controller.signal.aborted)
+        setError((caught as Error).message || "Unable to load more content.");
     } finally {
-      setLoadingMoreEntities(false);
+      if (!controller.signal.aborted) {
+        paginationInFlight.current = false;
+        setLoadingMoreEntities(false);
+      }
     }
   };
 
   // A source's discovery site is its primary public map location. An explicit
   // advanced source-role filter still permits inspecting holding locations.
   const visibleEntities = useMemo(() => {
+    const { types, sourceRoles, periods, fromYear, toYear, includePastEvents } =
+      appliedViewFilters;
     const entitiesForLocationMode = sourceRoles.length
       ? entities
       : preferSourceDiscoveryLocations(entities);
-
     return entitiesForLocationMode.filter(
       (entity) =>
         types.includes(entity.entityType) &&
-        matchesMapEntityPeriods(entity, periodsEnabled ? periods : []) &&
+        matchesMapEntityPeriods(entity, periods) &&
         matchesMapEntityYears(entity, fromYear, toYear) &&
         (includePastEvents ||
           entity.entityType !== "EVENT" ||
           !eventHasEnded(entity.eventEndsAt)),
     );
-  }, [
-    entities,
-    fromYear,
-    includePastEvents,
-    periods,
-    periodsEnabled,
-    sourceRoles.length,
-    toYear,
-    types,
-  ]);
+  }, [entities, appliedViewFilters]);
 
   const visibleOwnedMarkers = useMemo(
     () =>
       filterOwnedMapContentByProfiles(
-        { markers: ownedMarkers, connections: ownedConnections, profiles: ownedProfiles },
+        {
+          markers: ownedMarkers,
+          connections: ownedConnections,
+          profiles: ownedProfiles,
+        },
         hiddenProfileIds,
       ).markers.filter(
         (marker) =>
@@ -901,32 +1017,30 @@ export default function MapPage() {
   // A profile can have more than one projected role/location. It is still
   // one choice: toggling it must never render duplicate controls or leave a
   // second copy of the same profile selected.
-  const selectableProfiles = useMemo(
-    () => {
-      const seen = new Set<string>();
-      const choices: Array<
-        Pick<OwnedMapMarker, "entityId" | "label" | "profileType">
-      > = ownedProfiles.length
-        ? ownedProfiles.map((profile) => ({
-            entityId: profile.id,
-            label: profile.label,
-            profileType: profile.profileType,
-          }))
-        : ownedMarkers.filter((marker) => marker.entityType === "PROFILE");
-      return choices
-        .reduce<typeof choices>((profiles, marker) => {
-          if (seen.has(marker.entityId)) return profiles;
-          seen.add(marker.entityId);
-          profiles.push(marker);
-          return profiles;
-        }, [])
-        .sort((left, right) =>
+  const selectableProfiles = useMemo(() => {
+    const seen = new Set<string>();
+    const choices: Array<
+      Pick<OwnedMapMarker, "entityId" | "label" | "profileType">
+    > = ownedProfiles.length
+      ? ownedProfiles.map((profile) => ({
+          entityId: profile.id,
+          label: profile.label,
+          profileType: profile.profileType,
+        }))
+      : ownedMarkers.filter((marker) => marker.entityType === "PROFILE");
+    return choices
+      .reduce<typeof choices>((profiles, marker) => {
+        if (seen.has(marker.entityId)) return profiles;
+        seen.add(marker.entityId);
+        profiles.push(marker);
+        return profiles;
+      }, [])
+      .sort(
+        (left, right) =>
           left.label.localeCompare(right.label) ||
           left.entityId.localeCompare(right.entityId),
-        );
-    },
-    [ownedMarkers, ownedProfiles],
-  );
+      );
+  }, [ownedMarkers, ownedProfiles]);
 
   const activeMapFilters = useMemo(() => {
     const filters: string[] = [];
@@ -1280,15 +1394,22 @@ export default function MapPage() {
                   <Form.Check
                     key={marker.entityId}
                     id={`map-profile-${marker.entityId}`}
-                    label={`${marker.profileType === "CLUB" ? "Reenactment profile" : "User profile"}: ${marker.label}`}
+                    label={`${
+                      marker.profileType === "CLUB"
+                        ? "Reenactment profile"
+                        : "User profile"
+                    }: ${marker.label}`}
                     checked={!hiddenProfileIds.includes(marker.entityId)}
                     onChange={(event) => {
                       const next = event.target.checked
-                        ? hiddenProfileIds.filter((id) => id !== marker.entityId)
+                        ? hiddenProfileIds.filter(
+                            (id) => id !== marker.entityId,
+                          )
                         : [...hiddenProfileIds, marker.entityId];
                       setHiddenProfileIds(next);
                       const parameters = new URLSearchParams(params);
-                      if (next.length) parameters.set("hiddenProfiles", next.join(","));
+                      if (next.length)
+                        parameters.set("hiddenProfiles", next.join(","));
                       else parameters.delete("hiddenProfiles");
                       setParams(parameters, { replace: true });
                     }}
@@ -1333,8 +1454,14 @@ export default function MapPage() {
         )}
         {entitiesTruncated && (
           <Alert className="mt-3 mb-0" variant="warning">
-            Showing a limited set of nearby results. Narrow the area or filters to explore more.
+            Showing a limited set of nearby results. Narrow the area or filters
+            to explore more.
           </Alert>
+        )}
+        {loading && (
+          <p className="small text-muted mt-2 mb-0" role="status">
+            Updating map�
+          </p>
         )}
         {error && (
           <Alert className="mt-3 mb-0" variant="danger">
@@ -1436,7 +1563,8 @@ export default function MapPage() {
                       stageMapAttachment(reference);
                       setShowShare(false);
                       window.setTimeout(
-                        () => navigate("/chat", { state: { composeMap: true } }),
+                        () =>
+                          navigate("/chat", { state: { composeMap: true } }),
                         0,
                       );
                     }}
@@ -1473,12 +1601,19 @@ export default function MapPage() {
                           });
                           setShowShare(false);
                           window.setTimeout(
-                            () => navigate(`/profile/${profile.alias || profile.id}`, {
-                              state: {
-                                mapAttachment: reference,
-                                mapTarget: { type: "PROFILE", id: destinationId },
-                              },
-                            }),
+                            () =>
+                              navigate(
+                                `/profile/${profile.alias || profile.id}`,
+                                {
+                                  state: {
+                                    mapAttachment: reference,
+                                    mapTarget: {
+                                      type: "PROFILE",
+                                      id: destinationId,
+                                    },
+                                  },
+                                },
+                              ),
                             0,
                           );
                         }}
@@ -1487,84 +1622,89 @@ export default function MapPage() {
                   )}
                 </>
               )}
-              {shareDestination !== "chat" && shareDestination !== "profile" && (
-                <>
-                  <p className="small text-muted">
-                    Choose a wall you manage. Its post composer will open with
-                    the map attached, ready for your text.
-                  </p>
-                  {shareDestinationsLoading ? (
-                    <span className="small text-muted">Loading walls…</span>
-                  ) : (
-                    <div className="d-flex flex-column gap-2">
-                      {(shareDestination === "event"
-                        ? shareEvents.map((event) => ({
-                            id: event.id,
-                            label: event.name,
-                            path: `/events/${event.id}`,
-                          }))
-                        : shareDestination === "club"
+              {shareDestination !== "chat" &&
+                shareDestination !== "profile" && (
+                  <>
+                    <p className="small text-muted">
+                      Choose a wall you manage. Its post composer will open with
+                      the map attached, ready for your text.
+                    </p>
+                    {shareDestinationsLoading ? (
+                      <span className="small text-muted">Loading walls…</span>
+                    ) : (
+                      <div className="d-flex flex-column gap-2">
+                        {(shareDestination === "event"
+                          ? shareEvents.map((event) => ({
+                              id: event.id,
+                              label: event.name,
+                              path: `/events/${event.id}`,
+                            }))
+                          : shareDestination === "club"
                           ? shareClubs.map((club) => ({
                               id: String(club.id),
                               label: club.name,
                               path: `/clubs/${club.id}`,
                             }))
-                          : []).map((destination) => (
-                        <Button
-                          key={destination.id}
-                          variant="outline-dark"
-                          className="text-start"
-                          onClick={() => {
-                                const reference = currentMapReference();
-                                if (!reference) return;
-                                const club =
-                                  shareDestination === "club"
-                                    ? shareClubs.find(
-                                        (candidate) =>
-                                          String(candidate.id) ===
-                                          destination.id,
-                                      )
-                                    : undefined;
-                                const authorProfileId = shareProfiles.find(
-                                  (profile) =>
-                                    String(profile.id) ===
-                                    String(club?.ownerProfileId || ""),
-                                )?.id;
-                                stageMapAttachment(
-                                  reference,
-                                  authorProfileId
-                                    ? String(authorProfileId)
-                                    : undefined,
-                                  {
-                                    type: shareDestination.toUpperCase(),
-                                    id: destination.id,
-                                  },
-                                );
-                                setShowShare(false);
-                                window.setTimeout(() => navigate(destination.path, {
-                                  state: {
-                                    mapAttachment: reference,
-                                    ...(authorProfileId
-                                      ? {
-                                          mapAuthorProfileId:
-                                            String(authorProfileId),
-                                        }
-                                      : {}),
-                                    mapTarget: {
-                                      type: shareDestination.toUpperCase(),
-                                      id: destination.id,
+                          : []
+                        ).map((destination) => (
+                          <Button
+                            key={destination.id}
+                            variant="outline-dark"
+                            className="text-start"
+                            onClick={() => {
+                              const reference = currentMapReference();
+                              if (!reference) return;
+                              const club =
+                                shareDestination === "club"
+                                  ? shareClubs.find(
+                                      (candidate) =>
+                                        String(candidate.id) === destination.id,
+                                    )
+                                  : undefined;
+                              const authorProfileId = shareProfiles.find(
+                                (profile) =>
+                                  String(profile.id) ===
+                                  String(club?.ownerProfileId || ""),
+                              )?.id;
+                              stageMapAttachment(
+                                reference,
+                                authorProfileId
+                                  ? String(authorProfileId)
+                                  : undefined,
+                                {
+                                  type: shareDestination.toUpperCase(),
+                                  id: destination.id,
+                                },
+                              );
+                              setShowShare(false);
+                              window.setTimeout(
+                                () =>
+                                  navigate(destination.path, {
+                                    state: {
+                                      mapAttachment: reference,
+                                      ...(authorProfileId
+                                        ? {
+                                            mapAuthorProfileId:
+                                              String(authorProfileId),
+                                          }
+                                        : {}),
+                                      mapTarget: {
+                                        type: shareDestination.toUpperCase(),
+                                        id: destination.id,
+                                      },
                                     },
-                                  },
-                                }), 0);
-                          }}
-                        >
-                          {destination.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+                                  }),
+                                0,
+                              );
+                            }}
+                          >
+                            {destination.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
             </div>
           </Modal.Body>
         </Modal>
@@ -1662,10 +1802,7 @@ export default function MapPage() {
                 {place.featureType} · {place.latitude.toFixed(4)},{" "}
                 {place.longitude.toFixed(4)}
               </span>
-              <Link
-                className="ms-2"
-                to={mapPlacePath(place)}
-              >
+              <Link className="ms-2" to={mapPlacePath(place)}>
                 Place details
               </Link>
               <Link
@@ -1700,7 +1837,11 @@ export default function MapPage() {
             {visibleEntities.map((entity) => (
               <li
                 key={`${entity.entityType}:${entity.entityId}:${entity.locationRole}`}
-                className={`border-top py-2 ${selectedEntityKey === entityKey(entity) ? "map-result-selected" : ""}`}
+                className={`border-top py-2 ${
+                  selectedEntityKey === entityKey(entity)
+                    ? "map-result-selected"
+                    : ""
+                }`}
                 onClick={() => setSelectedEntityKey(entityKey(entity))}
               >
                 <Link to={entityPath(entity)}>{entity.label}</Link>
@@ -1726,7 +1867,11 @@ export default function MapPage() {
               variant="outline-dark"
               size="sm"
               className="mt-2"
-              disabled={loadingMoreEntities}
+              disabled={
+                loadingMoreEntities ||
+                loading ||
+                resultQueryKey !== currentResultQueryKey
+              }
               onClick={() => void loadMoreEntities()}
             >
               {loadingMoreEntities ? "Loading…" : "Show more"}
@@ -1846,8 +1991,8 @@ function appendEntityTypes(
     types.length === 0
       ? "none"
       : types.length === entityTypes.length
-        ? "all"
-        : types.join(","),
+      ? "all"
+      : types.join(","),
   );
 }
 
@@ -1956,16 +2101,16 @@ function matchesMapEntityPeriods(
     entity.entityType === "EVENT"
       ? entity.eventPeriods || []
       : entity.entityType === "SOURCE"
-        ? entity.sourcePeriod
-          ? [entity.sourcePeriod]
-          : []
-        : entity.entityType === "CLUB"
-          ? entity.clubPeriod
-            ? [entity.clubPeriod]
-            : []
-          : entity.profilePeriod
-            ? [entity.profilePeriod]
-            : [];
+      ? entity.sourcePeriod
+        ? [entity.sourcePeriod]
+        : []
+      : entity.entityType === "CLUB"
+      ? entity.clubPeriod
+        ? [entity.clubPeriod]
+        : []
+      : entity.profilePeriod
+      ? [entity.profilePeriod]
+      : [];
 
   return entityPeriods.some((period) => periods.includes(period));
 }
@@ -1979,10 +2124,10 @@ function matchesMapEntityYears(
     entity.entityType === "SOURCE"
       ? [entity.sourceFrom, entity.sourceTo]
       : entity.entityType === "EVENT"
-        ? [entity.eventFrom, entity.eventTo]
-        : entity.entityType === "PROFILE"
-          ? [entity.profileFrom, entity.profileTo]
-          : [];
+      ? [entity.eventFrom, entity.eventTo]
+      : entity.entityType === "PROFILE"
+      ? [entity.profileFrom, entity.profileTo]
+      : [];
   return matchesYearRange(range[0], range[1], from, to);
 }
 
