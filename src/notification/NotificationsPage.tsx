@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button } from "react-bootstrap";
 import { FaTimes } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -29,6 +29,7 @@ export default function NotificationsPage() {
   >();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [readingAll, setReadingAll] = useState(false);
 
   const load = async (append = false) => {
     setLoading(true);
@@ -49,6 +50,8 @@ export default function NotificationsPage() {
       setLoading(false);
     }
   };
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
   useEffect(() => {
     void load();
   }, [unreadOnly, category]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -74,14 +77,16 @@ export default function NotificationsPage() {
     }
   };
   const readAll = async () => {
+    if (readingAll) return;
+    setReadingAll(true);
     try {
       await readAllNotifications();
-      const readAt = new Date().toISOString();
-      setItems((current) =>
-        current.map((item) => (item.readAt ? item : { ...item, readAt })),
-      );
+      await latestLoad.current();
     } catch (caught) {
+      await latestLoad.current();
       setError((caught as Error).message);
+    } finally {
+      setReadingAll(false);
     }
   };
   const query = filter.trim().toLocaleLowerCase();
@@ -108,10 +113,10 @@ export default function NotificationsPage() {
             </Button>
             <Button
               variant="outline-secondary"
-              disabled={!items.some((item) => !item.readAt)}
+              disabled={readingAll}
               onClick={() => void readAll()}
             >
-              Mark all read
+              {readingAll ? "Marking read…" : "Mark all read"}
             </Button>
           </div>
         ),

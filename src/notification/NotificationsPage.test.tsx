@@ -1,0 +1,30 @@
+import React from 'react';
+import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+import NotificationsPage from './NotificationsPage';
+import {listNotifications,readAllNotifications} from './notificationApi';
+jest.mock('./notificationApi',()=>({listNotifications:jest.fn(),readAllNotifications:jest.fn(),archiveNotification:jest.fn(),readNotification:jest.fn()}));
+jest.mock('../component/PageLayout',()=>({__esModule:true,default:({header,children}:any)=><div>{header.rightContent}{children}</div>}));
+const list=listNotifications as jest.MockedFunction<typeof listNotifications>;
+const readAll=readAllNotifications as jest.MockedFunction<typeof readAllNotifications>;
+const item={id:'one',eventId:'event',type:'profile.followed.v1' as const,category:'PROFILE' as const,title:'Followed',path:'/profile/one',createdAt:'2026-11-13T00:00:00Z'};
+beforeEach(()=>{jest.clearAllMocks();});
+test('refreshes confirmed state after a partially failed mark-all action',async()=>{
+ list.mockResolvedValueOnce({content:[item]}).mockResolvedValueOnce({content:[{...item,readAt:'2026-11-13T01:00:00Z'}]});
+ readAll.mockRejectedValueOnce(new Error('Delivery temporarily unavailable'));
+ render(<MemoryRouter><NotificationsPage/></MemoryRouter>);
+ await screen.findByText('Followed');
+ fireEvent.click(screen.getByRole('button',{name:'Mark all read'}));
+ await screen.findByText('Delivery temporarily unavailable');
+ expect(list).toHaveBeenCalledTimes(2);
+ await waitFor(()=>expect(screen.getByText('Followed').closest('li')).not.toHaveClass('notification-unread'));
+});
+test('allows mark-all when the newest visible page has no unread records',async()=>{
+ list.mockResolvedValue({content:[{...item,readAt:'read'}],nextToken:'older'});
+ readAll.mockResolvedValue({marked:20});
+ render(<MemoryRouter><NotificationsPage/></MemoryRouter>);
+ await screen.findByText('Followed');
+ const action=screen.getByRole('button',{name:'Mark all read'});
+ expect(action).toBeEnabled();fireEvent.click(action);
+ await waitFor(()=>expect(list).toHaveBeenCalledTimes(2));
+});

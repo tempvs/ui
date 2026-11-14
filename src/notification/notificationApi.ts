@@ -1,3 +1,6 @@
+export const NOTIFICATIONS_CHANGED = 'tempvs:notifications-changed';
+const notifyChanged = () => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+
 export type Notification = {
   id: string;
   eventId: string;
@@ -51,13 +54,25 @@ export function getUnreadNotificationCount() {
 export function readNotification(id: string) {
   return request<Notification>(`/${encodeURIComponent(id)}/read`, {
     method: "POST",
-  });
+  }).finally(notifyChanged);
 }
 
-export function readAllNotifications() {
-  return request<{ marked: number }>("/read-all", { method: "POST" });
+export async function readAllNotifications() {
+  try {
+  let marked = 0;
+  let nextToken: string | undefined;
+  do {
+    const page: { marked: number; hasMore?: boolean; nextToken?: string } = await request(
+      `/read-all?${new URLSearchParams({ paged: "true", ...(nextToken ? { nextToken } : {}) })}`, { method: "POST" },
+    );
+    marked += page.marked;
+    if (page.hasMore && (!page.nextToken || page.nextToken === nextToken)) throw new Error("Notification read-all did not advance. Retry the action.");
+    nextToken = page.hasMore ? page.nextToken : undefined;
+  } while (nextToken);
+  return { marked };
+  } finally { notifyChanged(); }
 }
 
 export function archiveNotification(id: string) {
-  return request<void>(`/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return request<void>(`/${encodeURIComponent(id)}`, { method: "DELETE" }).finally(notifyChanged);
 }

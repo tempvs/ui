@@ -35,7 +35,7 @@ test('notification API uses authenticated edge routes and mutation methods', asy
     '/api/notification?status=unread&limit=30&nextToken=cursor',
     '/api/notification/unread-count',
     '/api/notification/notice-1/read',
-    '/api/notification/read-all',
+    '/api/notification/read-all?paged=true',
     '/api/notification/notice-1',
   ]);
   expect(fetchMock.mock.calls.map(call => call[1]?.method || 'GET')).toEqual([
@@ -50,4 +50,16 @@ test('notification API uses authenticated edge routes and mutation methods', asy
 test('notification API exposes service errors', async () => {
   jest.spyOn(window, 'fetch').mockResolvedValueOnce(response({ message: 'Sign in is required' }, 401));
   await expect(getUnreadNotificationCount()).rejects.toThrow('Sign in is required');
+});
+
+test('read-all follows advancing continuation pages before reporting completion', async () => {
+  const fetchMock = jest.spyOn(window, 'fetch')
+    .mockResolvedValueOnce(response({ marked: 2, hasMore: true, nextToken: 'boundary-token' }))
+    .mockResolvedValueOnce(response({ marked: 1, hasMore: false }));
+  await expect(readAllNotifications()).resolves.toEqual({ marked: 3 });
+  expect(fetchMock.mock.calls.map(call => String(call[0]))).toEqual(['/api/notification/read-all?paged=true', '/api/notification/read-all?paged=true&nextToken=boundary-token']);
+});
+test('read-all rejects a stalled continuation instead of falsely marking the UI complete', async () => {
+  jest.spyOn(window, 'fetch').mockResolvedValueOnce(response({ marked: 2, hasMore: true }));
+  await expect(readAllNotifications()).rejects.toThrow('did not advance');
 });
