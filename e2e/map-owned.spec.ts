@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("personal map objects and profile checkboxes load before thumbnails", async ({
+test("public personal-map objects and profile checkboxes load before thumbnails", async ({
   page,
 }) => {
   let releaseImages!: () => void;
