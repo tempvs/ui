@@ -13,6 +13,8 @@ export type ResourceThumbnail = {
 
 const imageLookupBatchSize = 50;
 const imageThumbnailCacheTtlMs = 2 * 60 * 1000;
+const missingThumbnailCacheTtlMs = 15_000;
+const thumbnailCacheCapacity = 500;
 const thumbnailCache = new Map<
   string,
   { thumbnail: ResourceThumbnail; expiresAt: number }
@@ -20,6 +22,7 @@ const thumbnailCache = new Map<
 const queuedThumbnailReads = new Map<string, ThumbnailRead>();
 const inFlightThumbnailReads = new Map<string, ThumbnailRead>();
 let thumbnailFlushScheduled = false;
+let activeThumbnailBatches = 0;
 
 type ThumbnailResource = {
   resourceType: string;
@@ -29,6 +32,7 @@ type ThumbnailResource = {
 
 type ThumbnailRead = {
   resource: ThumbnailResource;
+  batch?: { controller: AbortController; reads: ThumbnailRead[] };
   waiters: Array<{
     resolve: (thumbnail: ResourceThumbnail | null) => void;
     reject: (reason: unknown) => void;
@@ -46,7 +50,9 @@ export async function getImageThumbnails(
     resourceId: string | number;
     preferredImageId?: string;
   }>,
+  signal?: AbortSignal,
 ): Promise<ResourceThumbnail[]> {
+  signal?.throwIfAborted();
   const unique = Array.from(
     new Map(
       resources.map((resource) => [
@@ -65,7 +71,7 @@ export async function getImageThumbnails(
       ]),
     ).values(),
   );
-  const thumbnails = await Promise.all(unique.map(readThumbnailBatched));
+  const thumbnails = await Promise.all(unique.map((resource) => readThumbnailBatched(resource, signal)));
   return thumbnails.filter((thumbnail): thumbnail is ResourceThumbnail =>
     Boolean(thumbnail),
   );
@@ -73,6 +79,7 @@ export async function getImageThumbnails(
 
 function readThumbnailBatched(
   resource: ThumbnailResource,
+  signal?: AbortSignal,
 ): Promise<ResourceThumbnail | null> {
   const key = thumbnailKey(
     resource.resourceType,
@@ -80,21 +87,37 @@ function readThumbnailBatched(
     resource.preferredImageId,
   );
   const cached = thumbnailCache.get(key);
-  if (cached && cached.expiresAt > Date.now())
+  if (cached && cached.expiresAt > Date.now()) {
+    thumbnailCache.delete(key);
+    thumbnailCache.set(key, cached);
     return Promise.resolve(cached.thumbnail);
+  }
   if (cached) thumbnailCache.delete(key);
   return new Promise<ResourceThumbnail | null>((resolve, reject) => {
-    const existing =
+    let read =
       queuedThumbnailReads.get(key) || inFlightThumbnailReads.get(key);
-    if (existing) {
-      existing.waiters.push({ resolve, reject });
-      return;
+    if (!read) {
+      read = { resource, waiters: [] };
+      queuedThumbnailReads.set(key, read);
+      scheduleThumbnailFlush();
     }
-    queuedThumbnailReads.set(key, {
-      resource,
-      waiters: [{ resolve, reject }],
-    });
-    scheduleThumbnailFlush();
+    const current = read;
+    const cleanup = () => signal?.removeEventListener("abort", abort);
+    const waiter = {
+      resolve: (value: ResourceThumbnail | null) => { cleanup(); resolve(value); },
+      reject: (error: unknown) => { cleanup(); reject(error); },
+    };
+    const abort = () => {
+      current.waiters = current.waiters.filter((value) => value !== waiter);
+      waiter.reject(signal?.reason);
+      if (!current.waiters.length) {
+        if (queuedThumbnailReads.get(key) === current) queuedThumbnailReads.delete(key);
+        if (inFlightThumbnailReads.get(key) === current) inFlightThumbnailReads.delete(key);
+        if (current.batch?.reads.every((value) => !value.waiters.length)) current.batch.controller.abort();
+      }
+    };
+    current.waiters.push(waiter);
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }
 
@@ -106,18 +129,24 @@ function scheduleThumbnailFlush() {
 
 async function flushThumbnailReads() {
   thumbnailFlushScheduled = false;
+  if (activeThumbnailBatches >= 2) return;
   const entries = Array.from(queuedThumbnailReads.entries()).slice(
     0,
     imageLookupBatchSize,
   );
   if (!entries.length) return;
+  activeThumbnailBatches++;
+  const batch = { controller: new AbortController(), reads: entries.map(([, read]) => read) };
   entries.forEach(([key, read]) => {
+    read.batch = batch;
     queuedThumbnailReads.delete(key);
     inFlightThumbnailReads.set(key, read);
   });
+  if (queuedThumbnailReads.size) scheduleThumbnailFlush();
   try {
     const response = await fetch("/api/images/lookup", {
       method: "POST",
+      signal: batch.controller.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         resources: entries.map(([, read]) => read.resource),
@@ -142,20 +171,27 @@ async function flushThumbnailReads() {
     );
     entries.forEach(([key, read]) => {
       const thumbnail = byResource.get(key) || null;
-      if (thumbnail)
+      if (thumbnail && !batch.controller.signal.aborted) {
+        // Sweep stale entries as well as bounding retained, recently used ones.
+        for (const [id, value] of thumbnailCache)
+          if (value.expiresAt <= Date.now()) thumbnailCache.delete(id);
+        thumbnailCache.delete(key);
         thumbnailCache.set(key, {
           thumbnail,
-          expiresAt: Date.now() + imageThumbnailCacheTtlMs,
+          expiresAt: Date.now() + (thumbnail.image ? imageThumbnailCacheTtlMs : missingThumbnailCacheTtlMs),
         });
-      inFlightThumbnailReads.delete(key);
+        while (thumbnailCache.size > thumbnailCacheCapacity) thumbnailCache.delete(thumbnailCache.keys().next().value!);
+      }
+      if (inFlightThumbnailReads.get(key) === read) inFlightThumbnailReads.delete(key);
       read.waiters.forEach(({ resolve }) => resolve(thumbnail));
     });
   } catch (error) {
     entries.forEach(([key, read]) => {
-      inFlightThumbnailReads.delete(key);
+      if (inFlightThumbnailReads.get(key) === read) inFlightThumbnailReads.delete(key);
       read.waiters.forEach(({ reject }) => reject(error));
     });
   } finally {
+    activeThumbnailBatches--;
     if (queuedThumbnailReads.size) scheduleThumbnailFlush();
   }
 }

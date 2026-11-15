@@ -293,7 +293,7 @@ test("composes profile, membership club, and club-stash source markers", async (
   expect(getMapProjections).toHaveBeenCalledWith("PROFILE", [
     "personal",
     "club-profile",
-  ]);
+  ], undefined);
   expect(
     content.markers.filter((marker) => marker.entityId === "source"),
   ).toHaveLength(1);
@@ -360,7 +360,7 @@ test("falls back to an approved user profile location while its projection is ab
       }),
     ]),
   );
-  expect(getMapPlacesByReference).toHaveBeenCalledWith(["rome"]);
+  expect(getMapPlacesByReference).toHaveBeenCalledWith(["rome"], undefined);
 });
 
 test("loads the club avatar when the club catalogue row has an image id but no signed URL", async () => {
@@ -498,8 +498,7 @@ test("restores a legacy shared source map with both carousel thumbnails and its 
     discoveredAtPlaceId: "mainz", discoveredAtPlaceName: "Mainz",
     heldAtPlaceId: "museum", heldAtPlaceName: "Museum",
   } });
-  jest.mocked(getSourceImages).mockResolvedValueOnce({ ok: true, status: 200,
-    data: [{ id: "first", thumbnailUrl: "https://images.test/carousel-first.jpg" }] });
+  jest.mocked(getImageThumbnails).mockResolvedValueOnce([{ resourceType: "source", resourceId: "legacy-shared-source", image: { id: "first", thumbnailUrl: "https://images.test/carousel-first.jpg" } }]);
   const content = await loadSharedMapScope({ type: "SOURCE", id: "legacy-shared-source" });
   expect(content.markers).toHaveLength(2);
   expect(content.markers.map((pin) => pin.locationRole)).toEqual(["DISCOVERED_AT", "HELD_AT"]);

@@ -176,6 +176,15 @@ function InteractiveMapCanvas({
   const placesRef = useRef(places);
   const errorRef = useRef(onMapError);
   const [ready, setReady] = useState(false);
+  const [viewportRevision, setViewportRevision] = useState(0);
+
+  useEffect(() => {
+    if (!ready || !map.current || ownedMarkers.length <= 150) return;
+    const instance = map.current;
+    const changed = () => setViewportRevision((value) => value + 1);
+    instance.on("moveend", changed);
+    return () => { instance.off("moveend", changed); };
+  }, [ready, ownedMarkers.length]);
   const [contextLost, setContextLost] = useState(false);
   const [fatalError, setFatalError] = useState<Error | null>(null);
   const [basemapData, setBasemapData] =
@@ -225,7 +234,8 @@ function InteractiveMapCanvas({
       return;
     }
     let active = true;
-    void getMapPlacesByReference(ids)
+    const controller = new AbortController();
+    void getMapPlacesByReference(ids, controller.signal)
       .then((resolved) => {
         if (!active) return;
         setPlaceReferences(
@@ -242,6 +252,7 @@ function InteractiveMapCanvas({
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [placeIdsKey]);
 
@@ -424,14 +435,18 @@ function InteractiveMapCanvas({
     if (!ready || !map.current) return;
     const mapInstance = map.current;
     const offsets = markerOffsets(ownedMarkerLayout);
-    const nextKeys = new Set(ownedMarkers.map((marker) => marker.key));
+    // Large private graphs retain all data, edges and fit points. Only their
+    // on-screen avatars need DOM elements; panning restores the other pins.
+    const bounds = ownedMarkers.length > 150 ? mapInstance.getBounds() : null;
+    const visibleMarkers = bounds ? ownedMarkers.filter((pin) => bounds.contains([pin.longitude, pin.latitude])) : ownedMarkers;
+    const nextKeys = new Set(visibleMarkers.map((marker) => marker.key));
     ownedMarkerInstances.current.forEach((instance, key) => {
       if (!nextKeys.has(key)) {
         instance.dispose();
         ownedMarkerInstances.current.delete(key);
       }
     });
-    ownedMarkers.forEach((ownedMarker) => {
+    visibleMarkers.forEach((ownedMarker) => {
       const markerOffset = offsets.get(ownedMarker.key) || [0, 0];
       const contentKey = JSON.stringify([
         ownedMarker.label,
@@ -534,7 +549,7 @@ function InteractiveMapCanvas({
         },
       });
     });
-  }, [ownedMarkerLayout, ownedMarkers, placeReferences, ready]);
+  }, [ownedMarkerLayout, ownedMarkers, placeReferences, ready, viewportRevision]);
 
   useEffect(() => {
     if (!ready || !map.current) return undefined;

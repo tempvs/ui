@@ -1,9 +1,52 @@
 import {
   getMapPlaces,
+  getMapProjections,
   listMapPlaceEntities,
   mapPlaceReference,
   nearbyMapEntitiesPage,
 } from "./mapApi";
+
+test("loads every projection beyond 40 IDs in bounded cancellable batches", async () => {
+  const controller = new AbortController();
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation(async (input, options) => {
+    expect(options?.signal).toBe(controller.signal);
+    const ids = new URL(String(input), "https://test.local").searchParams.get("ids")!.split(",");
+    return { ok: true, text: async () => JSON.stringify({ items: ids.map((id) => ({ id, scope: "PROFILE", markers: [], connections: [] })) }) } as Response;
+  });
+  try {
+    const projections = await getMapProjections("PROFILE", Array.from({ length: 91 }, (_, i) => String(i)), controller.signal);
+    expect(projections).toHaveLength(91);
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url), "https://test.local").searchParams.get("ids")!.split(",").length)).toEqual([40, 40, 11]);
+  } finally { fetchMock.mockRestore(); }
+});
+
+test("cancels abandoned place transports while preserving another consumer", async () => {
+  let finish!: (value: Response) => void;
+  let signal!: AbortSignal;
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation((_url, options) => {
+    signal = options!.signal as AbortSignal;
+    return new Promise<Response>((resolve, reject) => { finish = resolve; signal.addEventListener("abort", () => reject(signal.reason)); });
+  });
+  try {
+    const a = new AbortController(), b = new AbortController();
+    const first = getMapPlaces(["shared-cancel-place"], a.signal);
+    const rejection = expect(first).rejects.toMatchObject({ name: "AbortError" });
+    const second = getMapPlaces(["shared-cancel-place"], b.signal);
+    await Promise.resolve();
+    a.abort();
+    await rejection;
+    expect(signal.aborted).toBe(false);
+    finish({ ok: true, text: async () => JSON.stringify({ items: [{ id: "shared-cancel-place" }] }) } as Response);
+    await expect(second).resolves.toHaveLength(1);
+    const c = new AbortController();
+    const last = getMapPlaces(["abandoned-place"], c.signal);
+    const lastRejection = expect(last).rejects.toMatchObject({ name: "AbortError" });
+    await Promise.resolve();
+    c.abort();
+    await lastRejection;
+    expect(signal.aborted).toBe(true);
+  } finally { fetchMock.mockRestore(); }
+});
 
 test("preserves explicit truncation on nearby result pages", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({ ok: true, text: async () => JSON.stringify({ items: [], truncated: true }) } as Response);
@@ -45,6 +88,7 @@ test("coalesces concurrent place reads into one bounded batch request", async ()
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(fetchMock).toHaveBeenCalledWith(
     "/api/map/places?ids=batch-a%2Cbatch-b%2Cbatch-c",
+    { signal: expect.any(AbortSignal) },
   );
   fetchMock.mockRestore();
 });
@@ -74,7 +118,7 @@ test("falls back only for a legacy place id resolved by a merge", async () => {
   expect(fetchMock).toHaveBeenCalledTimes(2);
   expect(fetchMock).toHaveBeenLastCalledWith(
     "/api/map/places/seed%3Amerged-rome",
-    { signal: undefined },
+    { signal: expect.any(AbortSignal) },
   );
   fetchMock.mockRestore();
 });

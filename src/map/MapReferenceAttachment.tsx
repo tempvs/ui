@@ -530,6 +530,7 @@ function MapPreview({
   useEffect(() => {
     if (!visible || loadedContentKey.current === contentKey) return;
     let active = true;
+    const controller = new AbortController();
     setContentReady(false);
     setContent({ markers: [], connections: [] });
     setEntities([]);
@@ -538,7 +539,7 @@ function MapPreview({
     // club wall with several embedded maps, creates an avoidable Map API
     // request burst. Unscoped copied map links retain nearby discovery.
     if (reference.scope) {
-      void loadSharedMapScope(reference.scope)
+      void loadSharedMapScope(reference.scope, undefined, controller.signal)
         .then((part) => {
           if (active) {
             setContent(filterOwnedMapContentByProfiles(part, reference.hiddenProfileIds || []));
@@ -548,7 +549,7 @@ function MapPreview({
         })
         .catch(() => {
           if (active) setContentReady(true);
-          onError();
+          if (active) onError();
         });
     } else {
       // Attachments without a saved scope are a focal place only. Loading an
@@ -559,6 +560,7 @@ function MapPreview({
     }
     return () => {
       active = false;
+      controller.abort();
     };
   }, [
     contentKey,

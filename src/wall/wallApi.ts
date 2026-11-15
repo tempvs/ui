@@ -58,12 +58,13 @@ async function response<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
 
 export function getWall(
   profileId: string,
-  targets: WallTarget[],
+  targets: WallTarget[] | undefined,
   nextToken?: string,
   signal?: AbortSignal,
 ) {
   const params = new URLSearchParams({ profileId, limit: "20" });
-  targets.forEach((target) =>
+  if (!targets) params.set("discovery", "server");
+  targets?.forEach((target) =>
     params.append("target", `${target.type}:${target.id}:${target.reason}`),
   );
   if (nextToken) params.set("nextToken", nextToken);

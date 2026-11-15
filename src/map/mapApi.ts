@@ -333,9 +333,11 @@ async function responseJson(response: Response): Promise<unknown> {
 export async function getMapProjection(
   scope: MapProjection["scope"],
   id: string,
+  signal?: AbortSignal,
 ): Promise<MapProjection> {
   const response = await fetch(
     `/api/map/projections/${scope.toLowerCase()}/${encodeURIComponent(id)}`,
+    { signal },
   );
   if (!response.ok) throw new Error("Unable to load map projection");
   return (await responseJson(response)) as MapProjection;
@@ -344,17 +346,19 @@ export async function getMapProjection(
 export async function getMapProjections(
   scope: MapProjection["scope"],
   ids: string[],
+  signal?: AbortSignal,
 ): Promise<MapProjection[]> {
-  const uniqueIds = Array.from(new Set(ids)).slice(0, 40);
-  if (!uniqueIds.length) return [];
-  const params = new URLSearchParams({
-    scope,
-    ids: uniqueIds.join(","),
-  });
-  const response = await fetch(`/api/map/projections?${params}`);
-  if (!response.ok) throw new Error("Unable to load map projections");
-  const body = (await responseJson(response)) as { items?: unknown } | null;
-  return Array.isArray(body?.items) ? (body?.items as MapProjection[]) : [];
+  const uniqueIds = Array.from(new Set(ids));
+  const items: MapProjection[] = [];
+  for (let offset = 0; offset < uniqueIds.length; offset += 40) {
+    signal?.throwIfAborted();
+    const params = new URLSearchParams({ scope, ids: uniqueIds.slice(offset, offset + 40).join(",") });
+    const response = await fetch(`/api/map/projections?${params}`, { signal });
+    if (!response.ok) throw new Error("Unable to load map projections");
+    const body = (await responseJson(response)) as { items?: unknown } | null;
+    if (Array.isArray(body?.items)) items.push(...body.items as MapProjection[]);
+  }
+  return items;
 }
 
 /** Public approved-place lookup through the same-origin Map API. */
@@ -409,18 +413,21 @@ const inFlightMapPlaceReads = new Map<string, MapPlaceRead>();
 const mapPlaceCacheTtlMs = 2 * 60 * 1000;
 const mapPlaceBatchSize = 100;
 let mapPlaceFlushScheduled = false;
+let activeMapPlaceBatches = 0;
 
 type MapPlaceRead = {
+  batch?: { controller: AbortController; reads: MapPlaceRead[] };
   waiters: Array<{
     resolve: (place: MapPlace | null) => void;
     reject: (reason: unknown) => void;
   }>;
 };
 
-export async function getMapPlaces(ids: string[]): Promise<MapPlace[]> {
-  const unique = Array.from(new Set(ids)).slice(0, mapPlaceBatchSize);
+export async function getMapPlaces(ids: string[], signal?: AbortSignal): Promise<MapPlace[]> {
+  signal?.throwIfAborted();
+  const unique = Array.from(new Set(ids));
   if (!unique.length) return [];
-  const places = await Promise.all(unique.map(readMapPlaceBatched));
+  const places = await Promise.all(unique.map((id) => readMapPlaceBatched(id, signal)));
   return places.filter((place): place is MapPlace => Boolean(place));
 }
 
@@ -428,28 +435,50 @@ export async function getMapPlaces(ids: string[]): Promise<MapPlace[]> {
  * even when Map returns the legacy storage ID in the place payload. */
 export async function getMapPlacesByReference(
   ids: string[],
+  signal?: AbortSignal,
 ): Promise<Map<string, MapPlace>> {
-  const unique = Array.from(new Set(ids)).slice(0, mapPlaceBatchSize);
+  signal?.throwIfAborted();
+  const unique = Array.from(new Set(ids));
   const resolved = await Promise.all(
-    unique.map(async (id) => [id, await readMapPlaceBatched(id)] as const),
+    unique.map(async (id) => [id, await readMapPlaceBatched(id, signal)] as const),
   );
+  signal?.throwIfAborted();
   return new Map(
     resolved.filter((entry): entry is readonly [string, MapPlace] => Boolean(entry[1])),
   );
 }
 
-function readMapPlaceBatched(id: string): Promise<MapPlace | null> {
+function readMapPlaceBatched(id: string, signal?: AbortSignal): Promise<MapPlace | null> {
   const cached = mapPlaceCache.get(id);
-  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.place);
+  if (cached && cached.expiresAt > Date.now()) {
+    mapPlaceCache.delete(id); mapPlaceCache.set(id, cached);
+    return Promise.resolve(cached.place);
+  }
   if (cached) mapPlaceCache.delete(id);
   return new Promise<MapPlace | null>((resolve, reject) => {
-    const existing = queuedMapPlaceReads.get(id) || inFlightMapPlaceReads.get(id);
-    if (existing) {
-      existing.waiters.push({ resolve, reject });
-      return;
+    let read = queuedMapPlaceReads.get(id) || inFlightMapPlaceReads.get(id);
+    if (!read) {
+      read = { waiters: [] };
+      queuedMapPlaceReads.set(id, read);
+      scheduleMapPlaceFlush();
     }
-    queuedMapPlaceReads.set(id, { waiters: [{ resolve, reject }] });
-    scheduleMapPlaceFlush();
+    const current = read;
+    const cleanup = () => signal?.removeEventListener("abort", abort);
+    const waiter = {
+      resolve: (value: MapPlace | null) => { cleanup(); resolve(value); },
+      reject: (error: unknown) => { cleanup(); reject(error); },
+    };
+    const abort = () => {
+      current.waiters = current.waiters.filter((value) => value !== waiter);
+      waiter.reject(signal?.reason);
+      if (!current.waiters.length) {
+        if (queuedMapPlaceReads.get(id) === current) queuedMapPlaceReads.delete(id);
+        if (inFlightMapPlaceReads.get(id) === current) inFlightMapPlaceReads.delete(id);
+        if (current.batch?.reads.every((value) => !value.waiters.length)) current.batch.controller.abort();
+      }
+    };
+    current.waiters.push(waiter);
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }
 
@@ -461,15 +490,20 @@ function scheduleMapPlaceFlush() {
 
 async function flushMapPlaceReads() {
   mapPlaceFlushScheduled = false;
+  if (activeMapPlaceBatches >= 2) return;
   const entries = Array.from(queuedMapPlaceReads.entries()).slice(0, mapPlaceBatchSize);
   if (!entries.length) return;
+  activeMapPlaceBatches++;
+  const batch = { controller: new AbortController(), reads: entries.map(([, read]) => read) };
   entries.forEach(([id, read]) => {
+    read.batch = batch;
     queuedMapPlaceReads.delete(id);
     inFlightMapPlaceReads.set(id, read);
   });
+  if (queuedMapPlaceReads.size) scheduleMapPlaceFlush();
   try {
     const ids = entries.map(([id]) => id);
-    const response = await fetch(`/api/map/places?ids=${encodeURIComponent(ids.join(","))}`);
+    const response = await fetch(`/api/map/places?ids=${encodeURIComponent(ids.join(","))}`, { signal: batch.controller.signal });
     if (!response.ok) throw new Error("Unable to load places");
     const body = (await responseJson(response)) as { items?: unknown } | null;
     const places = body && Array.isArray(body.items) ? (body.items as MapPlace[]) : [];
@@ -481,7 +515,7 @@ async function flushMapPlaceReads() {
     const missingIds = ids.filter((id) => !byId.has(id));
     for (let start = 0; start < missingIds.length; start += 10) {
       const resolved = await Promise.all(
-        missingIds.slice(start, start + 10).map((id) => getMapPlace(id)),
+        missingIds.slice(start, start + 10).map((id) => getMapPlace(id, batch.controller.signal)),
       );
       resolved.forEach((place, index) => {
         const requestedId = missingIds[start + index];
@@ -490,16 +524,22 @@ async function flushMapPlaceReads() {
     }
     entries.forEach(([id, read]) => {
       const place = byId.get(id) || null;
-      if (place) mapPlaceCache.set(id, { place, expiresAt: Date.now() + mapPlaceCacheTtlMs });
-      inFlightMapPlaceReads.delete(id);
+      if (place && !batch.controller.signal.aborted) {
+        for (const [key, value] of mapPlaceCache) if (value.expiresAt <= Date.now()) mapPlaceCache.delete(key);
+        mapPlaceCache.delete(id);
+        mapPlaceCache.set(id, { place, expiresAt: Date.now() + mapPlaceCacheTtlMs });
+        while (mapPlaceCache.size > 500) mapPlaceCache.delete(mapPlaceCache.keys().next().value!);
+      }
+      if (inFlightMapPlaceReads.get(id) === read) inFlightMapPlaceReads.delete(id);
       read.waiters.forEach(({ resolve }) => resolve(place));
     });
   } catch (error) {
     entries.forEach(([id, read]) => {
-      inFlightMapPlaceReads.delete(id);
+      if (inFlightMapPlaceReads.get(id) === read) inFlightMapPlaceReads.delete(id);
       read.waiters.forEach(({ reject }) => reject(error));
     });
   } finally {
+    activeMapPlaceBatches--;
     if (queuedMapPlaceReads.size) scheduleMapPlaceFlush();
   }
 }

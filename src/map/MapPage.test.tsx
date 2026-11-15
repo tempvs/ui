@@ -934,6 +934,7 @@ test("retains a shared public graph while hydrating a copied map URL", async () 
         id: "profile-1",
       },
       expect.any(Function),
+      expect.any(AbortSignal),
     ),
   );
   await waitFor(() =>
@@ -958,6 +959,7 @@ test("hydrates a copied personal map from the original user scope", async () => 
         id: "owner-1",
       },
       expect.any(Function),
+      expect.any(AbortSignal),
     ),
   );
   expect(mockLoadOwnedMapContent).not.toHaveBeenCalled();

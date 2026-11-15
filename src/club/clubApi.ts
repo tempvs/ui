@@ -322,8 +322,8 @@ export const deleteClubAlbumImage = (clubId: Id, imageId: string) =>
     `/clubs/${clubId}/images/${encodeURIComponent(imageId)}`,
     "DELETE",
   );
-export const getClub = async (id: Id) =>
-  clubValue(await request<unknown>(`/clubs/${id}`));
+export const getClub = async (id: Id, signal?: AbortSignal) =>
+  clubValue(await request<unknown>(`/clubs/${id}`, "GET", undefined, signal));
 export const createClub = async (draft: ClubDraft) =>
   clubValue(
     await request<unknown>("/clubs", "POST", draft, undefined, {

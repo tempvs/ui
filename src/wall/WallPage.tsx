@@ -14,13 +14,11 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import ActivityCard from "./ActivityCard";
-import { getWallTargets } from "./wallTargets";
 import {
   dismissWallItem,
   getWall,
   getWallThumbnails,
   WallActivity,
-  WallTarget,
 } from "./wallApi";
 import "./wall.css";
 
@@ -42,7 +40,6 @@ export default function WallPage({
 }) {
   const currentProfileValue = useCurrentProfileValue();
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [targets, setTargets] = useState<WallTarget[]>([]);
   const [activities, setActivities] = useState<WallActivity[]>([]);
   const [thumbnails, setThumbnails] = useState<
     Record<
@@ -58,20 +55,25 @@ export default function WallPage({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
   const [dismissTarget, setDismissTarget] = useState<WallActivity | null>(null);
   const [dismissing, setDismissing] = useState(false);
-  const [targetNotice, setTargetNotice] = useState<string>();
   const request = useRef<AbortController | null>(null);
   const moreInFlight = useRef(false);
 
   const load = useCallback(
     async (
       activeProfileId: string,
-      wallTargets: WallTarget[],
       signal: AbortSignal,
       token?: string,
     ) => {
-      const page = await getWall(activeProfileId, wallTargets, token, signal);
+      let page = await getWall(activeProfileId, undefined, token, signal);
+      // Server discovery and large merge checkpoints can yield an empty,
+      // advancing page. Follow a few automatically without claiming exhaustion.
+      for (let reads = 1; !page.content.length && page.nextToken && reads < 4; reads++) {
+        signal.throwIfAborted();
+        page = await getWall(activeProfileId, undefined, page.nextToken, signal);
+      }
       if (signal.aborted) return;
       setActivities((current) =>
         token ? [...current, ...page.content] : page.content,
@@ -95,7 +97,7 @@ export default function WallPage({
       // shared image component render its hourglass; do not fall back to N
       // individual image metadata calls.
       if (resources.length)
-        void getWallThumbnails(resources)
+        void getWallThumbnails(resources, signal)
           .then((entries) => {
             if (signal.aborted) return;
             const images = Object.fromEntries(
@@ -118,7 +120,6 @@ export default function WallPage({
     setLoadingMore(false);
     setLoading(true);
     setError(undefined);
-    setTargetNotice(undefined);
     setNextToken(undefined);
     setProfileId(null);
     setDismissTarget(null);
@@ -131,18 +132,8 @@ export default function WallPage({
           ...clubs,
         ]);
         if (!selectedId) throw new Error("Create a profile to see your wall.");
-        const result = await getWallTargets(selectedId, controller.signal);
-        if (controller.signal.aborted) return;
-        setTargetNotice(
-          result.incomplete
-            ? "Some relationships could not be loaded. This wall may be incomplete. Reload to retry."
-            : result.limited
-            ? "This wall covers the first 60 relationship targets. Some updates may be outside this view."
-            : undefined,
-        );
         setProfileId(selectedId);
-        setTargets(result.targets);
-        await load(selectedId, result.targets, controller.signal);
+        await load(selectedId, controller.signal);
       })
       .catch((reason) => {
         if (!controller.signal.aborted) setError((reason as Error).message);
@@ -151,7 +142,7 @@ export default function WallPage({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [currentProfileValue, load, userId]);
+  }, [currentProfileValue, load, userId, attempt]);
 
   const loadMore = async () => {
     const signal = request.current?.signal;
@@ -167,7 +158,7 @@ export default function WallPage({
     setLoadingMore(true);
     setError(undefined);
     try {
-      await load(profileId, targets, signal, nextToken);
+      await load(profileId, signal, nextToken);
     } catch (reason) {
       if (!signal.aborted) setError((reason as Error).message);
     } finally {
@@ -207,8 +198,7 @@ export default function WallPage({
             </p>
           </div>
         </div>
-        {targetNotice && <Alert variant="warning">{targetNotice}</Alert>}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && <Alert variant="danger">{error} <Button variant="outline-danger" size="sm" onClick={() => setAttempt((value) => value + 1)}>Reload wall</Button></Alert>}
         {loading ? (
           <div className="wall-loading">
             <Spinner size="sm" /> Loading updates…
@@ -231,10 +221,11 @@ export default function WallPage({
         ) : (
           !error && (
             <div className="wall-empty">
-              <h2>No updates yet</h2>
+              <h2>{nextToken ? "Still checking for updates" : "No updates yet"}</h2>
               <p>
-                Follow profiles, clubs, or events and their newest activity will
-                appear here.
+                {nextToken
+                  ? "More history remains to be checked. Load more to continue."
+                  : "Follow profiles, clubs, or events and their newest activity will appear here."}
               </p>
               {emptyContent}
             </div>

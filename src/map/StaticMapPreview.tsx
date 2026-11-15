@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapEntityLocation } from "./mapApi";
 import type { OwnedMapConnection, OwnedMapMarker } from "./ownedMapContent";
@@ -34,7 +34,7 @@ type Point = { latitude: number; longitude: number };
 /** A deliberately lightweight geographic preview for feed cards. It uses the
  * same local Natural Earth source and the attachment's actual graph, while
  * avoiding a MapLibre/WebGL instance for every visible post. */
-export default function StaticMapPreview({
+function StaticMapPreview({
   reference,
   markers,
   entities,
@@ -46,6 +46,7 @@ export default function StaticMapPreview({
   connections: OwnedMapConnection[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundRef = useRef<HTMLCanvasElement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const [basemap, setBasemap] = useState<Basemap | null>(null);
   const [size, setSize] = useState({ width: 960, height: 480 });
@@ -82,9 +83,9 @@ export default function StaticMapPreview({
     const measure = () => {
       const next = root.getBoundingClientRect();
       if (next.width > 0 && next.height > 0)
-        setSize({
-          width: Math.round(next.width),
-          height: Math.round(next.height),
+        setSize((current) => {
+          const width = Math.round(next.width), height = Math.round(next.height);
+          return current.width === width && current.height === height ? current : { width, height };
         });
     };
     const observer =
@@ -97,17 +98,29 @@ export default function StaticMapPreview({
   }, []);
 
   useEffect(() => {
+    if (!basemap) return;
+    const background = document.createElement("canvas");
+    background.width = size.width;
+    background.height = size.height;
+    drawPreview(background, basemap, [], [], [], { east: bounds.east, west: bounds.west, north: bounds.north, south: bounds.south });
+    backgroundRef.current = background;
+    // Geographic background work depends on coordinates and size, not image
+    // enrichment or unrelated parent renders.
+  }, [basemap, bounds.east, bounds.west, bounds.north, bounds.south, size.width, size.height]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !basemap) return;
-    drawPreview(
+    const frame = requestAnimationFrame(() => drawPreview(
       canvas,
       basemap,
-      reference,
       markers,
       entities,
       connections,
       bounds,
-    );
+      backgroundRef.current,
+    ));
+    return () => cancelAnimationFrame(frame);
   }, [basemap, bounds, connections, entities, markers, reference, size]);
 
   return (
@@ -140,11 +153,11 @@ export default function StaticMapPreview({
 function drawPreview(
   canvas: HTMLCanvasElement,
   basemap: Basemap,
-  reference: PublicMapReference,
   markers: OwnedMapMarker[],
   entities: MapEntityLocation[],
   connections: OwnedMapConnection[],
   bounds: ReturnType<typeof previewBounds>,
+  background?: HTMLCanvasElement | null,
 ) {
   const context = canvas.getContext("2d");
   if (!context) return;
@@ -157,7 +170,8 @@ function drawPreview(
     ((bounds.north - latitude) / (bounds.north - bounds.south)) * height,
   ];
 
-  for (const feature of basemap.features || []) {
+  if (background) context.drawImage(background, 0, 0);
+  else for (const feature of basemap.features || []) {
     const kind = feature.properties?.tempvsBasemapKind;
     if (!kind || kind === "borders" || !feature.geometry?.coordinates) continue;
     context.beginPath();
@@ -365,3 +379,5 @@ function connectionColour(kind: OwnedMapConnection["kind"]) {
 function validPoint(point: Point) {
   return Number.isFinite(point.latitude) && Number.isFinite(point.longitude);
 }
+
+export default memo(StaticMapPreview);

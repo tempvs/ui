@@ -10,6 +10,53 @@ function response(body: unknown, status = 200): Response {
 
 afterEach(() => jest.restoreAllMocks());
 
+test("cancels only an abandoned batch, preserving shared image consumers", async () => {
+  let finish!: (value: Response) => void;
+  let transport!: AbortSignal;
+  jest.spyOn(global, "fetch").mockImplementation((_url, options) => {
+    transport = options!.signal as AbortSignal;
+    return new Promise<Response>((resolve, reject) => {
+      finish = resolve;
+      transport.addEventListener("abort", () => reject(transport.reason));
+    });
+  });
+  const resource = { resourceType: "source", resourceId: "cancel-shared" };
+  const first = new AbortController(), second = new AbortController();
+  const a = getImageThumbnails([resource], first.signal);
+  const aError = expect(a).rejects.toMatchObject({ name: "AbortError" });
+  const b = getImageThumbnails([resource], second.signal);
+  await Promise.resolve();
+  first.abort();
+  await aError;
+  expect(transport.aborted).toBe(false);
+  finish(response({ content: [{ ...resource, image: null }] }));
+  await expect(b).resolves.toHaveLength(1);
+  const third = new AbortController();
+  const c = getImageThumbnails([{ ...resource, resourceId: "cancel-alone" }], third.signal);
+  const cError = expect(c).rejects.toMatchObject({ name: "AbortError" });
+  await Promise.resolve();
+  third.abort();
+  await cError;
+  expect(transport.aborted).toBe(true);
+});
+
+test("expires missing thumbnails earlier and evicts old cache entries", async () => {
+  const clock = jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+  const fetchMock = jest.spyOn(global, "fetch").mockImplementation(async (_url, options) => response({
+    content: JSON.parse(String(options?.body)).resources.map((resource: object) => ({ ...resource, image: null })),
+  }));
+  const resources = Array.from({ length: 520 }, (_, i) => ({ resourceType: "source", resourceId: `lru-${i}` }));
+  await getImageThumbnails(resources);
+  const initial = fetchMock.mock.calls.length;
+  await getImageThumbnails([resources[519]]);
+  expect(fetchMock).toHaveBeenCalledTimes(initial);
+  await getImageThumbnails([resources[0]]);
+  expect(fetchMock).toHaveBeenCalledTimes(initial + 1);
+  clock.mockReturnValue(1_015_001);
+  await getImageThumbnails([resources[519]]);
+  expect(fetchMock).toHaveBeenCalledTimes(initial + 2);
+});
+
 test("keeps default thumbnails and selected covers separate in the batch and cache", async () => {
   const resource = { resourceType: "source", resourceId: "cover-cache-source" };
   const preferredImageId = "018f0000-0000-7000-8000-000000000002";

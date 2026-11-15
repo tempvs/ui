@@ -207,6 +207,7 @@ function readProfileById(id: Id): Promise<ProfileRead> {
 /** Resolve public profile cards in a few requests instead of one per post or comment. */
 export async function getProfilesByIds(
   profileIds: readonly Id[],
+  signal?: AbortSignal,
 ): Promise<Profile[]> {
   const ids = Array.from(new Set(profileIds.map(String).filter(Boolean)));
   if (!ids.length) return [];
@@ -214,6 +215,7 @@ export async function getProfilesByIds(
   for (let offset = 0; offset < ids.length; offset += 40) {
     const response = await requestJson(
       `/api/profile/profiles?ids=${encodeURIComponent(ids.slice(offset, offset + 40).join(","))}`,
+      { signal },
     );
     if (!response.ok)
       throw new Error(`Request failed with status ${response.status}`);

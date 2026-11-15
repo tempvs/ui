@@ -469,8 +469,8 @@ export function setAdminMemberRole(userId: string, role: string | null) {
   );
 }
 
-export function getSource(sourceId: string | undefined) {
-  return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`);
+export function getSource(sourceId: string | undefined, signal?: AbortSignal) {
+  return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`, { signal });
 }
 
 /**

@@ -1,5 +1,6 @@
+import { SharedReadCache } from "../util/sharedRead";
 import { getClub, type Club } from "../club/clubApi";
-import { getSource, getSourceImages, type LibrarySource, type LibrarySourceImage } from "../library/libraryApi";
+import { getSource, type LibrarySource, type LibrarySourceImage } from "../library/libraryApi";
 import { getImageThumbnails } from "../image/imageApi";
 import {
   getClubProfiles,
@@ -93,6 +94,7 @@ export function filterOwnedMapContentByProfiles(
   );
   const hiddenTargets = new Set<string>();
   const visibleTargets = new Set<string>();
+  const markerByKey = new Map(content.markers.map((pin) => [pin.key, pin]));
   content.connections.forEach((connection) => {
     if (connection.kind !== "PROFILE_SOURCE" && connection.kind !== "PROFILE_CLUB") return;
     const target = profileKeys.has(connection.fromKey)
@@ -102,9 +104,9 @@ export function filterOwnedMapContentByProfiles(
         : null;
     if (target) hiddenTargets.add(target);
     else {
-      const profileEndpoint = content.markers.find(
-        (marker) => marker.key === connection.fromKey || marker.key === connection.toKey,
-      );
+      const from = markerByKey.get(connection.fromKey);
+      const to = markerByKey.get(connection.toKey);
+      const profileEndpoint = from?.entityType === "PROFILE" ? from : to;
       if (profileEndpoint?.entityType === "PROFILE" && !hidden.has(profileEndpoint.entityId))
         visibleTargets.add(profileEndpoint.key === connection.fromKey ? connection.toKey : connection.fromKey);
     }
@@ -123,18 +125,7 @@ export function filterOwnedMapContentByProfiles(
   };
 }
 
-const sharedScopeReadTtlMs = 30_000;
-const sharedScopeReads = new Map<
-  string,
-  {
-    expiresAt: number;
-    request: Promise<OwnedMapContent>;
-    progress: {
-      latest?: OwnedMapContent;
-      listeners: Set<(content: OwnedMapContent) => void>;
-    };
-  }
->();
+const sharedScopeReads = new SharedReadCache<OwnedMapContent>(30_000, 64);
 
 /**
  * A deliberately bounded public-page overlay. It is assembled from the same
@@ -321,49 +312,22 @@ function eventLocations(event: TempvsEvent): RelatedLocation[] {
 
 /** Resolve a URL-addressable public page slice. Do not substitute the viewer
  * here: a copied URL must show the same resource graph to every recipient. */
-export async function loadSharedMapScope(
+export function loadSharedMapScope(
   scope: SharedMapScope,
   onProgress?: (content: OwnedMapContent) => void,
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
-  const key = `${scope.type}:${scope.id}`;
-  const now = Date.now();
-  let entry = sharedScopeReads.get(key);
-  if (!entry || entry.expiresAt <= now) {
-    const progress: {
-      latest?: OwnedMapContent;
-      listeners: Set<(content: OwnedMapContent) => void>;
-    } = { listeners: new Set() };
-    const publish = (content: OwnedMapContent) => {
-      progress.latest = content;
-      progress.listeners.forEach((listener) => listener(content));
-    };
-    const request = loadSharedMapScopeUncached(scope, publish).then(
-      (content) => {
-        publish(content);
-        return content;
-      },
-    );
-    entry = { expiresAt: now + sharedScopeReadTtlMs, request, progress };
-    const created = entry;
-    sharedScopeReads.set(key, created);
-    request.catch(() => {
-      if (sharedScopeReads.get(key) === created) sharedScopeReads.delete(key);
-    });
-  }
-  if (onProgress) {
-    entry.progress.listeners.add(onProgress);
-    if (entry.progress.latest) onProgress(entry.progress.latest);
-  }
-  try {
-    return await entry.request;
-  } finally {
-    if (onProgress) entry.progress.listeners.delete(onProgress);
-  }
+  return sharedScopeReads.read(`${scope.type}:${scope.id}`, async (sharedSignal, publish) => {
+    const content = await loadSharedMapScopeUncached(scope, publish, sharedSignal);
+    publish(content);
+    return content;
+  }, signal, onProgress);
 }
 
 async function loadSharedMapScopeUncached(
   scope: SharedMapScope,
   onProgress: (content: OwnedMapContent) => void,
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
   switch (scope.type) {
     case "USER":
@@ -371,18 +335,18 @@ async function loadSharedMapScopeUncached(
       // the owner's own Map page. The URL identifies that owner, never the
       // recipient, so copying it cannot silently substitute another user's
       // profiles, clubs, or source relationships.
-      return loadOwnedMapContent(scope.id, onProgress);
+      return loadOwnedMapContent(scope.id, onProgress, signal);
     case "PROFILE": {
-      return projectionMapContent("PROFILE", scope.id);
+      return projectionMapContent("PROFILE", scope.id, [], signal);
     }
     case "CLUB": {
-      return loadSharedResourceContent(scope);
+      return loadSharedResourceContent(scope, signal);
     }
     case "EVENT": {
-      return loadSharedResourceContent(scope);
+      return loadSharedResourceContent(scope, signal);
     }
     case "SOURCE": {
-      return loadSharedResourceContent(scope);
+      return loadSharedResourceContent(scope, signal);
     }
   }
 }
@@ -393,11 +357,13 @@ async function loadSharedMapScopeUncached(
  * remain the fast path and the shared-scope cache batches concurrent cards. */
 async function loadSharedResourceContent(
   scope: SharedMapScope,
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
   const content = await projectionMapContent(
     scope.type as MapProjection["scope"],
     scope.id,
-  ).catch(() => ({ markers: [], connections: [] }) as OwnedMapContent);
+    [], signal,
+  ).catch(() => { signal?.throwIfAborted(); return { markers: [], connections: [] } as OwnedMapContent; });
   const expectedCount = scope.type === "CLUB" ? 1 : 2;
   if (
     content.markers.length >= expectedCount &&
@@ -407,19 +373,18 @@ async function loadSharedResourceContent(
 
   let expected: RelatedLocation[];
   if (scope.type === "CLUB") {
-    expected = clubLocations(await getClub(scope.id));
+    expected = clubLocations(await getClub(scope.id, signal));
   } else if (scope.type === "EVENT") {
-    expected = eventLocations(await getEvent(scope.id));
+    expected = eventLocations(await getEvent(scope.id, signal));
   } else {
-    const result = await getSource(scope.id);
+    const result = await getSource(scope.id, signal);
     if (!result.ok || !result.data) throw new Error("Unable to load shared source map");
-    const images = content.markers.some((pin) => pin.thumbnailUrl)
-      ? null : await getSourceImages(scope.id).catch(() => null);
-    const existingImage = content.markers.find((pin) => pin.thumbnailUrl);
-    expected = sourceLocations(result.data, images?.data?.find((image) => image.id === result.data?.coverImageId) || images?.data?.[0] ||
-      (existingImage ? { id: existingImage.entityId, thumbnailUrl: existingImage.thumbnailUrl } : null));
+    const images = await getImageThumbnails([{ resourceType: "source", resourceId: scope.id,
+      ...(result.data.coverImageId ? { preferredImageId: result.data.coverImageId } : {}) }], signal).catch(() => { signal?.throwIfAborted(); return []; });
+    const image = images[0]?.image;
+    expected = sourceLocations(result.data, image ? { id: String(image.id || scope.id), thumbnailUrl: image.thumbnailUrl || image.url } : null);
   }
-  const complete = await addExpectedLocations(content, expected);
+  const complete = await addExpectedLocations(content, expected, true, signal);
   return {
     ...complete,
     connections: completeLocationConnections(complete.markers, complete.connections),
@@ -430,11 +395,13 @@ async function projectionMapContent(
   scope: MapProjection["scope"],
   id: string,
   expectedLocations: RelatedLocation[] = [],
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
   let projection: MapProjection;
   try {
-    projection = await getMapProjection(scope, id);
+    projection = await getMapProjection(scope, id, signal);
   } catch (error) {
+    signal?.throwIfAborted();
     // Resource pages still know their own one/two approved locations. Use
     // those while an asynchronous projection has not appeared yet (including
     // old records that were never backfilled). Profile maps have no such
@@ -452,13 +419,13 @@ async function projectionMapContent(
           | "source"
           | "event",
         resourceId: marker.entityId,
-      })),
+      })), signal,
     ),
     getProfilesByIds(
       markers
         .filter((marker) => marker.entityType === "PROFILE")
-        .map((marker) => marker.entityId),
-    ).catch(() => []),
+        .map((marker) => marker.entityId), signal,
+    ).catch(() => { signal?.throwIfAborted(); return []; }),
   ]);
   const profileAliases = new Map(
     profiles.map((profile) => [profile.id, profile.alias?.trim() || profile.id]),
@@ -492,7 +459,7 @@ async function projectionMapContent(
     connections: projection.connections,
     ...(projection.truncated ? { truncated: true } : {}),
   };
-  const complete = await addExpectedLocations(content, expectedLocations);
+  const complete = await addExpectedLocations(content, expectedLocations, true, signal);
   return {
     ...complete,
     connections: completeLocationConnections(complete.markers, complete.connections),
@@ -517,6 +484,7 @@ async function addExpectedLocations(
   content: OwnedMapContent,
   expected: RelatedLocation[],
   includeThumbnails = true,
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
   // Use the resource's current avatar/carousel image even when its location
   // was already present in an older projection without thumbnail metadata.
@@ -546,8 +514,8 @@ async function addExpectedLocations(
           location.placeId ? [location.placeId] : [],
         ),
       ),
-    ),
-  ).catch(() => new Map());
+    ), signal,
+  ).catch(() => { signal?.throwIfAborted(); return new Map(); });
   const absentThumbnailResources = missing
     .filter((location) => !location.thumbnailUrl)
     .map((location) => ({
@@ -555,7 +523,7 @@ async function addExpectedLocations(
       resourceId: location.entityId,
     }));
   const thumbnails = includeThumbnails
-    ? await thumbnailUrls(absentThumbnailResources)
+    ? await thumbnailUrls(absentThumbnailResources, signal)
     : new Map<string, string>();
   const markers = missing.flatMap((location) => {
     const place = location.placeId ? places.get(location.placeId) : undefined;
@@ -586,6 +554,8 @@ function completeLocationConnections(
   connections: OwnedMapConnection[],
 ): OwnedMapConnection[] {
   const next = [...connections];
+  const markerByRole = new Map(markers.map((pin) => [`${pin.entityType}:${pin.entityId}:${pin.locationRole}`, pin]));
+  const pairs = new Set(connections.map((edge) => `${edge.fromKey}:${edge.toKey}`));
   const add = (
     entityType: "SOURCE" | "EVENT",
     fromRole: OwnedMapMarker["locationRole"],
@@ -601,23 +571,15 @@ function completeLocationConnections(
         .map((marker) => marker.entityId),
     );
     entities.forEach((entityId) => {
-      const from = markers.find(
-        (marker) =>
-          marker.entityType === entityType &&
-          marker.entityId === entityId &&
-          marker.locationRole === fromRole,
-      );
-      const to = markers.find(
-        (marker) =>
-          marker.entityType === entityType &&
-          marker.entityId === entityId &&
-          marker.locationRole === toRole,
-      );
+      const from = markerByRole.get(`${entityType}:${entityId}:${fromRole}`);
+      const to = markerByRole.get(`${entityType}:${entityId}:${toRole}`);
       if (!from || !to) return;
       const fromKey = `${from.entityType}:${from.entityId}:${from.locationRole}`;
       const toKey = `${to.entityType}:${to.entityId}:${to.locationRole}`;
       const key = `${kind}:${fromKey}:${toKey}`;
-      if (next.some((connection) => connection.fromKey === fromKey && connection.toKey === toKey)) return;
+      const pair = `${fromKey}:${toKey}`;
+      if (pairs.has(pair)) return;
+      pairs.add(pair);
       next.push({ key, fromKey, toKey, kind });
     });
   };
@@ -676,11 +638,13 @@ export type OwnedMapContentProgress = OwnedMapContent;
 export async function loadOwnedMapContent(
   userId: string,
   onProgress?: (content: OwnedMapContentProgress) => void,
+  signal?: AbortSignal,
 ): Promise<OwnedMapContent> {
   const [personalResult, clubProfilesResult] = await Promise.allSettled([
     getUserProfileByUserId(userId),
     getClubProfiles(userId),
   ]);
+  signal?.throwIfAborted();
   const personalProfile =
     personalResult.status === "fulfilled" ? personalResult.value : null;
   const profiles = uniqueById(
@@ -720,7 +684,7 @@ export async function loadOwnedMapContent(
   onProgress?.(snapshot({ markers: [], connections: [] }));
   const projections = await getMapProjections(
     "PROFILE",
-    profiles.map((profile) => profile.id),
+    profiles.map((profile) => profile.id), signal,
   );
   const projectionContent = mergeProjectionContent(projections, profiles);
   // Resolve approved fallback positions before framing the graph so every
@@ -738,7 +702,7 @@ export async function loadOwnedMapContent(
             ),
         )
         .flatMap(profileLocations),
-      false,
+      false, signal,
     ),
   );
   onProgress?.(content);
@@ -748,7 +712,7 @@ export async function loadOwnedMapContent(
       content.markers.map((marker) => ({
         resourceType: marker.entityType.toLowerCase(),
         resourceId: marker.entityId,
-      })),
+      })), signal,
     ),
     getProfilesByIds(
       content.markers
@@ -757,8 +721,8 @@ export async function loadOwnedMapContent(
             marker.entityType === "PROFILE" &&
             !knownProfileIds.has(marker.entityId),
         )
-        .map((marker) => marker.entityId),
-    ).catch(() => []),
+        .map((marker) => marker.entityId), signal,
+    ).catch(() => { signal?.throwIfAborted(); return []; }),
   ]);
   const aliases = new Map(
     [...profiles, ...extraProfiles].map((profile) => [
@@ -766,6 +730,7 @@ export async function loadOwnedMapContent(
       profile.alias?.trim() || profile.id,
     ]),
   );
+  signal?.throwIfAborted();
   const enriched: OwnedMapContent = {
     ...content,
     markers: content.markers.map((pin) => ({
@@ -910,9 +875,11 @@ function mergeProjectionContent(
 
 async function thumbnailUrls(
   resources: Array<{ resourceType: string; resourceId: string | number }>,
+  signal?: AbortSignal,
 ): Promise<Map<string, string>> {
+  if (!resources.length) return new Map();
   try {
-    const thumbnails = await getImageThumbnails(resources);
+    const thumbnails = await getImageThumbnails(resources, signal);
     return new Map(
       thumbnails.flatMap((entry) => {
         const url = entry.image?.thumbnailUrl || entry.image?.url;
@@ -922,6 +889,7 @@ async function thumbnailUrls(
       }),
     );
   } catch {
+    signal?.throwIfAborted();
     return new Map();
   }
 }

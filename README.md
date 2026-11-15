@@ -8,6 +8,25 @@ Interactive maps use MapLibre 6 and require WebGL2. The renderer and its matchin
 content-hashed worker load only when a map opens; unsupported graphics retain the
 surrounding page and result lists with a retry/fallback message.
 
+The wall uses backend relationship discovery and resumable feed checkpoints
+(`discovery=server`); deploy the Wall service before this UI release. Empty
+advancing pages are followed automatically up to four requests, with Load more
+available afterward. Reload wall restarts expired or failed pagination.
+
+Search code loads on first interaction, preserving typed text and the `/`
+shortcut. The HTML entry plus module preloads measured 141,757 gzip bytes versus
+164,128 before this change (13.6% lower; CSS and lazy routes excluded). This is
+an artifact transfer comparison, not a claim about end-user latency.
+
+Map reads share cancellation by consumer: leaving one card preserves other
+subscribers, while leaving the last aborts pending transports. Completed scope
+reads retain at most 64 entries for 30 seconds; image/place caches retain at most
+500 entries, with a 15-second TTL for missing thumbnails. Image/place queues use
+at most two concurrent batches. Projection/place batching covers all supplied
+IDs. Private graphs above 150 markers render avatar elements within the viewport
+and restore them after camera movement; graph data and fit points stay complete.
+Static previews reuse their geographic background when only images change.
+
 - `npm start`: development server at `http://localhost:3000`.
 - `npm run check`: lint, application/test/tooling types, unit tests, production build and hosting/proxy contract tests.
 - `npm run build`: generate the local basemap and production files in `build/`, with hashed bundles in `build/static/`.

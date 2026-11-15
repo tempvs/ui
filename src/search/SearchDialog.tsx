@@ -164,9 +164,10 @@ function SearchResultsHeading({
   );
 }
 
-export default function SearchDialog() {
+export default function SearchDialog({ initialOpen = false, initialQuery = "" }: { initialOpen?: boolean; initialQuery?: string } = {}) {
   const intl = useIntl();
   const location = useLocation();
+  const previousPath = useRef(location.pathname);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const resultsPaneRef = useRef<HTMLDivElement | null>(null);
@@ -180,13 +181,16 @@ export default function SearchDialog() {
     sourceNextTokens: {} as Record<string, string | undefined>,
   });
 
-  const [showPopover, setShowPopover] = useState(false);
+  const [showPopover, setShowPopover] = useState(initialOpen);
   const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>(
     {},
   );
   const [activeTab, setActiveTab] = useState<SearchTab>("profiles");
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>("NAME_ASC");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  useEffect(() => {
+    if (initialOpen) inputRef.current?.focus();
+  }, [initialOpen]);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       const stored = window.localStorage.getItem(RECENT_SEARCHES_KEY);
@@ -637,7 +641,8 @@ export default function SearchDialog() {
   }, [query, showPopover]);
 
   useEffect(() => {
-    setShowPopover(false);
+    if (previousPath.current !== location.pathname) setShowPopover(false);
+    previousPath.current = location.pathname;
   }, [location.pathname]);
 
   useLayoutEffect(() => {

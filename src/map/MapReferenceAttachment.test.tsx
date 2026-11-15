@@ -28,11 +28,11 @@ test.each(["SOURCE", "CLUB", "EVENT"] as const)(
         entityTypes: [type], scope }}
       relationshipScope={{ type: "PROFILE", id: "destination-profile" }}
     /></MemoryRouter>);
-    await waitFor(() => expect(loadSharedMapScope).toHaveBeenCalledWith(scope));
+    await waitFor(() => expect(loadSharedMapScope).toHaveBeenCalledWith(scope, undefined, expect.any(AbortSignal)));
     fireEvent.click(screen.getByRole("button", { name: "Open shared map: Shared map" }));
     await screen.findByRole("dialog");
     await waitFor(() => expect(loadSharedMapScope).toHaveBeenCalledTimes(2));
-    expect(jest.mocked(loadSharedMapScope).mock.calls).toEqual([[scope], [scope]]);
+    expect(jest.mocked(loadSharedMapScope).mock.calls.map(([value]) => value)).toEqual([scope, scope]);
   },
 );
 

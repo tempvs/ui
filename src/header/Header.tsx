@@ -10,7 +10,7 @@ import ClubButton from "../club/ClubButton";
 import EventButton from "../event/EventButton";
 import MapButton from "../map/MapButton";
 import NotificationButton from "../notification/NotificationButton";
-import SearchDialog from "../search/SearchDialog";
+import SearchDialog from "../search/LazySearchDialog";
 import LoginRegisterButton from "../auth/LoginRegisterButton";
 import AccountMenu from "../auth/AccountMenu";
 import {

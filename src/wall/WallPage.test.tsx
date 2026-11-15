@@ -7,7 +7,6 @@ import {
 } from "@testing-library/react";
 import WallPage from "./WallPage";
 import { getWall, getWallThumbnails } from "./wallApi";
-import { getWallTargets } from "./wallTargets";
 
 let mockProfileValue = "first";
 jest.mock("../component/PageLayout", () => ({
@@ -31,7 +30,6 @@ jest.mock("../profile/profileApi", () => ({
   getUserProfileByUserId: async () => ({ id: "first" }),
   fetchClubProfiles: (_id: string, handlers: any) => handlers.onSuccess([]),
 }));
-jest.mock("./wallTargets", () => ({ getWallTargets: jest.fn() }));
 jest.mock("./wallApi", () => ({
   getWall: jest.fn(),
   getWallThumbnails: jest.fn(),
@@ -56,9 +54,6 @@ function page(id: string, nextToken?: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockProfileValue = "first";
-  jest
-    .mocked(getWallTargets)
-    .mockResolvedValue({ targets: [], incomplete: false, limited: false });
   jest.mocked(getWallThumbnails).mockResolvedValue([]);
 });
 
@@ -121,12 +116,19 @@ test("late thumbnails cannot leak into a different profile's wall", async () => 
   expect(screen.queryByText("wrong-image")).not.toBeInTheDocument();
 });
 
-test("explains unavailable relationships without hiding available activity", async () => {
-  jest
-    .mocked(getWallTargets)
-    .mockResolvedValue({ targets: [], incomplete: true, limited: false });
-  jest.mocked(getWall).mockResolvedValue(page("Available update"));
+test("uses server discovery and follows empty checkpoints without claiming an empty wall", async () => {
+  jest.mocked(getWall).mockResolvedValueOnce({ content: [], hasMore: true, nextToken: "s1.first" })
+    .mockResolvedValueOnce({ content: [], hasMore: true, nextToken: "s1.second" })
+    .mockResolvedValueOnce(page("Beyond sixty targets"));
   render(<WallPage userId="user" />);
-  expect(await screen.findByText("Available update")).toBeVisible();
-  expect(screen.getByRole("alert")).toHaveTextContent("may be incomplete");
+  expect(await screen.findByText("Beyond sixty targets")).toBeVisible();
+  expect(getWall).toHaveBeenNthCalledWith(2, "first", undefined, "s1.first", expect.any(AbortSignal));
+});
+
+test("retains continuation after bounded automatic discovery reads", async () => {
+  jest.mocked(getWall).mockResolvedValue({ content: [], hasMore: true, nextToken: "s1.progress" });
+  render(<WallPage userId="user" />);
+  expect(await screen.findByText("Still checking for updates")).toBeVisible();
+  expect(getWall).toHaveBeenCalledTimes(4);
+  expect(screen.getByRole("button", { name: "Load more" })).toBeEnabled();
 });

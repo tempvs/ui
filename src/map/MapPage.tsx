@@ -349,6 +349,7 @@ export default function MapPage() {
   // Its identity must stay stable so it does not start a second graph load.
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const key = effectiveScope
       ? `${effectiveScope.type}:${effectiveScope.id}`
       : undefined;
@@ -375,7 +376,7 @@ export default function MapPage() {
       setOwnedProfiles(content.profiles || []);
       if (content.markers.length) setOwnedMapLoading(false);
     };
-    void loadSharedMapScope(effectiveScope, publish)
+    void loadSharedMapScope(effectiveScope, publish, controller.signal)
       .then(publish)
       .catch(() => {
         if (active)
@@ -388,6 +389,7 @@ export default function MapPage() {
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [effectiveScope, ownedMapAttempt]);
 
