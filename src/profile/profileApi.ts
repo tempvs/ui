@@ -1,11 +1,11 @@
 import { doFetch } from "../util/Fetcher";
+import { getSession, invalidateSessionCache } from "../auth/session";
 import { withUploadPreview } from "../image/uploadPreview";
 
 import {
   Avatar,
   CurrentUserInfo,
   Id,
-  OauthProfile,
   Profile,
 } from "./profileTypes";
 
@@ -52,7 +52,6 @@ const PROFILE_READ_CACHE_MS = 10_000;
 const userProfileReads = new Map<string, CachedRead<UserProfileRead>>();
 const profileReads = new Map<string, CachedRead<ProfileRead>>();
 const clubProfileReads = new Map<string, CachedRead<Profile[]>>();
-let currentUserInfoRead: CachedRead<CurrentUserInfo> | undefined;
 
 function cachedRead<T>(
   cache: Map<string, CachedRead<T>>,
@@ -84,7 +83,7 @@ export function invalidateProfileReadCache() {
   userProfileReads.clear();
   profileReads.clear();
   clubProfileReads.clear();
-  currentUserInfoRead = undefined;
+  invalidateSessionCache();
 }
 
 function requestJson(url: string, options: RequestOptions = {}) {
@@ -156,27 +155,19 @@ export async function markOnboardingCelebrated(): Promise<OnboardingPreferences>
 
 export function fetchCurrentUserInfo(
   onResult: (result: CurrentUserInfo) => void,
+  options: { force?: boolean; onError?: () => void } = {},
 ): void {
-  void readCurrentUserInfo().then(onResult);
-}
-
-function readCurrentUserInfo(): Promise<CurrentUserInfo> {
-  const now = Date.now();
-  if (currentUserInfoRead && currentUserInfoRead.expiresAt > now)
-    return currentUserInfoRead.request;
-  const request = requestJson("/api/user/me")
-    .then(async (response) => {
-      if (!response.ok) return { currentUserId: null, oauthProfile: null };
-      const text = await response.text();
-      const data = (text ? JSON.parse(text) : {}) as OauthProfile;
-      return {
-        currentUserId: data.userId || null,
-        oauthProfile: data || null,
-      };
-    })
-    .catch(() => ({ currentUserId: null, oauthProfile: null }));
-  currentUserInfoRead = { request, expiresAt: now + 60_000 };
-  return request;
+  void getSession(options)
+    .then((session) =>
+      onResult({
+        currentUserId: session?.userId || null,
+        oauthProfile: session,
+      }),
+    )
+    .catch(() => {
+      if (options.onError) options.onError();
+      else onResult({ currentUserId: null, oauthProfile: null });
+    });
 }
 
 export function fetchProfileById(

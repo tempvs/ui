@@ -14,6 +14,12 @@ import SearchDialog from "../search/SearchDialog";
 import LoginRegisterButton from "../auth/LoginRegisterButton";
 import AccountMenu from "../auth/AccountMenu";
 import {
+  endSession,
+  observeSessionResponses,
+  SESSION_ENDED_STORAGE_KEY,
+  subscribeSession,
+} from "../auth/session";
+import {
   fetchClubProfiles,
   fetchCurrentUserInfo,
   fetchUserProfileByUserId,
@@ -55,6 +61,19 @@ type HeaderProps = {
 
 class HeaderContent extends Component<HeaderProps, HeaderState> {
   private onboardingRequest = 0;
+  private sessionRequest = 0;
+  private ownedProfilesRequest = 0;
+  private mounted = false;
+  private identityUserId: string | null = null;
+  private sessionTimer?: number;
+  private stopSessionSubscription?: () => void;
+  private stopSessionObservation?: () => void;
+  private handleSessionStorage = (event: StorageEvent) => {
+    if (event.key === SESSION_ENDED_STORAGE_KEY) endSession(false);
+  };
+  private handlePageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) this.loadOAuthProfile(true);
+  };
   private completedOnboardingUserId: string | null = null;
   private oauthProfile: OauthProfile | null = null;
 
@@ -84,7 +103,21 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
   }
 
   componentDidMount() {
+    this.mounted = true;
+    this.stopSessionObservation = observeSessionResponses();
+    this.stopSessionSubscription = subscribeSession((session) => {
+      this.sessionRequest++;
+      this.applyCurrentUserInfo({
+        currentUserId: session?.userId || null,
+        oauthProfile: session,
+      });
+    });
     this.loadOAuthProfile();
+    this.sessionTimer = window.setInterval(() => {
+      if (this.identityUserId && document.visibilityState === "visible") this.loadOAuthProfile(true);
+    }, 15_000);
+    window.addEventListener("storage", this.handleSessionStorage);
+    window.addEventListener("pageshow", this.handlePageShow);
     window.addEventListener(
       "tempvs:owned-profiles-changed",
       this.reloadOwnedProfiles,
@@ -104,11 +137,21 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
     // Creation and source-linking flows can finish without remounting the
     // persistent header. Re-read when navigation completes so an earlier
     // in-memory onboarding result cannot keep a finished member prompted.
-    if (previousProps.locationPath !== this.props.locationPath)
+    if (previousProps.locationPath !== this.props.locationPath) {
+      this.loadOAuthProfile(true);
       this.reloadOnboardingStatus();
+    }
   }
 
   componentWillUnmount() {
+    this.mounted = false;
+    this.sessionRequest++;
+    this.ownedProfilesRequest++;
+    window.clearInterval(this.sessionTimer);
+    this.stopSessionSubscription?.();
+    this.stopSessionObservation?.();
+    window.removeEventListener("storage", this.handleSessionStorage);
+    window.removeEventListener("pageshow", this.handlePageShow);
     this.onboardingRequest += 1;
     window.removeEventListener(
       "tempvs:owned-profiles-changed",
@@ -126,12 +169,15 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
   }
 
   handleWindowFocus() {
+    this.loadOAuthProfile(true);
     this.reloadOnboardingStatus();
   }
 
   handleVisibilityChange() {
-    if (document.visibilityState === "visible")
+    if (document.visibilityState === "visible") {
+      this.loadOAuthProfile(true);
       this.reloadOnboardingStatus();
+    }
   }
 
   reloadOwnedProfiles() {
@@ -159,7 +205,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
           status.sourcedItemCount,
           status.connectionCount,
         ];
-        const complete = counts.every(count => count > 0);
+        const complete = counts.every((count) => count > 0);
         if (complete || preferences?.celebratedAt)
           this.completedOnboardingUserId = userId;
         this.setState({
@@ -169,7 +215,7 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
             this.completedOnboardingUserId !== userId &&
             !preferences?.dismissedAt &&
             !status.partial &&
-            counts.some(count => count === 0),
+            counts.some((count) => count === 0),
         });
       })
       // A notification must not imply incomplete setup when the status cannot
@@ -183,8 +229,28 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
       });
   }
 
-  loadOAuthProfile() {
-    const clearAvatar = () =>
+  loadOAuthProfile(force = false) {
+    const request = ++this.sessionRequest;
+    fetchCurrentUserInfo(
+      (result) => {
+        if (!this.mounted || request !== this.sessionRequest) return;
+        this.applyCurrentUserInfo(result);
+      },
+      { force, onError: () => undefined },
+    );
+  }
+
+  applyCurrentUserInfo(result: {
+    currentUserId: string | null;
+    oauthProfile?: OauthProfile | null;
+  }) {
+    if (!this.mounted) return;
+    if (!result.currentUserId) {
+      this.identityUserId = null;
+      this.oauthProfile = null;
+      this.completedOnboardingUserId = null;
+      this.onboardingRequest++;
+      this.ownedProfilesRequest++;
       this.setState({
         loggedIn: false,
         avatarUrl: null,
@@ -195,32 +261,35 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         currentProfilePath: "/profile",
         profileOptions: [],
         onboardingIncomplete: false,
+        showProfileNavigationCoachmark: false,
+        showProfilePickerCoachmark: false,
       });
-    fetchCurrentUserInfo((result) => {
-      if (!result.currentUserId) {
-        clearAvatar();
-        return;
-      }
-
-      const oauthProfile = result.oauthProfile || null;
-      this.oauthProfile = oauthProfile;
-      this.setState(
-        {
-          avatarUrl: oauthProfile?.picture || null,
-          avatarText: this.buildAvatarText(oauthProfile),
-          accountName: oauthProfile?.name?.trim() || null,
-          loggedIn: true,
-          currentUserId: String(result.currentUserId),
-        },
-        () => {
-          this.loadOwnedProfiles(String(result.currentUserId));
-          this.reloadOnboardingStatus();
-        },
-      );
-    });
+      return;
+    }
+    const userId = String(result.currentUserId);
+    const sameUser = this.identityUserId === userId;
+    this.identityUserId = userId;
+    this.oauthProfile = result.oauthProfile || null;
+    if (sameUser) return;
+    const oauthProfile = this.oauthProfile;
+    this.setState(
+      {
+        avatarUrl: oauthProfile?.picture || null,
+        avatarText: this.buildAvatarText(oauthProfile),
+        accountName: oauthProfile?.name?.trim() || null,
+        loggedIn: true,
+        currentUserId: userId,
+      },
+      () => {
+        if (this.identityUserId !== userId) return;
+        this.loadOwnedProfiles(userId);
+        this.reloadOnboardingStatus();
+      },
+    );
   }
 
   loadOwnedProfiles(userId: string) {
+    const request = ++this.ownedProfilesRequest;
     const toPromiseUserProfile = () =>
       new Promise<{ profile: Profile | null; missing: boolean }>((resolve) => {
         fetchUserProfileByUserId(userId, {
@@ -244,19 +313,41 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
 
     Promise.all([toPromiseUserProfile(), toPromiseClubProfiles()])
       .then(([userProfileResult, clubProfilesResult]) => {
-        if (this.state.currentUserId !== userId) return;
+        if (
+          !this.mounted ||
+          request !== this.ownedProfilesRequest ||
+          this.identityUserId !== userId
+        )
+          return;
         const clubProfiles = clubProfilesResult || [];
         const userProfile = userProfileResult.profile;
-        const accountName = this.oauthProfile?.name?.trim() ||
-          `${userProfile?.firstName || ""} ${userProfile?.lastName || ""}`.trim() ||
-          userProfile?.nickName?.trim() || null;
-        const accountEmail = this.oauthProfile?.email || userProfile?.profileEmail;
+        const accountName =
+          this.oauthProfile?.name?.trim() ||
+          `${userProfile?.firstName || ""} ${
+            userProfile?.lastName || ""
+          }`.trim() ||
+          userProfile?.nickName?.trim() ||
+          null;
+        const accountEmail =
+          this.oauthProfile?.email || userProfile?.profileEmail;
         const googlePicture = this.oauthProfile?.picture || null;
         if (!googlePicture && userProfile?.id) {
-          void getProfileAvatar(userProfile.id).then(avatar => {
-            if (this.state.currentUserId === userId)
-              this.setState({ avatarUrl: avatar?.thumbnailUrl || avatar?.url || userProfile.avatarUrl || null });
-          }).catch(() => undefined);
+          void getProfileAvatar(userProfile.id)
+            .then((avatar) => {
+              if (
+                this.mounted &&
+                request === this.ownedProfilesRequest &&
+                this.identityUserId === userId
+              )
+                this.setState({
+                  avatarUrl:
+                    avatar?.thumbnailUrl ||
+                    avatar?.url ||
+                    userProfile.avatarUrl ||
+                    null,
+                });
+            })
+            .catch(() => undefined);
         }
         const profileOptions = buildOwnedProfileOptions(
           userProfile,
@@ -301,6 +392,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
         }
       })
       .catch(() => {
+        if (
+          !this.mounted ||
+          request !== this.ownedProfilesRequest ||
+          this.identityUserId !== userId
+        )
+          return;
         this.setState({
           profileOptions: buildOwnedProfileOptions(null, []),
           currentProfileValue: null,
@@ -402,9 +499,12 @@ class HeaderContent extends Component<HeaderProps, HeaderState> {
                 <>
                   <ChatButton
                     to="/chat"
-                    profileId={this.state.profileOptions.find(
-                      option => option.value === this.state.currentProfileValue,
-                    )?.profile?.id?.toString()}
+                    profileId={this.state.profileOptions
+                      .find(
+                        (option) =>
+                          option.value === this.state.currentProfileValue,
+                      )
+                      ?.profile?.id?.toString()}
                   />
                   <NotificationButton to="/notifications" />
                 </>

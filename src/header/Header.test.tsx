@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import Header from "./Header";
+import { endSession, SESSION_ENDED_STORAGE_KEY } from "../auth/session";
 
 jest.mock("../profile/profileApi", () => ({
   fetchCurrentUserInfo: jest.fn(),
@@ -19,10 +20,19 @@ jest.mock("../profile/components/ProfilePicker", () => () => null);
 
 const api = jest.requireMock("../profile/profileApi");
 const complete = {
-  personaCount: 1, itemCount: 6, sourcedItemCount: 6, connectionCount: 8, partial: false,
+  personaCount: 1,
+  itemCount: 6,
+  sourcedItemCount: 6,
+  connectionCount: 8,
+  partial: false,
 };
 const incomplete = { ...complete, sourcedItemCount: 0 };
 const reminder = "Your setup is still in progress. Select Home to continue.";
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -80,9 +90,15 @@ test("still guides an unfinished member and clears the hint when they finish", a
 
 test("an older incomplete response cannot replace a newer complete response", async () => {
   let finishOldRead: (value: typeof incomplete) => void = () => undefined;
-  api.getOnboardingStatus.mockReturnValueOnce(new Promise(resolve => { finishOldRead = resolve; }));
+  api.getOnboardingStatus.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finishOldRead = resolve;
+    }),
+  );
   await mountHeader();
-  await act(async () => { fireEvent.focus(window); });
+  await act(async () => {
+    fireEvent.focus(window);
+  });
   await act(async () => finishOldRead(incomplete));
   expect(screen.queryByText(reminder)).not.toBeInTheDocument();
 });
@@ -143,8 +159,113 @@ test("missing and broken pictures fall back to the member's initials", async () 
   expect(toggle).toHaveTextContent("GH");
   expect(toggle.querySelector("img")).toBeNull();
   api.getProfileAvatar.mockResolvedValue({ thumbnailUrl: "/broken.jpg" });
-  await act(async () => { fireEvent(window, new Event("tempvs:owned-profiles-changed")); });
+  await act(async () => {
+    fireEvent(window, new Event("tempvs:owned-profiles-changed"));
+  });
   fireEvent.error(toggle.querySelector("img")!);
   expect(toggle).toHaveTextContent("GH");
   expect(toggle.querySelector("img")).toBeNull();
+});
+
+test("confirmed session expiry immediately removes the Google account menu", async () => {
+  api.fetchCurrentUserInfo.mockImplementation((callback: Function) =>
+    callback({
+      currentUserId: "user-1",
+      oauthProfile: { name: "Ada", picture: "/google.jpg" },
+    }),
+  );
+  await mountHeader();
+  expect(
+    screen.getByRole("button", { name: "Account menu" }).querySelector("img"),
+  ).toHaveAttribute("src", "/google.jpg");
+  await act(async () => endSession(false));
+  expect(
+    screen.queryByRole("button", { name: "Account menu" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Log in" })).toBeVisible();
+});
+
+test("focus and tab visibility refresh session identity without using the old cache", async () => {
+  await mountHeader();
+  api.fetchCurrentUserInfo.mockImplementation((callback: Function) =>
+    callback({ currentUserId: null }),
+  );
+  await act(async () => fireEvent.focus(window));
+  expect(api.fetchCurrentUserInfo).toHaveBeenLastCalledWith(
+    expect.any(Function),
+    expect.objectContaining({ force: true }),
+  );
+  expect(screen.getByRole("button", { name: "Log in" })).toBeVisible();
+  await act(async () => fireEvent(document, new Event("visibilitychange")));
+  expect(api.fetchCurrentUserInfo).toHaveBeenLastCalledWith(
+    expect.any(Function),
+    expect.objectContaining({ force: true }),
+  );
+});
+
+test("logout in another tab immediately clears the navbar", async () => {
+  await mountHeader();
+  await act(async () =>
+    fireEvent(
+      window,
+      new StorageEvent("storage", {
+        key: SESSION_ENDED_STORAGE_KEY,
+        newValue: "logout",
+      }),
+    ),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Account menu" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Log in" })).toBeVisible();
+});
+
+test("a late avatar response cannot put a picture back after logout", async () => {
+  let finishAvatar!: (value: unknown) => void;
+  api.getProfileAvatar.mockReturnValue(
+    new Promise((resolve) => {
+      finishAvatar = resolve;
+    }),
+  );
+  await mountHeader();
+  await act(async () => endSession(false));
+  await act(async () => finishAvatar({ thumbnailUrl: "/late-avatar.jpg" }));
+  expect(
+    screen.queryByRole("button", { name: "Account menu" }),
+  ).not.toBeInTheDocument();
+  expect(document.querySelector("img.auth-avatar-image")).toBeNull();
+});
+
+test("visible tabs detect idle expiry on the next session heartbeat", async () => {
+  jest.useFakeTimers();
+  await mountHeader();
+  api.fetchCurrentUserInfo.mockImplementation((callback: Function) =>
+    callback({ currentUserId: null }),
+  );
+  await act(async () => jest.advanceTimersByTime(15_000));
+  expect(screen.getByRole("button", { name: "Log in" })).toBeVisible();
+});
+
+test("a transient identity check failure keeps the last verified navbar", async () => {
+  await mountHeader();
+  api.fetchCurrentUserInfo.mockImplementation(
+    (_callback: Function, options: any) => options.onError(),
+  );
+  await act(async () => fireEvent.focus(window));
+  expect(screen.getByRole("button", { name: "Account menu" })).toBeVisible();
+});
+
+test("anonymous and hidden tabs do not make idle session checks", async () => {
+  jest.useFakeTimers();
+  api.fetchCurrentUserInfo.mockImplementation((callback: Function) => callback({ currentUserId: null }));
+  await mountHeader();
+  const anonymousReads = api.fetchCurrentUserInfo.mock.calls.length;
+  await act(async () => jest.advanceTimersByTime(30_000));
+  expect(api.fetchCurrentUserInfo).toHaveBeenCalledTimes(anonymousReads);
+  api.fetchCurrentUserInfo.mockImplementation((callback: Function) => callback({ currentUserId: "user-1" }));
+  await act(async () => fireEvent.focus(window));
+  jest.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  const hiddenReads = api.fetchCurrentUserInfo.mock.calls.length;
+  await act(async () => jest.advanceTimersByTime(30_000));
+  expect(api.fetchCurrentUserInfo).toHaveBeenCalledTimes(hiddenReads);
 });
