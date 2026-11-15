@@ -12,13 +12,16 @@ linter supports the new compiler API. No lint rules were disabled.
 verifies the effective dependency resolution and exploit regression. Installs
 with `--ignore-scripts` must explicitly run postinstall before other tooling.
 
-CDK 2.277.0 bundles minimatch 10.2.6 despite npm overrides. The guarded install
-step replaces only that dependency directory with a link to the exact root
-minimatch 11.0.8, retaining its own transitive dependencies. It verifies CDK's
-actual resolver. Remove this mitigation after CDK publishes a patched bundle.
-Unknown versions fail installation for review. This is build tooling, excluded
-from deployed Lambda handlers. GHSA-g3hv-75wg-m249 remains visible in npm's
-tarball/lockfile advisory metadata; the lockfile is not falsified.
+CDK 2.277.0 bundles minimatch 10.2.6 despite npm overrides. The install step
+backports upstream commit 77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8 to both
+CommonJS and ESM entrypoints. It caps pattern amplification and skips quadratic
+deduplication above 1000 entries. Exact original/patched SHA-256 hashes prevent
+unexpected source changes. Regression checks exercise bounded globparts and
+large-set short-circuiting, plus ordinary matches. Package and lock metadata
+remain truthful; npm ls stays valid. The scoped override retains this patched
+vendored 10.2.6 while other minimatch dependencies use 11.0.8. Remove the backport
+after CDK publishes a patched bundle. GHSA-g3hv-75wg-m249 remains visible in npm
+advisory metadata. CDK is excluded from deployed application handler bundles.
 
 The UI also upgrades React Router to 7.18.5 and glob to 14.0.6. Jest 30.5.2
 still depends on deepmerge 4.3.1, for which no patched release exists. Its three

@@ -17,7 +17,9 @@ for (const path of ["/clubs", "/events"]) {
     await expect(filters.getByRole("checkbox", { name: "Interwar", exact: true })).toBeVisible();
     await expect(filters.getByRole("checkbox", { name: "Modern / pre-WWI", exact: true })).toBeVisible();
     await expect(filters.locator(".period-multi-select-checkboxes")).not.toContainText(/\d/);
-    await filters.getByText("Interwar", { exact: true }).hover();
+    // Keyboard focus keeps the accessible tooltip open while asynchronous
+    // catalogue results can shift the filter under a stationary mouse pointer.
+    await filters.getByRole("checkbox", { name: "Interwar", exact: true }).focus();
     const tooltip = page.getByRole("tooltip").filter({ hasText: /^1918–1939$/ });
     await expect(tooltip).toBeVisible();
     const labelBounds = (await filters.getByText("Interwar", { exact: true }).boundingBox())!;
