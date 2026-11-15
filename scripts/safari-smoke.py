@@ -31,11 +31,8 @@ def login():
 
 
 try:
-    login()
-    cookie = driver.get_cookie("__Host-tempvs-session")
-    assert cookie and cookie.get("secure") and cookie.get("httpOnly"), "Session cookie must be secure and HttpOnly"
-    driver.refresh()
-    wait.until(EC.visibility_of_element_located(account))
+    # Exercise public rendering before authentication. The dedicated fixture has
+    # no profile; the app intentionally sends such signed-in users to /profile.
     driver.get(origin + "/map")
     capabilities = driver.execute_script("""
       return ['webgl2', 'webgl'].map(type => {
@@ -60,6 +57,15 @@ try:
             assert "WebGL2" in alert.text, "Unsupported graphics must explain the WebGL2 requirement"
         assert any(element.is_displayed() for element in driver.find_elements(By.CSS_SELECTOR, 'input[role="combobox"]')), "Place search must survive unsupported graphics"
         map_mode = "unsupported-graphics fallback"
+    login()
+    cookie = driver.get_cookie("__Host-tempvs-session")
+    assert cookie and cookie.get("secure") and cookie.get("httpOnly"), "Session cookie must be secure and HttpOnly"
+    wait.until(EC.url_contains("/profile"))
+    driver.refresh()
+    wait.until(EC.visibility_of_element_located(account))
+    driver.get(origin + "/map")
+    wait.until(EC.url_contains("/profile"))
+    wait.until(EC.visibility_of_element_located(account))
     # The menu focus fix belongs to this release. Archived bundles predate it;
     # rollback verification checks their common map/auth contract intact.
     archive = os.environ.get("E2E_ARCHIVED_RELEASE")

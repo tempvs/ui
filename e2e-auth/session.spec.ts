@@ -14,6 +14,9 @@ test("real dev login, session persistence, expiry and logout update the navbar",
   await page.reload();
   await expect(account).toBeVisible();
   await page.goto("/map");
+  // The fixture intentionally has no personal profile or public test data.
+  // New-account onboarding redirects every authenticated route to setup.
+  await expect(page).toHaveURL(/\/profile$/);
   await expect(account).toBeVisible();
 
   // Invalidate the real session without replacing any API responses. The next

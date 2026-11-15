@@ -4,6 +4,7 @@
 - `E2E_PREVIEW=true npm run e2e -- --workers=2`: production assets in Chromium, mobile Chrome, Firefox and WebKit. Covers map workers/WebGL recovery, ownership controls, wall pagination, search, editors and session navbar behavior.
 - The protected dev deployment runs `npx playwright test --config=playwright.auth.config.ts` after publishing. Credentials are required, never silently skipped. The dedicated dev Cognito fixture has no privileged groups, no profile/data mutations and suppressed invitations. Credentials live only in GitHub's dev environment secrets. Traces, screenshots, videos and saved session state are disabled for real authentication.
 - Real-session checks cover sign-in, secure HttpOnly cookies, reload/navigation persistence, cookie expiry clearing the avatar, and POST logout. The authentication config rejects every origin except `https://dev.tempvs.club`.
+- The dedicated fixture has no personal profile. Its authenticated navigation must redirect to `/profile` for setup. Safari checks the public map before login, then verifies this onboarding guard and session behavior without creating public test data.
 
 WebKit exercises Safari's engine. A separate protected macOS job uses Apple's
 actual Safari WebDriver to check map rendering, real authentication, session
