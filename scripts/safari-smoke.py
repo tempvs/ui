@@ -1,5 +1,7 @@
 """Real Safari/dev smoke. Never capture screenshots, cookies, passwords or page bodies."""
 import os
+from urllib.parse import urlparse
+from selenium.common.exceptions import TimeoutException
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -23,10 +25,26 @@ def status():
 
 def login():
     driver.get(origin + "/")
-    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[type="email"]'))).send_keys(os.environ["E2E_EMAIL"])
-    driver.find_element(By.CSS_SELECTOR, 'input[type="password"]').send_keys(os.environ["E2E_PASSWORD"])
+    email = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[type="email"]')))
+    password = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
+    # Safari may restore/autofill a previous form on the second visit. Native
+    # send_keys appends; clear both fields before entering fixture credentials.
+    email.clear()
+    email.send_keys(os.environ["E2E_EMAIL"])
+    password.clear()
+    password.send_keys(os.environ["E2E_PASSWORD"])
+    assert email.get_attribute("value") == os.environ["E2E_EMAIL"], "Email input did not accept fixture entry"
+    assert password.get_attribute("value") == os.environ["E2E_PASSWORD"], "Password input did not accept fixture entry"
     driver.find_element(By.XPATH, '//button[normalize-space()="Sign in"]').click()
-    wait.until(EC.visibility_of_element_located(account))
+    try:
+        wait.until(EC.visibility_of_element_located(account))
+    except TimeoutException:
+        # Only static categories/booleans: never log field contents, response
+        # bodies, screenshots, cookies or the authenticated page's full text.
+        alerts = " ".join(element.text.lower() for element in driver.find_elements(By.CSS_SELECTOR, '[role="alert"]'))
+        category = "credentials" if "password" in alerts or "credential" in alerts else "throttle" if "attempt" in alerts or "limit" in alerts else "network" if "network" in alerts else "unclassified"
+        print({"signInFailurePath": urlparse(driver.current_url).path, "alertPresent": bool(alerts), "errorCategory": category}, flush=True)
+        raise
     assert status() == 200, "Authenticated identity read failed"
 
 
