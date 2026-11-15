@@ -4,6 +4,10 @@ Tempvs UI
 
 The app uses React 19, React Intl 12 and Vite 8. Use Node.js 24.11 or newer, then run `npm ci`.
 
+Interactive maps use MapLibre 6 and require WebGL2. The renderer and its matching,
+content-hashed worker load only when a map opens; unsupported graphics retain the
+surrounding page and result lists with a retry/fallback message.
+
 - `npm start`: development server at `http://localhost:3000`.
 - `npm run check`: lint, application/test/tooling types, unit tests, production build and hosting/proxy contract tests.
 - `npm run build`: generate the local basemap and production files in `build/`, with hashed bundles in `build/static/`.

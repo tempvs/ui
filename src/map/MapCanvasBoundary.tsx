@@ -25,8 +25,8 @@ export default class MapCanvasBoundary extends Component<
       return (
         <div className="map-canvas-shell map-canvas-fallback" role="alert">
           <p>
-            The interactive map could not be displayed. You can still use the
-            rest of the page.
+            The interactive map could not be displayed. The map requires WebGL2
+            graphics support. You can still use the rest of the page.
           </p>
           <button
             type="button"

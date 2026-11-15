@@ -12,9 +12,8 @@ jest.mock("./mapApi", () => ({
   getMapPlacesByReference: jest.fn(),
   mapPlaceReference: () => "alexandria",
 }));
-jest.mock("maplibre-gl", () => ({
-  __esModule: true,
-  default: {
+jest.mock("./mapLibre", () => ({
+  maplibregl: {
     Map: function () {
       mockInitializeMap();
       return {

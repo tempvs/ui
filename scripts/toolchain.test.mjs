@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import { once } from "node:events";
 import path from "node:path";
@@ -20,6 +20,12 @@ test("the production artifact preserves hosting paths and defers the map rendere
   assert.equal(basemap.type, "FeatureCollection");
   assert.ok(basemap.features.length > 0);
   assert.ok(!html.includes("%PUBLIC_URL%"));
+  const workers = readdirSync("build/static").filter((name) => /^maplibre-gl-worker-[\w-]+\.js$/.test(name));
+  assert.equal(workers.length, 1, "The map needs one matching content-hashed worker asset");
+  assert.ok(!html.includes(workers[0]), "The worker must remain behind the lazy map import");
+  const rendererFiles = readdirSync("build/static").filter((name) => /^MapCanvas-.*\.js$/.test(name));
+  assert.ok(rendererFiles.some((name) => readFileSync(path.join("build/static", name), "utf8").includes(workers[0])),
+    "The renderer must reference the emitted worker, not an unversioned/CDN URL");
 });
 
 test("the dev proxy preserves cookies, login parameters, Origin rewriting and POST logout", async () => {

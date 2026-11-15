@@ -24,3 +24,4 @@ test("returns only labels other than the canonical name for the page summary", (
     { value: "Old Town", preferred: false, validFrom: 100, validTo: 300 },
   ]);
 });
+jest.mock("./mapLibre", () => ({ maplibregl: {} }));

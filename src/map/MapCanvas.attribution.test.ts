@@ -1,5 +1,8 @@
 import { MAP_ATTRIBUTION, ownedConnectionCollection } from "./MapCanvas";
 
+// These pure geometry/attribution checks do not initialize the browser engine.
+jest.mock("./mapLibre", () => ({ maplibregl: {} }));
+
 test("keeps required Natural Earth attribution in every MapCanvas variant", () => {
   expect(MAP_ATTRIBUTION).toBe("Made with Natural Earth");
 });

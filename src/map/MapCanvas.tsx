@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { type GeoJSONSource } from "maplibre-gl";
+import type * as GeoJSON from "geojson";
+import type { GeoJSONSource } from "maplibre-gl";
+import { maplibregl } from "./mapLibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   getMapPlacesByReference,

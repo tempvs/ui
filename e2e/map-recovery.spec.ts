@@ -11,14 +11,6 @@ test("public map survives WebGL initialization failure and retries without reloa
   page,
 }) => {
   await page.addInitScript(() => {
-    // CI uses CRA's development server. Suppress its overlay for this one
-    // deliberately injected error so it cannot cover the application's UI.
-    // The assertions still require both the page and its recovery UI to work.
-    window.addEventListener("error", (event) => {
-      if (event.error?.message === "Failed to initialize WebGL") {
-        event.stopImmediatePropagation();
-      }
-    });
     const getContext = HTMLCanvasElement.prototype.getContext;
     (window as any).mapWebglAvailable = false;
     HTMLCanvasElement.prototype.getContext = function (
