@@ -5,7 +5,9 @@
 - The protected dev deployment runs `npx playwright test --config=playwright.auth.config.ts` after publishing. Credentials are required, never silently skipped. The dedicated dev Cognito fixture has no privileged groups, no profile/data mutations and suppressed invitations. Credentials live only in GitHub's dev environment secrets. Traces, screenshots, videos and saved session state are disabled for real authentication.
 - Real-session checks cover sign-in, secure HttpOnly cookies, reload/navigation persistence, cookie expiry clearing the avatar, and POST logout. The authentication config rejects every origin except `https://dev.tempvs.club`.
 
-WebKit exercises Safari's engine. Actual Safari.app/macOS and iOS hardware remain a manual compatibility check.
+WebKit exercises Safari's engine. A separate protected macOS job uses Apple's
+actual Safari WebDriver to check map rendering, real authentication, session
+expiry, menu Escape and logout. iOS hardware remains an optional device check.
 
 ## Dev rollback rehearsal
 

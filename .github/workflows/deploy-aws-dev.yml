@@ -181,3 +181,27 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: npx playwright test --config=playwright.auth.config.ts
+
+  verify-safari:
+    name: Verify actual Safari on macOS
+    needs: deploy
+    if: >-
+      ${{ always() && needs.deploy.result == 'success'
+        && (github.event_name != 'workflow_dispatch' || inputs.target_environment == 'dev') }}
+    runs-on: macos-15
+    environment: dev
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Enable Apple's Safari WebDriver
+        run: sudo safaridriver --enable
+      - name: Install isolated Safari test client
+        run: |
+          python3 -m venv "$RUNNER_TEMP/safari-smoke"
+          "$RUNNER_TEMP/safari-smoke/bin/python" -m pip install selenium==4.52.0
+      - name: Verify real Safari against dev
+        env:
+          E2E_BASE_URL: https://dev.tempvs.club
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: '"$RUNNER_TEMP/safari-smoke/bin/python" scripts/safari-smoke.py'
