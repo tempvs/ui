@@ -37,8 +37,29 @@ try:
     driver.refresh()
     wait.until(EC.visibility_of_element_located(account))
     driver.get(origin + "/map")
-    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "canvas.maplibregl-canvas")))
-    wait.until(lambda browser: browser.find_element(By.CSS_SELECTOR, '[aria-label="Interactive world map"]').get_attribute("aria-busy") == "false")
+    capabilities = driver.execute_script("""
+      return ['webgl2', 'webgl'].map(type => {
+        const gl = document.createElement('canvas').getContext(type);
+        if (!gl) return false;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return true;
+      });
+    """)
+    print("Safari", driver.capabilities.get("browserVersion"), "WebGL2/WebGL support:", capabilities, flush=True)
+    canvas = (By.CSS_SELECTOR, "canvas.maplibregl-canvas")
+    fallback = (By.CSS_SELECTOR, '[aria-label="Interactive map"] [role="alert"]')
+    wait.until(lambda browser: browser.find_elements(*canvas) or browser.find_elements(*fallback))
+    if driver.find_elements(*canvas):
+        wait.until(EC.visibility_of_element_located(canvas))
+        wait.until(lambda browser: browser.find_element(By.CSS_SELECTOR, '[aria-label="Interactive world map"]').get_attribute("aria-busy") == "false")
+        map_mode = "renderer"
+    else:
+        assert not capabilities[0], "Safari with WebGL2 must render the map"
+        alert = wait.until(EC.visibility_of_element_located(fallback))
+        if not os.environ.get("E2E_ARCHIVED_RELEASE") or os.environ["E2E_ARCHIVED_RELEASE"] == os.environ.get("GITHUB_SHA"):
+            assert "WebGL2" in alert.text, "Unsupported graphics must explain the WebGL2 requirement"
+        assert any(element.is_displayed() for element in driver.find_elements(By.CSS_SELECTOR, 'input[role="combobox"]')), "Place search must survive unsupported graphics"
+        map_mode = "unsupported-graphics fallback"
     # The menu focus fix belongs to this release. Archived bundles predate it;
     # rollback verification checks their common map/auth contract intact.
     archive = os.environ.get("E2E_ARCHIVED_RELEASE")
@@ -57,6 +78,6 @@ try:
     wait.until(EC.element_to_be_clickable((By.XPATH, '//button[normalize-space()="Log out"]'))).click()
     wait.until(EC.invisibility_of_element_located(account))
     assert status() == 401, "Logout must revoke the browser session"
-    print("Actual Safari", driver.capabilities.get("browserVersion"), "passed map, login, persistence, expiry and logout; current menu focus checked:", current_release)
+    print("Actual Safari", driver.capabilities.get("browserVersion"), "passed", map_mode, "login, persistence, expiry and logout; current menu focus checked:", current_release)
 finally:
     driver.quit()

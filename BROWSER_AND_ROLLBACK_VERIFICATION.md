@@ -7,7 +7,10 @@
 
 WebKit exercises Safari's engine. A separate protected macOS job uses Apple's
 actual Safari WebDriver to check map rendering, real authentication, session
-expiry, menu Escape and logout. iOS hardware remains an optional device check.
+expiry, menu Escape and logout. If the macOS VM exposes no WebGL2, the test
+requires the explanatory map fallback and usable place search; a Safari session
+that exposes WebGL2 must render the map. Full renderer recovery is exercised in
+Chromium, Firefox and WebKit. Real-hardware Safari graphics and iOS remain device checks.
 
 ## Dev rollback rehearsal
 
