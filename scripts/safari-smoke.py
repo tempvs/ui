@@ -39,10 +39,15 @@ try:
     driver.get(origin + "/map")
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "canvas.maplibregl-canvas")))
     wait.until(lambda browser: browser.find_element(By.CSS_SELECTOR, '[aria-label="Interactive world map"]').get_attribute("aria-busy") == "false")
-    driver.find_element(*account).click()
-    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".auth-account-dropdown")))
-    driver.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, ".auth-account-dropdown")))
+    # The menu focus fix belongs to this release. Archived bundles predate it;
+    # rollback verification checks their common map/auth contract intact.
+    archive = os.environ.get("E2E_ARCHIVED_RELEASE")
+    current_release = not archive or archive == os.environ.get("GITHUB_SHA")
+    if current_release:
+        driver.find_element(*account).click()
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".auth-account-dropdown")))
+        driver.switch_to.active_element.send_keys(Keys.ESCAPE)
+        wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, ".auth-account-dropdown")))
     driver.delete_cookie("__Host-tempvs-session")
     assert status() == 401, "Expired session must be rejected"
     driver.execute_script("window.dispatchEvent(new Event('focus'))")
@@ -52,6 +57,6 @@ try:
     wait.until(EC.element_to_be_clickable((By.XPATH, '//button[normalize-space()="Log out"]'))).click()
     wait.until(EC.invisibility_of_element_located(account))
     assert status() == 401, "Logout must revoke the browser session"
-    print("Actual Safari", driver.capabilities.get("browserVersion"), "passed map, login, persistence, expiry, menu Escape and logout")
+    print("Actual Safari", driver.capabilities.get("browserVersion"), "passed map, login, persistence, expiry and logout; current menu focus checked:", current_release)
 finally:
     driver.quit()

@@ -215,6 +215,7 @@ jobs:
           "$RUNNER_TEMP/safari-smoke/bin/python" -m pip install selenium==4.52.0
       - name: Verify real Safari against dev
         env:
+          E2E_ARCHIVED_RELEASE: ${{ inputs.rollback_release }}
           E2E_BASE_URL: https://dev.tempvs.club
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
