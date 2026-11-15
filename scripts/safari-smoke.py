@@ -27,12 +27,18 @@ def login():
     driver.get(origin + "/")
     email = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[type="email"]')))
     password = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
-    # Safari may restore/autofill a previous form on the second visit. Native
-    # send_keys appends; clear both fields before entering fixture credentials.
-    email.clear()
-    email.send_keys(os.environ["E2E_EMAIL"])
-    password.clear()
-    password.send_keys(os.environ["E2E_PASSWORD"])
+    # SafariDriver send_keys can drop characters when controlled inputs render
+    # during typing (SeleniumHQ/selenium#9502). Use the native value setter and
+    # actual input/change events, as React's ChangeEventPlugin tests do. This
+    # still exercises the application's controlled state and real form action.
+    for element, value in [(email, os.environ["E2E_EMAIL"]), (password, os.environ["E2E_PASSWORD"])]:
+        driver.execute_script("""
+          const [element, value] = arguments;
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, value);
+          element.dispatchEvent(new Event('input', {bubbles: true}));
+          element.dispatchEvent(new Event('change', {bubbles: true}));
+        """, element, value)
+        wait.until(lambda browser: element.get_property("value") == value)
     assert email.get_attribute("value") == os.environ["E2E_EMAIL"], "Email input did not accept fixture entry"
     assert password.get_attribute("value") == os.environ["E2E_PASSWORD"], "Password input did not accept fixture entry"
     driver.find_element(By.XPATH, '//button[normalize-space()="Sign in"]').click()

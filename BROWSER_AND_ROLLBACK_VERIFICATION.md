@@ -5,6 +5,7 @@
 - The protected dev deployment runs `npx playwright test --config=playwright.auth.config.ts` after publishing. Credentials are required, never silently skipped. The dedicated dev Cognito fixture has no privileged groups, no profile/data mutations and suppressed invitations. Credentials live only in GitHub's dev environment secrets. Traces, screenshots, videos and saved session state are disabled for real authentication.
 - Real-session checks cover sign-in, secure HttpOnly cookies, reload/navigation persistence, cookie expiry clearing the avatar, and POST logout. The authentication config rejects every origin except `https://dev.tempvs.club`.
 - The dedicated fixture has no personal profile. Its authenticated navigation must redirect to `/profile` for setup. Safari checks the public map before login, then verifies this onboarding guard and session behavior without creating public test data.
+- Safari fixture input uses the native HTML input setter and input/change events because SafariDriver can drop characters during React controlled-input updates ([Selenium issue](https://github.com/SeleniumHQ/selenium/issues/9502)). React's own ChangeEventPlugin tests use this setter/event approach. Form submission, Cognito, cookie persistence/expiry, native menu Escape and logout remain real browser interactions.
 
 WebKit exercises Safari's engine. A separate protected macOS job uses Apple's
 actual Safari WebDriver to check map rendering, real authentication, session
