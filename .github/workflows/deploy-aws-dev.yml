@@ -65,9 +65,11 @@ jobs:
             sudo sed -i -e 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' -e 's|http://|https://|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium firefox webkit
-          # Firefox/WebKit need a display to expose Mesa's software WebGL2 on
-          # Linux CI. Exercise the real renderer rather than skip map checks.
-          xvfb-run --auto-servernum env E2E_PREVIEW=true npm run e2e -- --workers=2
+          E2E_PREVIEW=true npm run e2e -- --workers=2 --project=chromium --project=mobile-chrome
+          # Headed Firefox/WebKit expose Mesa WebGL2. Their native input needs
+          # exclusive display focus; concurrent windows can steal hover state.
+          # Include enough physical pixels for WebKit's 2x device scale.
+          xvfb-run --auto-servernum --server-args='-screen 0 2560x1600x24' env E2E_PREVIEW=true npm run e2e -- --workers=1 --project=firefox --project=webkit
       - name: Preserve failed browser diagnostics
         if: ${{ failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
