@@ -12,7 +12,7 @@ const club: Club = { id: 1, name: 'Longbow Company', description: 'Living histor
 const response = (data: unknown, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data), json: async () => data } as Response);
 
 function wrap(child: React.ReactNode, path = '/') {
-  return render(<IntlProvider locale="en" messages={{}}><MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{child}</MemoryRouter></IntlProvider>);
+  return render(<IntlProvider locale="en" messages={{}}><MemoryRouter initialEntries={[path]}>{child}</MemoryRouter></IntlProvider>);
 }
 
 afterEach(() => jest.restoreAllMocks());

@@ -15,7 +15,7 @@ import PhotoAlbumsPanel from '../../src/component/PhotoAlbumsPanel';
 const profiles = Array.from({ length: 30 }, (_, index) => ({ id: `profile-${index}`, firstName: `Profile ${index}`, avatarUrl: '/thumb.svg' }));
 
 createRoot(document.getElementById('root')!).render(<IntlProvider locale="en" messages={{}}>
-  <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+  <MemoryRouter>
     <main style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', maxWidth: '1100px', margin: 'auto', padding: '1rem' }}>
       <div data-testid="profiles"><ProfileFollowingPanel profiles={profiles} loaded t={(_id, message) => message} /></div>
       <div data-testid="clubs"><ProfileClubPanel profileId="fixture" editable={false} /></div>

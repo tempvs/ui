@@ -69,7 +69,7 @@ beforeEach(() => {
 
 test('lets an event admin remove a club while preserving its participants', async () => {
   const onChanged = jest.fn();
-  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+  render(<MemoryRouter>
     <EventPeoplePanels eventId="event-1" canManage revision={0} onChanged={onChanged} />
   </MemoryRouter>);
 

@@ -84,7 +84,6 @@ function wrap(child: React.ReactNode, path = "/") {
     <IntlProvider locale="en" messages={{}}>
       <MemoryRouter
         initialEntries={[path]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         {child}
       </MemoryRouter>

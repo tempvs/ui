@@ -120,13 +120,15 @@ test("public composer supports keyboard reference selection, deletion, undo and 
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
     const data = new DataTransfer();
-    node.dispatchEvent(
-      new ClipboardEvent("copy", {
+    const event = new ClipboardEvent("copy", {
         bubbles: true,
         cancelable: true,
         clipboardData: data,
-      }),
-    );
+      });
+    // Firefox ignores clipboardData in synthetic ClipboardEvent constructors.
+    // Supply the same clipboard payload without bypassing the editor handler.
+    if (event.clipboardData !== data) Object.defineProperty(event, "clipboardData", { value: data });
+    node.dispatchEvent(event);
     return Object.fromEntries(
       [...data.types].map((type) => [type, data.getData(type)]),
     );
@@ -151,13 +153,13 @@ test("public composer supports keyboard reference selection, deletion, undo and 
     );
     const data = new DataTransfer();
     Object.entries(entries).forEach(([type, text]) => data.setData(type, text));
-    node.dispatchEvent(
-      new ClipboardEvent("paste", {
+    const event = new ClipboardEvent("paste", {
         bubbles: true,
         cancelable: true,
         clipboardData: data,
-      }),
-    );
+      });
+    if (event.clipboardData !== data) Object.defineProperty(event, "clipboardData", { value: data });
+    node.dispatchEvent(event);
   }, clipboard);
   await expect
     .poll(
@@ -175,13 +177,13 @@ test("public composer supports keyboard reference selection, deletion, undo and 
   await editor.evaluate((node) => {
     const data = new DataTransfer();
     data.setData("text/plain", "Pasted text\nwith spaces");
-    node.dispatchEvent(
-      new ClipboardEvent("paste", {
+    const event = new ClipboardEvent("paste", {
         bubbles: true,
         cancelable: true,
         clipboardData: data,
-      }),
-    );
+      });
+    if (event.clipboardData !== data) Object.defineProperty(event, "clipboardData", { value: data });
+    node.dispatchEvent(event);
   });
   await expect(page.getByTestId("document")).toContainText(
     "Pasted text\\nwith spaces",

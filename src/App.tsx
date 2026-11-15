@@ -169,9 +169,7 @@ function AppShell() {
 function App() {
   return (
     <div className="App">
-      <BrowserRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />

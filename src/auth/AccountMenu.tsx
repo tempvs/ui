@@ -15,7 +15,7 @@ export default function AccountMenu({ avatarUrl, avatarText, name }: AccountMenu
   const hasAvatar = Boolean(avatarUrl && avatarUrl !== failedAvatarUrl);
 
   return (
-    <Dropdown align="end" className="auth-account-menu">
+    <Dropdown align="end" className="auth-account-menu" focusFirstItemOnShow>
       <Dropdown.Toggle
         id="header-account-menu"
         variant="default"

@@ -33,7 +33,7 @@ const application: EventApplication = {
 };
 
 function view(renderActions?: (value: EventApplication, valueProfile: Profile) => React.ReactNode) {
-  return render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+  return render(<MemoryRouter>
     <EventParticipationCollectionPanel
       title="Participation applications"
       applications={[application]}
@@ -70,7 +70,7 @@ test('filters grouped participation by club or profile and preserves application
 });
 
 test('offers a club-level action above its participant profiles', () => {
-  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+  render(<MemoryRouter>
     <EventParticipationCollectionPanel
       title="Participants"
       applications={[{ ...application, status: 'APPROVED' }]}
