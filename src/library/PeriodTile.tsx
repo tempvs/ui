@@ -1,7 +1,7 @@
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
 import Container from 'react-bootstrap/Container';
-import interwarThumbnail from './images/thumbnails/interwar.svg';
+import { periodThumbnails } from "./periodThumbnails";
 
 type PeriodTileProps = {
   period: string;
@@ -15,7 +15,7 @@ export default function PeriodTile({ period }: PeriodTileProps) {
     >
       <div className="d-flex flex-column h-100">
         <img
-          src={period === 'interwar' ? interwarThumbnail : require(`./images/thumbnails/${period}.jpg`)}
+          src={periodThumbnails[period] || periodThumbnails.other}
           alt=""
           style={{
             width: '100%',

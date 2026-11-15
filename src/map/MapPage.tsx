@@ -195,7 +195,7 @@ export default function MapPage() {
     useState(false);
   const suggestionRequest = useRef(0);
   const resultRequest = useRef<AbortController | null>(null);
-  const filterRefreshTimer = useRef<number>();
+  const filterRefreshTimer = useRef<number | undefined>(undefined);
   const paginationInFlight = useRef(false);
   const [resultQueryKey, setResultQueryKey] = useState<string | null>(null);
   const editableFilterSignature = `${from.year}:${from.era}|${to.year}:${to.era}|${radius}`;
@@ -343,7 +343,7 @@ export default function MapPage() {
         : null,
     [effectiveScopeType, effectiveScopeId],
   );
-  const loadedScopeKey = useRef<string>();
+  const loadedScopeKey = useRef<string | undefined>(undefined);
 
   // URL hydration adds the same USER scope used for the initial personal map.
   // Its identity must stay stable so it does not start a second graph load.

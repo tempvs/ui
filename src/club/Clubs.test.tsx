@@ -721,7 +721,7 @@ test("unattached profiles show an empty membership section without owner control
   wrap(<ProfileClubPanel profileId={5} editable={false} />);
   await waitFor(() => expect(api.getProfileClubs).toHaveBeenCalledWith(5));
   expect(screen.getByRole("heading", { name: "Clubs" })).toBeInTheDocument();
-  expect(screen.getByText("No club memberships yet.")).toBeInTheDocument();
+  expect(await screen.findByText("No club memberships yet.")).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Join club" }),
   ).not.toBeInTheDocument();

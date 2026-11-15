@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-import { injectIntl, IntlShape } from "react-intl";
+import { useIntl } from "react-intl";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaLink, FaPlus, FaUnlink } from "react-icons/fa";
 
@@ -65,10 +65,6 @@ import {
   StashGroup,
 } from "./profileTypes";
 
-type StashItemPageProps = {
-  intl: IntlShape;
-};
-
 type IdRecord<T> = Record<string, T>;
 type FieldName = "name" | "description";
 type FieldStatusMap = Partial<Record<FieldName, SaveStatus>>;
@@ -114,7 +110,8 @@ function truncateLabel(value?: string | null, limit = 30) {
   return value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
 }
 
-function StashItemPage({ intl }: StashItemPageProps) {
+function StashItemPage() {
+  const intl = useIntl();
   const { id, itemId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1183,4 +1180,4 @@ function StashItemPage({ intl }: StashItemPageProps) {
   );
 }
 
-export default injectIntl(StashItemPage);
+export default StashItemPage;

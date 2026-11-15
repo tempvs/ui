@@ -30,8 +30,6 @@ jobs:
     name: Build
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.rollback_release == '' }}
     runs-on: ubuntu-latest
-    env:
-      REACT_APP_AWS_DARK_WEB: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,10 +50,12 @@ jobs:
       - name: Build and test UI
         run: |
           npm ci
-          CI=true npm test -- --watchAll=false
+          npm run lint
+          npm run test:run
           npm run typecheck
           npm run build
-      - name: Run public browser smoke tests
+          npm run test:tooling
+      - name: Run production browser regression tests
         run: |
           # Use the archive mirror over HTTPS: HTTP package requests can stall
           # while installing the fonts needed by Chromium.
@@ -63,7 +63,7 @@ jobs:
             sudo sed -i -e 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' -e 's|http://|https://|g' /etc/apt/apt-mirrors.txt
           fi
           npx playwright install --with-deps chromium
-          npm run e2e -- --grep "public"
+          E2E_PREVIEW=true npm run e2e -- --workers=2
       - name: Upload UI build
         uses: actions/upload-artifact@v4
         with:
@@ -140,7 +140,7 @@ jobs:
         run: |
           aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
           if [[ -d build/maps ]]; then
-            aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=31536000,immutable' --no-progress
+            aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=0,must-revalidate' --no-progress
           fi
           for asset in build/*; do
             if [[ -f "$asset" && "$asset" != 'build/index.html' ]]; then

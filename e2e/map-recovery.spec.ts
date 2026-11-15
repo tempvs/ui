@@ -22,6 +22,7 @@ test("public map survives WebGL initialization failure and retries without reloa
     const getContext = HTMLCanvasElement.prototype.getContext;
     (window as any).mapWebglAvailable = false;
     HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
       type: string,
       ...args: any[]
     ) {

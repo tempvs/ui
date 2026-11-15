@@ -1,49 +1,10 @@
 import { expect, test } from "@playwright/test";
-import path from "path";
-import fs from "fs";
-import webpack from "webpack";
+import { buildFixture } from "./support/buildFixture";
 
 // Bundle the real component into a test-only page; no production test route.
 let bundle: string;
 test.beforeAll(async () => {
-  const outputPath = path.resolve("node_modules/.cache/composer-e2e", String(process.pid));
-  await new Promise<void>((resolve, reject) =>
-    webpack(
-      {
-        mode: "development",
-        entry: path.resolve("e2e/fixtures/reference-composer.tsx"),
-        output: { path: outputPath, filename: "fixture.js" },
-        resolve: { extensions: [".tsx", ".ts", ".js", ".mjs"] },
-        module: {
-          rules: [
-            {
-              test: /\.tsx?$/,
-              exclude: /node_modules/,
-              use: {
-                loader: "babel-loader",
-                options: {
-                  presets: [
-                    ["@babel/preset-env", { targets: { chrome: "120" } }],
-                    ["@babel/preset-react", { runtime: "automatic" }],
-                    "@babel/preset-typescript",
-                  ],
-                },
-              },
-            },
-            { test: /\.css$/, use: ["style-loader", "css-loader"] },
-            { test: /\.(png|svg)$/, type: "asset/inline" },
-          ],
-        },
-      },
-      (error, stats) =>
-        error || stats?.hasErrors()
-          ? reject(
-              error || new Error(stats?.toString({ all: false, errors: true })),
-            )
-          : resolve(),
-    ),
-  );
-  bundle = fs.readFileSync(path.join(outputPath, "fixture.js"), "utf8");
+  bundle = await buildFixture("reference-composer");
 });
 test.beforeEach(async ({ page }) => {
   await page.route(/\/composer-fixture(\?.*)?$/, (route) =>

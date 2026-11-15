@@ -1,51 +1,9 @@
 import { expect, test } from "@playwright/test";
-import fs from "fs";
-import path from "path";
-import webpack from "webpack";
+import { buildFixture } from "./support/buildFixture";
 
 let bundle: string;
 test.beforeAll(async () => {
-  const outputPath = path.resolve(
-    "node_modules/.cache/library-journey-e2e",
-    String(process.pid),
-  );
-  await new Promise<void>((resolve, reject) =>
-    webpack(
-      {
-        mode: "development",
-        entry: path.resolve("e2e/fixtures/library-journey.tsx"),
-        output: { path: outputPath, filename: "fixture.js" },
-        resolve: { extensions: [".tsx", ".ts", ".js", ".mjs"] },
-        module: {
-          rules: [
-            {
-              test: /\.tsx?$/,
-              exclude: /node_modules/,
-              use: {
-                loader: "babel-loader",
-                options: {
-                  presets: [
-                    ["@babel/preset-env", { targets: { chrome: "120" } }],
-                    ["@babel/preset-react", { runtime: "automatic" }],
-                    "@babel/preset-typescript",
-                  ],
-                },
-              },
-            },
-            { test: /\.css$/, use: ["style-loader", "css-loader"] },
-            { test: /\.(png|jpe?g|svg)$/, type: "asset/inline" },
-          ],
-        },
-      },
-      (error, stats) =>
-        error || stats?.hasErrors()
-          ? reject(
-              error || new Error(stats?.toString({ all: false, errors: true })),
-            )
-          : resolve(),
-    ),
-  );
-  bundle = fs.readFileSync(path.join(outputPath, "fixture.js"), "utf8");
+  bundle = await buildFixture("library-journey");
 });
 
 test("public profile setup fixture shares expanded and compact progress without extra status reads", async ({ page }, testInfo) => {

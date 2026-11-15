@@ -4,7 +4,7 @@ import { OverlayTrigger } from 'react-bootstrap';
 import HoverPopover from './HoverPopover';
 import IconActionButton, { IconActionButtonProps } from './IconActionButton';
 
-type ImageOverlayActionButtonProps = IconActionButtonProps & {
+type ImageOverlayActionButtonProps = Omit<IconActionButtonProps, 'popover'> & {
   popover: React.ReactNode;
   className?: string;
   children?: React.ReactNode;

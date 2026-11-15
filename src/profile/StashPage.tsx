@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { injectIntl, IntlShape } from "react-intl";
+import { useIntl } from "react-intl";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
@@ -21,11 +21,8 @@ function buildCanonicalProfilePath(profile: Profile | null) {
   return `/profile/${profile?.alias || profile?.id}`;
 }
 
-type StashPageProps = {
-  intl: IntlShape;
-};
-
-function StashPage({ intl }: StashPageProps) {
+function StashPage() {
+  const intl = useIntl();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -239,4 +236,4 @@ function StashPage({ intl }: StashPageProps) {
   );
 }
 
-export default injectIntl(StashPage);
+export default StashPage;

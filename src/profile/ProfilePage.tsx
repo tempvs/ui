@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
 import { Button, Row, Col } from "react-bootstrap";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
 import PageLayout from "../component/PageLayout";
@@ -1974,4 +1974,7 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
   }
 }
 
-export default injectIntl(ProfilePage);
+export default function ProfilePageWithIntl(props: Omit<ProfilePageProps, "intl">) {
+  const intl = useIntl();
+  return <ProfilePage {...props} intl={intl} />;
+}
