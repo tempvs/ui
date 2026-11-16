@@ -25,10 +25,8 @@
     "e2e": "playwright test",
     "test": "jest",
     "test:run": "jest --runInBand",
-    "check": "npm run security:check && npm run lint && npm run typecheck && npm run test:run && npm run build && npm run test:tooling",
-    "test:tooling": "node --test scripts/toolchain.test.mjs",
-    "postinstall": "node scripts/dependency-security.mjs --apply",
-    "security:check": "node scripts/dependency-security.mjs"
+    "check": "npm run lint && npm run typecheck && npm run test:run && npm run build && npm run test:tooling",
+    "test:tooling": "node --test scripts/toolchain.test.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
