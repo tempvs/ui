@@ -1,17 +1,53 @@
 import { expect, test } from "@playwright/test";
 
-test("large map graphs release off-screen avatar elements and restore them after zooming out", async ({ page }) => {
+test("large map graphs release off-screen avatar elements and restore them after zooming out", async ({
+  page,
+}) => {
   const markers = Array.from({ length: 161 }, (_, i) => ({
-    entityType: "SOURCE", entityId: `large-${i}`, locationRole: "DISCOVERED_AT",
-    label: `Source ${i}`, placeId: `large-place-${i}`, placeName: `Place ${i}`,
-    latitude: 0, longitude: (i - 80) * 2,
+    entityType: "SOURCE",
+    entityId: `large-${i}`,
+    locationRole: "DISCOVERED_AT",
+    label: `Source ${i}`,
+    placeId: `large-place-${i}`,
+    placeName: `Place ${i}`,
+    latitude: 0,
+    longitude: (i - 80) * 2,
   }));
   await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/api/user/me") return route.fulfill({ status: 401, json: {} });
-    if (path === "/api/map/projections/profile/large") return route.fulfill({ json: { scope: "PROFILE", id: "large", markers, connections: [] } });
-    if (path === "/api/map/places") return route.fulfill({ json: { items: markers.map((marker) => ({ id: marker.placeId, canonicalName: marker.placeName, latitude: marker.latitude, longitude: marker.longitude, featureType: "SETTLEMENT" })) } });
-    if (path === "/api/images/lookup") return route.fulfill({ json: { content: route.request().postDataJSON().resources.map((resource: object) => ({ ...resource, image: null })) } });
+    const path = new URL(route.request().url()).pathname.replace(
+      "/api/public/map/",
+      "/api/map/",
+    );
+    if (path === "/api/user/me")
+      return route.fulfill({ status: 401, json: {} });
+    if (path === "/api/map/projections/profile/large")
+      return route.fulfill({
+        json: { scope: "PROFILE", id: "large", markers, connections: [] },
+      });
+    if (path === "/api/map/places")
+      return route.fulfill({
+        json: {
+          items: markers.map((marker) => ({
+            id: marker.placeId,
+            canonicalName: marker.placeName,
+            latitude: marker.latitude,
+            longitude: marker.longitude,
+            featureType: "SETTLEMENT",
+          })),
+        },
+      });
+    if (path === "/api/images/lookup")
+      return route.fulfill({
+        json: {
+          content: route
+            .request()
+            .postDataJSON()
+            .resources.map((resource: object) => ({
+              ...resource,
+              image: null,
+            })),
+        },
+      });
     if (path === "/api/profile/profiles") return route.fulfill({ json: [] });
     return route.fulfill({ status: 404, json: {} });
   });
@@ -92,7 +128,10 @@ test("public personal-map objects and profile checkboxes load before thumbnails"
   );
   await page.route("**/api/**", async (route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const path = new URL(request.url()).pathname.replace(
+      "/api/public/map/",
+      "/api/map/",
+    );
     if (path === "/api/user/me")
       return route.fulfill({ json: { userId: "owner", roles: [] } });
     if (path === "/api/profile/user-profile")

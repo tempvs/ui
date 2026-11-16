@@ -14,6 +14,7 @@ import {
 } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import ActivityCard from "./ActivityCard";
+import VirtualWallList from "./VirtualWallList";
 import {
   dismissWallItem,
   getWall,
@@ -62,17 +63,22 @@ export default function WallPage({
   const moreInFlight = useRef(false);
 
   const load = useCallback(
-    async (
-      activeProfileId: string,
-      signal: AbortSignal,
-      token?: string,
-    ) => {
+    async (activeProfileId: string, signal: AbortSignal, token?: string) => {
       let page = await getWall(activeProfileId, undefined, token, signal);
       // Server discovery and large merge checkpoints can yield an empty,
       // advancing page. Follow a few automatically without claiming exhaustion.
-      for (let reads = 1; !page.content.length && page.nextToken && reads < 4; reads++) {
+      for (
+        let reads = 1;
+        !page.content.length && page.nextToken && reads < 4;
+        reads++
+      ) {
         signal.throwIfAborted();
-        page = await getWall(activeProfileId, undefined, page.nextToken, signal);
+        page = await getWall(
+          activeProfileId,
+          undefined,
+          page.nextToken,
+          signal,
+        );
       }
       if (signal.aborted) return;
       setActivities((current) =>
@@ -198,14 +204,27 @@ export default function WallPage({
             </p>
           </div>
         </div>
-        {error && <Alert variant="danger">{error} <Button variant="outline-danger" size="sm" onClick={() => setAttempt((value) => value + 1)}>Reload wall</Button></Alert>}
+        {error && (
+          <Alert variant="danger">
+            {error}{" "}
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              Reload wall
+            </Button>
+          </Alert>
+        )}
         {loading ? (
           <div className="wall-loading">
             <Spinner size="sm" /> Loading updates…
           </div>
         ) : activities.length ? (
-          <div className="wall-list">
-            {activities.map((item) => (
+          <VirtualWallList
+            activities={activities}
+            hasMore={Boolean(nextToken)}
+            renderActivity={(item) => (
               <ActivityCard
                 key={item.id}
                 activity={item}
@@ -216,12 +235,14 @@ export default function WallPage({
                 }
                 onDismiss={setDismissTarget}
               />
-            ))}
-          </div>
+            )}
+          />
         ) : (
           !error && (
             <div className="wall-empty">
-              <h2>{nextToken ? "Still checking for updates" : "No updates yet"}</h2>
+              <h2>
+                {nextToken ? "Still checking for updates" : "No updates yet"}
+              </h2>
               <p>
                 {nextToken
                   ? "More history remains to be checked. Load more to continue."

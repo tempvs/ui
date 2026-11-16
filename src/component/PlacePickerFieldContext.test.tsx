@@ -55,7 +55,7 @@ test("opens the selected place with its map preview and historical names", async
   expect(screen.getByText(/Castra Regina.*179.*500/)).toBeInTheDocument();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/map/places/seed%3Apleiades%3A118929",
+      "/api/public/map/places/seed%3Apleiades%3A118929",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     ),
   );

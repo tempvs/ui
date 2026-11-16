@@ -134,3 +134,80 @@ test("search code loads on interaction and preserves typing while its chunk is p
     release();
   }
 });
+
+test("long walls keep a bounded DOM, preserve focused cards and restore all loaded updates", async ({
+  page,
+}) => {
+  const activities = Array.from({ length: 300 }, (_, index) => ({
+    id: `virtual-${index}`,
+    eventType: "profile.updated.v1",
+    occurredAt: "2026-11-16T00:00:00Z",
+    producer: "profile",
+    targetType: "PROFILE",
+    targetId: `profile-${index}`,
+    title: `Loaded update ${index}`,
+    summary:
+      index % 7 === 0
+        ? "Variable-height history. ".repeat(70)
+        : "Short history",
+    path: `/profile/profile-${index}`,
+  }));
+  const responses: Record<string, unknown> = {
+    "/api/user/me": { userId: "owner", roles: [] },
+    "/api/profile/user-profile": {
+      id: "profile",
+      userId: "owner",
+      type: "USER",
+      firstName: "Marcus",
+    },
+    "/api/profile/club-profile": [],
+    "/api/profile/profile/onboarding-preferences": {
+      dismissedAt: "2026-11-15T00:00:00Z",
+      celebratedAt: null,
+    },
+    "/api/profile/profile/onboarding-status": {
+      personaCount: 1,
+      itemCount: 1,
+      sourcedItemCount: 1,
+      connectionCount: 1,
+      partial: false,
+      computedAt: "2026-11-15T00:00:00Z",
+    },
+    "/api/wall": { content: activities, hasMore: false },
+    "/api/images/lookup": { content: [] },
+  };
+  await page.route("**/api/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: pathname in responses ? 200 : 404,
+      json: responses[pathname] ?? {},
+    });
+  });
+  await page.goto("/");
+  const first = page.getByRole("link", {
+    name: "Loaded update 0",
+    exact: true,
+  });
+  await expect(first).toBeVisible();
+  expect(await page.locator("[data-wall-index]").count()).toBeLessThan(60);
+  await first.focus();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(
+    page.getByRole("link", { name: "Loaded update 299", exact: true }),
+  ).toBeVisible();
+  await expect(first).toBeFocused();
+  expect(await page.locator("[data-wall-index]").count()).toBeLessThan(60);
+  await page.keyboard.press("Tab");
+  await expect(
+    page
+      .locator('[data-wall-index="0"]')
+      .getByRole("button", { name: "Dismiss update" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  // Safari's default Tab mode skips links; either mode must reach the next card.
+  await expect(page.locator('[data-wall-index="1"] :focus')).toHaveCount(1);
+  const all = page.getByRole("button", { name: "Show all loaded updates" });
+  await all.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("[data-wall-index]")).toHaveCount(300);
+});

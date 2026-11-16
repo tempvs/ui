@@ -275,7 +275,7 @@ export type MapSnapshot = {
 export async function saveMapSnapshot(
   input: Omit<MapSnapshot, "id" | "createdAt" | "updatedAt">,
 ): Promise<MapSnapshot> {
-  const response = await fetch("/api/map/snapshots", {
+  const response = await mapFetch("/api/map/snapshots", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -285,16 +285,19 @@ export async function saveMapSnapshot(
 }
 
 export async function listMyMapSnapshots(): Promise<MapSnapshot[]> {
-  const response = await fetch("/api/map/snapshots/mine");
+  const response = await mapFetch("/api/map/snapshots/mine");
   if (!response.ok) throw new Error("Unable to load saved maps");
   const body = (await responseJson(response)) as { items?: unknown } | null;
   return Array.isArray(body?.items) ? (body?.items as MapSnapshot[]) : [];
 }
 
 export async function deleteMapSnapshot(id: string): Promise<void> {
-  const response = await fetch(`/api/map/snapshots/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
+  const response = await mapFetch(
+    `/api/map/snapshots/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+    },
+  );
   if (!response.ok) throw new Error("Unable to delete saved map");
 }
 
@@ -302,11 +305,14 @@ export async function renameMapSnapshot(
   id: string,
   title: string,
 ): Promise<MapSnapshot> {
-  const response = await fetch(`/api/map/snapshots/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title }),
-  });
+  const response = await mapFetch(
+    `/api/map/snapshots/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    },
+  );
   if (!response.ok) throw new Error("Unable to rename saved map");
   return (await responseJson(response)) as MapSnapshot;
 }
@@ -356,7 +362,7 @@ export async function getMapProjection(
   id: string,
   signal?: AbortSignal,
 ): Promise<MapProjection> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/projections/${scope.toLowerCase()}/${encodeURIComponent(id)}`,
     { signal },
   );
@@ -377,7 +383,9 @@ export async function getMapProjections(
       scope,
       ids: uniqueIds.slice(offset, offset + 40).join(","),
     });
-    const response = await fetch(`/api/map/projections?${params}`, { signal });
+    const response = await mapFetch(`/api/map/projections?${params}`, {
+      signal,
+    });
     if (!response.ok) throw new Error("Unable to load map projections");
     const body = (await responseJson(response)) as { items?: unknown } | null;
     if (Array.isArray(body?.items))
@@ -394,7 +402,7 @@ export async function searchMapPlaces(
 ): Promise<MapPlace[]> {
   const normalized = query.trim();
   if (normalized.length < 2) return [];
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/search?${new URLSearchParams({
       q: normalized,
       limit: "20",
@@ -417,7 +425,7 @@ export async function getMapPlace(
   id: string,
   signal?: AbortSignal,
 ): Promise<MapPlace | null> {
-  const response = await fetch(`/api/map/places/${encodeURIComponent(id)}`, {
+  const response = await mapFetch(`/api/map/places/${encodeURIComponent(id)}`, {
     signal,
   });
   if (response.status === 404) return null;
@@ -556,7 +564,7 @@ async function flushMapPlaceReads() {
   if (queuedMapPlaceReads.size) scheduleMapPlaceFlush();
   try {
     const ids = entries.map(([id]) => id);
-    const response = await fetch(
+    const response = await mapFetch(
       `/api/map/places?ids=${encodeURIComponent(ids.join(","))}`,
       { signal: batch.controller.signal },
     );
@@ -615,7 +623,7 @@ export async function listMapPlaceHistory(
   id: string,
   cursor?: string,
 ): Promise<{ items: MapPlaceProposalActivity[]; nextCursor?: string }> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/${encodeURIComponent(id)}/history?${new URLSearchParams({
       limit: "30",
       ...(cursor ? { cursor } : {}),
@@ -643,7 +651,7 @@ export async function listMapPlaceChildren(
   signal?: AbortSignal,
   cursor?: string,
 ): Promise<{ items: MapPlace[]; nextCursor?: string }> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/${encodeURIComponent(placeId)}/children?${new URLSearchParams(
       {
         limit: "50",
@@ -676,7 +684,7 @@ export async function listMapPlaceEntities(
   cursor?: string,
   includeCounts = !cursor,
 ): Promise<MapEntityLocationPage> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/${encodeURIComponent(placeId)}/entities?${new URLSearchParams(
       {
         limit: "100",
@@ -722,7 +730,7 @@ export async function getMapPlaceEntityCounts(
     ...(types.length ? { types: types.join(",") } : {}),
     ...(roles.length ? { roles: roles.join(",") } : {}),
   });
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/${encodeURIComponent(placeId)}/entities?${params}`,
     { signal },
   );
@@ -743,7 +751,7 @@ export async function findLikelyDuplicateMapPlaces(
   longitude: number,
   signal?: AbortSignal,
 ): Promise<MapPlace[]> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/duplicates?${new URLSearchParams({
       name: canonicalName,
       latitude: String(latitude),
@@ -765,7 +773,7 @@ export async function findLikelyDuplicateMapPlaces(
 export async function proposeMapPlace(
   proposal: MapPlaceProposal,
 ): Promise<MapPlaceProposalRecord> {
-  const response = await fetch("/api/map/places/proposals", {
+  const response = await mapFetch("/api/map/places/proposals", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(proposal),
@@ -781,7 +789,7 @@ export async function proposeMapPlaceChangeset(
   placeId: string,
   changeset: MapPlaceChangeset,
 ): Promise<MapPlaceProposalRecord> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/${encodeURIComponent(placeId)}/changesets`,
     {
       method: "POST",
@@ -801,7 +809,7 @@ export async function requestMapRole(
   role: MapRoleRequest["role"],
   note?: string,
 ): Promise<MapRoleRequest> {
-  const response = await fetch("/api/map/roles/requests", {
+  const response = await mapFetch("/api/map/roles/requests", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -817,7 +825,7 @@ export async function requestMapRole(
 }
 
 export async function listMyMapRoleRequests(): Promise<MapRoleRequest[]> {
-  const response = await fetch("/api/map/roles/requests/mine?limit=20");
+  const response = await mapFetch("/api/map/roles/requests/mine?limit=20");
   if (response.status === 401)
     throw new Error("Sign in to view Map role requests");
   if (!response.ok) throw new Error("Unable to load Map role requests");
@@ -828,7 +836,7 @@ export async function listMyMapRoleRequests(): Promise<MapRoleRequest[]> {
 export async function withdrawMapRoleRequest(
   id: string,
 ): Promise<MapRoleRequest> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/roles/requests/${encodeURIComponent(id)}`,
     { method: "DELETE" },
   );
@@ -841,7 +849,7 @@ export async function withdrawMapRoleRequest(
 export async function listPendingMapRoleRequests(
   cursor?: string,
 ): Promise<MapRoleRequestPage> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/roles/requests?${new URLSearchParams({
       limit: "20",
       ...(cursor ? { cursor } : {}),
@@ -867,7 +875,7 @@ async function decideMapRoleRequest(
   decision: "approve" | "reject",
   note?: string,
 ): Promise<MapRoleRequest> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/roles/requests/${encodeURIComponent(id)}/${decision}`,
     {
       method: "POST",
@@ -889,7 +897,7 @@ export function rejectMapRoleRequest(id: string, note?: string) {
 }
 
 export async function listMapRoleMembers(): Promise<MapRoleMember[]> {
-  const response = await fetch("/api/map/admin/roles/members");
+  const response = await mapFetch("/api/map/admin/roles/members");
   if (!response.ok) throw new Error("Unable to load Map role members");
   const body = await responseJson(response);
   return Array.isArray(body) ? (body as MapRoleMember[]) : [];
@@ -899,7 +907,7 @@ export async function addMapMemberRole(
   userId: string,
   role: MapRole,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/roles/members/${encodeURIComponent(userId)}`,
     {
       method: "PUT",
@@ -915,7 +923,7 @@ export async function removeMapMemberRole(
   userId: string,
   role: MapRole,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/roles/members/${encodeURIComponent(userId)}/roles/${encodeURIComponent(role)}`,
     { method: "DELETE" },
   );
@@ -927,7 +935,7 @@ export async function removeMapMemberRole(
 export async function listMyMapPlaceProposals(): Promise<
   MapPlaceProposalRecord[]
 > {
-  const response = await fetch("/api/map/proposals/mine?limit=20");
+  const response = await mapFetch("/api/map/proposals/mine?limit=20");
   if (response.status === 401) throw new Error("Sign in to view proposals");
   if (!response.ok) throw new Error("Unable to load your place proposals");
   const body = (await responseJson(response)) as { items?: unknown } | null;
@@ -940,11 +948,14 @@ export async function amendMapPlaceProposal(
   id: string,
   proposal: MapPlaceProposal,
 ): Promise<MapPlaceProposalRecord> {
-  const response = await fetch(`/api/map/proposals/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(proposal),
-  });
+  const response = await mapFetch(
+    `/api/map/proposals/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(proposal),
+    },
+  );
   if (response.status === 409)
     throw new Error(
       "This proposal was already reviewed; refresh and try again.",
@@ -956,7 +967,7 @@ export async function amendMapPlaceProposal(
 export async function listMapPlaceProposalActivity(
   id: string,
 ): Promise<MapPlaceProposalActivity[]> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/proposals/${encodeURIComponent(id)}/activity?limit=50`,
   );
   if (!response.ok) throw new Error("Unable to load proposal discussion");
@@ -970,7 +981,7 @@ export async function commentOnMapPlaceProposal(
   id: string,
   comment: string,
 ): Promise<MapPlaceProposalActivity> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/proposals/${encodeURIComponent(id)}/comments`,
     {
       method: "POST",
@@ -991,7 +1002,7 @@ export async function listPendingMapPlaces(
   cursor?: string,
 ): Promise<PendingMapPlacePage> {
   const query = cursor ? `?${new URLSearchParams({ cursor })}` : "";
-  const response = await fetch(`/api/map/admin/places/proposals${query}`);
+  const response = await mapFetch(`/api/map/admin/places/proposals${query}`);
   if (response.status === 401 || response.status === 403)
     throw new Error("Map editor access is required");
   if (!response.ok) throw new Error("Unable to load pending place proposals");
@@ -1012,7 +1023,7 @@ export async function approveMapPlace(
   id: string,
   note?: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/places/${encodeURIComponent(id)}/approve`,
     {
       method: "POST",
@@ -1024,7 +1035,7 @@ export async function approveMapPlace(
 }
 
 export async function rejectMapPlace(id: string, note?: string): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/places/${encodeURIComponent(id)}/reject`,
     {
       method: "POST",
@@ -1041,7 +1052,7 @@ export async function requestMapPlaceChanges(
   id: string,
   note?: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/places/${encodeURIComponent(id)}/request-changes`,
     {
       method: "POST",
@@ -1059,7 +1070,7 @@ export async function mergeMapPlace(
   targetPlaceId: string,
   note?: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/admin/places/${encodeURIComponent(id)}/merge`,
     {
       method: "POST",
@@ -1080,7 +1091,7 @@ export async function nearbyMapPlaces(
   radiusKm: number,
   signal?: AbortSignal,
 ): Promise<MapPlace[]> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/places/search?${new URLSearchParams({
       latitude: String(latitude),
       longitude: String(longitude),
@@ -1145,7 +1156,7 @@ export async function nearbyMapEntitiesPage(
   profileFilters: MapProfileFilters = {},
   clubFilters: MapClubFilters = {},
 ): Promise<MapEntityLocationPage> {
-  const response = await fetch(
+  const response = await mapFetch(
     `/api/map/entities?${new URLSearchParams({
       latitude: String(latitude),
       longitude: String(longitude),
@@ -1218,4 +1229,22 @@ export async function nearbyMapEntitiesPage(
     ...(nextCursor ? { nextCursor } : {}),
     ...(body?.truncated === true ? { truncated: true } : {}),
   };
+}
+
+function mapFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const path = input.split("?", 1)[0];
+  const publicRead =
+    (init.method ?? "GET") === "GET" &&
+    /^\/api\/map(?:\/places(?:\/[^/]+(?:\/(?:children|history|entities))?)?|\/entities)$/.test(
+      path,
+    );
+  if (!publicRead || init.cache === "no-store") return fetch(input, init);
+  const headers = new Headers(init.headers);
+  headers.delete("Authorization");
+  headers.delete("Cookie");
+  return fetch(input.replace("/api/map", "/api/public/map"), {
+    ...init,
+    headers,
+    credentials: "omit",
+  });
 }

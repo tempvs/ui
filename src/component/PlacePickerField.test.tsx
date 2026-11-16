@@ -63,7 +63,7 @@ test("searches approved places and returns a selected canonical place", async ()
   });
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/map/places/search?q=Rome&limit=20",
+      "/api/public/map/places/search?q=Rome&limit=20",
       expect.anything(),
     ),
   );
@@ -245,7 +245,7 @@ test("offers nearby approved places after a point is picked on the map", async (
 
   await waitFor(() => {
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/map/places/search?latitude=41.9&longitude=12.5&radiusKm=25&limit=50",
+      "/api/public/map/places/search?latitude=41.9&longitude=12.5&radiusKm=25&limit=50",
       expect.anything(),
     );
   });
@@ -272,7 +272,7 @@ test("uses the same nearby lookup for manually entered coordinates", async () =>
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/map/places/search?latitude=41.9&longitude=12.5&radiusKm=25&limit=50",
+      "/api/public/map/places/search?latitude=41.9&longitude=12.5&radiusKm=25&limit=50",
       expect.anything(),
     ),
   );
@@ -343,7 +343,9 @@ test("does not clear a canonical place when saving a private pin fails", async (
 
   fireEvent.click(screen.getByRole("button", { name: "Rome" }));
   fireEvent.click(
-    screen.getByRole("button", { name: "Propose a different place on the map" }),
+    screen.getByRole("button", {
+      name: "Propose a different place on the map",
+    }),
   );
   fireEvent.click(screen.getByRole("button", { name: "Pick coordinates" }));
   fireEvent.click(screen.getByRole("button", { name: "Use as private pin" }));

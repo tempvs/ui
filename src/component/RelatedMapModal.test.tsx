@@ -23,7 +23,7 @@ jest.mock("../map/MapCanvas", () => ({
 test("does not load nearby entities for a page-related map", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
     const url = String(input);
-    if (url.includes("/api/map/places/seed%3Arome")) {
+    if (url.includes("/api/public/map/places/seed%3Arome")) {
       return Promise.resolve({
         ok: true,
         text: async () =>
@@ -36,7 +36,7 @@ test("does not load nearby entities for a page-related map", async () => {
           }),
       } as Response);
     }
-    if (url.includes("/api/map/entities?")) {
+    if (url.includes("/api/public/map/entities?")) {
       return Promise.resolve({
         ok: true,
         text: async () =>
@@ -85,17 +85,19 @@ test("does not load nearby entities for a page-related map", async () => {
 
   await screen.findByTestId("related-map-canvas");
   expect(fetchMock).not.toHaveBeenCalledWith(
-    expect.stringContaining("/api/map/entities?"),
+    expect.stringContaining("/api/public/map/entities?"),
     expect.anything(),
   );
-  expect(screen.queryByLabelText("Nearby public content")).not.toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("Nearby public content"),
+  ).not.toBeInTheDocument();
   fetchMock.mockRestore();
 });
 
 test("opens a stable profile slice instead of the recipient's my-map overlay", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
     const url = String(input);
-    if (url.includes("/api/map/places/seed%3Arome")) {
+    if (url.includes("/api/public/map/places/seed%3Arome")) {
       return Promise.resolve({
         ok: true,
         text: async () =>
@@ -108,7 +110,7 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
           }),
       } as Response);
     }
-    if (url.includes("/api/map/entities?")) {
+    if (url.includes("/api/public/map/entities?")) {
       return Promise.resolve({
         ok: true,
         text: async () => JSON.stringify({ items: [] }),
@@ -156,7 +158,7 @@ test("opens a stable profile slice instead of the recipient's my-map overlay", a
 test("keeps the scope when copying a public map link", async () => {
   const fetchMock = jest.spyOn(global, "fetch").mockImplementation((input) => {
     const url = String(input);
-    if (url.includes("/api/map/places/seed%3Arome")) {
+    if (url.includes("/api/public/map/places/seed%3Arome")) {
       return Promise.resolve({
         ok: true,
         text: async () =>
@@ -169,7 +171,7 @@ test("keeps the scope when copying a public map link", async () => {
           }),
       } as Response);
     }
-    if (url.includes("/api/map/entities?")) {
+    if (url.includes("/api/public/map/entities?")) {
       return Promise.resolve({
         ok: true,
         text: async () => JSON.stringify({ items: [] }),

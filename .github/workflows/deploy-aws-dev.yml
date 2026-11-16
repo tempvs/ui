@@ -17,9 +17,15 @@ on:
         required: false
         default: ""
         type: string
+      rehearsal_release:
+        description: Dev-only archived SHA for an expected failed-promotion and automatic-recovery drill
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: ui-aws-${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
@@ -100,6 +106,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      deployments: read
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
@@ -108,7 +115,16 @@ jobs:
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
       TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
       ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+      REHEARSAL_RELEASE: ${{ inputs.rehearsal_release }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Load reviewed release verification tools
+        id: release-tools
+        uses: tempvs/workflows/.github/actions/release-tools@44c50c0ccc04c4ad32d85a84ea852b0b31723cfc # reviewed release tools
+
       - name: Verify deployment configuration
         shell: bash
         run: |
@@ -149,32 +165,19 @@ jobs:
             exit 1
           fi
 
-      - name: Archive release in versioned bucket
-        if: ${{ inputs.rollback_release == '' }}
-        run: aws s3 sync build/ "s3://$WEB_BUCKET_NAME/releases/$GITHUB_SHA/" --no-progress
-      - name: Restore archived release
-        if: ${{ inputs.rollback_release != '' }}
-        shell: bash
-        run: |
-          if ! aws s3api head-object --bucket "$WEB_BUCKET_NAME" --key "releases/$ROLLBACK_RELEASE/index.html" >/dev/null; then
-            echo '::error::The requested release is not archived in the web bucket.'
-            exit 1
-          fi
-          aws s3 sync "s3://$WEB_BUCKET_NAME/releases/$ROLLBACK_RELEASE/" build/ --no-progress
-      - name: Publish static assets, then HTML
-        shell: bash
-        run: |
-          aws s3 sync build/static/ "s3://$WEB_BUCKET_NAME/static/" --cache-control 'public,max-age=31536000,immutable' --no-progress
-          if [[ -d build/maps ]]; then
-            aws s3 sync build/maps/ "s3://$WEB_BUCKET_NAME/maps/" --cache-control 'public,max-age=0,must-revalidate' --no-progress
-          fi
-          for asset in build/*; do
-            if [[ -f "$asset" && "$asset" != 'build/index.html' ]]; then
-              aws s3 cp "$asset" "s3://$WEB_BUCKET_NAME/$(basename "$asset")" --cache-control 'public,max-age=3600' --no-progress
-            fi
-          done
-          aws s3 cp build/index.html "s3://$WEB_BUCKET_NAME/index.html" --content-type 'text/html; charset=utf-8' --cache-control 'no-cache,no-store,must-revalidate' --no-progress
-          aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*'
+      - name: Stage, verify and publish with automatic recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLIC_PROBE_SCRIPT: ${{ steps.release-tools.outputs.health_script }}
+        run: node scripts/release.mjs
+      - name: Preserve release verification and recovery evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ui-release.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   verify-dev:
     name: Verify real dev sessions (Chrome, Firefox, WebKit)
