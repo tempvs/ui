@@ -31,11 +31,11 @@ import {
   PERIODS,
   TYPES,
 } from "../library/libraryShared";
-import { searchProfiles } from "../profile/profileApi";
+import { searchProfilesPage } from "../profile/profileApi";
 import { Profile } from "../profile/profileTypes";
 import { getErrorMessage } from "../util/errors";
 import { Club, listClubs } from "../club/clubApi";
-import { listEvents, TempvsEvent } from "../event/eventApi";
+import { searchEvents, TempvsEvent } from "../event/eventApi";
 import { DEFAULT_HOURGLASS_IMAGE_SRC } from "../component/DefaultHourglassImage";
 import {
   appendMapSearchParams,
@@ -76,16 +76,6 @@ function getProfileTypeLabel(profileType: string | null | undefined) {
   }
 
   return profileType || "";
-}
-
-function searchPeriods(
-  selectedPeriods: readonly string[],
-): Array<string | null> {
-  return selectedPeriods.length ? [...selectedPeriods] : [null];
-}
-
-function periodKey(period: string | null): string {
-  return period || "all";
 }
 
 function profileDisplayName(profile: Profile): string {
@@ -164,7 +154,10 @@ function SearchResultsHeading({
   );
 }
 
-export default function SearchDialog({ initialOpen = false, initialQuery = "" }: { initialOpen?: boolean; initialQuery?: string } = {}) {
+export default function SearchDialog({
+  initialOpen = false,
+  initialQuery = "",
+}: { initialOpen?: boolean; initialQuery?: string } = {}) {
   const intl = useIntl();
   const location = useLocation();
   const previousPath = useRef(location.pathname);
@@ -175,11 +168,8 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
   const inputRef = useRef<HTMLInputElement | null>(null);
   const searchGeneration = useRef(0);
   const pendingPage = useRef<number | null>(null);
-  const pagingRef = useRef({
-    profilePage: 0,
-    clubNextTokens: {} as Record<string, string | undefined>,
-    sourceNextTokens: {} as Record<string, string | undefined>,
-  });
+  const searchRequest = useRef<AbortController | null>(null);
+  const pagingRef = useRef<Partial<Record<SearchTab, string>>>({});
 
   const [showPopover, setShowPopover] = useState(initialOpen);
   const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>(
@@ -275,6 +265,14 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
       const generation = append
         ? searchGeneration.current
         : ++searchGeneration.current;
+      if (!append) searchRequest.current?.abort();
+      const controller =
+        append && searchRequest.current
+          ? searchRequest.current
+          : new AbortController();
+      searchRequest.current = controller;
+      const signal = controller.signal;
+      if (signal.aborted) return;
       pendingPage.current = generation;
       setLoading(true);
       setLoadingMore(append);
@@ -282,11 +280,7 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
       if (!append) {
         setProfilePreviewImages({});
         setSourcePreviewImages({});
-        pagingRef.current = {
-          profilePage: 0,
-          clubNextTokens: {},
-          sourceNextTokens: {},
-        };
+        pagingRef.current = {};
         setHasMore(false);
       }
 
@@ -298,26 +292,22 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
             setHasMore(false);
             return;
           }
-          const profilePeriods =
-            profileSearchType === "USER"
-              ? [null]
-              : searchPeriods(selectedPeriods);
-          const resultPages = await Promise.all(
-            profilePeriods.map((selectedPeriod) =>
-              searchProfiles({
-                query,
-                period: selectedPeriod,
-                type: profileSearchType,
-                ...(hasYearFilter && range.from ? { from: range.from } : {}),
-                ...(hasYearFilter && range.to ? { to: range.to } : {}),
-                page: append ? pagingRef.current.profilePage + 1 : 0,
-                size: PAGE_SIZE,
-              }),
-            ),
-          );
-          if (generation !== searchGeneration.current) return;
-          const results = resultPages.flat();
-
+          const page = await searchProfilesPage({
+            query,
+            periods:
+              profileSearchType === "USER"
+                ? undefined
+                : hasPeriodFilter
+                  ? selectedPeriods
+                  : undefined,
+            type: profileSearchType,
+            ...(hasYearFilter ? range : {}),
+            nextToken: append ? pagingRef.current.profiles : undefined,
+            size: PAGE_SIZE,
+            signal,
+          });
+          if (signal.aborted || generation !== searchGeneration.current) return;
+          const results = page.content;
           const content = (Array.isArray(results) ? results : []).filter(
             (item) =>
               selectedProfileTypes.includes(item.type as ProfileType) &&
@@ -338,10 +328,8 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                 ]
               : content,
           );
-          pagingRef.current.profilePage = append
-            ? pagingRef.current.profilePage + 1
-            : 0;
-          setHasMore(resultPages.some((page) => page.length === PAGE_SIZE));
+          pagingRef.current.profiles = page.nextToken;
+          setHasMore(Boolean(page.nextToken));
 
           // Results render immediately; thumbnail metadata is one shared,
           // cached batch and cannot hold the search loading state open.
@@ -350,9 +338,11 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
               resourceType: "profile",
               resourceId: profile.id,
             })),
+            signal,
           )
             .then((entries) => {
-              if (generation !== searchGeneration.current) return;
+              if (signal.aborted || generation !== searchGeneration.current)
+                return;
               const images = Object.fromEntries(
                 entries.map((entry) => [entry.resourceId, entry.image]),
               );
@@ -366,29 +356,17 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
         }
 
         if (tab === "clubs") {
-          const periodValues = searchPeriods(selectedPeriods);
-          const pages = await Promise.all(
-            periodValues.map((selectedPeriod) =>
-              listClubs(
-                query,
-                selectedPeriod || "",
-                append
-                  ? pagingRef.current.clubNextTokens[periodKey(selectedPeriod)]
-                  : undefined,
-                undefined,
-                hasYearFilter ? range.from : null,
-                hasYearFilter ? range.to : null,
-              ),
-            ),
+          const page = await listClubs(
+            query,
+            "",
+            append ? pagingRef.current.clubs : undefined,
+            signal,
+            hasYearFilter ? range.from : null,
+            hasYearFilter ? range.to : null,
+            hasPeriodFilter ? selectedPeriods : undefined,
           );
-          if (generation !== searchGeneration.current) return;
-          const content = pages
-            .flatMap((page) => page.content || [])
-            .filter(
-              (item) =>
-                (!hasPeriodFilter || selectedPeriods.includes(item.period)) &&
-                (!hasYearFilter || overlapsHistoricalRange(item, range)),
-            );
+          if (signal.aborted || generation !== searchGeneration.current) return;
+          const content = page.content || [];
           setClubResults((previous) =>
             append
               ? [
@@ -402,62 +380,48 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                 ]
               : content,
           );
-          pagingRef.current.clubNextTokens = Object.fromEntries(
-            periodValues.map((selectedPeriod, index) => [
-              periodKey(selectedPeriod),
-              pages[index].nextToken,
-            ]),
-          );
-          setHasMore(pages.some((page) => page.hasMore));
+          pagingRef.current.clubs = page.nextToken;
+          setHasMore(Boolean(page.nextToken));
           return;
         }
 
         if (tab === "events") {
-          const result = await listEvents();
-          if (generation !== searchGeneration.current) return;
-          const normalized = query.trim().toLocaleLowerCase();
-          setEventResults(
-            (result.content || []).filter(
-              (item) =>
-                (!normalized ||
-                  `${item.name} ${item.description || ""}`
-                    .toLocaleLowerCase()
-                    .includes(normalized)) &&
-                (!hasPeriodFilter ||
-                  item.periods.some((itemPeriod) =>
-                    selectedPeriods.includes(itemPeriod),
-                  )) &&
-                (!hasYearFilter || overlapsHistoricalRange(item, range)),
-            ),
+          const page = await searchEvents({
+            query,
+            periods: hasPeriodFilter ? selectedPeriods : undefined,
+            ...(hasYearFilter ? range : {}),
+            nextToken: append ? pagingRef.current.events : undefined,
+            signal,
+          });
+          if (signal.aborted || generation !== searchGeneration.current) return;
+          setEventResults((previous) =>
+            append
+              ? [
+                  ...previous,
+                  ...page.content.filter(
+                    (item) =>
+                      !previous.some((current) => current.id === item.id),
+                  ),
+                ]
+              : page.content,
           );
-          setHasMore(false);
+          pagingRef.current.events = page.nextToken;
+          setHasMore(Boolean(page.nextToken));
           return;
         }
 
-        const periodValues = searchPeriods(selectedPeriods);
-        const resultPages = await Promise.all(
-          periodValues.map(async (selectedPeriod) => {
-            const result = await findSources({
-              query,
-              period: selectedPeriod,
-              types: selectedTypes,
-              ...(hasYearFilter ? range : {}),
-              nextToken: append
-                ? pagingRef.current.sourceNextTokens[periodKey(selectedPeriod)]
-                : undefined,
-              size: PAGE_SIZE,
-            });
-            if (!result.ok) throw new Error("Unable to search sources.");
-            return result;
-          }),
-        );
-        if (generation !== searchGeneration.current) return;
-        const sources = resultPages
-          .flatMap((result) => (Array.isArray(result.data) ? result.data : []))
-          .filter(
-            (source) =>
-              !hasPeriodFilter || selectedPeriods.includes(source.period || ""),
-          );
+        const result = await findSources({
+          query,
+          periods: hasPeriodFilter ? selectedPeriods : undefined,
+          types: selectedTypes,
+          ...(hasYearFilter ? range : {}),
+          nextToken: append ? pagingRef.current.sources : undefined,
+          size: PAGE_SIZE,
+          signal,
+        });
+        if (signal.aborted || generation !== searchGeneration.current) return;
+        if (!result.ok) throw new Error("Unable to search sources.");
+        const sources = Array.isArray(result.data) ? result.data : [];
         setSourceResults((previous) =>
           append
             ? [
@@ -471,13 +435,8 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
               ]
             : sources,
         );
-        pagingRef.current.sourceNextTokens = Object.fromEntries(
-          periodValues.map((selectedPeriod, index) => [
-            periodKey(selectedPeriod),
-            resultPages[index].nextToken || undefined,
-          ]),
-        );
-        setHasMore(resultPages.some((result) => Boolean(result.nextToken)));
+        pagingRef.current.sources = result.nextToken || undefined;
+        setHasMore(Boolean(result.nextToken));
 
         void getImageThumbnails(
           sources.map((source) => ({
@@ -487,9 +446,11 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
               ? { preferredImageId: source.coverImageId }
               : {}),
           })),
+          signal,
         )
           .then((entries) => {
-            if (generation !== searchGeneration.current) return;
+            if (signal.aborted || generation !== searchGeneration.current)
+              return;
             const images = Object.fromEntries(
               entries.map((entry) => [entry.resourceId, entry.image]),
             );
@@ -497,7 +458,7 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
           })
           .catch(() => undefined);
       } catch (searchError) {
-        if (generation === searchGeneration.current)
+        if (!signal.aborted && generation === searchGeneration.current)
           setError(getErrorMessage(searchError));
       } finally {
         if (generation === searchGeneration.current) {
@@ -536,6 +497,7 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
     return () => {
       window.clearTimeout(timeoutId);
       searchGeneration.current += 1;
+      searchRequest.current?.abort();
     };
   }, [
     activeTab,
@@ -1085,7 +1047,9 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                         />
                         {profileResults.length === 0 && (
                           <div className="search-empty-state">
-                            No profiles matched the current filters.
+                            {hasMore
+                              ? "Still searching for profiles�"
+                              : "No profiles matched the current filters."}
                           </div>
                         )}
                         <div className="search-results-grid">
@@ -1200,7 +1164,9 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                         />
                         {sourceResults.length === 0 && (
                           <div className="search-empty-state">
-                            No sources matched the current filters.
+                            {hasMore
+                              ? "Still searching for sources�"
+                              : "No sources matched the current filters."}
                           </div>
                         )}
                         <div className="search-results-grid">
@@ -1228,7 +1194,9 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                         />
                         {clubResults.length === 0 && (
                           <div className="search-empty-state">
-                            No clubs matched the current filters.
+                            {hasMore
+                              ? "Still searching for clubs�"
+                              : "No clubs matched the current filters."}
                           </div>
                         )}
                         <div className="search-results-grid">
@@ -1277,7 +1245,9 @@ export default function SearchDialog({ initialOpen = false, initialQuery = "" }:
                         />
                         {eventResults.length === 0 && (
                           <div className="search-empty-state">
-                            No events matched the current filters.
+                            {hasMore
+                              ? "Still searching for events�"
+                              : "No events matched the current filters."}
                           </div>
                         )}
                         <div className="search-results-grid">

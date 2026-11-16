@@ -1,5 +1,8 @@
 import { getViewer, type Viewer } from "../auth/viewerApi";
-import { libraryLearningUser, observeLibraryResponse } from "./onboarding/libraryLearning";
+import {
+  libraryLearningUser,
+  observeLibraryResponse,
+} from "./onboarding/libraryLearning";
 
 export type ApiResponse<TData = unknown> = {
   ok: boolean;
@@ -140,7 +143,13 @@ export type SourceChangeset = {
   reviewedAt?: string | null;
   reviewComment?: string | null;
   revision?: number;
-  approvals?: Array<{ userId: string; revision: number; approvedAt: string; comment?: string; adminOverride?: boolean }>;
+  approvals?: Array<{
+    userId: string;
+    revision: number;
+    approvedAt: string;
+    comment?: string;
+    adminOverride?: boolean;
+  }>;
   amendments?: Array<{ userId: string; revision: number; amendedAt: string }>;
   publishedBy?: string;
   publishedAt?: string;
@@ -269,6 +278,8 @@ type ApiErrorPayload = {
 type FetchJsonOptions = RequestInit;
 
 type SourceSearchParams = {
+  periods?: string[];
+  signal?: AbortSignal;
   query?: string;
   period?: string | null;
   types?: string[];
@@ -312,7 +323,13 @@ async function fetchJson<TData = unknown>(
   const learningUser = libraryLearningUser();
   const response = await fetch(url, options);
   const result = await parseResponse<TData>(response);
-  if (result.ok) observeLibraryResponse(learningUser, url, options.method || "GET", result.data);
+  if (result.ok)
+    observeLibraryResponse(
+      learningUser,
+      url,
+      options.method || "GET",
+      result.data,
+    );
   return result;
 }
 
@@ -363,6 +380,8 @@ export function updateRoleRequest(role: string, method: string) {
 
 export async function findSources({
   query,
+  periods,
+  signal,
   period,
   types,
   from,
@@ -387,9 +406,11 @@ export async function findSources({
     heldAtPlaceId,
   );
   const params = new URLSearchParams({ limit: String(size), q: encodedQuery });
+  if (periods?.length) params.set("periods", periods.join(","));
   if (nextToken) params.set("nextToken", nextToken);
   const result = await fetchJson<LibrarySourcePage>(
     `/api/library/source/find?${params}`,
+    { signal },
   );
   return {
     ...result,
@@ -412,7 +433,13 @@ export async function createSource(payload: SourcePayload) {
   const result = await parseResponse<
     { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
   >(response);
-  if (result.ok) observeLibraryResponse(learningUser, "/api/library/source", "POST", result.data);
+  if (result.ok)
+    observeLibraryResponse(
+      learningUser,
+      "/api/library/source",
+      "POST",
+      result.data,
+    );
   return result;
 }
 
@@ -470,7 +497,9 @@ export function setAdminMemberRole(userId: string, role: string | null) {
 }
 
 export function getSource(sourceId: string | undefined, signal?: AbortSignal) {
-  return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`, { signal });
+  return fetchJson<LibrarySource>(`/api/library/source/${sourceId}`, {
+    signal,
+  });
 }
 
 /**
@@ -478,7 +507,10 @@ export function getSource(sourceId: string | undefined, signal?: AbortSignal) {
  * wall can mount several embedded maps at once, so batching must happen
  * across callers—not merely within each map card.
  */
-const sourceCache = new Map<string, { source: LibrarySource; expiresAt: number }>();
+const sourceCache = new Map<
+  string,
+  { source: LibrarySource; expiresAt: number }
+>();
 const queuedSourceReads = new Map<string, SourceRead>();
 const inFlightSourceReads = new Map<string, SourceRead>();
 const sourceCacheTtlMs = 2 * 60 * 1000;
@@ -504,10 +536,12 @@ export async function getSourcesByIds(
 
 function readSourceBatched(sourceId: string): Promise<LibrarySource | null> {
   const cached = sourceCache.get(sourceId);
-  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.source);
+  if (cached && cached.expiresAt > Date.now())
+    return Promise.resolve(cached.source);
   if (cached) sourceCache.delete(sourceId);
   return new Promise<LibrarySource | null>((resolve, reject) => {
-    const existing = queuedSourceReads.get(sourceId) || inFlightSourceReads.get(sourceId);
+    const existing =
+      queuedSourceReads.get(sourceId) || inFlightSourceReads.get(sourceId);
     if (existing) {
       existing.waiters.push({ resolve, reject });
       return;
@@ -525,7 +559,10 @@ function scheduleSourceFlush() {
 
 async function flushSourceReads() {
   sourceFlushScheduled = false;
-  const entries = Array.from(queuedSourceReads.entries()).slice(0, sourceBatchSize);
+  const entries = Array.from(queuedSourceReads.entries()).slice(
+    0,
+    sourceBatchSize,
+  );
   if (!entries.length) return;
   entries.forEach(([sourceId, read]) => {
     queuedSourceReads.delete(sourceId);
@@ -770,16 +807,49 @@ export function approveSourceChangeset(
   });
 }
 
-export function addSourceProposalTask(sourceId: string, changesetId: string, version: number, text: string, blocking: boolean) {
-  return fetchJson<SourceChangeset | ApiErrorPayload>(`/api/library/source/${sourceId}/changesets/${changesetId}/tasks`, {
-    method: "POST", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ text, blocking }),
-  });
+export function addSourceProposalTask(
+  sourceId: string,
+  changesetId: string,
+  version: number,
+  text: string,
+  blocking: boolean,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/tasks`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${version}"`,
+      },
+      body: JSON.stringify({ text, blocking }),
+    },
+  );
 }
 
-export function updateSourceProposalTask(sourceId: string, changesetId: string, taskId: string, version: number, status: SourceProposalTask["status"], adminOverride = false, comment?: string) {
-  return fetchJson<SourceChangeset | ApiErrorPayload>(`/api/library/source/${sourceId}/changesets/${changesetId}/tasks/${taskId}`, {
-    method: "PATCH", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify({ status, ...(adminOverride ? { adminOverride: true, comment } : {}) }),
-  });
+export function updateSourceProposalTask(
+  sourceId: string,
+  changesetId: string,
+  taskId: string,
+  version: number,
+  status: SourceProposalTask["status"],
+  adminOverride = false,
+  comment?: string,
+) {
+  return fetchJson<SourceChangeset | ApiErrorPayload>(
+    `/api/library/source/${sourceId}/changesets/${changesetId}/tasks/${taskId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${version}"`,
+      },
+      body: JSON.stringify({
+        status,
+        ...(adminOverride ? { adminOverride: true, comment } : {}),
+      }),
+    },
+  );
 }
 
 export function publishSourceChangeset(
@@ -788,10 +858,13 @@ export function publishSourceChangeset(
   version: number,
   comment?: string,
 ) {
-  return fetchJson<{ source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload>(
-    `/api/library/source/${sourceId}/changesets/${changesetId}/publish`,
-    { method: "POST", headers: { "Content-Type": "application/json", "If-Match": `"${version}"` }, body: JSON.stringify(comment ? { comment } : {}) },
-  );
+  return fetchJson<
+    { source: LibrarySource; changeset: SourceChangeset } | ApiErrorPayload
+  >(`/api/library/source/${sourceId}/changesets/${changesetId}/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+    body: JSON.stringify(comment ? { comment } : {}),
+  });
 }
 
 /** Explicit, audited administrator approval; does not publish the proposal. */

@@ -132,6 +132,35 @@ export function listEvents(signal?: AbortSignal) {
   return request<EventList>("", { signal });
 }
 
+export function searchEvents({
+  query,
+  periods,
+  from,
+  to,
+  nextToken,
+  signal,
+}: {
+  query: string;
+  periods?: string[];
+  from?: { year: number; era: "BC" | "AD" } | null;
+  to?: { year: number; era: "BC" | "AD" } | null;
+  nextToken?: string;
+  signal?: AbortSignal;
+}) {
+  const params = new URLSearchParams({ q: query, limit: "20" });
+  if (periods?.length) params.set("periods", periods.join(","));
+  if (from) {
+    params.set("fromYear", String(from.year));
+    params.set("fromEra", from.era);
+  }
+  if (to) {
+    params.set("toYear", String(to.year));
+    params.set("toEra", to.era);
+  }
+  if (nextToken) params.set("nextToken", nextToken);
+  return request<EventList>(`?${params}`, { signal });
+}
+
 export function getEvent(eventId: string, signal?: AbortSignal) {
   return request<TempvsEvent>(`/${encodeURIComponent(eventId)}`, { signal });
 }
@@ -191,10 +220,17 @@ export function deleteEvent(eventId: string) {
   return request<void>(`/${encodeURIComponent(eventId)}`, { method: "DELETE" });
 }
 
-export function addEventAdmin(eventId: string, profileId: string, role?: string) {
+export function addEventAdmin(
+  eventId: string,
+  profileId: string,
+  role?: string,
+) {
   return request<TempvsEvent>(`/${encodeURIComponent(eventId)}/admins`, {
     method: "POST",
-    body: JSON.stringify({ profileId, ...(role?.trim() ? { role: role.trim() } : {}) }),
+    body: JSON.stringify({
+      profileId,
+      ...(role?.trim() ? { role: role.trim() } : {}),
+    }),
   });
 }
 
@@ -237,13 +273,13 @@ export function unfollowEvent(eventId: string, profileId: string) {
 
 export function getFollowedEvents(profileId: string, nextToken?: string) {
   return request<EventList>(
-    `/profiles/${encodeURIComponent(profileId)}/followed-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ''}`,
+    `/profiles/${encodeURIComponent(profileId)}/followed-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ""}`,
   );
 }
 
 export function getParticipatingEvents(profileId: string, nextToken?: string) {
   return request<EventList>(
-    `/profiles/${encodeURIComponent(profileId)}/participating-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ''}`,
+    `/profiles/${encodeURIComponent(profileId)}/participating-events${nextToken ? `?nextToken=${encodeURIComponent(nextToken)}` : ""}`,
   );
 }
 

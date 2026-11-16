@@ -8,12 +8,12 @@ import {
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import SearchDialog from "./SearchDialog";
-import { searchProfiles, getProfileAvatar } from "../profile/profileApi";
+import { searchProfilesPage, getProfileAvatar } from "../profile/profileApi";
 import { findSources, getSourceImages } from "../library/libraryApi";
 import messages from "../translations/en.json";
 
 jest.mock("../profile/profileApi", () => ({
-  searchProfiles: jest.fn(),
+  searchProfilesPage: jest.fn(),
   getProfileAvatar: jest.fn(),
 }));
 jest.mock("../library/libraryApi", () => ({
@@ -21,7 +21,7 @@ jest.mock("../library/libraryApi", () => ({
   getSourceImages: jest.fn(),
 }));
 jest.mock("../club/clubApi", () => ({ listClubs: jest.fn() }));
-jest.mock("../event/eventApi", () => ({ listEvents: jest.fn() }));
+jest.mock("../event/eventApi", () => ({ searchEvents: jest.fn() }));
 
 function response(content: unknown[]): Response {
   return { ok: true, status: 200, json: async () => ({ content }) } as Response;
@@ -94,19 +94,19 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockLoadMore = undefined;
   window.localStorage.clear();
-  jest.mocked(searchProfiles).mockResolvedValue([]);
+  jest.mocked(searchProfilesPage).mockResolvedValue({ content: [] });
   jest.mocked(findSources).mockResolvedValue({ ok: true, data: [] } as any);
 });
 afterEach(() => jest.restoreAllMocks());
 
 test("loads twenty profile avatars in one metadata request", async () => {
-  jest.mocked(searchProfiles).mockResolvedValue(
-    Array.from({ length: 20 }, (_, id) => ({
+  jest.mocked(searchProfilesPage).mockResolvedValue({
+    content: Array.from({ length: 20 }, (_, id) => ({
       id: `batch-profile-${id}`,
       firstName: `Profile ${id}`,
       type: "USER",
     })),
-  );
+  });
   const fetchMock = jest
     .spyOn(global, "fetch")
     .mockImplementation(async (_url, options) => lookupResponse(options));
@@ -127,11 +127,11 @@ test("loads twenty profile avatars in one metadata request", async () => {
 
 test("renders profile results before thumbnail metadata finishes", async () => {
   const images = deferred<Response>();
-  jest
-    .mocked(searchProfiles)
-    .mockResolvedValue([
+  jest.mocked(searchProfilesPage).mockResolvedValue({
+    content: [
       { id: "pending-profile", firstName: "Pending photos", type: "USER" },
-    ]);
+    ],
+  });
   jest.spyOn(global, "fetch").mockReturnValue(images.promise);
   openSearch();
   expect(
@@ -176,13 +176,17 @@ test("batches source covers without downloading per-source image collections", a
 test("a late image batch cannot replace the next search's thumbnails", async () => {
   const oldImages = deferred<Response>();
   jest
-    .mocked(searchProfiles)
-    .mockResolvedValueOnce([
-      { id: "stale-image-profile", firstName: "Old profile", type: "USER" },
-    ])
-    .mockResolvedValueOnce([
-      { id: "fresh-image-profile", firstName: "New profile", type: "USER" },
-    ]);
+    .mocked(searchProfilesPage)
+    .mockResolvedValueOnce({
+      content: [
+        { id: "stale-image-profile", firstName: "Old profile", type: "USER" },
+      ],
+    })
+    .mockResolvedValueOnce({
+      content: [
+        { id: "fresh-image-profile", firstName: "New profile", type: "USER" },
+      ],
+    });
   const fetchMock = jest
     .spyOn(global, "fetch")
     .mockReturnValueOnce(oldImages.promise)
@@ -240,15 +244,17 @@ test("late first-page thumbnails do not erase images from an appended page", asy
     type: "USER",
   }));
   jest
-    .mocked(searchProfiles)
-    .mockResolvedValueOnce(profiles)
-    .mockResolvedValueOnce([
-      {
-        id: "paged-preview-last",
-        firstName: "Last page profile",
-        type: "USER",
-      },
-    ]);
+    .mocked(searchProfilesPage)
+    .mockResolvedValueOnce({ content: profiles, nextToken: "profile-next" })
+    .mockResolvedValueOnce({
+      content: [
+        {
+          id: "paged-preview-last",
+          firstName: "Last page profile",
+          type: "USER",
+        },
+      ],
+    });
   jest
     .spyOn(global, "fetch")
     .mockReturnValueOnce(firstImages.promise)
@@ -263,6 +269,9 @@ test("late first-page thumbnails do not erase images from an appended page", asy
     ),
   );
   await screen.findByRole("link", { name: "Last page profile" });
+  expect(jest.mocked(searchProfilesPage).mock.calls[1][0].nextToken).toBe(
+    "profile-next",
+  );
   await waitFor(() =>
     expect(document.querySelectorAll("img.search-profile-image")).toHaveLength(
       1,
@@ -282,4 +291,33 @@ test("late first-page thumbnails do not erase images from an appended page", asy
   expect(document.querySelectorAll("img.search-profile-image")).toHaveLength(
     21,
   );
+});
+
+test("aborts superseded catalogue requests and ignores their late results", async () => {
+  const old = deferred<{ content: any[] }>();
+  jest
+    .mocked(searchProfilesPage)
+    .mockReturnValueOnce(old.promise)
+    .mockResolvedValueOnce({
+      content: [
+        { id: "fresh-cancel", firstName: "Fresh result", type: "USER" },
+      ],
+    });
+  jest
+    .spyOn(global, "fetch")
+    .mockImplementation(async (_url, options) => lookupResponse(options));
+  const input = openSearch();
+  await waitFor(() => expect(searchProfilesPage).toHaveBeenCalledTimes(1));
+  const signal = jest.mocked(searchProfilesPage).mock.calls[0][0].signal!;
+  fireEvent.change(input, { target: { value: "athens" } });
+  expect(signal.aborted).toBe(true);
+  await screen.findByRole("link", { name: "Fresh result" });
+  await act(async () =>
+    old.resolve({
+      content: [{ id: "old-cancel", firstName: "Old result", type: "USER" }],
+    }),
+  );
+  expect(
+    screen.queryByRole("link", { name: "Old result" }),
+  ).not.toBeInTheDocument();
 });

@@ -15,6 +15,7 @@ import MapCanvas, { entityKey } from "./MapCanvas";
 import { entityThumbnailMarkers } from "./entityThumbnailMarkers";
 import {
   getMapPlace,
+  getMapPlaceEntityCounts,
   listMapPlaceChildren,
   listMapPlaceEntities,
   listMapPlaceHistory,
@@ -53,6 +54,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
   const [entityCounts, setEntityCounts] = useState<
     Partial<Record<MapEntityLocation["entityType"], number>>
   >({});
+  const [countsLoading, setCountsLoading] = useState(true);
+  const [countsError, setCountsError] = useState(false);
+  const [countsAttempt, setCountsAttempt] = useState(0);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [entityType, setEntityType] = useState<EntityTypeFilter>("ALL");
@@ -105,16 +109,19 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
         entityType === "ALL" ? [] : [entityType],
         entityType === "SOURCE" && sourceRole !== "ALL" ? [sourceRole] : [],
         controller.signal,
+        undefined,
+        false,
       ),
       listMapPlaceHistory(id, undefined),
     ])
       .then(([nextPlace, nextChildren, nextEntities, nextHistory]) => {
+        if (controller.signal.aborted) return;
         setPlace(nextPlace);
         setChildren(nextChildren.items);
         setChildCursor(nextChildren.nextCursor);
         setEntities(nextEntities.items);
         setEntityCursor(nextEntities.nextCursor);
-        setEntityCounts(nextEntities.counts || {});
+
         setHistory(nextHistory.items);
         setHistoryCursor(nextHistory.nextCursor);
         if (nextPlace) {
@@ -209,6 +216,30 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       .catch(() => undefined);
   }, [history]);
 
+  useEffect(() => {
+    if (!id) return;
+    const controller = new AbortController();
+    setEntityCounts({});
+    setCountsLoading(true);
+    setCountsError(false);
+    void getMapPlaceEntityCounts(
+      id,
+      entityType === "ALL" ? [] : [entityType],
+      entityType === "SOURCE" && sourceRole !== "ALL" ? [sourceRole] : [],
+      controller.signal,
+    )
+      .then((counts) => {
+        if (!controller.signal.aborted) setEntityCounts(counts);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setCountsError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCountsLoading(false);
+      });
+    return () => controller.abort();
+  }, [id, entityType, sourceRole, countsAttempt]);
+
   const loadMoreEntities = async () => {
     if (!id || !entityCursor || entitiesLoading) return;
     setEntitiesLoading(true);
@@ -222,7 +253,6 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
       );
       setEntities((current) => [...current, ...page.items]);
       setEntityCursor(page.nextCursor);
-      setEntityCounts(page.counts || {});
     } catch (caught) {
       setError((caught as Error).message || "Unable to load more content.");
     } finally {
@@ -342,7 +372,9 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
           ) : null}
           <a href="#place-content">
             <span>Linked content</span>
-            <strong>{contentCount}</strong>
+            <strong>
+              {countsLoading ? "�" : countsError ? "�" : contentCount}
+            </strong>
           </a>
         </div>
         {historicalNames.length > 0 && (
@@ -433,9 +465,7 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             {children.map((child, index) => (
               <Fragment key={child.id}>
                 {index > 0 && ", "}
-                <Link to={mapPlacePath(child)}>
-                  {child.canonicalName}
-                </Link>
+                <Link to={mapPlacePath(child)}>{child.canonicalName}</Link>
               </Fragment>
             ))}
             {childCursor && (
@@ -608,8 +638,8 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
               onClick={() => setEntityType(type)}
             >
               {type === "ALL"
-                ? `All (${Object.values(entityCounts).reduce((total, count) => total + (count || 0), 0)})`
-                : `${type[0] + type.slice(1).toLowerCase()} (${entityCounts[type] || 0})`}
+                ? `All (${countsLoading ? "�" : countsError ? "�" : contentCount})`
+                : `${type[0] + type.slice(1).toLowerCase()} (${countsLoading ? "�" : countsError ? "�" : entityCounts[type] || 0})`}
             </Button>
           ))}
         </ButtonGroup>
@@ -629,6 +659,18 @@ export default function MapPlacePage({ id }: MapPlacePageProps) {
             <option value="DISCOVERED_AT">Discovered here</option>
             <option value="HELD_AT">Held here</option>
           </Form.Select>
+        )}
+        {countsError && (
+          <p role="status" className="text-muted">
+            Content totals are unavailable.{" "}
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => setCountsAttempt((value) => value + 1)}
+            >
+              Retry counts
+            </Button>
+          </p>
         )}
         {entities.length === 0 ? (
           <p className="text-muted mb-0">

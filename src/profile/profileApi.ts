@@ -2,12 +2,7 @@ import { doFetch } from "../util/Fetcher";
 import { getSession, invalidateSessionCache } from "../auth/session";
 import { withUploadPreview } from "../image/uploadPreview";
 
-import {
-  Avatar,
-  CurrentUserInfo,
-  Id,
-  Profile,
-} from "./profileTypes";
+import { Avatar, CurrentUserInfo, Id, Profile } from "./profileTypes";
 
 type JsonRecord = Record<string, unknown>;
 type RequestOptions = RequestInit & {
@@ -116,40 +111,54 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 }
 
 export async function getOnboardingPreferences(): Promise<OnboardingPreferences> {
-  const response = await requestJson("/api/profile/profile/onboarding-preferences");
+  const response = await requestJson(
+    "/api/profile/profile/onboarding-preferences",
+  );
   if (!response.ok) throw new Error("Unable to load onboarding preferences");
   const value = (await response.json()) as Partial<OnboardingPreferences>;
   return {
-    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
-    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+    dismissedAt:
+      typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt:
+      typeof value.celebratedAt === "string" ? value.celebratedAt : null,
   };
 }
 
 export async function setOnboardingDismissed(
   dismissed: boolean,
 ): Promise<OnboardingPreferences> {
-  const response = await requestJson("/api/profile/profile/onboarding-preferences", {
-    method: "PUT",
-    body: JSON.stringify({ dismissed }),
-  });
+  const response = await requestJson(
+    "/api/profile/profile/onboarding-preferences",
+    {
+      method: "PUT",
+      body: JSON.stringify({ dismissed }),
+    },
+  );
   if (!response.ok) throw new Error("Unable to save onboarding preferences");
   const value = (await response.json()) as Partial<OnboardingPreferences>;
   return {
-    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
-    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+    dismissedAt:
+      typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt:
+      typeof value.celebratedAt === "string" ? value.celebratedAt : null,
   };
 }
 
 export async function markOnboardingCelebrated(): Promise<OnboardingPreferences> {
-  const response = await requestJson("/api/profile/profile/onboarding-preferences", {
-    method: "PUT",
-    body: JSON.stringify({ celebrated: true }),
-  });
+  const response = await requestJson(
+    "/api/profile/profile/onboarding-preferences",
+    {
+      method: "PUT",
+      body: JSON.stringify({ celebrated: true }),
+    },
+  );
   if (!response.ok) throw new Error("Unable to save onboarding preferences");
   const value = (await response.json()) as Partial<OnboardingPreferences>;
   return {
-    dismissedAt: typeof value.dismissedAt === "string" ? value.dismissedAt : null,
-    celebratedAt: typeof value.celebratedAt === "string" ? value.celebratedAt : null,
+    dismissedAt:
+      typeof value.dismissedAt === "string" ? value.dismissedAt : null,
+    celebratedAt:
+      typeof value.celebratedAt === "string" ? value.celebratedAt : null,
   };
 }
 
@@ -361,6 +370,42 @@ function readClubProfiles(userId: Id): Promise<Profile[]> {
     const profiles = text ? JSON.parse(text) : [];
     return Array.isArray(profiles) ? (profiles as Profile[]) : [];
   });
+}
+
+export async function searchProfilesPage({
+  query,
+  period,
+  periods,
+  type,
+  from,
+  to,
+  size = 20,
+  nextToken,
+  signal,
+}: Omit<ProfileSearchParams, "page"> & {
+  periods?: string[];
+  nextToken?: string;
+  signal?: AbortSignal;
+}) {
+  const params = new URLSearchParams({ limit: String(size) });
+  if (query) params.set("query", query);
+  if (period) params.set("period", period);
+  if (periods?.length) params.set("periods", periods.join(","));
+  if (type) params.set("type", type);
+  if (from) {
+    params.set("fromYear", String(from.year));
+    params.set("fromEra", from.era);
+  }
+  if (to) {
+    params.set("toYear", String(to.year));
+    params.set("toEra", to.era);
+  }
+  if (nextToken) params.set("nextToken", nextToken);
+  const response = await requestJson(`/api/profile/profile/search?${params}`, {
+    signal,
+  });
+  if (!response.ok) throw new Error("Unable to search profiles");
+  return (await response.json()) as { content: Profile[]; nextToken?: string };
 }
 
 export async function searchProfiles({

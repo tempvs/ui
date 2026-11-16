@@ -165,6 +165,9 @@ function InteractiveMapCanvas({
   const ownedMarkerInstances = useRef<Map<string, OwnedMarkerInstance>>(
     new Map(),
   );
+  const thumbnailMarkerInstances = useRef<Map<string, OwnedMarkerInstance>>(
+    new Map(),
+  );
   const initialOwnedMarkers = useRef(ownedMarkers);
   const initialOwnedConnections = useRef(ownedConnections);
   const fittedPrivateMarkerSignature = useRef<string | null>(null);
@@ -183,7 +186,9 @@ function InteractiveMapCanvas({
     const instance = map.current;
     const changed = () => setViewportRevision((value) => value + 1);
     instance.on("moveend", changed);
-    return () => { instance.off("moveend", changed); };
+    return () => {
+      instance.off("moveend", changed);
+    };
   }, [ready, ownedMarkers.length]);
   const [contextLost, setContextLost] = useState(false);
   const [fatalError, setFatalError] = useState<Error | null>(null);
@@ -273,6 +278,7 @@ function InteractiveMapCanvas({
     let active = true;
     let disposeMarkerLayers: (() => void) | undefined;
     const ownedInstances = ownedMarkerInstances.current;
+    const thumbnailInstances = thumbnailMarkerInstances.current;
     const next = new maplibregl.Map({
       container: element.current,
       style: mapStyle(basemapData),
@@ -308,6 +314,8 @@ function InteractiveMapCanvas({
       coordinateMarker.current = null;
       ownedInstances.forEach(({ dispose }) => dispose());
       ownedInstances.clear();
+      thumbnailInstances.forEach(({ dispose }) => dispose());
+      thumbnailInstances.clear();
       disposeMarkerLayers?.();
       closeMapPopup(next);
       next.remove();
@@ -418,16 +426,14 @@ function InteractiveMapCanvas({
   useEffect(() => {
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-entities") as
-      | GeoJSONSource
-      | undefined;
+      GeoJSONSource | undefined;
     source?.setData(entityCollection(entities, placeReferences));
   }, [entities, placeReferences, ready]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
     const source = map.current.getSource("map-places") as
-      | GeoJSONSource
-      | undefined;
+      GeoJSONSource | undefined;
     source?.setData(placeCollection(places));
   }, [places, ready]);
 
@@ -438,7 +444,11 @@ function InteractiveMapCanvas({
     // Large private graphs retain all data, edges and fit points. Only their
     // on-screen avatars need DOM elements; panning restores the other pins.
     const bounds = ownedMarkers.length > 150 ? mapInstance.getBounds() : null;
-    const visibleMarkers = bounds ? ownedMarkers.filter((pin) => bounds.contains([pin.longitude, pin.latitude])) : ownedMarkers;
+    const visibleMarkers = bounds
+      ? ownedMarkers.filter((pin) =>
+          bounds.contains([pin.longitude, pin.latitude]),
+        )
+      : ownedMarkers;
     const nextKeys = new Set(visibleMarkers.map((marker) => marker.key));
     ownedMarkerInstances.current.forEach((instance, key) => {
       if (!nextKeys.has(key)) {
@@ -549,16 +559,51 @@ function InteractiveMapCanvas({
         },
       });
     });
-  }, [ownedMarkerLayout, ownedMarkers, placeReferences, ready, viewportRevision]);
+  }, [
+    ownedMarkerLayout,
+    ownedMarkers,
+    placeReferences,
+    ready,
+    viewportRevision,
+  ]);
 
   useEffect(() => {
     if (!ready || !map.current) return undefined;
     const mapInstance = map.current;
     const offsets = markerOffsets(thumbnailMarkers);
-    const popupDisposers: Array<() => void> = [];
-    const mapGestureDisposers: Array<() => void> = [];
-    const instances = thumbnailMarkers.map((thumbnailMarker) => {
+    const nextKeys = new Set(thumbnailMarkers.map((marker) => marker.key));
+    thumbnailMarkerInstances.current.forEach((instance, key) => {
+      if (!nextKeys.has(key)) {
+        instance.dispose();
+        thumbnailMarkerInstances.current.delete(key);
+      }
+    });
+    thumbnailMarkers.forEach((thumbnailMarker) => {
       const markerOffset = offsets.get(thumbnailMarker.key) || [0, 0];
+      // Keep identical marker DOM and popups; recreate only content or anchor changes.
+      const contentKey = JSON.stringify([
+        thumbnailMarker.entityType,
+        thumbnailMarker.entityId,
+        thumbnailMarker.locationRole,
+        thumbnailMarker.label,
+        thumbnailMarker.placeId,
+        thumbnailMarker.placeName,
+        thumbnailMarker.thumbnailUrl,
+        thumbnailMarker.latitude,
+        thumbnailMarker.longitude,
+        markerOffset,
+        placeReferences.get(thumbnailMarker.placeId),
+      ]);
+      const existing = thumbnailMarkerInstances.current.get(
+        thumbnailMarker.key,
+      );
+      if (existing?.contentKey === contentKey) {
+        existing.marker
+          .setLngLat([thumbnailMarker.longitude, thumbnailMarker.latitude])
+          .setOffset(markerOffset);
+        return;
+      }
+      existing?.dispose();
       const markerElement = mapMarkerElement(thumbnailMarker, "thumbnail");
       const stopMapGesture = (event: Event) => event.stopPropagation();
       const mapGestureEvents = [
@@ -573,40 +618,41 @@ function InteractiveMapCanvas({
       mapGestureEvents.forEach((eventName) =>
         markerElement.addEventListener(eventName, stopMapGesture),
       );
-      mapGestureDisposers.push(() =>
+      const disposeGestures = () =>
         mapGestureEvents.forEach((eventName) =>
           markerElement.removeEventListener(eventName, stopMapGesture),
-        ),
-      );
+        );
       markerElement.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         thumbnailMarkerSelectRef.current?.(thumbnailMarker);
       });
-      popupDisposers.push(
-        addMarkerLinksPopup(
-          mapInstance,
-          markerElement,
-          {
-            ...thumbnailMarker,
-            placeReference: placeReferences.get(thumbnailMarker.placeId),
-          },
-          markerOffset,
-        ),
+      const disposePopup = addMarkerLinksPopup(
+        mapInstance,
+        markerElement,
+        {
+          ...thumbnailMarker,
+          placeReference: placeReferences.get(thumbnailMarker.placeId),
+        },
+        markerOffset,
       );
-      return new maplibregl.Marker({
+      const marker = new maplibregl.Marker({
         element: markerElement,
         anchor: "center",
         offset: markerOffset,
       })
         .setLngLat([thumbnailMarker.longitude, thumbnailMarker.latitude])
         .addTo(mapInstance);
+      thumbnailMarkerInstances.current.set(thumbnailMarker.key, {
+        marker,
+        contentKey,
+        dispose: () => {
+          disposeGestures();
+          disposePopup();
+          marker.remove();
+        },
+      });
     });
-    return () => {
-      mapGestureDisposers.forEach((dispose) => dispose());
-      popupDisposers.forEach((dispose) => dispose());
-      instances.forEach((marker) => marker.remove());
-    };
   }, [placeReferences, ready, thumbnailMarkers]);
 
   useEffect(() => {
@@ -615,8 +661,7 @@ function InteractiveMapCanvas({
     const data = ownedConnectionCollection(ownedConnections, ownedMarkers);
     const sync = () => {
       const source = mapInstance.getSource("map-owned-connections") as
-        | GeoJSONSource
-        | undefined;
+        GeoJSONSource | undefined;
       source?.setData(data);
     };
     // A map can report its initial load before every style source has become

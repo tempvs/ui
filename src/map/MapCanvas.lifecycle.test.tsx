@@ -8,6 +8,13 @@ const mockAddSource = jest.fn();
 const mockAddControl = jest.fn();
 let mockEvents: Record<string, (...args: any[]) => void> = {};
 
+const mockMarkers: Array<{
+  element: HTMLElement;
+  remove: jest.Mock;
+  setLngLat: jest.Mock;
+  setOffset: jest.Mock;
+  addTo: jest.Mock;
+}> = [];
 jest.mock("./mapApi", () => ({
   getMapPlacesByReference: jest.fn(),
   mapPlaceReference: () => "alexandria",
@@ -35,6 +42,20 @@ jest.mock("./mapLibre", () => ({
         remove: () => mockRemoveMap(),
       };
     },
+    Marker: function (options: { element: HTMLElement }) {
+      const marker = {
+        element: options.element,
+        remove: jest.fn(),
+        setLngLat: jest.fn(),
+        setOffset: jest.fn(),
+        addTo: jest.fn(),
+      };
+      marker.setLngLat.mockReturnValue(marker);
+      marker.setOffset.mockReturnValue(marker);
+      marker.addTo.mockReturnValue(marker);
+      mockMarkers.push(marker);
+      return marker;
+    },
     NavigationControl: jest.fn(),
     AttributionControl: jest.fn(),
   },
@@ -42,6 +63,7 @@ jest.mock("./mapLibre", () => ({
 
 beforeEach(() => {
   mockEvents = {};
+  mockMarkers.length = 0;
   jest.spyOn(global, "fetch").mockResolvedValue({
     ok: true,
     json: async () => ({ type: "FeatureCollection", features: [] }),
@@ -204,4 +226,68 @@ test("setup failures release a constructed map before showing the fallback", asy
   expect(screen.getByRole("alert")).toBeVisible();
   expect(mockRemoveMap).toHaveBeenCalledTimes(1);
   log.mockRestore();
+});
+
+test("reuses unchanged thumbnail markers and disposes only changed/removed instances", async () => {
+  const a = {
+    key: "a",
+    entityType: "CLUB" as const,
+    entityId: "club-a",
+    locationRole: "CLUB_ASSOCIATION" as const,
+    label: "A",
+    placeId: "rome",
+    placeName: "Rome",
+    latitude: 41.9,
+    longitude: 12.5,
+  };
+  const b = {
+    ...a,
+    key: "b",
+    entityId: "club-b",
+    placeId: "paris",
+    label: "B",
+  };
+  const select = jest.fn();
+  const view = render(
+    <MapCanvas
+      {...emptyMapProps}
+      thumbnailMarkers={[a, b]}
+      onThumbnailMarkerSelect={select}
+    />,
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+  act(() => mockEvents.load());
+  expect(mockMarkers).toHaveLength(2);
+  const originalA = mockMarkers[0];
+  const originalB = mockMarkers[1];
+  view.rerender(
+    <MapCanvas
+      {...emptyMapProps}
+      thumbnailMarkers={[{ ...a }, { ...b }]}
+      onThumbnailMarkerSelect={select}
+    />,
+  );
+  expect(mockMarkers).toHaveLength(2);
+  expect(originalA.remove).not.toHaveBeenCalled();
+  const changed = { ...b, label: "Updated B", latitude: 48.8 };
+  view.rerender(
+    <MapCanvas
+      {...emptyMapProps}
+      thumbnailMarkers={[a, changed]}
+      onThumbnailMarkerSelect={select}
+    />,
+  );
+  expect(mockMarkers).toHaveLength(3);
+  expect(originalB.remove).toHaveBeenCalledTimes(1);
+  fireEvent.click(mockMarkers[2].element);
+  expect(select).toHaveBeenLastCalledWith(changed);
+  view.rerender(<MapCanvas {...emptyMapProps} thumbnailMarkers={[a]} />);
+  expect(mockMarkers[2].remove).toHaveBeenCalledTimes(1);
+  expect(originalA.remove).not.toHaveBeenCalled();
+  view.unmount();
+  expect(originalA.remove).toHaveBeenCalledTimes(1);
+  expect(originalB.remove).toHaveBeenCalledTimes(1);
+  expect(mockMarkers[2].remove).toHaveBeenCalledTimes(1);
 });

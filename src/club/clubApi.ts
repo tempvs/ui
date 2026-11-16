@@ -235,6 +235,7 @@ export const listClubs = async (
   signal?: AbortSignal,
   from?: { year: number; era: "BC" | "AD" } | null,
   to?: { year: number; era: "BC" | "AD" } | null,
+  periods?: string[],
 ): Promise<ClubPage> =>
   pageValue(
     await request<unknown>(
@@ -242,6 +243,7 @@ export const listClubs = async (
         query,
         limit: "20",
         ...(period ? { period } : {}),
+        ...(periods?.length ? { periods: periods.join(",") } : {}),
         ...(from ? { fromYear: String(from.year), fromEra: from.era } : {}),
         ...(to ? { toYear: String(to.year), toEra: to.era } : {}),
         ...(nextToken ? { nextToken } : {}),
@@ -358,10 +360,7 @@ export const getProfileClubs = async (id: Id) => {
   const existing = profileClubReads.get(key);
   if (existing) return existing;
   const read = (async () =>
-    arrayValue(
-      await request<unknown>(`/profiles/${id}/clubs`),
-      clubValue,
-    ))();
+    arrayValue(await request<unknown>(`/profiles/${id}/clubs`), clubValue))();
   profileClubReads.set(key, read);
   try {
     return await read;
