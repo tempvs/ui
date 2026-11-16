@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { previousDeployment, verifyService } from "./service-health.mjs";
 
 const sha = (value) => {
   if (!/^[a-f0-9]{40}$/.test(value ?? ""))
@@ -404,9 +405,6 @@ async function main() {
       ) + "\n",
     );
   };
-  const health = await import(
-    pathToFileURL(process.env.PUBLIC_PROBE_SCRIPT).href
-  );
   const storage = new Storage({
     bucket: process.env.WEB_BUCKET_NAME,
     distribution: process.env.CLOUDFRONT_DISTRIBUTION_ID,
@@ -415,7 +413,7 @@ async function main() {
   const marker = storage.read("release.json");
   const previous = marker
     ? { sha: sha(JSON.parse(marker).release) }
-    : await health.previousDeployment({
+    : await previousDeployment({
         repository: process.env.GITHUB_REPOSITORY,
         stage,
         token: process.env.GH_TOKEN,
@@ -445,7 +443,7 @@ async function main() {
     storage.archive(release, candidate.directory);
   }
   candidate.manifest = createManifest(candidate.directory, release);
-  const probe = () => health.verifyService({ service: "all", stage, release });
+  const probe = () => verifyService({ service: "all", stage, release });
   const verifyLive = async (item) => {
     await verifyAssets({ base, manifest: item.manifest });
     await probe();

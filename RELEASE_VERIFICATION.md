@@ -40,6 +40,11 @@ and anonymous protected-route boundaries; they do not create production data
 or replace authenticated browser tests. Dev retains its real-session tests
 in Chrome, Firefox, WebKit and Apple's Safari.
 
+The UI vendors the health helper in `scripts/service-health.mjs` from reviewed
+shared tools revision `44c50c0ccc04c4ad32d85a84ea852b0b31723cfc`. This permits the
+UI workflow to run without access to a private repository. Update its probes
+together with the shared backend helper when API contracts change.
+
 ## Performance behavior
 
 The wall renders its visible variable-height cards and a small overscan while

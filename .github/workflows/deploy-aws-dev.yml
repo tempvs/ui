@@ -121,9 +121,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-      - name: Load reviewed release verification tools
-        id: release-tools
-        uses: tempvs/workflows/.github/actions/release-tools@44c50c0ccc04c4ad32d85a84ea852b0b31723cfc # reviewed release tools
 
       - name: Verify deployment configuration
         shell: bash
@@ -168,7 +165,6 @@ jobs:
       - name: Stage, verify and publish with automatic recovery
         env:
           GH_TOKEN: ${{ github.token }}
-          PUBLIC_PROBE_SCRIPT: ${{ steps.release-tools.outputs.health_script }}
         run: node scripts/release.mjs
       - name: Preserve release verification and recovery evidence
         if: ${{ always() }}

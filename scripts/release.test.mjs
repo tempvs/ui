@@ -11,6 +11,68 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { createManifest, verifyAssets, promoteVerified } from "./release.mjs";
+import { verifyService, previousDeployment } from "./service-health.mjs";
+
+test("vendored health checks cover all public APIs and anonymous auth boundaries", async () => {
+  const results = await verifyService({
+    service: "all",
+    stage: "dev",
+    fetcher: async (input) => {
+      const url = new URL(input);
+      assert.equal(url.origin, "https://dev.tempvs.club");
+      if (url.pathname === "/auth/login")
+        return new Response(null, {
+          status: 303,
+          headers: {
+            location:
+              "https://auth.tempvs.club/oauth2/authorize?redirect_uri=https%3A%2F%2Fdev.tempvs.club%2Fauth%2Fcallback&identity_provider=Google",
+          },
+        });
+      return Response.json(
+        {},
+        {
+          status: /^(\/auth\/session|\/api\/(chat|notification|wall))/.test(
+            url.pathname,
+          )
+            ? 401
+            : 200,
+        },
+      );
+    },
+  });
+  assert.equal(results.length, 14);
+  let reads = 0;
+  await assert.rejects(
+    verifyService({
+      service: "map",
+      stage: "dev",
+      attempts: 2,
+      pause: async () => {},
+      fetcher: async () => {
+        reads++;
+        return new Response("<html>bad gateway</html>");
+      },
+    }),
+  );
+  assert.equal(reads, 2);
+});
+
+test("vendored recovery history selects a successful deployment in the requested environment", async () => {
+  const baseline = await previousDeployment({
+    repository: "tempvs/ui",
+    stage: "dev",
+    token: "fixture-token",
+    fetcher: async (url) => {
+      if (url.includes("/statuses"))
+        return Response.json([{ state: "success" }]);
+      return Response.json([
+        { id: 1, environment: "prod", sha: "a".repeat(40) },
+        { id: 2, environment: "dev", sha: "b".repeat(40) },
+      ]);
+    },
+  });
+  assert.deepEqual(baseline, { id: 2, sha: "b".repeat(40) });
+});
 const a = "a".repeat(40),
   b = "b".repeat(40);
 function fixture(t) {
