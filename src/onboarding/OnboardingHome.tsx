@@ -158,7 +158,7 @@ export default function OnboardingHome({ userId }: { userId: string }) {
     void refresh();
     // The user ID is the only input to the initial progress read. Actions take
     // the member back home, where this component is mounted again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [requestedResume, userId]);
 
   useEffect(() => {

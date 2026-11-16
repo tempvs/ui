@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "no-debugger": "error",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn"
+      },
+      "plugins": [
+        "react"
+      ]
+    }
+  ]
+}

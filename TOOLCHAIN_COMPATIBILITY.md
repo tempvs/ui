@@ -4,11 +4,24 @@ UI development, build and test tooling uses Node 26.13.1 and npm 11.20.0.
 CI and local version-manager files select this version; package engines reject
 unsupported installations. Node types are aligned to major 26.
 
-Type checking/builds use stable TypeScript 7.0.2. Typed ESLint still needs
-the TypeScript 6 compiler API. The supported side-by-side aliases remain:
-`@typescript/native` supplies `tsc` 7; `typescript` aliases
-`@typescript/typescript6` 6.0.2 for ESLint. This is a functional compatibility
-requirement, not a security backport. No lint rules were disabled.
+Type checking uses TypeScript 7.0.2 directly. Oxlint 1.93.0 replaces ESLint;
+the UI uses Oxlint's native React Hooks rules without a type-aware engine.
+The TypeScript 6 API bridge and both compiler aliases have been removed.
+Prettier and separate type checking remain unchanged.
+
+## Lint rule preservation
+
+`.oxlintrc.json` explicitly migrates the previous flat ESLint configuration,
+including severities, options, TypeScript overrides and script/test exceptions.
+Default rule categories are disabled so migration does not silently add a
+different recommended ruleset. Existing inline exceptions use Oxlint directives.
+`npm run lint:regression` checks valid code and deliberate mistakes under the
+real project configuration; normal `npm run check` includes this check.
+
+The UI retains the three existing checks: React Hooks call order (error),
+effect dependencies (warning), and debugger statements (error). The lint command
+continues to reject any warning. Regression checks verify the warning threshold
+and the existing inline-suppression behavior as well as valid React code.
 
 ## Accepted upstream security advisories - 2026-11-15
 
@@ -34,3 +47,8 @@ References:
 - https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/
 - https://github.com/advisories/GHSA-g3hv-75wg-m249
 - https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+
+Lint references:
+
+- https://oxc.rs/docs/guide/usage/linter/migrate-from-eslint.html
+- https://oxc.rs/docs/guide/usage/linter/type-aware.html

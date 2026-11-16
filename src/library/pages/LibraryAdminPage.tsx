@@ -175,7 +175,7 @@ export default function LibraryAdminPage() {
     }
     setLoading(false);
     setError(null);
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- loading functions intentionally refresh on a URL tab change.
+  }, [tab]); // oxlint-disable-line react/exhaustive-deps -- loading functions intentionally refresh on a URL tab change.
   const updateMember = async (member: LibraryMember, role: string | null) => {
     setError(null);
     setNotice(null);

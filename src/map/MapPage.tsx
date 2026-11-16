@@ -868,7 +868,7 @@ export default function MapPage() {
     )
       void search();
     // Query parameters are intentionally applied only on navigation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, []);
 
   const loadMoreEntities = async () => {

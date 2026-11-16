@@ -20,13 +20,14 @@
     "build": "node scripts/build-map-basemap.js && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.tools.json",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "oxlint src --max-warnings=0",
     "e2e:install": "playwright install chromium firefox webkit",
     "e2e": "playwright test",
     "test": "jest",
     "test:run": "jest --runInBand",
-    "check": "npm run lint && npm run typecheck && npm run test:run && npm run build && npm run test:tooling",
-    "test:tooling": "node --test scripts/toolchain.test.mjs"
+    "check": "npm run lint && npm run lint:regression && npm run typecheck && npm run test:run && npm run build && npm run test:tooling",
+    "test:tooling": "node --test scripts/toolchain.test.mjs",
+    "lint:regression": "node scripts/lint-regression.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
@@ -46,15 +47,12 @@
     "@vitejs/plugin-react": "6.3.0",
     "babel-jest": "30.5.2",
     "esbuild": "0.28.2",
-    "eslint": "10.15.0",
-    "eslint-plugin-react-hooks": "7.1.1",
     "jest": "30.5.2",
     "jest-environment-jsdom": "30.5.2",
-    "typescript": "npm:@typescript/typescript6@6.0.2",
-    "typescript-eslint": "8.72.2",
+    "typescript": "7.0.2",
     "vite": "8.3.8",
     "whatwg-fetch": "3.6.20",
-    "@typescript/native": "npm:typescript@7.0.2"
+    "oxlint": "1.93.0"
   },
   "engines": {
     "node": ">=26.13.1 <27",

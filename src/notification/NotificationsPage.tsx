@@ -54,7 +54,7 @@ export default function NotificationsPage() {
   latestLoad.current = load;
   useEffect(() => {
     void load();
-  }, [unreadOnly, category]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [unreadOnly, category]); // oxlint-disable-line react/exhaustive-deps
 
   const open = async (notification: Notification) => {
     if (!notification.readAt) {
