@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -8,62 +7,6 @@ const require = createRequire(import.meta.url);
 const root = path.resolve(import.meta.dirname, "..");
 const apply = process.argv.includes("--apply");
 const manifest = (file) => JSON.parse(readFileSync(file, "utf8"));
-
-if (existsSync(path.join(root, "node_modules/aws-cdk-lib/package.json"))) {
-  const cdk = path.join(root, "node_modules/aws-cdk-lib");
-  assert.equal(manifest(path.join(cdk, "package.json")).version, "2.277.0", "Review/remove CDK mitigation on upgrade");
-  const vendored = path.join(cdk, "node_modules/minimatch");
-  assert.equal(manifest(path.join(vendored, "package.json")).version, "10.2.6");
-  // Backport https://github.com/isaacs/minimatch/commit/77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8
-  // Keep package/lock metadata intact. Verify exact original and patched source.
-  const fingerprints = {
-  "dist/commonjs/index.js": [
-    "d224f71f20d7c206fcc5b7e9f747324c7698345a0b2c28d717dd9cf698306783",
-    "df62b5058f6b4077d524f0717bad0b8ea525865783535aaa029bc7e113f85ca0"
-  ],
-  "dist/esm/index.js": [
-    "59821ec2ce0d3df968292036e5c831ad322b33e9c33a949ecbc9dfe125d165be",
-    "b5665e0682c95482f9f0f2fcb3c0e094f3a5118bc09bfcc230004472cc485218"
-  ]
-};
-  const replacements = [
-  [
-    "firstPhasePreProcess(globParts) {",
-    "firstPhasePreProcess(globParts) {\n        const { braceExpandMax = 100_000 } = this.options;"
-  ],
-  [
-    "p2 === '..') {",
-    "p2 === '..' || globParts.length >= braceExpandMax) {"
-  ],
-  [
-    "secondPhasePreProcess(globParts) {",
-    "secondPhasePreProcess(globParts) {\n        if (globParts.length > 1000) return globParts;"
-  ]
-];
-  for (const [entry, [originalHash, patchedHash]] of Object.entries(fingerprints)) {
-    const file = path.join(vendored, entry);
-    let source = readFileSync(file, "utf8");
-    const hash = value => createHash("sha256").update(value).digest("hex");
-    if (apply && hash(source) === originalHash) {
-      for (const [before, after] of replacements) {
-        assert.equal(source.split(before).length - 1, 1, "Unexpected minimatch source");
-        source = source.replace(before, after);
-      }
-      writeFileSync(file, source);
-    }
-    assert.equal(hash(source), patchedHash, "Missing or unexpected minimatch security patch");
-  }
-  const cdkRequire = createRequire(path.join(cdk, "package.json"));
-  const { minimatch, Minimatch } = cdkRequire("minimatch");
-  assert.equal(minimatch("lib/nested/example.ts", "lib/**/*.ts"), true);
-  assert.equal(minimatch("lib/example.js", "lib/**/*.ts"), false);
-  const bounded = new Minimatch("a/" + "**/../a/b/".repeat(8) + "c", { optimizationLevel: 2, braceExpandMax: 32 });
-  assert.ok(bounded.globParts.length > 1 && bounded.globParts.length <= 32, "Globparts amplification must be bounded");
-  const large = Array.from({ length: 1001 }, (_, index) => [String(index)]);
-  bounded.partsMatch = () => { throw new Error("Quadratic comparison must not run for large sets"); };
-  assert.equal(bounded.secondPhasePreProcess(large), large);
-  console.log("CDK minimatch upstream amplification/complexity regressions passed (GHSA-g3hv-75wg-m249)");
-}
 
 if (existsSync(path.join(root, "node_modules/deepmerge/package.json"))) {
   const directory = path.join(root, "node_modules/deepmerge");

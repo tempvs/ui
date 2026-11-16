@@ -2,7 +2,11 @@
 
 Tempvs UI
 
-The app uses React 19, React Intl 12 and Vite 8. Use Node.js 24.11 or newer, then run `npm ci`.
+The app uses React 19, React Intl 12 and Vite 8. Use Node.js **26.13.1 LTS**
+and npm **11.20.0**, then run `npm ci`. `.node-version` and `.nvmrc` pin the
+tested version for local development; CI reads `.node-version`. Install/select
+that version with your Node version manager before running the UI commands.
+The project rejects unsupported Node/npm versions during installation.
 
 Interactive maps use MapLibre 6 and require WebGL2. The renderer and its matching,
 content-hashed worker load only when a map opens; unsupported graphics retain the
@@ -31,11 +35,11 @@ Static previews reuse their geographic background when only images change.
 - `npm run check`: lint, application/test/tooling types, unit tests, production build and hosting/proxy contract tests.
 - `npm run build`: generate the local basemap and production files in `build/`, with hashed bundles in `build/static/`.
 - `npm run preview`: serve the existing production build on port 3000.
-- `npm run e2e`: desktop and mobile Chromium regressions against the dev server. Set `E2E_PREVIEW=true` to test the production build instead.
+- `npm run e2e`: Chromium, mobile Chrome, Firefox and WebKit regressions against the dev server. Set `E2E_PREVIEW=true` to test the production build instead.
 
 Development and preview proxy `/api` and `/auth` to `https://dev.tempvs.club`; override with server-only `TEMPVS_DEV_ORIGIN`. The login proxy preserves the local callback parameter and Origin rewrite. No server environment variables are exposed as browser configuration.
 
-CI tests the production build, including the real editor, navbar/session, map and standalone component fixtures. The optional authenticated onboarding test needs `E2E_EMAIL` and `E2E_PASSWORD`; mocked member/session regressions do not need credentials. See [React 19 migration record](REACT_19_MIGRATION.md).
+CI tests the production build, including the real editor, navbar/session, map and standalone component fixtures. After dev deployment, protected jobs require the dedicated `E2E_EMAIL` and `E2E_PASSWORD` fixture secrets and verify real sessions in Chrome, Firefox, WebKit and actual macOS Safari. See [browser/authentication verification](BROWSER_AND_ROLLBACK_VERIFICATION.md), [toolchain compatibility](TOOLCHAIN_COMPATIBILITY.md) and the historical [React 19 migration record](REACT_19_MIGRATION.md).
 
 The UI uses Cognito through the same-origin authentication edge. Google and email/password sign-in, registration, session refresh, and logout are supported by the AWS deployment at `dev.tempvs.club`.
 

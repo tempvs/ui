@@ -1,5 +1,9 @@
 # Toolchain and dependency compatibility
 
+UI development, build and test tooling uses Node 26.13.1 LTS and npm 11.20.0.
+CI and local version-manager files select this version; package engines reject
+unsupported installations. Node types are aligned to major 26.
+
 Type checking/builds use stable TypeScript 7.0.2. Repositories with typed ESLint
 use Microsoft's supported side-by-side aliases: `@typescript/native` supplies
 `tsc` 7, while `typescript` aliases `@typescript/typescript6` 6.0.2 for the
@@ -12,16 +16,9 @@ linter supports the new compiler API. No lint rules were disabled.
 verifies the effective dependency resolution and exploit regression. Installs
 with `--ignore-scripts` must explicitly run postinstall before other tooling.
 
-CDK 2.277.0 bundles minimatch 10.2.6 despite npm overrides. The install step
-backports upstream commit 77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8 to both
-CommonJS and ESM entrypoints. It caps pattern amplification and skips quadratic
-deduplication above 1000 entries. Exact original/patched SHA-256 hashes prevent
-unexpected source changes. Regression checks exercise bounded globparts and
-large-set short-circuiting, plus ordinary matches. Package and lock metadata
-remain truthful; npm ls stays valid. The scoped override retains this patched
-vendored 10.2.6 while other minimatch dependencies use 11.0.8. Remove the backport
-after CDK publishes a patched bundle. GHSA-g3hv-75wg-m249 remains visible in npm
-advisory metadata. CDK is excluded from deployed application handler bundles.
+The UI has no CDK dependency. CDK/minimatch mitigation remains owned by the
+backend and infrastructure repositories; the UI install script contains no CDK
+patching logic.
 
 The UI also upgrades React Router to 7.18.5 and glob to 14.0.6. Jest 30.5.2
 still depends on deepmerge 4.3.1, for which no patched release exists. Its three
@@ -34,3 +31,13 @@ References:
 - https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/
 - https://github.com/advisories/GHSA-g3hv-75wg-m249
 - https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+
+## Upstream removal gate rechecked 2026-11-15
+
+- typescript-eslint 8.72.2 still requires TypeScript `<6.1.0`; retain the official
+  TypeScript 6 API bridge while the native TypeScript 7 compiler runs checks.
+- Latest Jest remains 30.5.2 and latest deepmerge remains vulnerable 4.3.1. Retain
+  the own-property-write backport and its exploit regression checks.
+- Latest aws-cdk-lib remains 2.277.0 with bundled minimatch 10.2.6; backend and
+  infrastructure backports remain required. No upstream fix was available to
+  remove these protections safely. No lint rules or security checks were removed.
