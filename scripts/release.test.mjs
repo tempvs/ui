@@ -10,8 +10,48 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createManifest, verifyAssets, promoteVerified } from "./release.mjs";
+import {
+  createManifest,
+  verifyAssets,
+  promoteVerified,
+  existingStaticEtags,
+} from "./release.mjs";
 import { verifyService, previousDeployment } from "./service-health.mjs";
+
+test("immutable inventory follows bounded S3 pages without retaining unrelated releases", () => {
+  const calls = [];
+  const found = existingStaticEtags({
+    bucket: "fixture",
+    keys: ["static/active.js", "static/new.js"],
+    run: (args) => {
+      calls.push(args);
+      assert.ok(args.includes("--no-paginate"));
+      assert.equal(args[args.indexOf("--max-keys") + 1], "1000");
+      if (calls.length === 1)
+        return JSON.stringify({
+          IsTruncated: true,
+          NextContinuationToken: "next",
+          Contents: [{ Key: "static/old.js", ETag: '"old"' }],
+        });
+      assert.equal(args[args.indexOf("--continuation-token") + 1], "next");
+      return JSON.stringify({
+        IsTruncated: false,
+        Contents: [{ Key: "static/active.js", ETag: '"same"' }],
+      });
+    },
+  });
+  assert.equal(calls.length, 2);
+  assert.deepEqual([...found], [["static/active.js", "same"]]);
+  assert.throws(
+    () =>
+      existingStaticEtags({
+        bucket: "fixture",
+        keys: ["static/a.js"],
+        run: () => JSON.stringify({ IsTruncated: true }),
+      }),
+    /Incomplete/,
+  );
+});
 
 test("vendored health checks cover all public APIs and anonymous auth boundaries", async () => {
   const results = await verifyService({

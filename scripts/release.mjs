@@ -194,12 +194,46 @@ function aws(args) {
     });
   } catch (error) {
     const failure = new Error(
-      `AWS release operation failed: ${args[0]} ${args[1]}`,
+      `AWS release operation failed: ${args[0]} ${args[1]}${error.code ? " (" + error.code + ")" : ""}`,
     );
     failure.details = String(error.stderr ?? "");
     throw failure;
   }
 }
+
+export function existingStaticEtags({ bucket, keys, run = aws }) {
+  const wanted = new Set(keys);
+  const found = new Map();
+  let continuation;
+  do {
+    // Each response is bounded; retained releases must not grow one command's
+    // output past Node's buffer limit. Keep only the candidate's keys in memory.
+    const page = JSON.parse(
+      run([
+        "s3api",
+        "list-objects-v2",
+        "--bucket",
+        bucket,
+        "--prefix",
+        "static/",
+        "--no-paginate",
+        "--max-keys",
+        "1000",
+        "--output",
+        "json",
+        ...(continuation ? ["--continuation-token", continuation] : []),
+      ]),
+    );
+    for (const object of page.Contents ?? [])
+      if (wanted.has(object.Key))
+        found.set(object.Key, object.ETag?.replaceAll('"', ""));
+    if (page.IsTruncated && !page.NextContinuationToken)
+      throw new Error("Incomplete static asset inventory");
+    continuation = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuation && found.size < wanted.size);
+  return found;
+}
+
 class Storage {
   constructor({ bucket, distribution, temporary }) {
     this.bucket = bucket;
@@ -245,25 +279,17 @@ class Storage {
       JSON.stringify(manifest, null, 2) + "\n",
     );
     // Content-addressed assets must never overwrite a different active asset.
-    const existing =
-      JSON.parse(
-        aws([
-          "s3api",
-          "list-objects-v2",
-          "--bucket",
-          this.bucket,
-          "--prefix",
-          "static/",
-          "--output",
-          "json",
-        ]),
-      ).Contents ?? [];
-    const byKey = new Map(
-      existing.map((object) => [object.Key, object.ETag?.replaceAll('"', "")]),
+    const staticEntries = readdirSync(
+      path.join(candidate.directory, "static"),
+      {
+        withFileTypes: true,
+      },
     );
-    for (const entry of readdirSync(path.join(candidate.directory, "static"), {
-      withFileTypes: true,
-    })) {
+    const byKey = existingStaticEtags({
+      bucket: this.bucket,
+      keys: staticEntries.map((entry) => "static/" + entry.name),
+    });
+    for (const entry of staticEntries) {
       if (!entry.isFile()) throw new Error("Unexpected nested static artifact");
       const key = "static/" + entry.name;
       const etag = byKey.get(key);
