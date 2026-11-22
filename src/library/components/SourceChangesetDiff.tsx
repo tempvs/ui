@@ -58,7 +58,6 @@ export function summarizeSourceChangeset(
   imageOperations: SourceImageOperation[] = [],
   kind: "CREATE" | "UPDATE" | "DELETE" = "UPDATE",
 ) {
-  if (kind === "CREATE") return ["New source"];
   if (kind === "DELETE") return ["Deletes the source and its images"];
   const values = {
     name: [base.name, proposed.name],
@@ -75,11 +74,15 @@ export function summarizeSourceChangeset(
     ],
     heldAtPlaceName: [base.heldAtPlaceName, proposed.heldAtPlaceName],
   } as const;
-  const changedFields = Object.entries(values)
-    .filter(
-      ([, [before, after]]) => JSON.stringify(before) !== JSON.stringify(after),
-    )
-    .map(([field]) => fieldLabels[field]);
+  const changedFields =
+    kind === "CREATE"
+      ? ["New source"]
+      : Object.entries(values)
+          .filter(
+            ([, [before, after]]) =>
+              JSON.stringify(before) !== JSON.stringify(after),
+          )
+          .map(([field]) => fieldLabels[field]);
   if (!imageOperations.length) return changedFields;
 
   const counts = imageOperations.reduce(
@@ -225,6 +228,51 @@ export default function SourceChangesetDiff({
   imageOperations = [],
   imagePreviews,
 }: Props) {
+  const publishedById = new Map(
+    (imagePreviews?.published || []).map((image) => [image.id, image]),
+  );
+  const stagedById = new Map(
+    (imagePreviews?.staged || []).map((image) => [image.id, image]),
+  );
+  const imageChanges = imageOperations.length > 0 && (
+    <div className="source-changeset-diff-row">
+      <div className="fw-semibold small text-uppercase text-muted">Images</div>
+      {imagePreviews ? (
+        <div className="source-changeset-image-changes">
+          {imageOperations.map((operation) => (
+            <ImageOperationDiff
+              key={
+                operation.kind === "ADD"
+                  ? operation.stagedImageId
+                  : `${operation.kind}:${operation.imageId}`
+              }
+              operation={operation}
+              publishedById={publishedById}
+              stagedById={stagedById}
+            />
+          ))}
+        </div>
+      ) : (
+        <ul className="mb-0 mt-2 ps-3">
+          {imageOperations.map((operation) => (
+            <li
+              key={
+                operation.kind === "ADD"
+                  ? operation.stagedImageId
+                  : `${operation.kind}:${operation.imageId}`
+              }
+            >
+              {operation.kind === "ADD" && "Added image"}
+              {operation.kind === "REMOVE" && "Removed image"}
+              {operation.kind === "REPLACE" && "Replaced image"}
+              {operation.kind === "UPDATE_DESCRIPTION" &&
+                "Changed image description"}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
   if (kind === "DELETE") {
     return (
       <div className="source-changeset-diff-row">
@@ -268,6 +316,7 @@ export default function SourceChangesetDiff({
             </div>
           </div>
         ))}
+        {imageChanges}
       </div>
     );
   }
@@ -289,12 +338,6 @@ export default function SourceChangesetDiff({
 
   const rows = Object.entries(values).filter(
     ([, [before, after]]) => JSON.stringify(before) !== JSON.stringify(after),
-  );
-  const publishedById = new Map(
-    (imagePreviews?.published || []).map((image) => [image.id, image]),
-  );
-  const stagedById = new Map(
-    (imagePreviews?.staged || []).map((image) => [image.id, image]),
   );
 
   if (!rows.length && imageOperations.length === 0)
@@ -325,47 +368,7 @@ export default function SourceChangesetDiff({
           </div>
         </div>
       ))}
-      {imageOperations.length > 0 && (
-        <div className="source-changeset-diff-row">
-          <div className="fw-semibold small text-uppercase text-muted">
-            Images
-          </div>
-          {imagePreviews ? (
-            <div className="source-changeset-image-changes">
-              {imageOperations.map((operation) => (
-                <ImageOperationDiff
-                  key={
-                    operation.kind === "ADD"
-                      ? operation.stagedImageId
-                      : `${operation.kind}:${operation.imageId}`
-                  }
-                  operation={operation}
-                  publishedById={publishedById}
-                  stagedById={stagedById}
-                />
-              ))}
-            </div>
-          ) : (
-            <ul className="mb-0 mt-2 ps-3">
-              {imageOperations.map((operation) => (
-                <li
-                  key={
-                    operation.kind === "ADD"
-                      ? operation.stagedImageId
-                      : `${operation.kind}:${operation.imageId}`
-                  }
-                >
-                  {operation.kind === "ADD" && "Added image"}
-                  {operation.kind === "REMOVE" && "Removed image"}
-                  {operation.kind === "REPLACE" && "Replaced image"}
-                  {operation.kind === "UPDATE_DESCRIPTION" &&
-                    "Changed image description"}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {imageChanges}
     </div>
   );
 }

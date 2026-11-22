@@ -114,6 +114,58 @@ function mount() {
   );
 }
 
+test.each(["CREATE", "UPDATE"])(
+  "displays uploaded and removed images on a %s proposal",
+  async (kind) => {
+    api.getSourceChangeset.mockResolvedValue({
+      ok: true,
+      data: {
+        source,
+        changeset: {
+          ...proposal,
+          kind,
+          imageOperations: [
+            { kind: "ADD", stagedImageId: "new-photo", description: null },
+            ...(kind === "UPDATE"
+              ? [{ kind: "REMOVE", imageId: "old-photo" }]
+              : []),
+          ],
+        },
+      },
+    });
+    api.getSourceChangesetImages.mockResolvedValue({
+      ok: true,
+      data: [
+        {
+          id: "new-photo",
+          thumbnailUrl: "/new.jpg",
+          fileName: "Uploaded photo",
+        },
+      ],
+    });
+    api.getSourceImages.mockResolvedValue({
+      ok: true,
+      data: [
+        {
+          id: "old-photo",
+          thumbnailUrl: "/old.jpg",
+          fileName: "Removed photo",
+        },
+      ],
+    });
+    mount();
+    expect(
+      await screen.findByRole("img", { name: "Uploaded photo" }),
+    ).toHaveAttribute("src", "/new.jpg");
+    if (kind === "UPDATE") {
+      expect(screen.getByText("Removed image")).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: "Removed photo" }),
+      ).toHaveAttribute("src", "/old.jpg");
+    }
+  },
+);
+
 test("approval stays on the proposal and does not publish or navigate to the public source", async () => {
   api.approveSourceChangeset.mockImplementation(async () => {
     api.getSourceChangeset.mockResolvedValue({

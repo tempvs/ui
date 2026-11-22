@@ -77,3 +77,87 @@ test("opens a staged source image in the shared image viewer", () => {
   expect(screen.getAllByText("New image")).not.toHaveLength(0);
   expect(document.querySelector(".carousel")).not.toBeInTheDocument();
 });
+
+test.each([false, true])(
+  "shows added image previews for a new source (compact: %s)",
+  (compact) => {
+    const operations = [
+      { kind: "ADD" as const, stagedImageId: "new-image", description: null },
+    ];
+    expect(
+      summarizeSourceChangeset(source(), source(), operations, "CREATE"),
+    ).toEqual(["New source", "Images: 1 added"]);
+    render(
+      <SourceChangesetDiff
+        base={source()}
+        proposed={source()}
+        kind="CREATE"
+        compact={compact}
+        imageOperations={operations}
+        imagePreviews={{
+          staged: [
+            {
+              id: "new-image",
+              thumbnailUrl: "/new.jpg",
+              fileName: "New photo",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("Add image")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "New photo" })).toHaveAttribute(
+      "src",
+      "/new.jpg",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "New photo" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  },
+);
+
+test("shows removed images and both sides of image replacements", () => {
+  render(
+    <SourceChangesetDiff
+      base={source()}
+      proposed={source()}
+      imageOperations={[
+        { kind: "REMOVE", imageId: "removed" },
+        {
+          kind: "REPLACE",
+          imageId: "old",
+          stagedImageId: "replacement",
+          description: null,
+        },
+      ]}
+      imagePreviews={{
+        published: [
+          {
+            id: "removed",
+            thumbnailUrl: "/removed.jpg",
+            fileName: "Removed photo",
+          },
+          { id: "old", thumbnailUrl: "/old.jpg", fileName: "Old photo" },
+        ],
+        staged: [
+          {
+            id: "replacement",
+            thumbnailUrl: "/replacement.jpg",
+            fileName: "Replacement photo",
+          },
+        ],
+      }}
+    />,
+  );
+  expect(screen.getByText("Removed image")).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Removed photo" })).toHaveAttribute(
+    "src",
+    "/removed.jpg",
+  );
+  expect(screen.getByRole("img", { name: "Old photo" })).toHaveAttribute(
+    "src",
+    "/old.jpg",
+  );
+  expect(
+    screen.getByRole("img", { name: "Replacement photo" }),
+  ).toHaveAttribute("src", "/replacement.jpg");
+});
