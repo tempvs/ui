@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -18,6 +19,31 @@ const sha = (value) => {
 };
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const runtimeExtensions = new Set([".html", ".js", ".css", ".geojson"]);
+
+/** Rolldown asset IDs in virtual image modules vary between identical builds. */
+export function equivalentSourceMaps(key, existing, candidate) {
+  if (!/\.(?:js|css)\.map$/.test(key)) return false;
+  const normalize = (bytes) => {
+    const map = JSON.parse(bytes.toString("utf8"));
+    if (!Array.isArray(map.sources) || !Array.isArray(map.sourcesContent))
+      throw new Error("Invalid source map");
+    map.sourcesContent = map.sourcesContent.map((source, index) =>
+      typeof map.sources[index] === "string" &&
+      /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/.test(map.sources[index]) &&
+      typeof source === "string" &&
+      /^export default import\.meta\.ROLLDOWN_FILE_URL_[\w$-]+$/.test(source)
+        ? "export default import.meta.ROLLDOWN_FILE_URL_ASSET_REFERENCE"
+        : source,
+    );
+    return JSON.stringify(map);
+  };
+  try {
+    return normalize(existing) === normalize(candidate);
+  } catch {
+    return false;
+  }
+}
+
 export function createManifest(directory, release) {
   sha(release);
   const files = [];
@@ -299,8 +325,21 @@ class Storage {
       if (etag === md5) continue;
       const comparison = path.join(this.temporary, "immutable-check");
       aws(["s3", "cp", this.object(key), comparison, "--only-show-errors"]);
-      if (digest(readFileSync(comparison)) !== digest(readFileSync(file)))
+      if (digest(readFileSync(comparison)) !== digest(readFileSync(file))) {
+        if (
+          equivalentSourceMaps(
+            key,
+            readFileSync(comparison),
+            readFileSync(file),
+          )
+        ) {
+          // Preserve the immutable bytes already served at this URL. Only
+          // non-executable virtual asset IDs differed; mappings are identical.
+          copyFileSync(comparison, file);
+          continue;
+        }
         throw new Error("Immutable asset collision: " + key);
+      }
     }
     aws([
       "s3",

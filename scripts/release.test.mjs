@@ -15,8 +15,92 @@ import {
   verifyAssets,
   promoteVerified,
   existingStaticEtags,
+  equivalentSourceMaps,
 } from "./release.mjs";
 import { verifyService, previousDeployment } from "./service-health.mjs";
+
+test("source-map comparison ignores only temporary IDs in virtual image modules", () => {
+  const map = {
+    version: 3,
+    file: "LibraryPage-same.js",
+    sources: [
+      "../../src/library/images/modern.jpg",
+      "../../src/library/LibraryPage.tsx",
+    ],
+    sourcesContent: [
+      "export default import.meta.ROLLDOWN_FILE_URL_old",
+      "export default function Page() {}",
+    ],
+    names: [],
+    mappings: "AAAA",
+  };
+  const bytes = (value) => Buffer.from(JSON.stringify(value));
+  const rebuilt = {
+    ...map,
+    sourcesContent: [
+      "export default import.meta.ROLLDOWN_FILE_URL_new",
+      map.sourcesContent[1],
+    ],
+  };
+  assert.equal(
+    equivalentSourceMaps(
+      "static/LibraryPage-same.js.map",
+      bytes(map),
+      bytes(rebuilt),
+    ),
+    true,
+  );
+  assert.equal(
+    equivalentSourceMaps("static/runtime.js", bytes(map), bytes(rebuilt)),
+    false,
+  );
+  for (const changed of [
+    { ...rebuilt, mappings: "BBBB" },
+    { ...rebuilt, sources: ["different.jpg", map.sources[1]] },
+    {
+      ...rebuilt,
+      sourcesContent: [
+        rebuilt.sourcesContent[0],
+        "export default function DifferentPage() {}",
+      ],
+    },
+    {
+      ...rebuilt,
+      sourcesContent: [
+        "export default '/different.jpg'",
+        map.sourcesContent[1],
+      ],
+    },
+  ])
+    assert.equal(
+      equivalentSourceMaps(
+        "static/LibraryPage-same.js.map",
+        bytes(map),
+        bytes(changed),
+      ),
+      false,
+    );
+  const script = {
+    ...map,
+    sources: ["../../src/real-code.ts", map.sources[1]],
+  };
+  assert.equal(
+    equivalentSourceMaps(
+      "static/LibraryPage-same.js.map",
+      bytes(script),
+      bytes({ ...script, sourcesContent: rebuilt.sourcesContent }),
+    ),
+    false,
+  );
+  assert.equal(
+    equivalentSourceMaps(
+      "static/broken.js.map",
+      Buffer.from("invalid"),
+      bytes(map),
+    ),
+    false,
+  );
+});
 
 test("immutable inventory follows bounded S3 pages without retaining unrelated releases", () => {
   const calls = [];
