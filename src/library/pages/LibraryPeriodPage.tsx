@@ -20,7 +20,7 @@ import {
   createSource,
   findSources,
   getSourceImages,
-  getSourceProposals,
+  getPendingSourceChangesets,
   getLibraryViewer,
   LibrarySource,
   LibrarySourceImage,
@@ -272,26 +272,21 @@ export default function LibraryPeriodPage() {
     }
 
     let active = true;
+    setPendingProposalCount(null);
     void (async () => {
       let nextPageToken: string | null | undefined;
       let count = 0;
       try {
         do {
-          const result = await findSources({
+          const result = await getPendingSourceChangesets({
             period: periodCode,
-            size: PAGE_SIZE,
+            limit: 100,
             nextToken: nextPageToken || undefined,
           });
           if (!result.ok) throw new Error("Unable to load pending proposals.");
-          const proposalCounts = await Promise.all(
-            (result.data || []).map(async (source) => {
-              const proposals = await getSourceProposals(source.id);
-              return proposals.ok ? (proposals.data || []).length : 0;
-            }),
-          );
-          count += proposalCounts.reduce((total, value) => total + value, 0);
-          nextPageToken = result.nextToken;
-        } while (nextPageToken);
+          count += result.data?.content?.length || 0;
+          nextPageToken = result.data?.nextToken;
+        } while (nextPageToken && active);
         if (active) setPendingProposalCount(count);
       } catch {
         if (active) setPendingProposalCount(null);
