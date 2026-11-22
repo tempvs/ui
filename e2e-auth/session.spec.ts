@@ -1,16 +1,36 @@
 import { expect, test } from "@playwright/test";
 
-test("real dev login, session persistence, expiry and logout update the navbar", async ({ page, context }) => {
+test("real dev login, session persistence, expiry and logout update the navbar", async ({
+  page,
+  context,
+}) => {
   await page.goto("/");
   await page.getByLabel("Email", { exact: true }).fill(process.env.E2E_EMAIL!);
-  await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_PASSWORD!);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  const account = page.getByRole("button", { name: "Account menu", exact: true });
+  const account = page.getByRole("button", {
+    name: "Account menu",
+    exact: true,
+  });
   await expect(account).toBeVisible();
   expect((await context.request.get("/api/user/me")).status()).toBe(200);
   const cookies = await context.cookies();
-  const session = cookies.find((cookie) => cookie.name === "__Host-tempvs-session");
+  const session = cookies.find(
+    (cookie) => cookie.name === "__Host-tempvs-session",
+  );
   expect(Boolean(session?.httpOnly && session.secure)).toBe(true);
+  // A reload/new UI bundle must keep the opaque cookie valid even when the
+  // edge refreshes Cognito tokens. Exercise that real path, including overlap.
+  expect(
+    (await context.request.get("/api/user/me?refresh=roles")).status(),
+  ).toBe(200);
+  const refreshes = await Promise.all([
+    context.request.get("/api/user/me?refresh=roles"),
+    context.request.get("/api/user/me?refresh=roles"),
+  ]);
+  expect(refreshes.map((response) => response.status())).toEqual([200, 200]);
   await page.reload();
   await expect(account).toBeVisible();
   await page.goto("/map");
@@ -30,7 +50,9 @@ test("real dev login, session persistence, expiry and logout update the navbar",
 
   await page.goto("/");
   await page.getByLabel("Email", { exact: true }).fill(process.env.E2E_EMAIL!);
-  await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_PASSWORD!);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(account).toBeVisible();
   await account.click();

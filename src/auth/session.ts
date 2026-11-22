@@ -14,8 +14,7 @@ let snapshot: Session | null | undefined;
 let expiresAt = 0;
 let revision = 0;
 let pending:
-  | { request: Promise<Session | null>; refreshRoles: boolean }
-  | undefined;
+  { request: Promise<Session | null>; refreshRoles: boolean } | undefined;
 
 export function subscribeSession(listener: Listener): () => void {
   listeners.add(listener);
@@ -92,9 +91,8 @@ export function getSession(options: ReadOptions = {}): Promise<Session | null> {
 }
 
 async function readSession(options: ReadOptions): Promise<Session | null> {
-  const response = await fetch(
+  const response = await readIdentityResponse(
     options.refreshRoles ? "/api/user/me?refresh=roles" : "/api/user/me",
-    { cache: "no-store" },
   );
   if (response.status === 401) return null;
   if (!response.ok)
@@ -104,7 +102,8 @@ async function readSession(options: ReadOptions): Promise<Session | null> {
     string,
     unknown
   > | null;
-  if (!data || typeof data.userId !== "string" || !data.userId) return null;
+  if (!data || typeof data.userId !== "string" || !data.userId)
+    throw new Error("Invalid session response");
   return {
     userId: data.userId,
     roles: Array.isArray(data.roles)
@@ -114,6 +113,26 @@ async function readSession(options: ReadOptions): Promise<Session | null> {
     ...(typeof data.email === "string" ? { email: data.email } : {}),
     ...(typeof data.picture === "string" ? { picture: data.picture } : {}),
   };
+}
+
+/** Share a bounded retry through getSession; never turn an outage into logout. */
+async function readIdentityResponse(url: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, { cache: "no-store" });
+      if (attempt === 2 || (response.status !== 429 && response.status < 500))
+        return response;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+    const retryAfter = Number(response?.headers?.get("retry-after"));
+    const wait =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 5000)
+        : (attempt + 1) * 500;
+    await new Promise<void>((resolve) => window.setTimeout(resolve, wait));
+  }
 }
 
 let observationCount = 0;
@@ -132,8 +151,8 @@ export function observeSessionResponses(): () => void {
         typeof input === "string"
           ? input
           : input instanceof URL
-          ? input.href
-          : input.url,
+            ? input.href
+            : input.url,
         window.location.href,
       );
       if (

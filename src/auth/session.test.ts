@@ -20,19 +20,20 @@ beforeEach(() => {
   jest.resetModules();
   session = require("./session");
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
 
 test("the navbar and page viewer share one identity request and cache", async () => {
-  const transport = jest
-    .spyOn(window, "fetch")
-    .mockResolvedValue(
-      response({
-        userId: "member",
-        name: "Ada",
-        picture: "/google.jpg",
-        roles: ["MAP_EDITOR"],
-      }),
-    );
+  const transport = jest.spyOn(window, "fetch").mockResolvedValue(
+    response({
+      userId: "member",
+      name: "Ada",
+      picture: "/google.jpg",
+      roles: ["MAP_EDITOR"],
+    }),
+  );
   const { getViewer } = require("./viewerApi") as typeof import("./viewerApi");
   const { fetchCurrentUserInfo } =
     require("../profile/profileApi") as typeof import("../profile/profileApi");
@@ -48,14 +49,19 @@ test("the navbar and page viewer share one identity request and cache", async ()
 
 test("an explicit role refresh is not satisfied by an older in-flight identity read", async () => {
   const initial = deferred<Response>();
-  const transport = jest.spyOn(window, "fetch").mockReturnValueOnce(initial.promise)
+  const transport = jest
+    .spyOn(window, "fetch")
+    .mockReturnValueOnce(initial.promise)
     .mockResolvedValue(response({ userId: "member", roles: ["MAP_ADMIN"] }));
   const ordinary = session.getSession();
   const refreshed = session.getSession({ refreshRoles: true });
   initial.resolve(response({ userId: "member", roles: [] }));
   await ordinary;
   expect(await refreshed).toMatchObject({ roles: ["MAP_ADMIN"] });
-  expect(transport.mock.calls.map(([url]) => url)).toEqual(["/api/user/me", "/api/user/me?refresh=roles"]);
+  expect(transport.mock.calls.map(([url]) => url)).toEqual([
+    "/api/user/me",
+    "/api/user/me?refresh=roles",
+  ]);
   expect(await session.getSession()).toMatchObject({ roles: ["MAP_ADMIN"] });
 });
 
@@ -140,16 +146,61 @@ test("permission failures, login errors, and third-party 401s do not end the app
 });
 
 test("network and server failures do not publish a logout", async () => {
+  jest.useFakeTimers();
   const transport = jest
     .spyOn(window, "fetch")
     .mockResolvedValue(response({ userId: "member" }));
   await session.getSession();
   const changed = jest.fn();
   const stop = session.subscribeSession(changed);
-  transport.mockRejectedValueOnce(new Error("Offline"));
-  await expect(session.getSession({ force: true })).rejects.toThrow("Offline");
-  transport.mockResolvedValueOnce(response({}, 503));
-  await expect(session.getSession({ force: true })).rejects.toThrow("503");
+  transport.mockRejectedValue(new Error("Offline"));
+  const offline = expect(session.getSession({ force: true })).rejects.toThrow(
+    "Offline",
+  );
+  await jest.runAllTimersAsync();
+  await offline;
+  transport.mockResolvedValue(response({}, 503));
+  const unavailable = expect(
+    session.getSession({ force: true }),
+  ).rejects.toThrow("503");
+  await jest.runAllTimersAsync();
+  await unavailable;
+  expect(changed).not.toHaveBeenCalledWith(null);
+  expect(transport).toHaveBeenCalledTimes(7);
+  stop();
+});
+
+test.each(["network", "server"])(
+  "a fresh page recovers its shared identity read after a temporary %s failure",
+  async (failure) => {
+    jest.useFakeTimers();
+    const transport = jest.spyOn(window, "fetch");
+    if (failure === "network")
+      transport.mockRejectedValueOnce(new Error("Offline"));
+    else transport.mockResolvedValueOnce(response({}, 503));
+    transport.mockResolvedValue(
+      response({ userId: "member", roles: ["LIBRARY_SCRIBE"] }),
+    );
+    const first = session.getSession();
+    const second = session.getSession();
+    expect(first).toBe(second);
+    await jest.runAllTimersAsync();
+    expect(await first).toMatchObject({ userId: "member" });
+    expect(transport).toHaveBeenCalledTimes(2);
+  },
+);
+
+test("an invalid successful identity response does not publish a logout", async () => {
+  const transport = jest
+    .spyOn(window, "fetch")
+    .mockResolvedValue(response({ userId: "member" }));
+  await session.getSession();
+  const changed = jest.fn();
+  const stop = session.subscribeSession(changed);
+  transport.mockResolvedValue(response({}));
+  await expect(session.getSession({ force: true })).rejects.toThrow(
+    "Invalid session response",
+  );
   expect(changed).not.toHaveBeenCalledWith(null);
   stop();
 });
