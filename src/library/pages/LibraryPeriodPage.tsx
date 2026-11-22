@@ -280,7 +280,7 @@ export default function LibraryPeriodPage() {
         do {
           const result = await getPendingSourceChangesets({
             period: periodCode,
-            limit: 100,
+            limit: 40,
             nextToken: nextPageToken || undefined,
           });
           if (!result.ok) throw new Error("Unable to load pending proposals.");

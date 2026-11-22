@@ -53,7 +53,7 @@ test("counts the review queue even when no sources have been published", async (
   ).toHaveAttribute("href", "/library/period/modern/proposals");
   expect(api.getPendingSourceChangesets).toHaveBeenCalledWith({
     period: "MODERN",
-    limit: 100,
+    limit: 40,
     nextToken: undefined,
   });
   expect(api.findSources).toHaveBeenCalledTimes(1);
@@ -79,7 +79,7 @@ test("counts all queue pages, including pages emptied by the period filter", asy
   ).toBeInTheDocument();
   expect(api.getPendingSourceChangesets).toHaveBeenNthCalledWith(3, {
     period: "MODERN",
-    limit: 100,
+    limit: 40,
     nextToken: "page-3",
   });
 });
