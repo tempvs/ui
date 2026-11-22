@@ -69,7 +69,7 @@ export function librarySteps(viewer: LibraryViewer): Step[] {
       {
         id: "proposal",
         title: "Propose or amend a source",
-        copy: "Use + in a period to propose a new source, or Edit source on an existing one. Review the changes before submitting. Nothing becomes public yet.",
+        copy: "Use + in a period to propose a new source, or Edit source on an existing one. To revise a proposal, select it in the queue and choose Edit proposal.",
       },
       {
         id: "status",
@@ -81,7 +81,7 @@ export function librarySteps(viewer: LibraryViewer): Step[] {
       {
         id: "review",
         title: "Review independently",
-        copy: "Open another member's proposal, compare the changes and images, and leave comments. Approve if ready, or explain a rejection. Authors and members who amended the proposal need another reviewer.",
+        copy: "Select another member's proposal in the queue. Compare the changes and images, add comments or action items, then approve when ready. More actions includes Reject. Authors and contributors need another reviewer.",
         to: "/library/proposals",
         action: "Find a proposal",
       },

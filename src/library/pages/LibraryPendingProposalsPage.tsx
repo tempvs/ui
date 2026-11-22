@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Form } from "react-bootstrap";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link, useParams } from "react-router-dom";
 
-import Spinner from "../../component/Spinner";
 import TextFilterInput from "../../component/TextFilterInput";
 import { getErrorMessage } from "../../util/errors";
-import SourceChangesetProposalCard from "../components/SourceChangesetProposalCard";
+import LibraryProposalWorkspace from "./LibraryProposalWorkspace";
 import {
   getLibraryViewer,
   getPendingSourceChangesets,
-  getSourceChangesetImages,
-  getSourceImages,
-  type LibrarySourceImage,
   type PendingSourceChangeset,
+  type SourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
 import {
@@ -50,21 +47,7 @@ export function LibraryPendingProposalsContent({
   useLibraryTopic("status", !loading && !error);
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedType, setSelectedType] = useState("");
-  const [expandedChangesetIds, setExpandedChangesetIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [imagePreviewsByChangeset, setImagePreviewsByChangeset] = useState<
-    Record<
-      string,
-      {
-        published: LibrarySourceImage[];
-        staged: LibrarySourceImage[];
-      }
-    >
-  >({});
-  const [loadingImagePreviewIds, setLoadingImagePreviewIds] = useState<
-    Set<string>
-  >(() => new Set());
+  const requestScope = useRef<AbortController | null>(null);
 
   const sourceFilters = useMemo(
     () => ({
@@ -92,9 +75,11 @@ export function LibraryPendingProposalsContent({
   );
 
   useEffect(() => {
-    let active = true;
+    const scope = new AbortController();
+    requestScope.current = scope;
     void (async () => {
       setLoading(true);
+      setLoadingMore(false);
       setError(null);
       try {
         const viewer = await getLibraryViewer();
@@ -104,79 +89,53 @@ export function LibraryPendingProposalsContent({
           );
         }
         const result = await load();
-        if (active) {
+        if (!scope.signal.aborted) {
           setRows(result.rows);
           setNextToken(result.nextToken);
-          setExpandedChangesetIds(new Set());
-          setImagePreviewsByChangeset({});
         }
       } catch (caught) {
-        if (active) setError(getErrorMessage(caught));
+        if (!scope.signal.aborted) {
+          setError(getErrorMessage(caught));
+          setRows([]);
+          setNextToken(null);
+        }
       } finally {
-        if (active) setLoading(false);
+        if (!scope.signal.aborted) setLoading(false);
       }
     })();
     return () => {
-      active = false;
+      scope.abort();
     };
   }, [load]);
 
   const loadMore = async () => {
     if (!nextToken || loadingMore) return;
+    const scope = requestScope.current;
     setLoadingMore(true);
     try {
       const result = await load(nextToken);
+      if (scope?.signal.aborted) return;
       setRows((current) => [...current, ...result.rows]);
       setNextToken(result.nextToken);
     } catch (caught) {
-      setError(getErrorMessage(caught));
+      if (!scope?.signal.aborted) setError(getErrorMessage(caught));
     } finally {
-      setLoadingMore(false);
+      if (!scope?.signal.aborted) setLoadingMore(false);
     }
   };
 
-  const toggleChangeset = async (row: PendingSourceChangeset) => {
-    const { source, changeset } = row;
-    const isExpanded = expandedChangesetIds.has(changeset.id);
-    setExpandedChangesetIds((current) => {
-      const next = new Set(current);
-      if (next.has(changeset.id)) next.delete(changeset.id);
-      else next.add(changeset.id);
-      return next;
-    });
-    if (
-      isExpanded ||
-      !changeset.imageOperations.length ||
-      imagePreviewsByChangeset[changeset.id]
-    ) {
-      return;
-    }
-    setLoadingImagePreviewIds((current) => new Set(current).add(changeset.id));
-    try {
-      const needsStagedImages = changeset.imageOperations.some(
-        (operation) => operation.kind === "ADD" || operation.kind === "REPLACE",
+  const updateProposal = useCallback((updated: SourceChangeset) => {
+    setRows((current) => {
+      if (updated.status !== "PENDING" && updated.status !== "APPROVED") {
+        return current.filter(({ changeset }) => changeset.id !== updated.id);
+      }
+      return current.map((row) =>
+        row.changeset.id === updated.id && row.changeset.version <= updated.version
+          ? { ...row, changeset: updated }
+          : row,
       );
-      const [published, staged] = await Promise.all([
-        getSourceImages(source.id).catch(() => null),
-        needsStagedImages
-          ? getSourceChangesetImages(source.id, changeset.id).catch(() => null)
-          : Promise.resolve(null),
-      ]);
-      setImagePreviewsByChangeset((current) => ({
-        ...current,
-        [changeset.id]: {
-          published: published?.data || [],
-          staged: staged?.data || [],
-        },
-      }));
-    } finally {
-      setLoadingImagePreviewIds((current) => {
-        const next = new Set(current);
-        next.delete(changeset.id);
-        return next;
-      });
-    }
-  };
+    });
+  }, []);
 
   const heading = period
     ? "Period review and publication queue"
@@ -186,87 +145,62 @@ export function LibraryPendingProposalsContent({
       <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
         <h1 className="h3 mb-0">{heading}</h1>
       </div>
-      <div className="d-flex align-items-center gap-2 flex-wrap mb-4">
-        <div style={{ minWidth: "15rem", flex: "1 1 18rem" }}>
-          <TextFilterInput
-            ariaLabel="Filter pending source changesets"
-            placeholder="Filter by source name"
-            value={query}
-            onChange={setQuery}
-          />
-        </div>
-        {!period && (
-          <Form.Select
-            aria-label="Filter pending changesets by period"
-            value={selectedPeriod}
-            onChange={(event) => setSelectedPeriod(event.target.value)}
-            style={{ width: "auto", minWidth: "11rem" }}
-          >
-            <option value="">All periods</option>
-            {PERIODS.map((value) => (
-              <option key={value} value={value}>
-                {getPeriodLabel(intl, value)}
-              </option>
-            ))}
-          </Form.Select>
-        )}
-        <Form.Select
-          aria-label="Filter pending proposals by source type"
-          value={selectedType}
-          onChange={(event) => setSelectedType(event.target.value)}
-          style={{ width: "auto", minWidth: "10rem" }}
-        >
-          <option value="">All types</option>
-          {TYPES.map((value) => (
-            <option key={value} value={value}>
-              {getTypeLabel(intl, value)}
-            </option>
-          ))}
-        </Form.Select>
-      </div>
-      {error && <div className="tempvs-plain-message text-danger">{error}</div>}
-      {loading && <Spinner />}
-      {!loading && rows.length === 0 && (
-        <div className="tempvs-plain-message text-muted">
-          No changesets awaiting review or publication.
-        </div>
-      )}
-      {!loading &&
-        rows.map((row) => {
-          const { source, changeset } = row;
-          return (
-            <SourceChangesetProposalCard
-              key={changeset.id}
-              source={source}
-              changeset={changeset}
-              expanded={expandedChangesetIds.has(changeset.id)}
-              onToggle={() => void toggleChangeset(row)}
-              loadingImagePreviews={loadingImagePreviewIds.has(changeset.id)}
-              imagePreviews={imagePreviewsByChangeset[changeset.id]}
-              context={
-                <div className="d-flex align-items-center gap-2 flex-wrap text-muted small mt-1">
-                  {source.period && (
-                    <Badge bg="light" text="dark" className="border">
-                      {getPeriodLabel(intl, source.period)}
-                    </Badge>
-                  )}
-                  {source.type && (
-                    <Badge bg="info">{getTypeLabel(intl, source.type)}</Badge>
-                  )}
-                </div>
-              }
+      {error && <div className="tempvs-plain-message text-danger" role="alert">{error}</div>}
+      <LibraryProposalWorkspace
+        rows={rows}
+        loading={loading}
+        emptyMessage={error ? "No proposals loaded." : "No proposals awaiting review or publication."}
+        onUpdated={updateProposal}
+        showPeriod={!period}
+        filters={
+          <>
+            <TextFilterInput
+              ariaLabel="Filter pending source changesets"
+              placeholder="Filter by source name"
+              value={query}
+              onChange={setQuery}
             />
-          );
-        })}
-      {nextToken && (
-        <Button
-          variant="outline-dark"
-          disabled={loadingMore}
-          onClick={() => void loadMore()}
-        >
-          {loadingMore ? "Loading…" : "Load more"}
-        </Button>
-      )}
+            {!period && (
+              <Form.Select
+                size="sm"
+                aria-label="Filter pending changesets by period"
+                value={selectedPeriod}
+                onChange={(event) => setSelectedPeriod(event.target.value)}
+              >
+                <option value="">All periods</option>
+                {PERIODS.map((value) => (
+                  <option key={value} value={value}>
+                    {getPeriodLabel(intl, value)}
+                  </option>
+                ))}
+              </Form.Select>
+            )}
+            <Form.Select
+              size="sm"
+              aria-label="Filter pending proposals by source type"
+              value={selectedType}
+              onChange={(event) => setSelectedType(event.target.value)}
+            >
+              <option value="">All types</option>
+              {TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {getTypeLabel(intl, value)}
+                </option>
+              ))}
+            </Form.Select>
+          </>
+        }
+        pagination={nextToken && (
+          <Button
+            variant="outline-dark"
+            size="sm"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        )}
+      />
     </>
   );
 }
@@ -290,7 +224,7 @@ export default function LibraryPendingProposalsPage() {
           </Link>
         }
       />
-      <LibraryPendingProposalsContent period={period} />
+      <LibraryPendingProposalsContent key={period} period={period} />
     </div>
   );
 }

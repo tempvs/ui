@@ -43,6 +43,7 @@ const api = jest.requireMock("../libraryApi");
 const profileApi = jest.requireMock("../../profile/profileApi");
 const source = {
   id: "source-1",
+  version: 1,
   name: "Original source",
   period: "MODERN",
   type: "WRITTEN",
@@ -53,6 +54,7 @@ const proposal = {
   sourceId: source.id,
   proposerId: "author",
   kind: "UPDATE",
+  baseVersion: 1,
   status: "PENDING",
   base: { ...source, from: null, to: null },
   proposed: { ...source, name: "Updated source", from: null, to: null },
@@ -259,10 +261,7 @@ test("an editor who amended the proposal cannot approve it", async () => {
   expect(
     screen.queryByRole("button", { name: "Approve" }),
   ).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Amend proposal/ })).toHaveAttribute(
-    "href",
-    "/library/source/source-1/edit?changeset=proposal-1",
-  );
+  expect(screen.getByRole("button", { name: "Edit proposal" })).toBeEnabled();
 });
 
 test("shows clickable profile names for proposal authors, contributors, approvers and publishers", async () => {
@@ -346,10 +345,7 @@ test("an unpublished source breadcrumb stays on the proposal and offers proposal
     "href",
     "/library/source/source-1/changesets/proposal-1",
   );
-  expect(screen.getByRole("link", { name: "Edit proposal" })).toHaveAttribute(
-    "href",
-    "/library/source/source-1/edit?changeset=proposal-1",
-  );
+  expect(screen.getByRole("button", { name: "Edit proposal" })).toBeEnabled();
   fireEvent.click(nameLink);
   expect(screen.queryByText("Published source page")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add task" })).toBeInTheDocument();

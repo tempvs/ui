@@ -13,6 +13,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/onboarding-fixture" element={<OnboardingHome userId="profile-learner" />} />
         <Route path="/library" element={<LibraryPage />} />
+        <Route path="/library/proposals" element={<LibraryPage view="pending-proposals" />} />
         <Route
           path="/library/period/:period"
           element={<LibraryPage view="period" />}

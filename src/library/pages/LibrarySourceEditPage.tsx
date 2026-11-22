@@ -144,28 +144,62 @@ function isRangeValid(draft: Draft) {
   return ordinal(from) <= ordinal(to);
 }
 
-/** Explicit source edit flow. It deliberately creates one reviewable changeset. */
 export default function LibrarySourceEditPage() {
-  const intl = useIntl();
   const { sourceId } = useParams();
   const [searchParams] = useSearchParams();
   const selectedChangesetId = searchParams.get("changeset");
+  return (
+    <LibrarySourceEditor
+      key={`${sourceId}:${selectedChangesetId}`}
+      sourceId={sourceId}
+      selectedChangesetId={selectedChangesetId}
+    />
+  );
+}
+
+type InlineEditor = {
+  source: LibrarySource;
+  changeset: SourceChangeset;
+  publishedImages: LibrarySourceImage[];
+  stagedImages: LibrarySourceImage[];
+  canRebase: boolean;
+  onCancel: () => void;
+  onSaved: (changeset: SourceChangeset) => void;
+};
+
+export function LibrarySourceEditor({
+  sourceId,
+  selectedChangesetId,
+  inline,
+}: {
+  sourceId?: string;
+  selectedChangesetId?: string | null;
+  inline?: InlineEditor;
+}) {
+  const intl = useIntl();
   const navigate = useNavigate();
-  const [source, setSource] = useState<LibrarySource | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [ownPending, setOwnPending] = useState<SourceChangeset | null>(null);
+  const [source, setSource] = useState<LibrarySource | null>(inline?.source ?? null);
+  const [draft, setDraft] = useState<Draft | null>(() =>
+    inline ? asDraftSnapshot(inline.changeset.proposed) : null,
+  );
+  const [ownPending, setOwnPending] = useState<SourceChangeset | null>(
+    inline?.changeset ?? null,
+  );
   const [isUnpublishedCreation, setIsUnpublishedCreation] = useState(false);
   const [otherPendingCount, setOtherPendingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!inline);
   const [submitting, setSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<LibrarySourceImage[]>([]);
+  const [images, setImages] = useState<LibrarySourceImage[]>(inline?.publishedImages ?? []);
   const [imageOperations, setImageOperations] = useState<
     SourceImageOperation[]
-  >([]);
+  >(inline?.changeset.imageOperations ?? []);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [savedRevision, setSavedRevision] = useState<SourceChangeset | null>(null);
+  const uploadsComplete = useRef(new Set<string>());
+  const [preparingImages, setPreparingImages] = useState(0);
   const [replacementImageId, setReplacementImageId] = useState<
     string | undefined
   >();
@@ -266,18 +300,25 @@ export default function LibrarySourceEditPage() {
     }
   }, [navigate, sourceId, selectedChangesetId]);
 
+  const isInline = Boolean(inline);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!isInline) void load();
+  }, [isInline, load]);
 
   const proposed = useMemo(() => (draft ? snapshot(draft) : null), [draft]);
+  const needsRebase = Boolean(ownPending && ownPending.baseVersion !== source?.version);
   const canReview = Boolean(
     source &&
     proposed &&
     proposed.name &&
     proposed.period &&
     proposed.type &&
-    isRangeValid(draft!),
+    isRangeValid(draft!) &&
+    (!inline || !needsRebase),
+  );
+  const hasChanges = !inline || (
+    JSON.stringify(proposed) !== JSON.stringify(snapshot(asDraftSnapshot(inline.changeset.proposed))) ||
+    JSON.stringify(imageOperations) !== JSON.stringify(inline.changeset.imageOperations)
   );
 
   const update = <K extends keyof Draft>(field: K, value: Draft[K]) => {
@@ -291,6 +332,7 @@ export default function LibrarySourceEditPage() {
     const original = event.target.files?.[0];
     event.target.value = "";
     if (!original) return;
+    setPreparingImages((count) => count + 1);
     try {
       const file = await prepareImageFile(original);
       const id = crypto.randomUUID();
@@ -340,6 +382,8 @@ export default function LibrarySourceEditPage() {
       ]);
     } catch (caught) {
       setError(getErrorMessage(caught));
+    } finally {
+      setPreparingImages((count) => count - 1);
     }
   };
 
@@ -430,22 +474,26 @@ export default function LibrarySourceEditPage() {
   };
 
   const submit = async () => {
-    if (!source || !proposed || !canReview) return;
+    if (!source || !proposed || submitting || preparingImages ||
+      (!savedRevision && (!canReview || !hasChanges))) return;
     setSubmitting(true);
     setError(null);
     try {
-      const payload = { proposed, imageOperations };
-      const result = ownPending
-        ? await amendSourceChangeset(
-            sourceId,
-            ownPending.id,
-            payload,
-            ownPending.version,
-          )
-        : await createSourceChangeset(sourceId, payload, source.version);
-      if (!result.ok) throw new Error("Unable to submit the source changeset.");
-      const changeset = result.data as SourceChangeset;
+      let changeset = savedRevision;
+      if (!changeset) {
+        const payload = { proposed, imageOperations };
+        const result = ownPending
+          ? await amendSourceChangeset(source.id, ownPending.id, payload, ownPending.version)
+          : await createSourceChangeset(source.id, payload, source.version);
+        if (!result.ok || !result.data)
+          throw responseError(result, "Unable to submit the source changeset.");
+        if ("changeset" in result.data) changeset = result.data.changeset;
+        else if ("proposed" in result.data) changeset = result.data;
+        else throw new Error("The server did not return the saved proposal.");
+        setSavedRevision(changeset);
+      }
       for (const image of pendingImages) {
+        if (uploadsComplete.current.has(image.id)) continue;
         const upload = await uploadSourceChangesetImage(
           source.id,
           changeset.id,
@@ -455,13 +503,13 @@ export default function LibrarySourceEditPage() {
         );
         if (!upload.ok)
           throw new Error(
-            "The changeset was saved, but a staged image could not be uploaded.",
+            "The revision was saved. Retry to finish uploading its images.",
           );
+        uploadsComplete.current.add(image.id);
       }
       setShowReview(false);
-      navigate(`/library/source/${source.id}/changesets/${changeset.id}`, {
-        replace: true,
-      });
+      if (inline) inline.onSaved(changeset);
+      else navigate(`/library/source/${source.id}/changesets/${changeset.id}`, { replace: true });
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -506,6 +554,10 @@ export default function LibrarySourceEditPage() {
       if (!result.ok || !result.data || !("id" in result.data))
         throw responseError(result, "Unable to rebase this changeset.");
       const rebased = result.data as SourceChangeset;
+      if (inline) {
+        inline.onSaved(rebased);
+        return;
+      }
       setOwnPending(rebased);
       setDraft(asDraftSnapshot(rebased.proposed));
       setImageOperations(rebased.imageOperations || []);
@@ -532,107 +584,133 @@ export default function LibrarySourceEditPage() {
     );
   }
 
-  return (
-    <PageLayout
-      header={{
-        title: (
-          <LibraryPeriodBreadcrumb
-            period={source.period}
-            trailingItem={{
-              label: source.name,
-              to:
-                isUnpublishedCreation && ownPending
-                  ? `/library/source/${source.id}/changesets/${ownPending.id}`
-                  : `/library/source/${source.id}`,
-            }}
-            trailingItems={[
-              ...(ownPending
-                ? [
-                    {
-                      label: "Proposal",
-                      to: `/library/source/${source.id}/changesets/${ownPending.id}`,
-                    },
-                  ]
-                : []),
-              { label: ownPending ? "Edit proposal" : "Propose changes" },
-            ]}
-          />
-        ),
-        backgroundColor: "#f3efe4",
-        borderColor: "#d9ccb0",
-        rightContent: !isUnpublishedCreation ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline-danger"
-            disabled={submitting}
-            onClick={() => setShowDeleteConfirmation(true)}
-          >
-            Delete source
-          </Button>
-        ) : null,
+  const header = {
+    title: (
+      <LibraryPeriodBreadcrumb
+        period={source.period}
+        trailingItem={{
+          label: source.name,
+          to:
+            isUnpublishedCreation && ownPending
+              ? `/library/source/${source.id}/changesets/${ownPending.id}`
+              : `/library/source/${source.id}`,
+        }}
+        trailingItems={[
+          ...(ownPending
+            ? [
+                {
+                  label: "Proposal",
+                  to: `/library/source/${source.id}/changesets/${ownPending.id}`,
+                },
+              ]
+            : []),
+          { label: ownPending ? "Edit proposal" : "Propose changes" },
+        ]}
+      />
+    ),
+    backgroundColor: "#f3efe4",
+    borderColor: "#d9ccb0",
+    rightContent: !isUnpublishedCreation ? (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline-danger"
+        disabled={submitting}
+        onClick={() => setShowDeleteConfirmation(true)}
+      >
+        Delete source
+      </Button>
+    ) : null,
+  };
+  const diff = (
+    <SourceChangesetDiff
+      base={inline && ownPending ? ownPending.base : snapshot(asDraft(source))}
+      proposed={proposed}
+      kind={inline ? ownPending?.kind : undefined}
+      imageOperations={imageOperations}
+      imagePreviews={{
+        published: images,
+        staged: [
+          ...(inline?.stagedImages ?? []),
+          ...pendingImages.map((image) => ({
+            id: image.id,
+            url: image.previewUrl,
+            fileName: image.file.name,
+            description: image.description || null,
+          })),
+        ],
       }}
-    >
-      <div className="page-layout-content px-4 px-xl-5 pb-4">
-        <div
-          className="stash-shell p-3 p-md-4 mx-auto"
-          style={{ maxWidth: "52rem" }}
+    />
+  );
+  const content = (
+    <>
+      <div
+        className={inline ? "proposal-editor" : "stash-shell p-3 p-md-4 mx-auto"}
+        style={inline ? undefined : { maxWidth: "52rem" }}
+      >
+        {inline ? <h3 className="h5 mb-3">Edit proposal</h3> : <>
+        <h1 className="h3 mb-1">Propose source changes</h1>
+        <p className="text-muted mb-4">
+          Your edits will be reviewed before they change the published source.
+        </p>
+        </>}
+        {ownPending && (
+          <div className="alert alert-warning small">
+            {inline
+              ? inline.changeset.status === "APPROVED"
+                ? "Saving this revision requires a new approval."
+                : "An independent reviewer will need to approve this revision."
+              : "You are editing an existing proposal. Submitting this form will amend it and require a new approval."}
+          </div>
+        )}
+        {needsRebase && (
+          <div className="alert alert-warning small d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <span>
+              {inline && !inline.canRebase
+                ? "The published source changed. Ask the proposal author to rebase before editing."
+                : "The published source changed. Rebase to carry forward the proposed changes that do not conflict."}
+            </span>
+            {(!inline || inline.canRebase) && <Button
+              size="sm"
+              variant="outline-dark"
+              disabled={submitting || Boolean(savedRevision) || preparingImages > 0}
+              onClick={() => void rebase()}
+            >
+              Rebase changes
+            </Button>}
+          </div>
+        )}
+        {otherPendingCount > 0 && (
+          <div className="alert alert-info small">
+            {otherPendingCount} pending proposal
+            {otherPendingCount === 1 ? " is" : "s are"} from other editors.
+            Your proposal is reviewed independently and cannot overwrite any
+            approved changes.
+          </div>
+        )}
+        {!inline && error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        <Form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (inline || savedRevision) void submit();
+            else if (canReview) setShowReview(true);
+          }}
         >
-          <h1 className="h3 mb-1">Propose source changes</h1>
-          <p className="text-muted mb-4">
-            Your edits will be reviewed before they change the published source.
-          </p>
-          {ownPending && (
-            <div className="alert alert-warning small">
-              You are editing an existing proposal. Submitting this form will
-              amend it and require a new approval.
-            </div>
-          )}
-          {ownPending && ownPending.baseVersion !== source.version && (
-            <div className="alert alert-warning small d-flex justify-content-between align-items-center gap-3">
-              <span>
-                The published source changed after this proposal was created.
-                Rebase carries over non-conflicting fields only; it never
-                overwrites approved changes.
-              </span>
-              <Button
-                size="sm"
-                variant="outline-dark"
-                disabled={submitting}
-                onClick={() => void rebase()}
-              >
-                Rebase changes
-              </Button>
-            </div>
-          )}
-          {otherPendingCount > 0 && (
-            <div className="alert alert-info small">
-              {otherPendingCount} pending proposal
-              {otherPendingCount === 1 ? " is" : "s are"} from other editors.
-              Your proposal is reviewed independently and cannot overwrite any
-              approved changes.
-            </div>
-          )}
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
-          <Form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (canReview) setShowReview(true);
-            }}
-          >
-            <Form.Group className="mb-3">
+          <fieldset disabled={submitting || Boolean(savedRevision) || (isInline && needsRebase)}>
+            <Form.Group className="mb-3" controlId="source-editor-name">
               <Form.Label>Name</Form.Label>
               <Form.Control
                 required
+                autoFocus={isInline}
                 value={draft.name}
                 onChange={(event) => update("name", event.target.value)}
               />
             </Form.Group>
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-3" controlId="source-editor-description">
               <Form.Label>Description</Form.Label>
               <Form.Control
                 as="textarea"
@@ -642,7 +720,7 @@ export default function LibrarySourceEditPage() {
               />
             </Form.Group>
             <div className="row g-3 mb-3">
-              <Form.Group className="col-md-4">
+              <Form.Group className="col-sm-6" controlId="source-editor-period">
                 <Form.Label>Period</Form.Label>
                 <OptionLabelSelect
                   required
@@ -654,7 +732,7 @@ export default function LibrarySourceEditPage() {
                   ]}
                 />
               </Form.Group>
-              <Form.Group className="col-md-4">
+              <Form.Group className="col-sm-6" controlId="source-editor-type">
                 <Form.Label>Type</Form.Label>
                 <Form.Select
                   required
@@ -679,6 +757,7 @@ export default function LibrarySourceEditPage() {
                   <Form.Label>From</Form.Label>
                   <div className="d-flex gap-2">
                     <Form.Control
+                      aria-label="From year"
                       inputMode="numeric"
                       maxLength={4}
                       value={draft.from.year}
@@ -690,6 +769,7 @@ export default function LibrarySourceEditPage() {
                       }
                     />
                     <Form.Select
+                      aria-label="From era"
                       value={draft.from.era}
                       onChange={(event) =>
                         update("from", {
@@ -707,6 +787,7 @@ export default function LibrarySourceEditPage() {
                   <Form.Label>To</Form.Label>
                   <div className="d-flex gap-2">
                     <Form.Control
+                      aria-label="To year"
                       inputMode="numeric"
                       maxLength={4}
                       value={draft.to.year}
@@ -718,6 +799,7 @@ export default function LibrarySourceEditPage() {
                       }
                     />
                     <Form.Select
+                      aria-label="To era"
                       value={draft.to.era}
                       onChange={(event) =>
                         update("to", {
@@ -912,19 +994,40 @@ export default function LibrarySourceEditPage() {
                 Add image
               </Button>
             </fieldset>
-            <div className="d-flex justify-content-end">
-              <LibraryHint
-                topic="proposal"
-                enabled={canReview && !showReview && !showDeleteConfirmation}
-                message="Review the before-and-after changes, then submit your proposal for independent approval."
+          </fieldset>
+          {inline && (
+            <details className="mb-3">
+              <summary className="fw-semibold">Preview revision</summary>
+              {diff}
+            </details>
+          )}
+          <div className={inline ? "proposal-decision" : "d-flex justify-content-end"}>
+            {inline && error && <div className="text-danger small" role="alert">{error}</div>}
+            {inline && (
+              <Button
+                type="button"
+                variant="outline-secondary"
+                onClick={inline.onCancel}
+                disabled={submitting || Boolean(savedRevision)}
               >
-                <Button type="submit" variant="dark" disabled={!canReview}>
-                  Review changes
-                </Button>
-              </LibraryHint>
-            </div>
-          </Form>
-        </div>
+                Cancel
+              </Button>
+            )}
+            <LibraryHint
+              topic="proposal"
+              enabled={!inline && canReview && !showReview && !showDeleteConfirmation}
+              message="Review the before-and-after changes, then submit your proposal for independent approval."
+            >
+              <Button
+                type="submit"
+                variant="dark"
+                disabled={submitting || preparingImages > 0 || (!savedRevision && (!canReview || !hasChanges))}
+              >
+                {submitting ? "Saving…" : savedRevision ? "Retry image uploads" : inline ? "Save revision" : "Review changes"}
+              </Button>
+            </LibraryHint>
+          </div>
+        </Form>
       </div>
       <Modal
         show={showReview}
@@ -940,32 +1043,7 @@ export default function LibrarySourceEditPage() {
             The published source and its images will stay unchanged until
             another Library editor approves this changeset and you publish it.
           </p>
-          <SourceChangesetDiff
-            base={{
-              name: source.name || "",
-              description: source.description || null,
-              period: source.period || null,
-              type: source.type || null,
-              from: source.from || null,
-              to: source.to || null,
-              discoveredAtPlaceId: source.discoveredAtPlaceId || null,
-              discoveredAtPlaceName: source.discoveredAtPlaceName || null,
-              heldAtPlaceId: source.heldAtPlaceId || null,
-              heldAtPlaceName: source.heldAtPlaceName || null,
-            }}
-            proposed={proposed}
-            imageOperations={imageOperations}
-            imagePreviews={{
-              published: images,
-              staged: pendingImages.map((image) => ({
-                id: image.id,
-                url: image.previewUrl,
-                thumbnailUrl: image.previewUrl,
-                fileName: image.file.name,
-                description: image.description || null,
-              })),
-            }}
-          />
+          {diff}
         </Modal.Body>
         <Modal.Footer>
           <Button
@@ -977,11 +1055,13 @@ export default function LibrarySourceEditPage() {
           </Button>
           <Button
             variant="dark"
-            disabled={submitting}
+            disabled={submitting || preparingImages > 0}
             onClick={() => void submit()}
           >
             {submitting
               ? "Submitting…"
+              : savedRevision
+                ? "Retry image uploads"
               : ownPending
                 ? "Amend changeset"
                 : "Propose changes"}
@@ -997,8 +1077,9 @@ export default function LibrarySourceEditPage() {
         onHide={() => !submitting && setShowDeleteConfirmation(false)}
         onConfirm={() => void proposeDeletion()}
       />
-    </PageLayout>
+    </>
   );
+  return inline ? content : <PageLayout header={header}>{content}</PageLayout>;
 }
 
 function toMapRange(from: HistoricalYearInput, to: HistoricalYearInput) {

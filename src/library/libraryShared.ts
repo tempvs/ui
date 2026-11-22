@@ -1,4 +1,5 @@
 import { IntlShape } from "react-intl";
+import type { SourceChangesetStatus } from "./libraryApi";
 
 export { PERIODS, getPeriodLabel, PeriodBadge } from "../util/periods";
 export type { Period } from "../util/periods";
@@ -14,6 +15,13 @@ export const CLASSIFICATIONS = [
 ] as const;
 export const TYPES = ["WRITTEN", "GRAPHIC", "ARCHAEOLOGICAL", "OTHER"] as const;
 export const PAGE_SIZE = 40;
+
+export function getProposalStatusLabel(status: SourceChangesetStatus) {
+  if (status === "PENDING") return "Awaiting review";
+  if (status === "APPROVED") return "Approved — ready to publish";
+  if (status === "APPLIED") return "Published";
+  return status.slice(0, 1) + status.slice(1).toLowerCase();
+}
 
 export type SourceClassification = (typeof CLASSIFICATIONS)[number];
 export type SourceType = (typeof TYPES)[number];

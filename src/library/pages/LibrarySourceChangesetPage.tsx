@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Button, Form, Modal } from "react-bootstrap";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Dropdown, Form, Modal } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import ConfirmationModal from "../../component/ConfirmationModal";
@@ -31,10 +31,13 @@ import {
   withdrawSourceChangeset,
 } from "../libraryApi";
 import { canEditSource } from "../libraryRoles";
+import { getProposalStatusLabel } from "../libraryShared";
 import {
   LibraryHint,
   useLibraryProposalEvidence,
 } from "../onboarding/LibraryJourney";
+import { LibrarySourceEditor } from "./LibrarySourceEditPage";
+import "./libraryProposals.css";
 
 function responseError(
   response: { status: number; data: unknown },
@@ -50,15 +53,29 @@ function responseError(
   return new Error(message);
 }
 
-function statusLabel(status: SourceChangeset["status"]) {
-  if (status === "APPROVED") return "Approved — ready to publish";
-  if (status === "APPLIED") return "Published";
-  return status.slice(0, 1) + status.slice(1).toLowerCase();
-}
-
-/** One private review screen shared by author and Library reviewers. */
 export default function LibrarySourceChangesetPage() {
   const { sourceId, changesetId } = useParams();
+  return (
+    <LibrarySourceChangesetReview
+      key={changesetId}
+      sourceId={sourceId}
+      changesetId={changesetId}
+    />
+  );
+}
+
+export function LibrarySourceChangesetReview({
+  sourceId,
+  changesetId,
+  onUpdated,
+  onLockChange,
+}: {
+  sourceId?: string;
+  changesetId?: string;
+  onUpdated?: (changeset: SourceChangeset) => void;
+  onLockChange?: (locked: boolean) => void;
+}) {
+  const inQueue = Boolean(onUpdated);
   const navigate = useNavigate();
   const [source, setSource] = useState<LibrarySource | null>(null);
   const [changeset, setChangeset] = useState<SourceChangeset | null>(null);
@@ -70,6 +87,10 @@ export default function LibrarySourceChangesetPage() {
   const [canOverrideApprovals, setCanOverrideApprovals] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [notice, setNotice] = useState("");
+  const editButton = useRef<HTMLButtonElement>(null);
+  const restoreEditFocus = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [publishedImages, setPublishedImages] = useState<LibrarySourceImage[]>(
     [],
@@ -87,7 +108,18 @@ export default function LibrarySourceChangesetPage() {
   >(null);
   const [overrideReason, setOverrideReason] = useState("");
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    onLockChange?.(editing || busy);
+  }, [busy, editing, onLockChange]);
+
+  useEffect(() => {
+    if (!editing && !busy && !loading && restoreEditFocus.current) {
+      restoreEditFocus.current = false;
+      editButton.current?.focus();
+    }
+  }, [busy, editing, loading]);
+
+  const load = useCallback(async (updated?: SourceChangeset, notify = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -105,7 +137,8 @@ export default function LibrarySourceChangesetPage() {
       if (!("source" in detail) || !("changeset" in detail))
         throw new Error("Unable to load this changeset.");
       setSource(detail.source);
-      setChangeset(detail.changeset);
+      const current = updated && updated.version >= detail.changeset.version ? updated : detail.changeset;
+      setChangeset(current);
       setViewerId(viewer?.userId || null);
       setCanOverrideApprovals(
         Boolean(
@@ -116,17 +149,17 @@ export default function LibrarySourceChangesetPage() {
       );
       const actorIds = Array.from(
         new Set([
-          detail.changeset.proposerId,
-          ...(detail.changeset.approvals || []).map(
+          current.proposerId,
+          ...(current.approvals || []).map(
             (approval) => approval.userId,
           ),
-          ...(detail.changeset.amendments || []).map(
+          ...(current.amendments || []).map(
             (amendment) => amendment.userId,
           ),
-          ...(detail.changeset.publishedBy
-            ? [detail.changeset.publishedBy]
+          ...(current.publishedBy
+            ? [current.publishedBy]
             : []),
-          ...(detail.changeset.tasks || []).flatMap((task) =>
+          ...(current.tasks || []).flatMap((task) =>
             [task.createdBy, task.resolvedBy, task.reopenedBy].filter(
               (id): id is string => Boolean(id),
             ),
@@ -147,12 +180,14 @@ export default function LibrarySourceChangesetPage() {
       );
       setPublishedImages(published?.data || []);
       setStagedImages(staged?.data || []);
+      if (notify) onUpdated?.(current);
     } catch (caught) {
+      if (updated) onUpdated?.(updated);
       setError(getErrorMessage(caught));
     } finally {
       setLoading(false);
     }
-  }, [changesetId, sourceId]);
+  }, [changesetId, onUpdated, sourceId]);
 
   useEffect(() => {
     void load();
@@ -172,9 +207,10 @@ export default function LibrarySourceChangesetPage() {
     if (!stagedIds.length) return;
     let active = true;
     let attempts = 0;
+    let timeout: number | undefined;
     const refresh = async () => {
-      const result = await getSourceChangesetImages(source.id, changeset.id);
-      if (!active || !result.ok) return;
+      const result = await getSourceChangesetImages(source.id, changeset.id).catch(() => null);
+      if (!active || !result?.ok) return;
       setStagedImages(result.data || []);
       const ready = stagedIds.every((id) =>
         result.data?.some(
@@ -183,11 +219,12 @@ export default function LibrarySourceChangesetPage() {
         ),
       );
       attempts += 1;
-      if (!ready && attempts < 10 && active) window.setTimeout(refresh, 1000);
+      if (!ready && attempts < 10) timeout = window.setTimeout(refresh, 1000);
     };
     void refresh();
     return () => {
       active = false;
+      window.clearTimeout(timeout);
     };
   }, [changeset, source]);
 
@@ -198,6 +235,7 @@ export default function LibrarySourceChangesetPage() {
     if (!changeset) return;
     setBusy(true);
     setError(null);
+    setNotice("");
     try {
       const result =
         operation === "approve"
@@ -233,13 +271,24 @@ export default function LibrarySourceChangesetPage() {
                     changeset.id,
                     changeset.version,
                   );
-      if (!result.ok) throw new Error(`Unable to ${operation} this changeset.`);
+      if (!result.ok) throw responseError(result, `Unable to ${operation} this changeset.`);
+      const updated = result.data && (
+        "changeset" in result.data ? result.data.changeset :
+        "proposed" in result.data ? result.data : undefined
+      );
       setShowReject(false);
       setOverrideAction(null);
       setOverrideReason("");
       setShowWithdraw(false);
       setComment("");
       if (operation === "publish") {
+        if (inQueue) {
+          const published = updated || { ...changeset, status: "APPLIED" as const };
+          setChangeset(published);
+          onUpdated?.(published);
+          setNotice("Proposal published to the Library.");
+          return;
+        }
         const approvedSource =
           result.data &&
           typeof result.data === "object" &&
@@ -277,7 +326,8 @@ export default function LibrarySourceChangesetPage() {
         );
         return;
       }
-      await load();
+      if (updated) setChangeset(updated);
+      await load(updated ?? undefined, true);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -329,7 +379,7 @@ export default function LibrarySourceChangesetPage() {
       if (!taskId) setTaskText("");
       setOverrideAction(null);
       setOverrideReason("");
-      await load();
+      await load(result.data && "proposed" in result.data ? result.data : undefined, true);
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -337,20 +387,14 @@ export default function LibrarySourceChangesetPage() {
     }
   };
 
-  if (loading)
-    return (
-      <PageLayout header={{ title: "LIBRARY" }}>
-        <Spinner />
-      </PageLayout>
+  if (!source || !changeset) {
+    const message = loading ? <Spinner /> : (
+      <div className="tempvs-plain-message text-danger" role="alert">
+        {error || "Changeset not found."}
+      </div>
     );
-  if (!source || !changeset)
-    return (
-      <PageLayout header={{ title: "LIBRARY" }}>
-        <div className="tempvs-plain-message text-danger">
-          {error || "Changeset not found."}
-        </div>
-      </PageLayout>
-    );
+    return inQueue ? message : <PageLayout header={{ title: "LIBRARY" }}>{message}</PageLayout>;
+  }
   const pending = changeset.status === "PENDING";
   const userProfileLink = (userId: string) => {
     const profile = actorProfiles[userId];
@@ -372,379 +416,397 @@ export default function LibrarySourceChangesetPage() {
     (task) => task.blocking && task.status === "OPEN",
   );
   const proposalPath = `/library/source/${source.id}/changesets/${changeset.id}`;
-  const editPath = `/library/source/${source.id}/edit?changeset=${changeset.id}`;
   const own = changeset.proposerId === viewerId;
   const contributor =
     own ||
     changeset.amendments?.some((amendment) => amendment.userId === viewerId);
-  return (
-    <PageLayout
-      header={{
-        title: (
-          <LibraryPeriodBreadcrumb
-            period={source.period}
-            trailingItem={{
-              label: source.name,
-              to:
-                changeset.kind === "CREATE" && changeset.status !== "APPLIED"
-                  ? proposalPath
-                  : `/library/source/${source.id}`,
-            }}
-            trailingItems={[
-              { label: "Proposal", to: proposalPath },
-              ...(unpublished && changeset.kind !== "DELETE"
-                ? [{ label: "Edit proposal", to: editPath }]
-                : []),
-            ]}
-          />
-        ),
-        backgroundColor: "#f3efe4",
-        borderColor: "#d9ccb0",
-      }}
-    >
-      <div className="page-layout-content px-4 px-xl-5 pb-4">
-        <div
-          className="stash-shell p-3 p-md-4 mx-auto"
-          style={{ maxWidth: "60rem" }}
-        >
-          <div className="d-flex justify-content-between gap-3 flex-wrap mb-3">
-            <div>
-              <h1 className="h3 mb-1">{source.name}</h1>
-              <div className="text-muted small">
-                Submitted {formatAppDateTime(changeset.createdAt)}
-              </div>
+  const canEdit = unpublished && changeset.kind !== "DELETE";
+  const canApprove = pending && !contributor;
+  const Title = inQueue ? "h2" : "h1";
+  const header = {
+    title: (
+      <LibraryPeriodBreadcrumb
+        period={source.period}
+        trailingItem={{
+          label: source.name,
+          to:
+            changeset.kind === "CREATE" && changeset.status !== "APPLIED"
+              ? proposalPath
+              : `/library/source/${source.id}`,
+        }}
+        trailingItems={[{ label: "Proposal", to: proposalPath }]}
+      />
+    ),
+    backgroundColor: "#f3efe4",
+    borderColor: "#d9ccb0",
+  };
+  const finishEditing = () => {
+    restoreEditFocus.current = true;
+    setEditing(false);
+  };
+  const content = (
+    <>
+      <div
+        className={inQueue ? "proposal-review" : "proposal-review stash-shell p-3 p-md-4 mx-auto"}
+        style={inQueue ? undefined : { maxWidth: "60rem" }}
+      >
+        <header className="proposal-review-header">
+          <div>
+            <Title className="h3 mb-1">{changeset.proposed.name || source.name}</Title>
+            <div className="text-muted small">
+              Revision {changeset.revision ?? changeset.version}
+              {" · "}Submitted {formatAppDateTime(changeset.createdAt)}
             </div>
-            <span
-              className={`badge align-self-start ${pending ? "text-bg-warning" : "text-bg-secondary"}`}
-            >
-              {statusLabel(changeset.status)}
-            </span>
           </div>
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
-          <SourceChangesetDiff
-            base={changeset.base}
-            proposed={changeset.proposed}
-            kind={changeset.kind}
-            imageOperations={changeset.imageOperations}
-            imagePreviews={{
-              published: publishedImages,
-              staged: stagedImages,
-            }}
-          />
-          <section
-            className="border rounded p-3 mt-3 text-start"
-            aria-labelledby="proposal-tasks-title"
+          <span
+            className="proposal-status"
+            data-status={changeset.status}
           >
-            <h2 id="proposal-tasks-title" className="h5">
-              Action items
-            </h2>
-            {blockingTasks.length > 0 && (
-              <p className="text-danger" role="status">
-                Blocked until {blockingTasks.length} action item
-                {blockingTasks.length === 1 ? " is" : "s are"} resolved.
-                Approval and publication are unavailable.
-              </p>
-            )}
-            {!(changeset.tasks || []).length && (
-              <p className="text-muted">No action items yet.</p>
-            )}
-            <ul className="list-unstyled">
-              {(changeset.tasks || []).map((task) => (
-                <li key={task.id} className="border-bottom py-2">
-                  <div className="d-flex justify-content-between gap-2 align-items-start">
-                    <div>
-                      <span
-                        className={`badge me-2 ${task.status === "RESOLVED" ? "text-bg-success" : task.blocking ? "text-bg-danger" : "text-bg-secondary"}`}
-                      >
-                        {task.status === "RESOLVED"
-                          ? "Resolved"
-                          : task.blocking
-                            ? "Blocking"
-                            : "Suggestion"}
-                      </span>
-                      <span
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          overflowWrap: "anywhere",
-                        }}
-                      >
-                        {task.text}
-                      </span>
-                      <div className="small text-muted mt-1">
-                        Added by {userProfileLink(task.createdBy)} on{" "}
-                        {formatAppDateTime(task.createdAt)}
-                      </div>
-                      {task.status === "RESOLVED" && task.resolvedBy && (
-                        <div className="small">
-                          Resolved by {userProfileLink(task.resolvedBy)}
-                          {task.resolutionOverrideReason
-                            ? ` (Admin override: ${task.resolutionOverrideReason})`
-                            : ""}
-                        </div>
-                      )}
-                      {task.status === "OPEN" && task.reopenedBy && (
-                        <div className="small">
-                          Reopened by {userProfileLink(task.reopenedBy)}
-                          {task.reopenOverrideReason
-                            ? ` (Admin override: ${task.reopenOverrideReason})`
-                            : ""}
-                        </div>
-                      )}
-                    </div>
-                    {unpublished &&
-                      (task.createdBy === viewerId || canOverrideApprovals) && (
-                        <Button
-                          size="sm"
-                          variant={
-                            task.createdBy === viewerId
-                              ? "outline-dark"
-                              : "warning"
-                          }
-                          disabled={busy}
-                          onClick={() =>
-                            task.createdBy === viewerId
-                              ? void saveTask(
-                                  task.id,
-                                  task.status === "OPEN" ? "RESOLVED" : "OPEN",
-                                )
-                              : setOverrideAction({
-                                  kind: "task",
-                                  taskId: task.id,
-                                  status:
-                                    task.status === "OPEN"
-                                      ? "RESOLVED"
-                                      : "OPEN",
-                                })
-                          }
-                        >
-                          {task.createdBy !== viewerId
-                            ? task.status === "OPEN"
-                              ? "Admin override: resolve task"
-                              : "Admin override: reopen task"
-                            : task.status === "OPEN"
-                              ? "Resolve task"
-                              : "Reopen task"}
-                        </Button>
-                      )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {unpublished && (
-              <Form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (taskText.trim()) void saveTask();
-                }}
-              >
-                <Form.Label htmlFor="proposal-task-text">
-                  New action item
-                </Form.Label>
-                <LibraryHint
-                  topic="tasks"
-                  priority={20}
-                  enabled={!overrideAction && !showReject && !showWithdraw}
-                  message="Add a concrete action item if a change needs work. The author amends and replies; the task creator verifies the fix. Blocking tasks stop approval and publication."
-                  className="library-hint-block"
-                >
-                  <Form.Control
-                    id="proposal-task-text"
-                    as="textarea"
-                    rows={2}
-                    maxLength={2000}
-                    value={taskText}
-                    onChange={(event) => setTaskText(event.target.value)}
-                    placeholder="For example: provide a source for this date"
-                    disabled={busy}
-                  />
-                </LibraryHint>
-                <Form.Check
-                  className="my-2"
-                  id="proposal-task-blocking"
-                  label="Block approval and publication until resolved"
-                  checked={taskBlocking}
-                  onChange={(event) => setTaskBlocking(event.target.checked)}
-                  disabled={busy}
-                />
-                <p className="small text-muted">
-                  The task creator or an admin can resolve or reopen a task.
-                  Discuss fixes in the proposal comments below.
-                </p>
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="outline-dark"
-                  disabled={
-                    busy ||
-                    !taskText.trim() ||
-                    (changeset.tasks?.length ?? 0) >= 50
-                  }
-                >
-                  Add task
-                </Button>
-              </Form>
-            )}
-          </section>
-          <CommentThread
-            targetType="SOURCE_CHANGESET"
-            targetId={`${source.id}:${changeset.id}`}
-          />
-          {changeset.reviewComment && (
-            <div className="border rounded p-3 mt-3 text-start">
-              <div className="fw-semibold">Review comment</div>
-              <div>{changeset.reviewComment}</div>
-            </div>
-          )}
-          <div className="mt-3 text-start small">
-            <div>Proposed by {userProfileLink(changeset.proposerId)}</div>
-            {(changeset.amendments || []).map((amendment, index) => (
-              <div key={`amendment-${index}`}>
-                Revision {amendment.revision} amended by{" "}
-                {userProfileLink(amendment.userId)} on{" "}
-                {formatAppDateTime(amendment.amendedAt)}
-              </div>
-            ))}
-            {(changeset.approvals || []).map((approval, index) => (
-              <div key={index}>
-                {approval.adminOverride
-                  ? "Approved by admin override by "
-                  : "Approved by "}
-                {userProfileLink(approval.userId)} on{" "}
-                {formatAppDateTime(approval.approvedAt)}
-                {approval.adminOverride && approval.comment
-                  ? ` — ${approval.comment}`
-                  : ""}
-                {approval.revision !== (changeset.revision ?? changeset.version)
-                  ? " (earlier revision)"
-                  : ""}
-              </div>
-            ))}
-            {changeset.publishedBy && (
-              <div>
-                {changeset.publicationAdminOverride
-                  ? "Published using admin override by "
-                  : "Published by "}
-                {userProfileLink(changeset.publishedBy)} on{" "}
-                {formatAppDateTime(changeset.publishedAt!)}
-                {changeset.publicationReason
-                  ? ` — ${changeset.publicationReason}`
-                  : ""}
-              </div>
-            )}
+            {getProposalStatusLabel(changeset.status)}
+          </span>
+        </header>
+        {notice && <p className="text-success mt-3" role="status">{notice}</p>}
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
           </div>
-          {approved && (
-            <div className="alert alert-success mt-3 text-start">
-              Approved — ready to publish. The public Library has not changed
-              yet.
-              {(own || canOverrideApprovals) && (
-                <>
-                  {!own && (
-                    <Form.Control
-                      className="mt-2"
-                      as="textarea"
-                      aria-label="Reason for publishing on behalf"
-                      placeholder="Explain why you are publishing on the author's behalf"
-                      value={comment}
-                      onChange={(event) => setComment(event.target.value)}
-                    />
-                  )}
-                  <LibraryHint
-                    topic="publish"
-                    priority={5}
-                    enabled={
-                      own &&
-                      blockingTasks.length === 0 &&
-                      !overrideAction &&
-                      !showReject &&
-                      !showWithdraw
-                    }
-                    message="Approval is complete. Publish makes this revision visible in the public Library."
-                  >
-                    <Button
-                      className="mt-2"
-                      variant={own ? "primary" : "warning"}
-                      disabled={
-                        busy ||
-                        blockingTasks.length > 0 ||
-                        (!own && !comment.trim())
-                      }
-                      onClick={() => void perform("publish")}
-                    >
-                      {own
-                        ? "Publish"
-                        : "Admin override: publish on author's behalf"}
-                    </Button>
-                  </LibraryHint>
-                </>
+        )}
+        {editing ? (
+          <LibrarySourceEditor
+            sourceId={source.id}
+            inline={{
+              source,
+              changeset,
+              publishedImages,
+              stagedImages,
+              canRebase: own,
+              onCancel: finishEditing,
+              onSaved: (updated) => {
+                setChangeset(updated);
+                setBusy(true);
+                finishEditing();
+                setNotice("Revision saved and awaiting independent review.");
+                void load(updated, true).finally(() => setBusy(false));
+              },
+            }}
+          />
+        ) : (
+          <>
+            <div className="proposal-changes-heading">
+              <h3 className="h5 mb-0">Changes</h3>
+              {canEdit && (
+                <Button
+                  type="button"
+                  ref={editButton}
+                  variant="outline-dark"
+                  size="sm"
+                  disabled={busy || loading}
+                  onClick={() => {
+                    setError(null);
+                    setNotice("");
+                    setEditing(true);
+                  }}
+                >
+                  Edit proposal
+                </Button>
               )}
             </div>
-          )}
-          {(pending || approved) && changeset.kind !== "DELETE" && (
-            <Link
-              to={`/library/source/${source.id}/edit?changeset=${changeset.id}`}
-              className="btn btn-outline-dark mt-3"
+            <SourceChangesetDiff
+              base={changeset.base}
+              proposed={changeset.proposed}
+              kind={changeset.kind}
+              imageOperations={changeset.imageOperations}
+              imagePreviews={{
+                published: publishedImages,
+                staged: stagedImages,
+              }}
+            />
+            <section
+              className="border rounded p-3 mt-3 text-start"
+              aria-labelledby="proposal-tasks-title"
             >
-              Amend proposal (requires a new approval)
-            </Link>
-          )}
-          {pending && (
-            <div className="d-flex justify-content-end gap-2 mt-4 flex-wrap">
-              {own ? (
-                <>
-                  <Button
-                    variant="outline-danger"
-                    disabled={busy}
-                    onClick={() => setShowWithdraw(true)}
-                  >
-                    Withdraw
-                  </Button>
-                </>
-              ) : !contributor ? (
-                <>
-                  <Button
-                    variant="outline-danger"
-                    disabled={busy}
-                    onClick={() => setShowReject(true)}
-                  >
-                    Reject
-                  </Button>
+              <h2 id="proposal-tasks-title" className="h5">
+                Action items
+              </h2>
+              {!(changeset.tasks || []).length && (
+                <p className="text-muted">No action items yet.</p>
+              )}
+              <ul className="list-unstyled">
+                {(changeset.tasks || []).map((task) => (
+                  <li key={task.id} className="border-bottom py-2">
+                    <div className="d-flex justify-content-between gap-2 align-items-start">
+                      <div>
+                        <span
+                          className={`badge me-2 ${task.status === "RESOLVED" ? "text-bg-success" : task.blocking ? "text-bg-danger" : "text-bg-secondary"}`}
+                        >
+                          {task.status === "RESOLVED"
+                            ? "Resolved"
+                            : task.blocking
+                              ? "Blocking"
+                              : "Suggestion"}
+                        </span>
+                        <span
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {task.text}
+                        </span>
+                        <div className="small text-muted mt-1">
+                          Added by {userProfileLink(task.createdBy)} on{" "}
+                          {formatAppDateTime(task.createdAt)}
+                        </div>
+                        {task.status === "RESOLVED" && task.resolvedBy && (
+                          <div className="small">
+                            Resolved by {userProfileLink(task.resolvedBy)}
+                            {task.resolutionOverrideReason
+                              ? ` (Admin override: ${task.resolutionOverrideReason})`
+                              : ""}
+                          </div>
+                        )}
+                        {task.status === "OPEN" && task.reopenedBy && (
+                          <div className="small">
+                            Reopened by {userProfileLink(task.reopenedBy)}
+                            {task.reopenOverrideReason
+                              ? ` (Admin override: ${task.reopenOverrideReason})`
+                              : ""}
+                          </div>
+                        )}
+                      </div>
+                      {unpublished &&
+                        (task.createdBy === viewerId || canOverrideApprovals) && (
+                          <Button
+                            size="sm"
+                            variant={
+                              task.createdBy === viewerId
+                                ? "outline-dark"
+                                : "warning"
+                            }
+                            disabled={busy}
+                            onClick={() =>
+                              task.createdBy === viewerId
+                                ? void saveTask(
+                                    task.id,
+                                    task.status === "OPEN" ? "RESOLVED" : "OPEN",
+                                  )
+                                : setOverrideAction({
+                                    kind: "task",
+                                    taskId: task.id,
+                                    status:
+                                      task.status === "OPEN"
+                                        ? "RESOLVED"
+                                        : "OPEN",
+                                  })
+                            }
+                          >
+                            {task.createdBy !== viewerId
+                              ? task.status === "OPEN"
+                                ? "Admin override: resolve task"
+                                : "Admin override: reopen task"
+                              : task.status === "OPEN"
+                                ? "Resolve task"
+                                : "Reopen task"}
+                          </Button>
+                        )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {unpublished && (
+                <Form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (taskText.trim()) void saveTask();
+                  }}
+                >
+                  <Form.Label htmlFor="proposal-task-text">
+                    New action item
+                  </Form.Label>
                   <LibraryHint
-                    topic="review"
-                    priority={10}
-                    enabled={
-                      blockingTasks.length === 0 &&
-                      !overrideAction &&
-                      !showReject &&
-                      !showWithdraw
-                    }
-                    message="Check the changes, images, comments, and tasks first. Approve records your review; the author still needs to publish."
+                    topic="tasks"
+                    priority={20}
+                    enabled={!overrideAction && !showReject && !showWithdraw}
+                    message="Add a concrete action item if a change needs work. The author amends and replies; the task creator verifies the fix. Blocking tasks stop approval and publication."
+                    className="library-hint-block"
                   >
-                    <Button
-                      variant="success"
-                      disabled={busy || blockingTasks.length > 0}
-                      onClick={() => void perform("approve")}
-                    >
-                      Approve
-                    </Button>
+                    <Form.Control
+                      id="proposal-task-text"
+                      as="textarea"
+                      rows={2}
+                      maxLength={2000}
+                      value={taskText}
+                      onChange={(event) => setTaskText(event.target.value)}
+                      placeholder="For example: provide a source for this date"
+                      disabled={busy}
+                    />
                   </LibraryHint>
-                </>
-              ) : null}
-              {canOverrideApprovals && (
+                  <Form.Check
+                    className="my-2"
+                    id="proposal-task-blocking"
+                    label="Block approval and publication until resolved"
+                    checked={taskBlocking}
+                    onChange={(event) => setTaskBlocking(event.target.checked)}
+                    disabled={busy}
+                  />
+                  <p className="small text-muted">
+                    The task creator or an admin can resolve or reopen a task.
+                    Discuss fixes in the proposal comments below.
+                  </p>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline-dark"
+                    disabled={
+                      busy ||
+                      !taskText.trim() ||
+                      (changeset.tasks?.length ?? 0) >= 50
+                    }
+                  >
+                    Add task
+                  </Button>
+                </Form>
+              )}
+            </section>
+            <CommentThread
+              targetType="SOURCE_CHANGESET"
+              targetId={`${source.id}:${changeset.id}`}
+            />
+            {changeset.reviewComment && (
+              <div className="border rounded p-3 mt-3 text-start">
+                <div className="fw-semibold">Review comment</div>
+                <div>{changeset.reviewComment}</div>
+              </div>
+            )}
+            <div className="mt-3 text-start small">
+              <div>Proposed by {userProfileLink(changeset.proposerId)}</div>
+              {(changeset.amendments || []).map((amendment, index) => (
+                <div key={`amendment-${index}`}>
+                  Revision {amendment.revision} amended by{" "}
+                  {userProfileLink(amendment.userId)} on{" "}
+                  {formatAppDateTime(amendment.amendedAt)}
+                </div>
+              ))}
+              {(changeset.approvals || []).map((approval, index) => (
+                <div key={index}>
+                  {approval.adminOverride
+                    ? "Approved by admin override by "
+                    : "Approved by "}
+                  {userProfileLink(approval.userId)} on{" "}
+                  {formatAppDateTime(approval.approvedAt)}
+                  {approval.adminOverride && approval.comment
+                    ? ` — ${approval.comment}`
+                    : ""}
+                  {approval.revision !== (changeset.revision ?? changeset.version)
+                    ? " (earlier revision)"
+                    : ""}
+                </div>
+              ))}
+              {changeset.publishedBy && (
+                <div>
+                  {changeset.publicationAdminOverride
+                    ? "Published using admin override by "
+                    : "Published by "}
+                  {userProfileLink(changeset.publishedBy)} on{" "}
+                  {formatAppDateTime(changeset.publishedAt!)}
+                  {changeset.publicationReason
+                    ? ` — ${changeset.publicationReason}`
+                    : ""}
+                </div>
+              )}
+            </div>
+            {approved && !own && canOverrideApprovals && (
+              <Form.Group className="mt-3" controlId="proposal-publish-override">
+                <Form.Label>Reason for publishing on behalf</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  aria-label="Reason for publishing on behalf"
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  disabled={busy}
+                />
+              </Form.Group>
+            )}
+            <footer className="proposal-decision">
+              <div className="proposal-decision-copy small">
+                {blockingTasks.length > 0 && unpublished ? (
+                  <p className="text-danger mb-0" role="status">
+                    Blocked until {blockingTasks.length} action item
+                    {blockingTasks.length === 1 ? " is" : "s are"} resolved.
+                  </p>
+                ) : approved ? (
+                  <p className="text-muted mb-0">
+                    {own ? "Publishing makes this revision public." : "The author can now publish this revision."}
+                  </p>
+                ) : pending ? (
+                  <p className="text-muted mb-0">
+                    {contributor
+                      ? "This revision needs an independent reviewer."
+                      : "Approval sends this revision to the author for publication."}
+                  </p>
+                ) : changeset.status === "APPLIED" && changeset.kind !== "DELETE" ? (
+                  <Link to={`/library/source/${source.id}`}>View published source</Link>
+                ) : null}
+              </div>
+              {pending && (own || canApprove) && (
+                <Dropdown align="end">
+                  <Dropdown.Toggle variant="outline-secondary" size="sm" disabled={busy || loading}>
+                    More actions
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    {own ? (
+                      <Dropdown.Item as="button" onClick={() => setShowWithdraw(true)}>Withdraw</Dropdown.Item>
+                    ) : (
+                      <Dropdown.Item as="button" onClick={() => setShowReject(true)}>Reject</Dropdown.Item>
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
+              {pending && canOverrideApprovals && (
                 <Button
                   variant="warning"
-                  disabled={busy || blockingTasks.length > 0}
+                  size="sm"
+                  disabled={busy || loading || blockingTasks.length > 0}
                   onClick={() => setOverrideAction({ kind: "approve" })}
                 >
                   Admin override: approve proposal
                 </Button>
               )}
-            </div>
-          )}
-        </div>
+              {canApprove && (
+                <LibraryHint
+                  topic="review"
+                  priority={10}
+                  enabled={blockingTasks.length === 0 && !overrideAction && !showReject && !showWithdraw}
+                  message="Check the changes, images, comments, and tasks first. The author can publish after you approve."
+                >
+                  <Button
+                    variant="dark"
+                    disabled={busy || loading || blockingTasks.length > 0}
+                    onClick={() => void perform("approve")}
+                  >
+                    Approve
+                  </Button>
+                </LibraryHint>
+              )}
+              {approved && (own || canOverrideApprovals) && (
+                <LibraryHint
+                  topic="publish"
+                  priority={5}
+                  enabled={own && blockingTasks.length === 0 && !overrideAction && !showReject && !showWithdraw}
+                  message="Approval is complete. Publish makes this revision visible in the public Library."
+                >
+                  <Button
+                    variant={own ? "dark" : "warning"}
+                    disabled={busy || loading || blockingTasks.length > 0 || (!own && !comment.trim())}
+                    onClick={() => void perform("publish")}
+                  >
+                    {own ? "Publish" : "Admin override: publish on author's behalf"}
+                  </Button>
+                </LibraryHint>
+              )}
+            </footer>
+          </>
+        )}
       </div>
       <Modal
         show={Boolean(overrideAction)}
@@ -863,6 +925,7 @@ export default function LibrarySourceChangesetPage() {
           </Button>
         </Modal.Footer>
       </Modal>
-    </PageLayout>
+    </>
   );
+  return inQueue ? content : <PageLayout header={header}>{content}</PageLayout>;
 }
