@@ -611,7 +611,7 @@ export default function LibraryPeriodPage() {
           <Form onSubmit={handleCreateSource}>
             <Modal.Body>
               <Form.Group className="mb-3">
-                <Form.Label>Name</Form.Label>
+                <Form.Label>Source name</Form.Label>
                 <Form.Control
                   required
                   value={draftSource.name}
