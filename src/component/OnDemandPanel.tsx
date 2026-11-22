@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 type OnDemandPanelProps = {
   title: string;
@@ -30,9 +31,14 @@ export default function OnDemandPanel({
   const [open, setOpen] = useState(
     () => forceOpen || (collapseOnMobile && !isNarrowViewport()),
   );
+  const [hasOpened, setHasOpened] = useState(open);
+  const contentId = useId();
   const notifiedOpen = useRef(false);
   useEffect(() => {
-    if (forceOpen) setOpen(true);
+    if (forceOpen) {
+      setHasOpened(true);
+      setOpen(true);
+    }
   }, [forceOpen]);
   useEffect(() => {
     if (!open || notifiedOpen.current) return;
@@ -41,20 +47,27 @@ export default function OnDemandPanel({
   }, [onOpen, open]);
   return (
     <section className={`on-demand-panel ${className}`.trim()}>
-      {!open ? (
+      {(!open || collapseOnMobile) && (
         <button
           type="button"
-          className="btn btn-outline-secondary w-100 text-start"
+          className={`btn btn-outline-secondary w-100 text-start${open ? " d-md-none mb-2" : ""}`}
+          aria-expanded={open}
+          aria-controls={contentId}
           onClick={() => {
-            setOpen(true);
+            setHasOpened(true);
+            setOpen(!open);
           }}
         >
-          <span className="fw-semibold">{title}</span>
-          {description && <span className="d-block small text-muted">{description}</span>}
+          <span className="d-flex align-items-center justify-content-between gap-2">
+            <span className="fw-semibold">{title}</span>
+            {open ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
+          </span>
+          {!open && description && <span className="d-block small text-muted">{description}</span>}
         </button>
-      ) : (
-        children
       )}
+      <div id={contentId} hidden={!open}>
+        {hasOpened && children}
+      </div>
     </section>
   );
 }

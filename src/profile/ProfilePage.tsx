@@ -1851,13 +1851,19 @@ class ProfilePage extends Component<ProfilePageProps, ProfilePageState> {
             </PageColumn>
             <PageColumn>
               {isClubProfile && this.state.profileId && (
-                <ProfileItemsPanel
+                <OnDemandPanel
                   key={this.state.profileId}
-                  profileId={this.state.profileId}
-                  alias={this.state.alias}
-                  editable={isEditable}
-                  t={this.t.bind(this)}
-                />
+                  title={this.t("profile.items.title", "Items")}
+                  className="mb-3"
+                  collapseOnMobile
+                >
+                  <ProfileItemsPanel
+                    profileId={this.state.profileId}
+                    alias={this.state.alias}
+                    editable={isEditable}
+                    t={this.t.bind(this)}
+                  />
+                </OnDemandPanel>
               )}
               {isClubProfile && this.state.profileId && (
                 <OnDemandPanel
