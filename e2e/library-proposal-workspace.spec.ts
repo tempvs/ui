@@ -1,9 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import type { PendingSourceChangeset, SourceChangesetStatus } from "../src/library/libraryApi";
 import { buildFixture } from "./support/buildFixture";
 
 const submitted = "2026-11-08T12:00:00Z";
 const viewer = "reviewer";
+
+async function activate(button: Locator) {
+  await expect(button).toBeEnabled();
+  await button.press("Enter");
+}
 
 function proposal(id: string, name: string, proposerId: string, status: SourceChangesetStatus): PendingSourceChangeset {
   const base = {
@@ -107,17 +112,17 @@ test("reviews, revises, approves and publishes proposals in the queue", async ({
   ]);
   await expect(queue).toHaveAttribute("aria-busy", "false");
   const charter = queue.getByRole("button", { name: /Market charter/ });
-  await charter.press("Enter");
+  await activate(charter);
   await expect(review.getByRole("heading", { name: "Market charter" })).toBeVisible();
   if (mobile) await expect(queue).toBeHidden();
   else {
     await expect(queue).toBeVisible();
     expect((await queue.boundingBox())!.x).toBeLessThan((await review.boundingBox())!.x);
   }
-  await review.getByRole("button", { name: "Edit proposal" }).click();
+  await activate(review.getByRole("button", { name: "Edit proposal" }));
   await expect(review.getByText("Saving this revision requires a new approval.")).toBeVisible();
   await review.getByRole("textbox", { name: "Description", exact: true }).fill("Revised charter description");
-  await review.getByRole("button", { name: "Save revision" }).click();
+  await activate(review.getByRole("button", { name: "Save revision" }));
   await expect(review.getByText("Revision saved and awaiting independent review.")).toBeVisible();
   await expect(review.getByText("Revised charter description")).toBeVisible();
   await expect(review.getByRole("button", { name: "Approve", exact: true })).toHaveCount(0);
@@ -126,20 +131,20 @@ test("reviews, revises, approves and publishes proposals in the queue", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
 
   if (mobile) {
-    await review.getByRole("button", { name: /Back to proposals/ }).click();
+    await activate(review.getByRole("button", { name: /Back to proposals/ }));
     await expect(charter).toBeFocused();
   }
   await expect(filter).toHaveValue("WRITTEN");
-  await queue.getByRole("button", { name: /Guild register/ }).press("Enter");
-  await review.getByRole("button", { name: "Approve", exact: true }).click();
+  await activate(queue.getByRole("button", { name: /Guild register/ }));
+  await activate(review.getByRole("button", { name: "Approve", exact: true }));
   await expect(review.getByText("Approved — ready to publish", { exact: true })).toBeVisible();
   await expect(review.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
 
-  if (mobile) await review.getByRole("button", { name: /Back to proposals/ }).click();
-  await queue.getByRole("button", { name: /Town map/ }).press("Enter");
-  await review.getByRole("button", { name: "Publish", exact: true }).click();
+  if (mobile) await activate(review.getByRole("button", { name: /Back to proposals/ }));
+  await activate(queue.getByRole("button", { name: /Town map/ }));
+  await activate(review.getByRole("button", { name: "Publish", exact: true }));
   await expect(review.getByText("Proposal published to the Library.")).toBeVisible();
   await expect(page).toHaveURL(/\/library\/proposals$/);
-  if (mobile) await review.getByRole("button", { name: /Back to proposals/ }).click();
+  if (mobile) await activate(review.getByRole("button", { name: /Back to proposals/ }));
   await expect(queue.getByRole("button", { name: /Town map/ })).toHaveCount(0);
 });
